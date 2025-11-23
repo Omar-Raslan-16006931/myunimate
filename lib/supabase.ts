@@ -1,13 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL;
-const supabaseAnonKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY;
+// Access environment variables with fallbacks to the provided credentials
+// We cast import.meta to any to avoid TypeScript errors if types aren't perfectly set up
+const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL || 'https://mygefdicammrvpnksaqb.supabase.co';
+const supabaseAnonKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || 'sb_publishable_fFFHU6cNapaSXv-wozIi9Q_EWMq-qlD';
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('Supabase environment variables are missing. Please ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set.');
-}
-
-export const supabase = createClient(
-  supabaseUrl || '',
-  supabaseAnonKey || ''
-);
+// Ensure the client is created with valid strings
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
