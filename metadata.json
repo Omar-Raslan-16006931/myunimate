@@ -1,0 +1,8 @@
+{
+  "name": "unimate",
+  "description": "An all-in-one AI-powered productivity hub for university students featuring a liquid glass aesthetic.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
