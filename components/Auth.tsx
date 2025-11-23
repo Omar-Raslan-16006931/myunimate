@@ -2,9 +2,13 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { theme, styles } from '../theme';
-import { Loader2, Mail, Lock, LogIn, UserPlus, Sparkles } from 'lucide-react';
+import { Loader2, Mail, Lock, LogIn, UserPlus, Sparkles, Shield } from 'lucide-react';
 
-export default function Auth() {
+interface AuthProps {
+  onEnterTestMode?: () => void;
+}
+
+export default function Auth({ onEnterTestMode }: AuthProps) {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -130,6 +134,20 @@ export default function Auth() {
             )}
           </button>
         </form>
+
+        {/* Test Mode Button */}
+        {onEnterTestMode && (
+          <div className="mt-2 pt-4 border-t border-white/10 text-center">
+             <button 
+               type="button"
+               onClick={onEnterTestMode}
+               className="text-xs text-white/40 hover:text-white transition-colors flex items-center justify-center gap-2 mx-auto"
+             >
+                <Shield size={12} />
+                Enter Test Mode (Admin)
+             </button>
+          </div>
+        )}
       </div>
     </div>
   );
