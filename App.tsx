@@ -1,4 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
+import { Session } from '@supabase/supabase-js';
+import { supabase } from './lib/supabase';
+import Auth from './components/Auth';
 import Navigation from './components/Navigation';
 import Dashboard from './components/Dashboard';
 import Schedule from './components/Schedule';
@@ -8,7 +12,7 @@ import AddEventModal from './components/AddEventModal';
 import { ScheduleEvent, ViewState, MaterialFile, ScheduleProfile, EventColorMap, ExtractedScheduleItem, EventType, CourseGrade, Assessment } from './types';
 import { INITIAL_EVENTS, INITIAL_FILES, INITIAL_PROFILES, INITIAL_COLORS } from './constants';
 import { theme, styles } from './theme';
-import { GraduationCap, Folder, Edit3, BookOpen, Trash2, FileText, File, Upload, Check, X, Brain, Calendar, Clock, MapPin, AlignLeft, Pencil, Send, Plus, Calculator, ChevronDown, ChevronUp, Sparkles, Loader2 } from 'lucide-react';
+import { GraduationCap, Folder, BookOpen, Trash2, FileText, File, Upload, Check, X, Brain, Calendar, Clock, MapPin, AlignLeft, Pencil, Send, Plus, ChevronDown, ChevronUp, Sparkles, Loader2, LogOut } from 'lucide-react';
 import { parseScheduleImage, getChatResponse } from './services/geminiService';
 
 // --- Subcomponents for other views ---
@@ -405,6 +409,22 @@ const VerifyImportModal = ({ items, onConfirm, onCancel }: { items: ExtractedSch
 }
 
 const App: React.FC = () => {
+  const [session, setSession] = useState<Session | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
   // --- Persistent State Initialization ---
   const [currentView, setCurrentView] = useState<ViewState>('dashboard');
   
@@ -559,6 +579,10 @@ const App: React.FC = () => {
     setExtractedEvents([]);
   };
 
+  const handleSignOut = async () => {
+      await supabase.auth.signOut();
+  };
+
   const renderContent = () => {
     switch (currentView) {
       case 'dashboard':
@@ -615,8 +639,21 @@ const App: React.FC = () => {
     }
   };
 
+  if (!session) {
+    return <Auth />;
+  }
+
   return (
     <div style={styles.container}>
+      {/* Sign Out Button (Small overlay) */}
+      <button 
+        onClick={handleSignOut}
+        style={{position: 'absolute', top: '15px', right: '15px', zIndex: 1000, background: 'rgba(255,255,255,0.05)', borderRadius: '50%', padding: '8px', border: 'none', cursor: 'pointer', color: theme.textMuted}}
+        title="Sign Out"
+      >
+        <LogOut size={16} />
+      </button>
+
       <main style={styles.main}>
         {renderContent()}
       </main>
