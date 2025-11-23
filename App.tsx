@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-import { Session } from '@supabase/supabase-js';
-import { supabase } from './lib/supabase';
-import Auth from './components/Auth';
+//import { Session } from '@supabase/supabase-js';
+//import { supabase } from './lib/supabase';
+//import Auth from './components/Auth';
 import Navigation from './components/Navigation';
 import Dashboard from './components/Dashboard';
 import Schedule from './components/Schedule';
@@ -411,19 +411,19 @@ const VerifyImportModal = ({ items, onConfirm, onCancel }: { items: ExtractedSch
 const App: React.FC = () => {
   const [session, setSession] = useState<Session | null>(null);
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-    });
+  //useEffect(() => {
+    //supabase.auth.getSession().then(({ data: { session } }) => {
+    //  setSession(session);
+   // });
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
+    //const {
+     // data: { subscription },
+    //} = supabase.auth.onAuthStateChange((_event, session) => {
+    //  setSession(session);
+   // });
 
-    return () => subscription.unsubscribe();
-  }, []);
+    //return () => subscription.unsubscribe();
+  //}, []);
 
   // --- Persistent State Initialization ---
   const [currentView, setCurrentView] = useState<ViewState>('dashboard');
@@ -639,9 +639,9 @@ const App: React.FC = () => {
     }
   };
 
-  if (!session) {
-    return <Auth />;
-  }
+  //if (!session) {
+    //return <Auth />;
+  //}
 
   return (
     <div style={styles.container}>
