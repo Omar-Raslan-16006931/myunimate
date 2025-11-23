@@ -409,7 +409,7 @@ const VerifyImportModal = ({ items, onConfirm, onCancel }: { items: ExtractedSch
 }
 
 const App: React.FC = () => {
-  const [session, setSession] = useState<Session | null>(null);
+  const [session, setSession] = useState<any | null>(null);
 
   //useEffect(() => {
     //supabase.auth.getSession().then(({ data: { session } }) => {
@@ -580,7 +580,7 @@ const App: React.FC = () => {
   };
 
   const handleSignOut = async () => {
-      await supabase.auth.signOut();
+     // await supabase.auth.signOut();
   };
 
   const renderContent = () => {
