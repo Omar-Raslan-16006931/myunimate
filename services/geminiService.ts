@@ -1,4 +1,4 @@
-import { GoogleGenAI, Type, Schema } from "@google/genai";
+import { GoogleGenAI, Type, Schema, FunctionDeclaration } from "@google/genai";
 import { ScheduleEvent, EventType, Macros } from "../types";
 
 const MODEL_NAME = 'gemini-2.5-flash';
@@ -22,6 +22,27 @@ const nutritionSchema: Schema = {
     fat: { type: Type.NUMBER, description: "Estimated fat in grams." },
   },
   required: ["foodName", "calories", "protein", "carbs", "fat"],
+};
+
+// --- Add Event Tool Definition ---
+const addEventTool: FunctionDeclaration = {
+  name: "addEvent",
+  description: "Schedule a new event (class, quiz, etc) into the calendar.",
+  parameters: {
+    type: Type.OBJECT,
+    properties: {
+      title: { type: Type.STRING, description: "Title of the event" },
+      type: { type: Type.STRING, description: "Type: lecture, tutorial, lab, quiz, assignment, exam, study, other" },
+      date: { type: Type.STRING, description: "Date in YYYY-MM-DD format" },
+      startTime: { type: Type.STRING, description: "Start time in HH:MM format (24-hour)" },
+      durationMinutes: { type: Type.NUMBER, description: "Duration in minutes" },
+      location: { type: Type.STRING, description: "Location or room number" },
+      description: { type: Type.STRING, description: "Brief description" },
+      isRecurring: { type: Type.BOOLEAN, description: "Whether this event repeats weekly" },
+      dayOfWeek: { type: Type.STRING, description: "Day of week if recurring (e.g. Monday)" }
+    },
+    required: ["title", "type", "date", "startTime"]
+  }
 };
 
 // --- Nutrition Analysis ---
@@ -104,16 +125,19 @@ export const analyzeFoodImage = async (base64Image: string): Promise<Macros & { 
 export const parseNaturalLanguageEvent = async (input: string): Promise<Partial<ScheduleEvent> | null> => {
   if (!input) return null;
   const now = new Date();
-  const dateContext = `Today is ${now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`;
+  const dateContext = `Today is ${now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}.`;
 
   try {
     const ai = getAiClient();
     const response = await ai.models.generateContent({
       model: MODEL_NAME,
       contents: `Extract event details from this text: "${input}".
-            ${dateContext}.
+            ${dateContext}
             Return JSON only with this schema: { title: string, type: string (lecture/tutorial/lab/quiz/assignment/exam/study/other), date: string (YYYY-MM-DD), startTime: string (HH:MM), durationMinutes: number, location: string, description: string }.
-            If specific date is not mentioned but day is (e.g. "next monday"), calculate YYYY-MM-DD based on today.`,
+            Rules for dates:
+            - If user says "next Thursday" and today is Monday, calculate the date for the Thursday of the NEXT week (7+ days away).
+            - If user says "this Thursday" or just "Thursday", calculate for the upcoming Thursday of THIS week.
+            - Ensure YYYY-MM-DD format is accurate based on ${now.getFullYear()}.`,
       config: {
         responseMimeType: "application/json"
       },
@@ -202,7 +226,7 @@ export const parseScheduleImage = async (base64Data: string): Promise<any[]> => 
 };
 
 // --- Chat Assistant ---
-export const getChatResponse = async (history: {role: string, text: string}[], message: string, context?: string): Promise<string> => {
+export const getChatResponse = async (history: {role: string, text: string}[], message: string, context?: string): Promise<{ text: string, eventData?: Partial<ScheduleEvent> }> => {
     // Allow errors to propagate to the caller for proper UI handling
     try {
         const ai = getAiClient();
@@ -212,24 +236,60 @@ export const getChatResponse = async (history: {role: string, text: string}[], m
         }));
 
         const now = new Date();
-        const dateContext = `Today is ${now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}. Current time is ${now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}.`;
+        const dateContext = `
+        Current Date: ${now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}.
+        Current Time: ${now.toLocaleTimeString('en-US', { hour12: false })}.
+        Date Calculation Rules:
+        - "Next Thursday" usually means the Thursday of the following week (7+ days away).
+        - "This Thursday" or just "Thursday" usually means the upcoming Thursday of the current week.
+        - Always double check the calculated date against the current date.
+        `;
 
         const chatSession = ai.chats.create({
         model: MODEL_NAME,
         config: {
             systemInstruction: `You are a helpful assistant for a university student. 
             ${dateContext}
-            Keep your answers concise, direct, and simple. Do not use overly enthusiastic or dramatic language.
-            If the user asks to schedule something, confirm the date and time explicitly based on the current date context.
-            ${context || ""}`,
+            ${context || ""}
+            IMPORTANT BEHAVIOR RULES:
+            1. Be concise, direct, and simple. No cringe, no emojis, no overly enthusiastic language.
+            2. If the user asks to add or schedule an event (quiz, exam, class, etc.), YOU MUST use the 'addEvent' tool.
+            3. Do not ask for confirmation if the details are clear. Just use the tool.
+            `,
+            tools: [{ functionDeclarations: [addEventTool] }]
         },
         history: formattedHistory
         });
 
         const result = await chatSession.sendMessage({ message });
-        return result.text || "I'm having trouble thinking right now.";
+        
+        let finalText = result.text || "";
+        let eventData: Partial<ScheduleEvent> | undefined;
+
+        // Check for tool calls
+        const calls = result.functionCalls;
+        if (calls && calls.length > 0) {
+             const call = calls[0];
+             if (call.name === 'addEvent') {
+                 eventData = call.args as any;
+                 
+                 // Feed result back to get the final text response from model
+                 const toolResult = await chatSession.sendMessage({
+                     message: [{
+                         functionResponse: {
+                             name: 'addEvent',
+                             id: call.id,
+                             response: { result: "Event added successfully" }
+                         }
+                     }]
+                 });
+                 finalText = toolResult.text || "Event scheduled.";
+             }
+        }
+
+        return { text: finalText, eventData };
     } catch (error) {
         console.error("Chat Error:", error);
-        throw error;
+        return { text: "I'm having trouble thinking right now." };
     }
 };
