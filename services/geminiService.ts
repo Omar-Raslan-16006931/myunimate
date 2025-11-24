@@ -1,10 +1,15 @@
-
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { ScheduleEvent, EventType, Macros } from "../types";
 
-const apiKey = process.env.API_KEY || '';
-const ai = new GoogleGenAI({ apiKey });
 const MODEL_NAME = 'gemini-2.5-flash';
+
+const getAiClient = () => {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) {
+    throw new Error("API Key is missing. Please provide a valid API key.");
+  }
+  return new GoogleGenAI({ apiKey });
+};
 
 // --- Nutrition Schema ---
 const nutritionSchema: Schema = {
@@ -21,9 +26,8 @@ const nutritionSchema: Schema = {
 
 // --- Nutrition Analysis ---
 export const analyzeFoodText = async (description: string): Promise<Macros & { name: string }> => {
-  if (!apiKey) throw new Error("API Key is missing");
-
   try {
+    const ai = getAiClient();
     const response = await ai.models.generateContent({
       model: MODEL_NAME,
       contents: `Analyze the following food description and estimate the nutritional content: "${description}". Be realistic.`,
@@ -52,9 +56,8 @@ export const analyzeFoodText = async (description: string): Promise<Macros & { n
 };
 
 export const analyzeFoodImage = async (base64Image: string): Promise<Macros & { name: string }> => {
-  if (!apiKey) throw new Error("API Key is missing");
-
   try {
+    const ai = getAiClient();
     // Remove header if present (e.g., "data:image/jpeg;base64,")
     const cleanBase64 = base64Image.split(',')[1] || base64Image;
 
@@ -103,6 +106,7 @@ export const parseNaturalLanguageEvent = async (input: string): Promise<Partial<
   const today = new Date().toISOString().split('T')[0];
 
   try {
+    const ai = getAiClient();
     const response = await ai.models.generateContent({
       model: MODEL_NAME,
       contents: `Extract event details from this text: "${input}".
@@ -126,6 +130,7 @@ export const parseNaturalLanguageEvent = async (input: string): Promise<Partial<
 // --- Image to Schedule ---
 export const parseScheduleImage = async (base64Data: string): Promise<any[]> => {
   try {
+    const ai = getAiClient();
     const prompt = `
         Role: You are a precise Data Extraction Engine for university schedules.
         Task: Extract the schedule from the provided image into strict JSON format.
@@ -198,19 +203,25 @@ export const parseScheduleImage = async (base64Data: string): Promise<any[]> => 
 // --- Chat Assistant ---
 export const getChatResponse = async (history: {role: string, text: string}[], message: string, context?: string): Promise<string> => {
     // Allow errors to propagate to the caller for proper UI handling
-    const formattedHistory = history.map(m => ({
-        role: m.role,
-        parts: [{ text: m.text }]
-    }));
+    try {
+        const ai = getAiClient();
+        const formattedHistory = history.map(m => ({
+            role: m.role,
+            parts: [{ text: m.text }]
+        }));
 
-    const chatSession = ai.chats.create({
-      model: MODEL_NAME,
-      config: {
-        systemInstruction: "You are 'College Container AI', a helpful, witty, and academic-focused assistant for a university student. You help with scheduling, study tips, and explaining concepts. Keep answers concise and helpful." + (context || ""),
-      },
-      history: formattedHistory
-    });
+        const chatSession = ai.chats.create({
+        model: MODEL_NAME,
+        config: {
+            systemInstruction: "You are 'College Container AI', a helpful, witty, and academic-focused assistant for a university student. You help with scheduling, study tips, and explaining concepts. Keep answers concise and helpful." + (context || ""),
+        },
+        history: formattedHistory
+        });
 
-    const result = await chatSession.sendMessage({ message });
-    return result.text || "I'm having trouble thinking right now.";
+        const result = await chatSession.sendMessage({ message });
+        return result.text || "I'm having trouble thinking right now.";
+    } catch (error) {
+        console.error("Chat Error:", error);
+        throw error;
+    }
 };
