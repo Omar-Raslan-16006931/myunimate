@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MapPin, Play, Pause, RotateCcw, Zap, ClipboardList, Clock, Calendar, ArrowRight } from 'lucide-react';
+import { MapPin, ClipboardList, ArrowRight, Dumbbell, Calculator, Sparkles } from 'lucide-react';
 import { ScheduleEvent, EventColorMap } from '../types';
 import { PERIODS, getLocalISOString } from '../constants';
 import { theme, styles } from '../theme';
@@ -11,66 +11,6 @@ interface DashboardProps {
   onEventClick: (event: ScheduleEvent) => void;
   onAddEventClick: () => void;
 }
-
-const FocusTimer = () => {
-  const [timeLeft, setTimeLeft] = useState(25 * 60);
-  const [isActive, setIsActive] = useState(false);
-  const [mode, setMode] = useState<'focus' | 'break'>('focus');
-
-  useEffect(() => {
-    let interval: any = null;
-    if (isActive && timeLeft > 0) {
-      interval = setInterval(() => {
-        setTimeLeft(timeLeft => timeLeft - 1);
-      }, 1000);
-    } else if (timeLeft === 0) {
-      setIsActive(false);
-    }
-    return () => clearInterval(interval);
-  }, [isActive, timeLeft]);
-
-  const toggleTimer = () => setIsActive(!isActive);
-  const resetTimer = () => {
-    setIsActive(false);
-    setTimeLeft(mode === 'focus' ? 25 * 60 : 5 * 60);
-  };
-  const switchMode = () => {
-    setIsActive(false);
-    const newMode = mode === 'focus' ? 'break' : 'focus';
-    setMode(newMode);
-    setTimeLeft(newMode === 'focus' ? 25 * 60 : 5 * 60);
-  };
-
-  const minutes = Math.floor(timeLeft / 60);
-  const seconds = timeLeft % 60;
-
-  return (
-    <div style={{...styles.card, background: "linear-gradient(135deg, rgba(139, 92, 246, 0.08), rgba(99, 102, 241, 0.08))", border: "1px solid rgba(139, 92, 246, 0.15)"}}>
-      <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px'}}>
-        <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
-          <Zap size={18} color={mode === 'focus' ? theme.accent : '#34d399'} fill={mode === 'focus' ? theme.accent : '#34d399'} />
-          <h3 style={{margin: 0, fontSize: '1rem'}}>{mode === 'focus' ? 'Focus Session' : 'Short Break'}</h3>
-        </div>
-        <button onClick={switchMode} style={{background: 'none', border: '1px solid rgba(255,255,255,0.1)', color: theme.textMuted, borderRadius: '20px', padding: '4px 10px', fontSize: '0.7rem', cursor: 'pointer'}}>
-          Switch
-        </button>
-      </div>
-      
-      <div style={{fontSize: '3.5rem', fontWeight: 800, textAlign: 'center', fontFamily: 'SF Pro Display, monospace', letterSpacing: '-2px', marginBottom: '16px', color: '#fff', textShadow: `0 0 30px ${theme.accent}3d`}}>
-        {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
-      </div>
-      
-      <div style={{display: 'flex', gap: '16px', justifyContent: 'center'}}>
-        <button onClick={toggleTimer} style={{...styles.button, borderRadius: '50%', width: '54px', height: '54px', padding: 0, justifyContent: 'center', boxShadow: `0 10px 30px ${theme.accent}4d`}}>
-          {isActive ? <Pause size={24} fill="white" /> : <Play size={24} fill="white" style={{marginLeft: '4px'}} />}
-        </button>
-        <button onClick={resetTimer} style={{...styles.secondaryButton, borderRadius: '50%', width: '54px', height: '54px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
-          <RotateCcw size={20} />
-        </button>
-      </div>
-    </div>
-  );
-};
 
 const Dashboard: React.FC<DashboardProps> = ({ events, eventColors, onNavigate, onEventClick, onAddEventClick }) => {
   const [greeting, setGreeting] = useState("Good Morning");
@@ -90,7 +30,7 @@ const Dashboard: React.FC<DashboardProps> = ({ events, eventColors, onNavigate, 
         setCurrentDate(now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }));
     };
     tick();
-    const timer = setInterval(tick, 60000); // Update every minute
+    const timer = setInterval(tick, 60000); 
     return () => clearInterval(timer);
   }, []);
 
@@ -123,7 +63,6 @@ const Dashboard: React.FC<DashboardProps> = ({ events, eventColors, onNavigate, 
     return found ? `${found.label} Slot` : "";
   };
 
-  // Logic to determine "Current" and "Next" events using local time
   const now = new Date();
   const todayName = now.toLocaleDateString('en-US', { weekday: 'long' });
   const todayStr = getLocalISOString();
@@ -133,7 +72,6 @@ const Dashboard: React.FC<DashboardProps> = ({ events, eventColors, onNavigate, 
     .filter(e => e.dayOfWeek === todayName || e.date === todayStr)
     .sort((a, b) => a.startTime.localeCompare(b.startTime));
 
-  // Find event happening right now
   const currentEvent = todayEvents.find(e => {
     const [h, m] = e.startTime.split(':').map(Number);
     const startVal = h + m / 60;
@@ -141,20 +79,14 @@ const Dashboard: React.FC<DashboardProps> = ({ events, eventColors, onNavigate, 
     return currentTimeVal >= startVal && currentTimeVal < endVal;
   });
 
-  // Find next event starting after now
   const nextEvent = todayEvents.find(e => {
     const [h, m] = e.startTime.split(':').map(Number);
     const startVal = h + m / 60;
     return startVal > currentTimeVal;
   });
 
-  // If a class is happening now, it's the main card. 
-  // If not, the upcoming class is the main card.
   const mainCardEvent = currentEvent || nextEvent;
   const isHappeningNow = !!currentEvent;
-  
-  // The small "Next Up" tab shows ONLY if we are currently busy (showing a current event)
-  // AND there is another event after it.
   const showNextUpTab = isHappeningNow && nextEvent;
 
   const upcomingDeadlines = events
@@ -181,7 +113,7 @@ const Dashboard: React.FC<DashboardProps> = ({ events, eventColors, onNavigate, 
         ...styles.card, 
         flex: 1, 
         minHeight: '180px', 
-        background: event ? `linear-gradient(135deg, ${color}99 0%, ${color}44 100%)` : "rgba(30,30,40,0.6)", // Solid background
+        background: event ? `linear-gradient(135deg, ${color}99 0%, ${color}44 100%)` : "rgba(30,30,40,0.6)", 
         border: event ? `1px solid ${color}66` : theme.glassBorder,
         boxShadow: event ? `0 15px 40px ${color}33` : "none", 
         display: 'flex', 
@@ -190,7 +122,6 @@ const Dashboard: React.FC<DashboardProps> = ({ events, eventColors, onNavigate, 
         position: 'relative',
         overflow: 'hidden'
     }} onClick={() => event && onEventClick(event)}>
-        {/* Animated Glow for "Happening Now" */}
         {isNow && (
             <div className="absolute top-0 right-0 p-3">
                 <span className="flex h-3 w-3">
@@ -240,7 +171,7 @@ const Dashboard: React.FC<DashboardProps> = ({ events, eventColors, onNavigate, 
 
   return (
     <div style={styles.scrollableContent}>
-        <div style={{marginBottom: "30px", paddingTop: '20px'}}>
+        <div style={{marginBottom: "30px", paddingTop: '20px', position: 'relative'}}>
              <div style={{fontSize: '3.5rem', fontWeight: 800, lineHeight: 1, letterSpacing: '-2px', background: `linear-gradient(to right, #fff, ${theme.textMuted})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent'}}>
                  {currentTime}
              </div>
@@ -248,14 +179,35 @@ const Dashboard: React.FC<DashboardProps> = ({ events, eventColors, onNavigate, 
                  {currentDate}
              </div>
              <p style={{...styles.subtitle, marginTop: '8px'}}>{greeting}</p>
+
+             {/* AI Button - Replaced floating bar item with this button */}
+             <button 
+                onClick={() => onNavigate('ai')}
+                style={{
+                    position: 'absolute',
+                    top: '20px',
+                    right: '0',
+                    background: 'linear-gradient(135deg, #8b5cf6, #d946ef)',
+                    border: 'none',
+                    borderRadius: '16px',
+                    width: '48px',
+                    height: '48px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 4px 15px rgba(139, 92, 246, 0.4)',
+                    cursor: 'pointer',
+                    zIndex: 10
+                }}
+             >
+                <Sparkles size={24} color="#fff" />
+             </button>
         </div>
 
         <div style={{display: "flex", flexDirection: "column", gap: "20px"}}>
             
-            {/* Main Card */}
             {renderEventCard(mainCardEvent, isHappeningNow ? "Happening Now" : "Up Next", isHappeningNow)}
 
-            {/* Happening Next Small Tab - Only shown if busy now */}
             {showNextUpTab && nextEvent && (
                 <div 
                     onClick={() => onEventClick(nextEvent)}
@@ -287,6 +239,63 @@ const Dashboard: React.FC<DashboardProps> = ({ events, eventColors, onNavigate, 
                     </div>
                 </div>
             )}
+
+            {/* Apps Grid - Redesigned Visuals */}
+            <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px'}}>
+                {/* Gym Entry Card */}
+                <div 
+                    onClick={() => onNavigate('gym')}
+                    style={{
+                        ...styles.card,
+                        margin: 0,
+                        padding: '24px 20px',
+                        minHeight: '140px',
+                        background: 'linear-gradient(135deg, rgba(30, 64, 175, 0.5), rgba(30, 58, 138, 0.3))',
+                        border: '1px solid rgba(96, 165, 250, 0.2)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        alignItems: 'flex-start',
+                        boxShadow: '0 8px 20px rgba(30, 58, 138, 0.3)'
+                    }}
+                >
+                    <div style={{background: 'rgba(255,255,255,0.15)', padding: '12px', borderRadius: '14px', marginBottom: '12px'}}>
+                        <Dumbbell size={28} color="#fff" />
+                    </div>
+                    <div>
+                        <h3 style={{margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#fff'}}>Gym</h3>
+                        <p style={{margin: '4px 0 0 0', fontSize: '0.8rem', color: 'rgba(255,255,255,0.7)'}}>Fitness Tracker</p>
+                    </div>
+                </div>
+
+                {/* Grade Calculator Entry Card */}
+                <div 
+                    onClick={() => onNavigate('grades')}
+                    style={{
+                        ...styles.card,
+                        margin: 0,
+                        padding: '24px 20px',
+                        minHeight: '140px',
+                        background: 'linear-gradient(135deg, rgba(13, 148, 136, 0.5), rgba(17, 94, 89, 0.3))',
+                        border: '1px solid rgba(45, 212, 191, 0.2)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        alignItems: 'flex-start',
+                        boxShadow: '0 8px 20px rgba(13, 148, 136, 0.3)'
+                    }}
+                >
+                    <div style={{background: 'rgba(255,255,255,0.15)', padding: '12px', borderRadius: '14px', marginBottom: '12px'}}>
+                        <Calculator size={28} color="#fff" />
+                    </div>
+                    <div>
+                        <h3 style={{margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#fff'}}>Grades</h3>
+                        <p style={{margin: '4px 0 0 0', fontSize: '0.8rem', color: 'rgba(255,255,255,0.7)'}}>GPA Calculator</p>
+                    </div>
+                </div>
+            </div>
 
             <div>
                 <div style={{display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', paddingLeft: '4px'}}>
@@ -323,8 +332,6 @@ const Dashboard: React.FC<DashboardProps> = ({ events, eventColors, onNavigate, 
                     </div>
                 )}
             </div>
-
-            <FocusTimer />
         </div>
     </div>
   );

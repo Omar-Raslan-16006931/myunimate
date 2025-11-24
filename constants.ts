@@ -1,4 +1,5 @@
-import { ScheduleEvent, MaterialFile, ScheduleProfile, EventType } from './types';
+
+import { ScheduleEvent, MaterialFile, ScheduleProfile, EventType, MuscleGroup, GymSettings, ExerciseDefinition, WorkoutRoutine } from './types';
 
 // Helper to get local ISO string (YYYY-MM-DD) to fix timezone issues
 export const getLocalISOString = (date: Date = new Date()) => {
@@ -55,3 +56,159 @@ export const INITIAL_COLORS: Record<EventType, string> = {
   study: "#06b6d4",        
   other: "#71717a"         
 };
+
+// --- GYM CONSTANTS ---
+
+export const EXERCISE_ICONS: Record<string, string> = {
+  'Bench Press': 'https://img.icons8.com/ios-filled/100/bench-press.png',
+  'Incline Dumbbell Press': 'https://img.icons8.com/ios-filled/100/chest-press.png',
+  'Cable Flyes': 'https://img.icons8.com/ios-filled/100/pullups.png',
+  'Push-ups': 'https://img.icons8.com/ios-filled/100/pushups.png',
+  'Dips': 'https://img.icons8.com/ios-filled/100/deadlift.png',
+  
+  'Deadlift': 'https://img.icons8.com/ios-filled/100/deadlift.png',
+  'Pull-ups': 'https://img.icons8.com/ios-filled/100/pullups.png',
+  'Lat Pulldown': 'https://img.icons8.com/ios-filled/100/lat-pull-down.png',
+  'Bent Over Row': 'https://img.icons8.com/ios-filled/100/rowing.png',
+  
+  'Squat': 'https://img.icons8.com/ios-filled/100/squats.png',
+  'Leg Press': 'https://img.icons8.com/ios-filled/100/leg-press.png',
+  'Lunges': 'https://img.icons8.com/ios-filled/100/lunge.png',
+  
+  'Overhead Press': 'https://img.icons8.com/ios-filled/100/shoulder-press.png',
+  'Lateral Raises': 'https://img.icons8.com/ios-filled/100/dumbbell.png',
+  
+  'Barbell Curl': 'https://img.icons8.com/ios-filled/100/barbell.png',
+  'Tricep Pushdown': 'https://img.icons8.com/ios-filled/100/triceps.png',
+  
+  'Plank': 'https://img.icons8.com/ios-filled/100/plank.png',
+  'Running': 'https://img.icons8.com/ios-filled/100/running.png',
+};
+
+export const DEFAULT_GYM_SETTINGS: GymSettings = {
+  name: 'Athlete',
+  waterTarget: 2500,
+  defaultRestTimer: 30, 
+  targets: {
+    calories: 2500,
+    protein: 180,
+    carbs: 250,
+    fat: 80,
+  },
+  gender: 'male',
+  age: 25,
+  weight: 75,
+  height: 175,
+  activityLevel: 'moderate'
+};
+
+export const DEFAULT_EXERCISES: ExerciseDefinition[] = [
+  // Chest
+  { 
+    id: 'c1', name: 'Bench Press', muscleGroup: MuscleGroup.CHEST, equipment: 'Barbell',
+    imageUrl: EXERCISE_ICONS['Bench Press'],
+    restTime: 120
+  },
+  { 
+    id: 'c2', name: 'Incline Dumbbell Press', muscleGroup: MuscleGroup.CHEST, equipment: 'Dumbbell',
+    imageUrl: EXERCISE_ICONS['Incline Dumbbell Press'] 
+  },
+  { 
+    id: 'c3', name: 'Cable Flyes', muscleGroup: MuscleGroup.CHEST, equipment: 'Cable',
+    imageUrl: EXERCISE_ICONS['Cable Flyes']
+  },
+  { 
+    id: 'c4', name: 'Push-ups', muscleGroup: MuscleGroup.CHEST, equipment: 'Bodyweight',
+    imageUrl: EXERCISE_ICONS['Push-ups'],
+    restTime: 60
+  },
+  { 
+    id: 'c5', name: 'Dips', muscleGroup: MuscleGroup.CHEST, equipment: 'Bodyweight',
+    imageUrl: EXERCISE_ICONS['Dips']
+  },
+  // Back
+  { 
+    id: 'b1', name: 'Deadlift', muscleGroup: MuscleGroup.BACK, equipment: 'Barbell',
+    imageUrl: EXERCISE_ICONS['Deadlift'],
+    restTime: 180
+  },
+  { 
+    id: 'b2', name: 'Pull-ups', muscleGroup: MuscleGroup.BACK, equipment: 'Bodyweight',
+    imageUrl: EXERCISE_ICONS['Pull-ups']
+  },
+  { 
+    id: 'b3', name: 'Lat Pulldown', muscleGroup: MuscleGroup.BACK, equipment: 'Cable',
+    imageUrl: EXERCISE_ICONS['Lat Pulldown']
+  },
+  { 
+    id: 'b4', name: 'Bent Over Row', muscleGroup: MuscleGroup.BACK, equipment: 'Barbell',
+    imageUrl: EXERCISE_ICONS['Bent Over Row']
+  },
+  // Legs
+  { 
+    id: 'l1', name: 'Squat', muscleGroup: MuscleGroup.LEGS, equipment: 'Barbell',
+    imageUrl: EXERCISE_ICONS['Squat'],
+    restTime: 180
+  },
+  { 
+    id: 'l2', name: 'Leg Press', muscleGroup: MuscleGroup.LEGS, equipment: 'Machine',
+    imageUrl: EXERCISE_ICONS['Leg Press']
+  },
+  { 
+    id: 'l3', name: 'Lunges', muscleGroup: MuscleGroup.LEGS, equipment: 'Dumbbell',
+    imageUrl: EXERCISE_ICONS['Lunges']
+  },
+  // Shoulders
+  { 
+    id: 's1', name: 'Overhead Press', muscleGroup: MuscleGroup.SHOULDERS, equipment: 'Barbell',
+    imageUrl: EXERCISE_ICONS['Overhead Press'],
+    restTime: 120
+  },
+  { 
+    id: 's2', name: 'Lateral Raises', muscleGroup: MuscleGroup.SHOULDERS, equipment: 'Dumbbell',
+    imageUrl: EXERCISE_ICONS['Lateral Raises'],
+    restTime: 60
+  },
+  // Arms
+  { 
+    id: 'a1', name: 'Barbell Curl', muscleGroup: MuscleGroup.ARMS, equipment: 'Barbell',
+    imageUrl: EXERCISE_ICONS['Barbell Curl'],
+    restTime: 60
+  },
+  { 
+    id: 'a2', name: 'Tricep Pushdown', muscleGroup: MuscleGroup.ARMS, equipment: 'Cable',
+    imageUrl: EXERCISE_ICONS['Tricep Pushdown'],
+    restTime: 60
+  },
+  // Core
+  { 
+    id: 'co1', name: 'Plank', muscleGroup: MuscleGroup.CORE, equipment: 'Bodyweight',
+    imageUrl: EXERCISE_ICONS['Plank'],
+    restTime: 45
+  },
+  // Cardio
+  { 
+    id: 'ca1', name: 'Running', muscleGroup: MuscleGroup.CARDIO, equipment: 'Other',
+    imageUrl: EXERCISE_ICONS['Running']
+  },
+];
+
+export const DEFAULT_ROUTINES: WorkoutRoutine[] = [
+  {
+    id: 'r1',
+    name: 'Upper Power',
+    exercises: [
+      { id: 'c1', name: 'Bench Press', muscleGroup: MuscleGroup.CHEST, equipment: 'Barbell', imageUrl: EXERCISE_ICONS['Bench Press'], restTime: 120 },
+      { id: 'b4', name: 'Bent Over Row', muscleGroup: MuscleGroup.BACK, equipment: 'Barbell', imageUrl: EXERCISE_ICONS['Bent Over Row'] },
+      { id: 's1', name: 'Overhead Press', muscleGroup: MuscleGroup.SHOULDERS, equipment: 'Barbell', imageUrl: EXERCISE_ICONS['Overhead Press'], restTime: 120 },
+    ]
+  },
+  {
+    id: 'r2',
+    name: 'Leg Day',
+    exercises: [
+      { id: 'l1', name: 'Squat', muscleGroup: MuscleGroup.LEGS, equipment: 'Barbell', imageUrl: EXERCISE_ICONS['Squat'], restTime: 180 },
+      { id: 'l3', name: 'Lunges', muscleGroup: MuscleGroup.LEGS, equipment: 'Dumbbell', imageUrl: EXERCISE_ICONS['Lunges'] },
+    ]
+  }
+];

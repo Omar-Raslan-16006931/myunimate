@@ -1,10 +1,103 @@
-import { GoogleGenAI, Type } from "@google/genai";
-import { ScheduleEvent, EventType } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+import { GoogleGenAI, Type, Schema } from "@google/genai";
+import { ScheduleEvent, EventType, Macros } from "../types";
+
+const apiKey = process.env.API_KEY || '';
+const ai = new GoogleGenAI({ apiKey });
 const MODEL_NAME = 'gemini-2.5-flash';
 
-// --- Magic Autofill ---
+// --- Nutrition Schema ---
+const nutritionSchema: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    foodName: { type: Type.STRING, description: "A short, descriptive name of the food identified." },
+    calories: { type: Type.NUMBER, description: "Estimated total calories." },
+    protein: { type: Type.NUMBER, description: "Estimated protein in grams." },
+    carbs: { type: Type.NUMBER, description: "Estimated carbohydrates in grams." },
+    fat: { type: Type.NUMBER, description: "Estimated fat in grams." },
+  },
+  required: ["foodName", "calories", "protein", "carbs", "fat"],
+};
+
+// --- Nutrition Analysis ---
+export const analyzeFoodText = async (description: string): Promise<Macros & { name: string }> => {
+  if (!apiKey) throw new Error("API Key is missing");
+
+  try {
+    const response = await ai.models.generateContent({
+      model: MODEL_NAME,
+      contents: `Analyze the following food description and estimate the nutritional content: "${description}". Be realistic.`,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: nutritionSchema,
+        systemInstruction: "You are an expert nutritionist. Analyze food descriptions provided by the user and return accurate estimated macro-nutrients."
+      }
+    });
+
+    const text = response.text;
+    if (!text) throw new Error("No response from AI");
+    
+    const data = JSON.parse(text);
+    return {
+      name: data.foodName,
+      calories: data.calories,
+      protein: data.protein,
+      carbs: data.carbs,
+      fat: data.fat
+    };
+  } catch (error) {
+    console.error("Gemini Text Analysis Error:", error);
+    throw error;
+  }
+};
+
+export const analyzeFoodImage = async (base64Image: string): Promise<Macros & { name: string }> => {
+  if (!apiKey) throw new Error("API Key is missing");
+
+  try {
+    // Remove header if present (e.g., "data:image/jpeg;base64,")
+    const cleanBase64 = base64Image.split(',')[1] || base64Image;
+
+    const response = await ai.models.generateContent({
+      model: MODEL_NAME,
+      contents: {
+        parts: [
+          {
+            inlineData: {
+              mimeType: 'image/jpeg',
+              data: cleanBase64
+            }
+          },
+          {
+            text: "Identify the food in this image and estimate the portion size and nutritional content for the entire visible portion."
+          }
+        ]
+      },
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: nutritionSchema,
+        systemInstruction: "You are an expert nutritionist. Analyze the image provided, estimate the portion size visually, and calculate the macros."
+      }
+    });
+
+    const text = response.text;
+    if (!text) throw new Error("No response from AI");
+
+    const data = JSON.parse(text);
+    return {
+      name: data.foodName,
+      calories: data.calories,
+      protein: data.protein,
+      carbs: data.carbs,
+      fat: data.fat
+    };
+  } catch (error) {
+    console.error("Gemini Image Analysis Error:", error);
+    throw error;
+  }
+};
+
+// --- Magic Autofill (Schedule) ---
 export const parseNaturalLanguageEvent = async (input: string): Promise<Partial<ScheduleEvent> | null> => {
   if (!input) return null;
   const today = new Date().toISOString().split('T')[0];

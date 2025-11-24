@@ -1,6 +1,5 @@
 
 import React, { useState, useEffect } from 'react';
-import { Session } from '@supabase/supabase-js';
 import { supabase } from './lib/supabase';
 import Auth from './components/Auth';
 import Navigation from './components/Navigation';
@@ -9,6 +8,7 @@ import Schedule from './components/Schedule';
 import AIChat from './components/AIChat';
 import Settings from './components/Settings';
 import AddEventModal from './components/AddEventModal';
+import GymView from './components/GymView';
 import { ScheduleEvent, ViewState, MaterialFile, ScheduleProfile, EventColorMap, ExtractedScheduleItem, EventType, CourseGrade, Assessment } from './types';
 import { INITIAL_EVENTS, INITIAL_FILES, INITIAL_PROFILES, INITIAL_COLORS } from './constants';
 import { theme, styles } from './theme';
@@ -409,7 +409,7 @@ const VerifyImportModal = ({ items, onConfirm, onCancel }: { items: ExtractedSch
 }
 
 const App: React.FC = () => {
-  const [session, setSession] = useState<Session | null>(null);
+  const [session, setSession] = useState<any | null>(null);
   const [isTestMode, setIsTestMode] = useState(false);
 
   useEffect(() => {
@@ -528,7 +528,6 @@ const App: React.FC = () => {
     if (confirm("Are you sure? This will delete the profile and all its events.")) {
       setProfiles(prev => prev.filter(p => p.id !== id));
       setEvents(prev => prev.filter(e => e.scheduleId !== id));
-      // If deleted active profile, switch to first available
       if (activeProfileId === id) {
         const remaining = profiles.filter(p => p.id !== id);
         if (remaining.length > 0) setActiveProfileId(remaining[0].id);
@@ -614,6 +613,8 @@ const App: React.FC = () => {
         );
       case 'grades':
         return <GradesView grades={grades} setGrades={setGrades} />;
+      case 'gym':
+        return <GymView onBack={() => setCurrentView('dashboard')} />;
       case 'courses':
         return <CoursesView events={events.filter(e => e.scheduleId === activeProfileId)} eventColors={eventColors} />;
       case 'materials':
@@ -637,6 +638,7 @@ const App: React.FC = () => {
              onDeleteProfile={handleDeleteProfile}
              isAnalyzing={isAnalyzing}
              onResetGrades={() => { if(confirm("Reset all grades?")) setGrades([]); }}
+             onSignOut={handleSignOut}
           />
         );
       default:
@@ -650,20 +652,11 @@ const App: React.FC = () => {
 
   return (
     <div style={styles.container}>
-      {/* Sign Out Button (Small overlay) */}
-      <button 
-        onClick={handleSignOut}
-        style={{position: 'absolute', top: '15px', right: '15px', zIndex: 1000, background: 'rgba(255,255,255,0.05)', borderRadius: '50%', padding: '8px', border: 'none', cursor: 'pointer', color: theme.textMuted}}
-        title="Sign Out"
-      >
-        <LogOut size={16} />
-      </button>
-
       <main style={styles.main}>
         {renderContent()}
       </main>
 
-      <Navigation currentView={currentView} onNavigate={setCurrentView} />
+      {currentView !== 'gym' && <Navigation currentView={currentView} onNavigate={setCurrentView} />}
 
       {isEventModalOpen && (
         <AddEventModal 
