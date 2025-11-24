@@ -197,7 +197,7 @@ export const parseScheduleImage = async (base64Data: string): Promise<any[]> => 
 
 // --- Chat Assistant ---
 export const getChatResponse = async (history: {role: string, text: string}[], message: string, context?: string): Promise<string> => {
-  try {
+    // Allow errors to propagate to the caller for proper UI handling
     const formattedHistory = history.map(m => ({
         role: m.role,
         parts: [{ text: m.text }]
@@ -213,8 +213,4 @@ export const getChatResponse = async (history: {role: string, text: string}[], m
 
     const result = await chatSession.sendMessage({ message });
     return result.text || "I'm having trouble thinking right now.";
-  } catch (error) {
-    console.error("Chat Error:", error);
-    return "Sorry, I couldn't reach the server.";
-  }
 };
