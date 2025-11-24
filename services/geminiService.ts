@@ -103,14 +103,15 @@ export const analyzeFoodImage = async (base64Image: string): Promise<Macros & { 
 // --- Magic Autofill (Schedule) ---
 export const parseNaturalLanguageEvent = async (input: string): Promise<Partial<ScheduleEvent> | null> => {
   if (!input) return null;
-  const today = new Date().toISOString().split('T')[0];
+  const now = new Date();
+  const dateContext = `Today is ${now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`;
 
   try {
     const ai = getAiClient();
     const response = await ai.models.generateContent({
       model: MODEL_NAME,
       contents: `Extract event details from this text: "${input}".
-            Today is ${today}.
+            ${dateContext}.
             Return JSON only with this schema: { title: string, type: string (lecture/tutorial/lab/quiz/assignment/exam/study/other), date: string (YYYY-MM-DD), startTime: string (HH:MM), durationMinutes: number, location: string, description: string }.
             If specific date is not mentioned but day is (e.g. "next monday"), calculate YYYY-MM-DD based on today.`,
       config: {
@@ -210,10 +211,17 @@ export const getChatResponse = async (history: {role: string, text: string}[], m
             parts: [{ text: m.text }]
         }));
 
+        const now = new Date();
+        const dateContext = `Today is ${now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}. Current time is ${now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}.`;
+
         const chatSession = ai.chats.create({
         model: MODEL_NAME,
         config: {
-            systemInstruction: "You are 'College Container AI', a helpful, witty, and academic-focused assistant for a university student. You help with scheduling, study tips, and explaining concepts. Keep answers concise and helpful." + (context || ""),
+            systemInstruction: `You are a helpful assistant for a university student. 
+            ${dateContext}
+            Keep your answers concise, direct, and simple. Do not use overly enthusiastic or dramatic language.
+            If the user asks to schedule something, confirm the date and time explicitly based on the current date context.
+            ${context || ""}`,
         },
         history: formattedHistory
         });
