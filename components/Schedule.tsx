@@ -96,7 +96,9 @@ const Schedule: React.FC<ScheduleProps> = ({
   const renderEventCard = (ev: ScheduleEvent, isSmall: boolean = false) => {
        const bg = eventColors[ev.type] || '#64748b';
        const txtColor = getContrastColor(bg);
+       // Use smaller font/padding if constrained space
        const titleSize = isSmall ? '0.7rem' : '0.85rem';
+       const padding = isSmall ? '6px' : '8px';
        
        return (
        <div 
@@ -108,25 +110,55 @@ const Schedule: React.FC<ScheduleProps> = ({
            color: txtColor,
            marginBottom: 0,
            height: '100%',
-           width: '100%' 
+           width: '100%',
+           padding: padding,
+           display: 'flex',
+           flexDirection: 'column'
          }}
        >
          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2px'}}>
-             <div style={{padding: '2px 6px', borderRadius: '4px', backgroundColor: 'rgba(0,0,0,0.25)', fontSize: '0.55rem', fontWeight: 800, textTransform: 'uppercase'}}>{ev.type}</div>
-             {(ev.type === 'quiz' || ev.type === 'assignment' || ev.type === 'exam') && (
+             <div style={{
+                 padding: '2px 6px', 
+                 borderRadius: '4px', 
+                 backgroundColor: 'rgba(0,0,0,0.25)', 
+                 fontSize: '0.55rem', 
+                 fontWeight: 800, 
+                 textTransform: 'uppercase',
+                 whiteSpace: 'nowrap',
+                 maxWidth: isSmall ? '100%' : 'auto',
+                 overflow: 'hidden',
+                 textOverflow: 'ellipsis'
+             }}>
+                {ev.type}
+             </div>
+             {(ev.type === 'quiz' || ev.type === 'assignment' || ev.type === 'exam') && !isSmall && (
                 <div style={{background: 'rgba(255,255,255,0.3)', borderRadius: '50%', padding: '2px', display: 'flex'}}>
                     <Brain size={10} color={txtColor} />
                 </div>
              )}
          </div>
 
-         <div style={{fontWeight: 700, fontSize: titleSize, lineHeight: '1.2', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '2px'}}>
+         <div style={{
+             fontWeight: 700, 
+             fontSize: titleSize, 
+             lineHeight: '1.2', 
+             whiteSpace: 'nowrap', 
+             overflow: 'hidden', 
+             textOverflow: 'ellipsis', 
+             marginBottom: 'auto', // Pushes footer down
+             paddingTop: '2px'
+         }}>
             {ev.title}
          </div>
          
-         <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: 0.9}}>
-             {ev.location && <div style={{fontSize: '0.65rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '2px'}}><MapPin size={9} /> {ev.location}</div>}
-             {ev.code && <div style={{fontSize: '0.65rem', fontWeight: 500}}>{ev.code}</div>}
+         <div style={{display: 'flex', flexDirection: 'column', gap: '0px', opacity: 0.9}}>
+             {ev.location && (
+                 <div style={{fontSize: '0.65rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '2px'}}>
+                     <MapPin size={isSmall ? 8 : 9} style={{flexShrink: 0}} /> 
+                     <span style={{whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{ev.location}</span>
+                 </div>
+             )}
+             {!isSmall && ev.code && <div style={{fontSize: '0.65rem', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{ev.code}</div>}
          </div>
        </div>
      );
@@ -205,15 +237,15 @@ const Schedule: React.FC<ScheduleProps> = ({
                                cellEvents.length === 1 ? (
                                    renderEventCard(cellEvents[0])
                                ) : (
-                                   <div style={{display: 'flex', gap: '6px', width: '100%', height: '100%'}}>
+                                   <div style={{display: 'flex', gap: '4px', width: '100%', height: '100%'}}>
                                        <div style={{flex: 1, minWidth: 0}}>
                                            {renderEventCard(cellEvents[0], true)}
                                        </div>
                                        <div 
                                            onClick={(e) => { e.stopPropagation(); setExpandedSlot(cellEvents); }}
                                            style={{
-                                               width: '30px', 
-                                               borderRadius: '10px', 
+                                               width: '26px', 
+                                               borderRadius: '8px', 
                                                backgroundColor: 'rgba(255,255,255,0.1)', 
                                                border: '1px solid rgba(255,255,255,0.1)', 
                                                display: 'flex', 
@@ -222,7 +254,7 @@ const Schedule: React.FC<ScheduleProps> = ({
                                                cursor: 'pointer', 
                                                color: '#fff', 
                                                fontWeight: 800, 
-                                               fontSize: '0.8rem',
+                                               fontSize: '0.75rem',
                                                flexShrink: 0,
                                                transition: 'background 0.2s',
                                                boxShadow: '0 4px 10px rgba(0,0,0,0.2)'
