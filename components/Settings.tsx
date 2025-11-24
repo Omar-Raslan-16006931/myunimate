@@ -46,6 +46,9 @@ const Settings: React.FC<SettingsProps> = ({
 }) => {
   const [newProfileName, setNewProfileName] = useState('');
   const [isScheduleSettingsExpanded, setIsScheduleSettingsExpanded] = useState(false);
+  const [isProfilesExpanded, setIsProfilesExpanded] = useState(false);
+  const [isColorsExpanded, setIsColorsExpanded] = useState(false);
+  const [isBaseScheduleExpanded, setIsBaseScheduleExpanded] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleCreateProfile = () => {
@@ -70,52 +73,65 @@ const Settings: React.FC<SettingsProps> = ({
           <h1 style={styles.title}>Settings</h1>
           <p style={styles.subtitle}>Personalize your app</p>
           <div style={{display: "flex", flexDirection: "column", gap: "20px", marginTop: "24px"}}>
+                
+                {/* Profiles Accordion */}
                 <div style={styles.card}>
-                    <h3 style={{marginTop: 0, display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.1rem'}}>
-                        <Layers size={20} color={theme.accent} /> Profiles
-                    </h3>
-                    <div style={{marginBottom: "12px"}}>
-                        <label style={styles.label}>Active Profile</label>
-                        <div style={{display: 'flex', gap: '10px'}}>
-                            <select style={{...styles.select, flex: 1}} value={activeProfileId} onChange={(e) => onSwitchProfile(e.target.value)}>
-                                {profiles.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                            </select>
-                            <button 
-                                onClick={() => onDeleteProfile(activeProfileId)}
-                                style={{
-                                    backgroundColor: 'rgba(239, 68, 68, 0.15)', 
-                                    color: theme.danger, 
-                                    border: '1px solid rgba(239, 68, 68, 0.3)', 
-                                    borderRadius: '16px', 
-                                    padding: '0 14px',
-                                    cursor: 'pointer'
-                                }}
-                            >
-                                <Trash2 size={20} />
-                            </button>
+                    <div 
+                        onClick={() => setIsProfilesExpanded(!isProfilesExpanded)}
+                        style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '4px 0'}}
+                    >
+                         <h3 style={{marginTop: 0, display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.1rem', margin: 0}}>
+                            <div style={{background: 'rgba(139, 92, 246, 0.15)', padding: '8px', borderRadius: '50%', color: theme.accent, display: 'flex', alignItems: 'center', justifyItems: 'center'}}>
+                                <Layers size={20} />
+                            </div>
+                            <span>Profiles</span>
+                        </h3>
+                        {isProfilesExpanded ? <ChevronUp size={20} color={theme.textMuted} /> : <ChevronDown size={20} color={theme.textMuted} />}
+                    </div>
+
+                    {isProfilesExpanded && (
+                        <div style={{marginTop: '20px', paddingTop: '20px', borderTop: '1px solid rgba(255,255,255,0.1)', animation: 'fadeIn 0.2s'}}>
+                            <div style={{marginBottom: "16px"}}>
+                                <label style={styles.label}>Active Profile</label>
+                                <div style={{display: 'flex', gap: '10px'}}>
+                                    <select style={{...styles.select, flex: 1}} value={activeProfileId} onChange={(e) => onSwitchProfile(e.target.value)}>
+                                        {profiles.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                    </select>
+                                    <button 
+                                        onClick={() => onDeleteProfile(activeProfileId)}
+                                        style={{
+                                            backgroundColor: 'rgba(239, 68, 68, 0.15)', 
+                                            color: theme.danger, 
+                                            border: '1px solid rgba(239, 68, 68, 0.3)', 
+                                            borderRadius: '16px', 
+                                            padding: '0 14px',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        <Trash2 size={20} />
+                                    </button>
+                                </div>
+                            </div>
+                            <div style={{display: "flex", gap: "10px"}}>
+                                <input style={{...styles.input, padding: "12px"}} placeholder="New Profile..." value={newProfileName} onChange={e => setNewProfileName(e.target.value)} />
+                                <button style={{...styles.button, padding: "12px"}} onClick={handleCreateProfile}><Plus size={20} /></button>
+                            </div>
                         </div>
-                    </div>
-                    <div style={{display: "flex", gap: "10px"}}>
-                        <input style={{...styles.input, padding: "12px"}} placeholder="New Profile..." value={newProfileName} onChange={e => setNewProfileName(e.target.value)} />
-                        <button style={{...styles.button, padding: "12px"}} onClick={handleCreateProfile}><Plus size={20} /></button>
-                    </div>
+                    )}
                 </div>
 
-                {/* Collapsible Schedule Grid Settings */}
+                {/* Grid Structure Accordion */}
                 <div style={styles.card}>
                     <div 
                         onClick={() => setIsScheduleSettingsExpanded(!isScheduleSettingsExpanded)}
                         style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '4px 0'}}
                     >
-                        <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
-                            <div style={{background: 'rgba(139, 92, 246, 0.15)', padding: '8px', borderRadius: '50%', color: theme.accent}}>
+                        <h3 style={{marginTop: 0, display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.1rem', margin: 0}}>
+                            <div style={{background: 'rgba(139, 92, 246, 0.15)', padding: '8px', borderRadius: '50%', color: theme.accent, display: 'flex', alignItems: 'center', justifyItems: 'center'}}>
                                 <Columns size={20} />
                             </div>
-                            <div>
-                                <h3 style={{margin: 0, fontSize: '1rem', fontWeight: 700}}>Grid Structure</h3>
-                                <p style={{margin: 0, fontSize: '0.8rem', color: theme.textMuted}}>Customize periods & breaks</p>
-                            </div>
-                        </div>
+                            <span>Grid Structure</span>
+                        </h3>
                         {isScheduleSettingsExpanded ? <ChevronUp size={20} color={theme.textMuted} /> : <ChevronDown size={20} color={theme.textMuted} />}
                     </div>
                     
@@ -126,64 +142,97 @@ const Settings: React.FC<SettingsProps> = ({
                     )}
                 </div>
 
+                {/* Colors Accordion */}
                 <div style={styles.card}>
-                    <h3 style={{marginTop: 0, display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.1rem'}}>
-                        <Palette size={20} color={theme.accent} /> Colors
-                    </h3>
-                    <div style={{display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px"}}>
-                        {Object.keys(eventColors).map(key => (
-                            <div key={key} style={styles.colorPickerContainer}>
-                                 <div style={{width: '32px', height: '32px', borderRadius: '8px', overflow: 'hidden', position: 'relative'}}>
-                                     <input type="color" value={eventColors[key as EventType]} onChange={(e) => onUpdateColor(key as EventType, e.target.value)} style={{border: 'none', padding: 0, width: '200%', height: '200%', margin: '-50%', cursor: 'pointer'}} />
-                                 </div>
-                                 <span style={{fontSize: '0.8rem', textTransform: 'capitalize', color: theme.textMuted, fontWeight: 600}}>{key}</span>
+                    <div 
+                        onClick={() => setIsColorsExpanded(!isColorsExpanded)}
+                        style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '4px 0'}}
+                    >
+                        <h3 style={{marginTop: 0, display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.1rem', margin: 0}}>
+                            <div style={{background: 'rgba(139, 92, 246, 0.15)', padding: '8px', borderRadius: '50%', color: theme.accent, display: 'flex', alignItems: 'center', justifyItems: 'center'}}>
+                                <Palette size={20} />
                             </div>
-                        ))}
-                    </div>
-                </div>
-
-                <div style={styles.card}>
-                    <div style={{display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px"}}>
-                        <h3 style={{marginTop: 0, display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.1rem', margin: 0}}>
-                            <CalendarDays size={20} color={theme.accent} /> Base Schedule
+                            <span>Colors</span>
                         </h3>
-                        <button onClick={onAddBaseEventClick} style={{background: "rgba(255,255,255,0.1)", border: "none", borderRadius: "50%", width: "28px", height: "28px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#fff"}}>
-                             <Plus size={16} />
-                        </button>
+                        {isColorsExpanded ? <ChevronUp size={20} color={theme.textMuted} /> : <ChevronDown size={20} color={theme.textMuted} />}
                     </div>
-                    <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
-                        {days.map(day => {
-                            const dayEvents = baseEvents.filter(e => e.dayOfWeek === day).sort((a,b) => a.startTime.localeCompare(b.startTime));
-                            if (dayEvents.length === 0) return null;
-                            return (
-                                <div key={day}>
-                                    <div style={{fontSize: '0.8rem', fontWeight: 700, color: theme.textMuted, marginBottom: '8px', textTransform: 'uppercase'}}>{day}</div>
-                                    <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
-                                        {dayEvents.map(e => (
-                                            <div key={e.id} style={{backgroundColor: 'rgba(255,255,255,0.03)', padding: '10px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                                                <div>
-                                                    <div style={{fontWeight: 600, fontSize: '0.9rem'}}>{e.title}</div>
-                                                    <div style={{fontSize: '0.75rem', color: theme.textMuted}}>{to12h(e.startTime)} • {e.type}</div>
-                                                </div>
-                                                <div style={{display: 'flex', gap: '8px'}}>
-                                                    <button onClick={() => onEditEvent(e)} style={{background: 'rgba(255,255,255,0.05)', border: 'none', padding: '6px', borderRadius: '8px', cursor: 'pointer', color: theme.text}}><Pencil size={16} /></button>
-                                                    <button onClick={() => onDeleteEvent(e.id)} style={{background: 'rgba(255,255,255,0.05)', border: 'none', padding: '6px', borderRadius: '8px', cursor: 'pointer', color: theme.danger}}><Trash2 size={16} /></button>
-                                                </div>
-                                            </div>
-                                        ))}
+
+                    {isColorsExpanded && (
+                        <div style={{marginTop: '20px', paddingTop: '20px', borderTop: '1px solid rgba(255,255,255,0.1)', animation: 'fadeIn 0.2s'}}>
+                            <div style={{display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px"}}>
+                                {Object.keys(eventColors).map(key => (
+                                    <div key={key} style={styles.colorPickerContainer}>
+                                        <div style={{width: '32px', height: '32px', borderRadius: '8px', overflow: 'hidden', position: 'relative'}}>
+                                            <input type="color" value={eventColors[key as EventType]} onChange={(e) => onUpdateColor(key as EventType, e.target.value)} style={{border: 'none', padding: 0, width: '200%', height: '200%', margin: '-50%', cursor: 'pointer'}} />
+                                        </div>
+                                        <span style={{fontSize: '0.8rem', textTransform: 'capitalize', color: theme.textMuted, fontWeight: 600}}>{key}</span>
                                     </div>
-                                </div>
-                            )
-                        })}
-                        {baseEvents.length === 0 && (
-                            <div style={{color: theme.textMuted, textAlign: 'center', fontSize: '0.9rem', fontStyle: 'italic'}}>No recurring classes found. Import schedule below or add events manually.</div>
-                        )}
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Base Schedule Accordion */}
+                <div style={styles.card}>
+                    <div 
+                        onClick={() => setIsBaseScheduleExpanded(!isBaseScheduleExpanded)}
+                        style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '4px 0'}}
+                    >
+                        <h3 style={{marginTop: 0, display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.1rem', margin: 0}}>
+                            <div style={{background: 'rgba(139, 92, 246, 0.15)', padding: '8px', borderRadius: '50%', color: theme.accent, display: 'flex', alignItems: 'center', justifyItems: 'center'}}>
+                                <CalendarDays size={20} />
+                            </div>
+                            <span>Base Schedule</span>
+                        </h3>
+                        {isBaseScheduleExpanded ? <ChevronUp size={20} color={theme.textMuted} /> : <ChevronDown size={20} color={theme.textMuted} />}
                     </div>
+
+                    {isBaseScheduleExpanded && (
+                        <div style={{marginTop: '20px', paddingTop: '20px', borderTop: '1px solid rgba(255,255,255,0.1)', animation: 'fadeIn 0.2s'}}>
+                            <div style={{display: 'flex', justifyContent: 'flex-end', marginBottom: '16px'}}>
+                                <button onClick={onAddBaseEventClick} style={{...styles.secondaryButton, padding: '8px 16px', fontSize: '0.8rem'}}>
+                                    <Plus size={16} /> Add Class
+                                </button>
+                            </div>
+                            <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
+                                {days.map(day => {
+                                    const dayEvents = baseEvents.filter(e => e.dayOfWeek === day).sort((a,b) => a.startTime.localeCompare(b.startTime));
+                                    if (dayEvents.length === 0) return null;
+                                    return (
+                                        <div key={day}>
+                                            <div style={{fontSize: '0.8rem', fontWeight: 700, color: theme.textMuted, marginBottom: '8px', textTransform: 'uppercase'}}>{day}</div>
+                                            <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
+                                                {dayEvents.map(e => (
+                                                    <div key={e.id} style={{backgroundColor: 'rgba(255,255,255,0.03)', padding: '10px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                                                        <div>
+                                                            <div style={{fontWeight: 600, fontSize: '0.9rem'}}>{e.title}</div>
+                                                            <div style={{fontSize: '0.75rem', color: theme.textMuted}}>{to12h(e.startTime)} • {e.type}</div>
+                                                        </div>
+                                                        <div style={{display: 'flex', gap: '8px'}}>
+                                                            <button onClick={() => onEditEvent(e)} style={{background: 'rgba(255,255,255,0.05)', border: 'none', padding: '6px', borderRadius: '8px', cursor: 'pointer', color: theme.text}}><Pencil size={16} /></button>
+                                                            <button onClick={() => onDeleteEvent(e.id)} style={{background: 'rgba(255,255,255,0.05)', border: 'none', padding: '6px', borderRadius: '8px', cursor: 'pointer', color: theme.danger}}><Trash2 size={16} /></button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )
+                                })}
+                                {baseEvents.length === 0 && (
+                                    <div style={{color: theme.textMuted, textAlign: 'center', fontSize: '0.9rem', fontStyle: 'italic'}}>No recurring classes found. Import schedule below or add events manually.</div>
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 <div style={styles.card}>
-                    <h3 style={{marginTop: 0, display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', fontSize: '1.1rem'}}>
-                        <ImageIcon size={20} color="#c084fc" /> AI Import
+                    <h3 style={{marginTop: 0, display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px', fontSize: '1.1rem'}}>
+                        <div style={{background: 'rgba(192, 132, 252, 0.15)', padding: '8px', borderRadius: '50%', color: '#c084fc', display: 'flex', alignItems: 'center', justifyItems: 'center'}}>
+                            <ImageIcon size={20} />
+                        </div>
+                        <span>AI Import</span>
                     </h3>
                     <div style={styles.dropZone} onClick={() => fileInputRef.current?.click()}>
                         {isAnalyzing ? (

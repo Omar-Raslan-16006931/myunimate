@@ -96,9 +96,9 @@ const Schedule: React.FC<ScheduleProps> = ({
   const renderEventCard = (ev: ScheduleEvent, isSmall: boolean = false) => {
        const bg = eventColors[ev.type] || '#64748b';
        const txtColor = getContrastColor(bg);
-       // Use smaller font/padding if constrained space
-       const titleSize = isSmall ? '0.7rem' : '0.85rem';
-       const padding = isSmall ? '6px' : '8px';
+       
+       const titleSize = isSmall ? '0.75rem' : '0.9rem';
+       const padding = isSmall ? '8px' : '10px';
        
        return (
        <div 
@@ -113,52 +113,76 @@ const Schedule: React.FC<ScheduleProps> = ({
            width: '100%',
            padding: padding,
            display: 'flex',
-           flexDirection: 'column'
+           flexDirection: 'column',
+           position: 'relative',
+           justifyContent: 'flex-start'
          }}
        >
-         <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2px'}}>
-             <div style={{
-                 padding: '2px 6px', 
-                 borderRadius: '4px', 
-                 backgroundColor: 'rgba(0,0,0,0.25)', 
-                 fontSize: '0.55rem', 
-                 fontWeight: 800, 
-                 textTransform: 'uppercase',
-                 whiteSpace: 'nowrap',
-                 maxWidth: isSmall ? '100%' : 'auto',
-                 overflow: 'hidden',
-                 textOverflow: 'ellipsis'
-             }}>
-                {ev.type}
-             </div>
-             {(ev.type === 'quiz' || ev.type === 'assignment' || ev.type === 'exam') && !isSmall && (
-                <div style={{background: 'rgba(255,255,255,0.3)', borderRadius: '50%', padding: '2px', display: 'flex'}}>
-                    <Brain size={10} color={txtColor} />
-                </div>
-             )}
-         </div>
-
+         {/* Title (Course Name) */}
          <div style={{
-             fontWeight: 700, 
+             fontWeight: 800, 
              fontSize: titleSize, 
              lineHeight: '1.2', 
+             marginBottom: '2px',
              whiteSpace: 'nowrap', 
              overflow: 'hidden', 
              textOverflow: 'ellipsis', 
-             marginBottom: 'auto', // Pushes footer down
-             paddingTop: '2px'
+             width: '100%'
          }}>
             {ev.title}
          </div>
          
-         <div style={{display: 'flex', flexDirection: 'column', gap: '0px', opacity: 0.9}}>
-             {ev.location && (
-                 <div style={{fontSize: '0.65rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '2px'}}>
-                     <MapPin size={isSmall ? 8 : 9} style={{flexShrink: 0}} /> 
-                     <span style={{whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{ev.location}</span>
-                 </div>
-             )}
-             {!isSmall && ev.code && <div style={{fontSize: '0.65rem', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{ev.code}</div>}
+         {/* Course Code */}
+         {ev.code && (
+             <div style={{
+                 fontSize: isSmall ? '0.65rem' : '0.7rem', 
+                 fontWeight: 600, 
+                 opacity: 0.85,
+                 whiteSpace: 'nowrap', 
+                 overflow: 'hidden', 
+                 textOverflow: 'ellipsis'
+             }}>
+                 {ev.code}
+             </div>
+         )}
+         
+         {/* Location - Pushed to bottom left */}
+         {ev.location && (
+             <div style={{
+                 fontSize: isSmall ? '0.65rem' : '0.7rem', 
+                 fontWeight: 600, 
+                 display: 'flex', 
+                 alignItems: 'center', 
+                 gap: '4px',
+                 marginTop: 'auto',
+                 paddingTop: '6px',
+                 opacity: 0.95,
+                 maxWidth: '60%' // Prevent overlap with badge
+             }}>
+                 <MapPin size={isSmall ? 10 : 12} style={{flexShrink: 0}} /> 
+                 <span style={{whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{ev.location}</span>
+             </div>
+         )}
+
+         {/* Event Type - Bottom Right */}
+         <div style={{
+             position: 'absolute',
+             bottom: padding,
+             right: padding,
+             padding: '2px 6px', 
+             borderRadius: '5px', 
+             backgroundColor: 'rgba(0,0,0,0.2)', 
+             fontSize: '0.5rem', 
+             fontWeight: 800, 
+             textTransform: 'uppercase',
+             letterSpacing: '0.5px',
+             maxWidth: '35%',
+             whiteSpace: 'nowrap',
+             overflow: 'hidden',
+             textOverflow: 'ellipsis',
+             zIndex: 2
+         }}>
+            {ev.type}
          </div>
        </div>
      );
@@ -286,6 +310,7 @@ const Schedule: React.FC<ScheduleProps> = ({
                     <div style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
                         {expandedSlot.map(ev => {
                              const bg = eventColors[ev.type] || '#64748b';
+                             const txtColor = getContrastColor(bg);
                              return (
                                  <div 
                                     key={ev.id} 
@@ -302,11 +327,11 @@ const Schedule: React.FC<ScheduleProps> = ({
                                     }}
                                  >
                                      <div>
-                                         <div style={{fontSize: '0.7rem', fontWeight: 800, opacity: 0.8, textTransform: 'uppercase'}}>{ev.type}</div>
-                                         <div style={{fontSize: '1rem', fontWeight: 700, color: getContrastColor(bg)}}>{ev.title}</div>
-                                         <div style={{fontSize: '0.8rem', opacity: 0.9, marginTop: '2px'}}>{ev.location}</div>
+                                         <div style={{fontSize: '0.7rem', fontWeight: 800, opacity: 0.8, textTransform: 'uppercase', color: txtColor}}>{ev.type}</div>
+                                         <div style={{fontSize: '1rem', fontWeight: 700, color: txtColor}}>{ev.title}</div>
+                                         <div style={{fontSize: '0.8rem', opacity: 0.9, marginTop: '2px', color: txtColor}}>{ev.location}</div>
                                      </div>
-                                     <div style={{background: 'rgba(0,0,0,0.2)', padding: '6px 10px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 600, color: getContrastColor(bg)}}>
+                                     <div style={{background: 'rgba(0,0,0,0.2)', padding: '6px 10px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 600, color: txtColor}}>
                                          {to12h(ev.startTime)}
                                      </div>
                                  </div>
