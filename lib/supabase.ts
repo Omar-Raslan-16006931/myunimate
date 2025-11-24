@@ -1,3 +1,4 @@
+
 import { createClient } from '@supabase/supabase-js';
 
 // Access environment variables with fallbacks to the provided credentials
@@ -6,4 +7,5 @@ const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL || 'https://myge
 const supabaseAnonKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || 'sb_publishable_fFFHU6cNapaSXv-wozIi9Q_EWMq-qlD';
 
 // Ensure the client is created with valid strings
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Casting to any to avoid type errors with mismatched supabase-js versions
+export const supabase: any = createClient(supabaseUrl, supabaseAnonKey);

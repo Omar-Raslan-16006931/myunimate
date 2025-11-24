@@ -1,5 +1,6 @@
+
 import React, { useState } from 'react';
-import { Plus, Trash2, CalendarDays, Palette, Layers, Pencil, Upload, ImageIcon, Loader2, RotateCcw } from 'lucide-react';
+import { Plus, Trash2, CalendarDays, Palette, Layers, Pencil, Upload, ImageIcon, Loader2, RotateCcw, LogOut } from 'lucide-react';
 import { ScheduleProfile, EventColorMap, EventType, ScheduleEvent } from '../types';
 import { theme, styles } from '../theme';
 
@@ -18,6 +19,7 @@ interface SettingsProps {
   onImageUpload: (file: File) => void;
   isAnalyzing: boolean;
   onResetGrades?: () => void;
+  onSignOut: () => void;
 }
 
 const Settings: React.FC<SettingsProps> = ({
@@ -34,7 +36,8 @@ const Settings: React.FC<SettingsProps> = ({
   onAddBaseEventClick,
   onImageUpload,
   isAnalyzing,
-  onResetGrades
+  onResetGrades,
+  onSignOut
 }) => {
   const [newProfileName, setNewProfileName] = useState('');
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -189,6 +192,18 @@ const Settings: React.FC<SettingsProps> = ({
                         </div>
                     </div>
                 )}
+
+                <div style={styles.card} onClick={onSignOut}>
+                    <div style={{display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer'}}>
+                        <div style={{background: 'rgba(239, 68, 68, 0.15)', padding: '10px', borderRadius: '50%'}}>
+                            <LogOut size={20} color={theme.danger} />
+                        </div>
+                        <div>
+                            <h3 style={{margin: 0, fontSize: '1rem', color: theme.text}}>Log Out</h3>
+                            <p style={{margin: 0, fontSize: '0.8rem', color: theme.textMuted}}>Sign out of your account</p>
+                        </div>
+                    </div>
+                </div>
           </div>
     </div>
   );
