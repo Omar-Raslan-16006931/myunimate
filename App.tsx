@@ -321,7 +321,6 @@ const TaskDetailsModal = ({ event, onClose, onEdit, onDelete }: { event: Schedul
                                         setIsDeleting(true);
                                     }
                                 }} 
-                                onMouseLeave={() => setIsDeleting(false)}
                                 style={{
                                     background: isDeleting ? theme.danger : 'rgba(239, 68, 68, 0.2)', 
                                     border: 'none', 
