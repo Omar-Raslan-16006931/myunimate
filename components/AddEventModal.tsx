@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { X, Sparkles, Loader2, Wand2 } from 'lucide-react';
 import { ScheduleEvent, EventColorMap, EventType } from '../types';
@@ -108,7 +109,7 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ isOpen, onClose, onSave, 
             </div>
             <div style={{display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px"}}>
               <div style={styles.formGroup}><label style={styles.label}>{formData.isRecurring ? 'Day' : 'Date'}</label>
-                {formData.isRecurring ? <select style={styles.select} value={formData.dayOfWeek} onChange={e => setFormData({...formData, dayOfWeek: e.target.value})}>{["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"].map(d => <option key={d} value={d}>{d}</option>)}</select> : <input type="date" style={{...styles.input, width: "100%", boxSizing: 'border-box'}} value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} />}
+                {formData.isRecurring ? <select style={styles.select} value={formData.dayOfWeek} onChange={e => setFormData({...formData, dayOfWeek: e.target.value})}>{["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"].map(d => <option key={d} value={d}>{d}</option>)}</select> : <input type="date" style={{...styles.input, width: "100%", boxSizing: 'border-box'}} value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} />}
               </div>
               <div style={styles.formGroup}><label style={styles.label}>Type</label><select style={styles.select} value={formData.type} onChange={e => setFormData({...formData, type: e.target.value as EventType})}>{Object.keys(eventColors).map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}</select></div>
             </div>
