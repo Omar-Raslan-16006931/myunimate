@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from './lib/supabase';
 import Auth from './components/Auth';
@@ -166,7 +165,7 @@ const GradesView = ({ grades, setGrades }: { grades: CourseGrade[], setGrades: R
             })))}`;
             
             const response = await getChatResponse([], aiQuery, context);
-            setAiResponse(response);
+            setAiResponse(response.text);
         } catch (e) {
             setAiResponse("Sorry, failed to analyze grades.");
         } finally {
@@ -658,7 +657,7 @@ const App: React.FC = () => {
       case 'materials':
         return <FilesView materials={materials} setMaterials={setMaterials} />;
       case 'ai':
-        return <AIChat />;
+        return <AIChat onAddEvent={handleAddEvent} />;
       case 'settings':
         return (
           <Settings
