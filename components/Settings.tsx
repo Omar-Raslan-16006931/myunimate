@@ -1,8 +1,9 @@
 
 import React, { useState } from 'react';
-import { Plus, Trash2, CalendarDays, Palette, Layers, Pencil, Upload, ImageIcon, Loader2, RotateCcw, LogOut } from 'lucide-react';
-import { ScheduleProfile, EventColorMap, EventType, ScheduleEvent } from '../types';
+import { Plus, Trash2, CalendarDays, Palette, Layers, Pencil, Upload, ImageIcon, Loader2, RotateCcw, LogOut, ChevronDown, ChevronUp, Columns } from 'lucide-react';
+import { ScheduleProfile, EventColorMap, EventType, ScheduleEvent, PeriodDefinition } from '../types';
 import { theme, styles } from '../theme';
+import ScheduleSettings from './ScheduleSettings';
 
 interface SettingsProps {
   profiles: ScheduleProfile[];
@@ -20,6 +21,8 @@ interface SettingsProps {
   isAnalyzing: boolean;
   onResetGrades?: () => void;
   onSignOut: () => void;
+  periods: PeriodDefinition[];
+  setPeriods: (periods: PeriodDefinition[]) => void;
 }
 
 const Settings: React.FC<SettingsProps> = ({
@@ -37,9 +40,12 @@ const Settings: React.FC<SettingsProps> = ({
   onImageUpload,
   isAnalyzing,
   onResetGrades,
-  onSignOut
+  onSignOut,
+  periods,
+  setPeriods
 }) => {
   const [newProfileName, setNewProfileName] = useState('');
+  const [isScheduleSettingsExpanded, setIsScheduleSettingsExpanded] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleCreateProfile = () => {
@@ -57,7 +63,7 @@ const Settings: React.FC<SettingsProps> = ({
     return `${h12}:${m.toString().padStart(2, "0")} ${period}`;
   };
 
-  const days = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"];
+  const days = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
   return (
     <div style={styles.scrollableContent}>
@@ -93,6 +99,31 @@ const Settings: React.FC<SettingsProps> = ({
                         <input style={{...styles.input, padding: "12px"}} placeholder="New Profile..." value={newProfileName} onChange={e => setNewProfileName(e.target.value)} />
                         <button style={{...styles.button, padding: "12px"}} onClick={handleCreateProfile}><Plus size={20} /></button>
                     </div>
+                </div>
+
+                {/* Collapsible Schedule Grid Settings */}
+                <div style={styles.card}>
+                    <div 
+                        onClick={() => setIsScheduleSettingsExpanded(!isScheduleSettingsExpanded)}
+                        style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '4px 0'}}
+                    >
+                        <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
+                            <div style={{background: 'rgba(139, 92, 246, 0.15)', padding: '8px', borderRadius: '50%', color: theme.accent}}>
+                                <Columns size={20} />
+                            </div>
+                            <div>
+                                <h3 style={{margin: 0, fontSize: '1rem', fontWeight: 700}}>Grid Structure</h3>
+                                <p style={{margin: 0, fontSize: '0.8rem', color: theme.textMuted}}>Customize periods & breaks</p>
+                            </div>
+                        </div>
+                        {isScheduleSettingsExpanded ? <ChevronUp size={20} color={theme.textMuted} /> : <ChevronDown size={20} color={theme.textMuted} />}
+                    </div>
+                    
+                    {isScheduleSettingsExpanded && (
+                        <div style={{marginTop: '20px', paddingTop: '20px', borderTop: '1px solid rgba(255,255,255,0.1)', animation: 'fadeIn 0.2s'}}>
+                             <ScheduleSettings periods={periods} setPeriods={setPeriods} />
+                        </div>
+                    )}
                 </div>
 
                 <div style={styles.card}>
@@ -205,6 +236,9 @@ const Settings: React.FC<SettingsProps> = ({
                     </div>
                 </div>
           </div>
+          <style>{`
+            @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+          `}</style>
     </div>
   );
 };

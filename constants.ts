@@ -1,5 +1,5 @@
 
-import { ScheduleEvent, MaterialFile, ScheduleProfile, EventType, MuscleGroup, GymSettings, ExerciseDefinition, WorkoutRoutine } from './types';
+import { ScheduleEvent, MaterialFile, ScheduleProfile, EventType, MuscleGroup, GymSettings, ExerciseDefinition, WorkoutRoutine, PeriodDefinition } from './types';
 
 // Helper to get local ISO string (YYYY-MM-DD) to fix timezone issues
 export const getLocalISOString = (date: Date = new Date()) => {
@@ -15,16 +15,16 @@ const addDays = (date: Date, days: number) => {
 };
 
 // Shared Period Definitions
-export const PERIODS = [
-  { label: "1st", startTime: "08:30", endTime: "10:00", startVal: 8.5 },
-  { label: "Break", isBreak: true },
-  { label: "2nd", startTime: "10:15", endTime: "11:45", startVal: 10.25 },
-  { label: "Break", isBreak: true },
-  { label: "3rd", startTime: "12:00", endTime: "13:30", startVal: 12 },
-  { label: "Break", isBreak: true },
-  { label: "4th", startTime: "13:45", endTime: "15:15", startVal: 13.75 },
-  { label: "Break", isBreak: true },
-  { label: "5th", startTime: "15:45", endTime: "17:15", startVal: 15.75 },
+export const INITIAL_PERIODS: PeriodDefinition[] = [
+  { id: 'p1', label: "1st", startTime: "08:30", endTime: "10:00", isBreak: false, startVal: 8.5 },
+  { id: 'b1', label: "Break", startTime: "10:00", endTime: "10:15", isBreak: true, startVal: 10 },
+  { id: 'p2', label: "2nd", startTime: "10:15", endTime: "11:45", isBreak: false, startVal: 10.25 },
+  { id: 'b2', label: "Break", startTime: "11:45", endTime: "12:00", isBreak: true, startVal: 11.75 },
+  { id: 'p3', label: "3rd", startTime: "12:00", endTime: "13:30", isBreak: false, startVal: 12 },
+  { id: 'b3', label: "Break", startTime: "13:30", endTime: "13:45", isBreak: true, startVal: 13.5 },
+  { id: 'p4', label: "4th", startTime: "13:45", endTime: "15:15", isBreak: false, startVal: 13.75 },
+  { id: 'b4', label: "Break", startTime: "15:15", endTime: "15:45", isBreak: true, startVal: 15.25 },
+  { id: 'p5', label: "5th", startTime: "15:45", endTime: "17:15", isBreak: false, startVal: 15.75 },
 ];
 
 export const INITIAL_PROFILES: ScheduleProfile[] = [

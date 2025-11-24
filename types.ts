@@ -70,6 +70,17 @@ export type ViewState = "dashboard" | "schedule" | "courses" | "materials" | "ai
 // Map event types to hex colors
 export type EventColorMap = Record<EventType, string>;
 
+// --- SCHEDULE CONFIG TYPES ---
+
+export interface PeriodDefinition {
+  id: string;
+  label: string;
+  startTime: string; // HH:MM
+  endTime: string;   // HH:MM
+  isBreak: boolean;
+  startVal?: number; // Calculated helper (e.g. 8.5 for 08:30)
+}
+
 // --- GYM TYPES ---
 
 export interface Macros {

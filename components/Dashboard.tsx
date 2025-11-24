@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { MapPin, ClipboardList, ArrowRight, Dumbbell, Calculator, Sparkles } from 'lucide-react';
-import { ScheduleEvent, EventColorMap } from '../types';
-import { PERIODS, getLocalISOString } from '../constants';
+import { ScheduleEvent, EventColorMap, PeriodDefinition } from '../types';
+import { getLocalISOString } from '../constants';
 import { theme, styles } from '../theme';
 
 interface DashboardProps {
@@ -10,9 +11,10 @@ interface DashboardProps {
   onNavigate: (view: any) => void;
   onEventClick: (event: ScheduleEvent) => void;
   onAddEventClick: () => void;
+  periods: PeriodDefinition[];
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ events, eventColors, onNavigate, onEventClick, onAddEventClick }) => {
+const Dashboard: React.FC<DashboardProps> = ({ events, eventColors, onNavigate, onEventClick, onAddEventClick, periods }) => {
   const [greeting, setGreeting] = useState("Good Morning");
   const [currentTime, setCurrentTime] = useState("");
   const [currentDate, setCurrentDate] = useState("");
@@ -52,15 +54,17 @@ const Dashboard: React.FC<DashboardProps> = ({ events, eventColors, onNavigate, 
 
   const getSlotName = (startTime: string) => {
     if (!startTime) return "";
-    const strictMatch = PERIODS.find(p => p.startTime === startTime);
-    if (strictMatch) return `${strictMatch.label} Slot`;
+    const strictMatch = periods.find(p => p.startTime === startTime);
+    if (strictMatch) return `${strictMatch.label}`;
+    
+    // Fuzzy matching
     const [h, m] = startTime.split(':').map(Number);
     const val = h + m/60;
-    const found = PERIODS.find(p => {
+    const found = periods.find(p => {
         if (p.isBreak || !p.startVal) return false;
         return Math.abs(val - p.startVal) < 0.01;
     });
-    return found ? `${found.label} Slot` : "";
+    return found ? `${found.label}` : "";
   };
 
   const now = new Date();

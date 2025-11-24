@@ -9,8 +9,8 @@ import AIChat from './components/AIChat';
 import Settings from './components/Settings';
 import AddEventModal from './components/AddEventModal';
 import GymView from './components/GymView';
-import { ScheduleEvent, ViewState, MaterialFile, ScheduleProfile, EventColorMap, ExtractedScheduleItem, EventType, CourseGrade, Assessment } from './types';
-import { INITIAL_EVENTS, INITIAL_FILES, INITIAL_PROFILES, INITIAL_COLORS } from './constants';
+import { ScheduleEvent, ViewState, MaterialFile, ScheduleProfile, EventColorMap, ExtractedScheduleItem, EventType, CourseGrade, Assessment, PeriodDefinition } from './types';
+import { INITIAL_EVENTS, INITIAL_FILES, INITIAL_PROFILES, INITIAL_COLORS, INITIAL_PERIODS } from './constants';
 import { theme, styles } from './theme';
 import { GraduationCap, Folder, BookOpen, Trash2, FileText, File, Upload, Check, X, Brain, Calendar, Clock, MapPin, AlignLeft, Pencil, Send, Plus, ChevronDown, ChevronUp, Sparkles, Loader2, LogOut } from 'lucide-react';
 import { parseScheduleImage, getChatResponse } from './services/geminiService';
@@ -292,7 +292,9 @@ const GradesView = ({ grades, setGrades }: { grades: CourseGrade[], setGrades: R
     );
 };
 
-const TaskDetailsModal = ({ event, onClose, onEdit }: { event: ScheduleEvent, onClose: () => void, onEdit: (e: ScheduleEvent) => void }) => {
+const TaskDetailsModal = ({ event, onClose, onEdit, onDelete }: { event: ScheduleEvent, onClose: () => void, onEdit: (e: ScheduleEvent) => void, onDelete: (id: string) => void }) => {
+    const [isDeleting, setIsDeleting] = useState(false);
+    
     const to12h = (time24: string) => {
         if (!time24) return "";
         const [h, m] = time24.split(":").map(Number);
@@ -300,6 +302,7 @@ const TaskDetailsModal = ({ event, onClose, onEdit }: { event: ScheduleEvent, on
         const h12 = h % 12 || 12;
         return `${h12}:${m.toString().padStart(2, "0")} ${period}`;
     };
+
     return (
         <div style={styles.modalOverlay} onClick={onClose}>
             <div style={{...styles.modalContent, width: '100%', maxWidth: '360px', padding: 0}} onClick={e => e.stopPropagation()}>
@@ -309,6 +312,33 @@ const TaskDetailsModal = ({ event, onClose, onEdit }: { event: ScheduleEvent, on
                            {event.type}
                        </div>
                        <div style={{display: 'flex', gap: '8px'}}>
+                            <button 
+                                onClick={() => { 
+                                    if(isDeleting) {
+                                        onDelete(event.id); 
+                                        onClose(); 
+                                    } else {
+                                        setIsDeleting(true);
+                                    }
+                                }} 
+                                onMouseLeave={() => setIsDeleting(false)}
+                                style={{
+                                    background: isDeleting ? theme.danger : 'rgba(239, 68, 68, 0.2)', 
+                                    border: 'none', 
+                                    borderRadius: '12px', 
+                                    padding: '6px 12px', 
+                                    cursor: 'pointer', 
+                                    color: isDeleting ? '#fff' : theme.danger, 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    gap: '6px', 
+                                    fontSize: '0.8rem', 
+                                    fontWeight: 600,
+                                    transition: 'all 0.2s'
+                                }}
+                            >
+                               {isDeleting ? "Confirm" : <Trash2 size={14} />}
+                           </button>
                            <button onClick={() => onEdit(event)} style={{background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '12px', padding: '6px 12px', cursor: 'pointer', color: '#fff', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 600}}>
                                <Pencil size={14} /> Edit
                            </button>
@@ -454,6 +484,12 @@ const App: React.FC = () => {
       return saved ? JSON.parse(saved) : [];
   });
 
+  // --- NEW: Periods State ---
+  const [periods, setPeriods] = useState<PeriodDefinition[]>(() => {
+      const saved = localStorage.getItem('college-container-periods');
+      return saved ? JSON.parse(saved) : INITIAL_PERIODS;
+  });
+
   const [eventColors, setEventColors] = useState<EventColorMap>(INITIAL_COLORS);
   
   // --- Effects for Persistence ---
@@ -462,6 +498,7 @@ const App: React.FC = () => {
   useEffect(() => localStorage.setItem('college-container-profiles', JSON.stringify(profiles)), [profiles]);
   useEffect(() => localStorage.setItem('college-container-active-profile', JSON.stringify(activeProfileId)), [activeProfileId]);
   useEffect(() => localStorage.setItem('college-container-grades', JSON.stringify(grades)), [grades]);
+  useEffect(() => localStorage.setItem('college-container-periods', JSON.stringify(periods)), [periods]);
 
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<ScheduleEvent | null>(null);
@@ -597,6 +634,7 @@ const App: React.FC = () => {
             onNavigate={setCurrentView} 
             onEventClick={(e) => setSelectedTask(e)}
             onAddEventClick={() => { setEditingEvent(null); setIsEventModalOpen(true); }}
+            periods={periods}
           />
         );
       case 'schedule':
@@ -609,6 +647,7 @@ const App: React.FC = () => {
             onProfileChange={setActiveProfileId}
             onAddEventClick={() => { setEditingEvent(null); setIsEventModalOpen(true); }}
             onEventClick={(e) => setSelectedTask(e)}
+            periods={periods}
           />
         );
       case 'grades':
@@ -639,6 +678,8 @@ const App: React.FC = () => {
              isAnalyzing={isAnalyzing}
              onResetGrades={() => { if(confirm("Reset all grades?")) setGrades([]); }}
              onSignOut={handleSignOut}
+             periods={periods}
+             setPeriods={setPeriods}
           />
         );
       default:
@@ -677,6 +718,7 @@ const App: React.FC = () => {
                 setIsEventModalOpen(true);
                 setSelectedTask(null);
             }}
+            onDelete={handleDeleteEvent}
         />
       )}
 

@@ -1,7 +1,8 @@
+
 import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, MapPin, Plus, Brain, ChevronDown } from 'lucide-react';
-import { ScheduleEvent, EventColorMap, ScheduleProfile } from '../types';
-import { PERIODS, getLocalISOString } from '../constants';
+import { ChevronLeft, ChevronRight, MapPin, Plus, Brain, ChevronDown, X } from 'lucide-react';
+import { ScheduleEvent, EventColorMap, ScheduleProfile, PeriodDefinition } from '../types';
+import { getLocalISOString } from '../constants';
 import { theme, styles } from '../theme';
 
 interface ScheduleProps {
@@ -12,6 +13,7 @@ interface ScheduleProps {
   onProfileChange: (id: string) => void;
   onAddEventClick: () => void;
   onEventClick: (event: ScheduleEvent) => void;
+  periods: PeriodDefinition[];
 }
 
 const Schedule: React.FC<ScheduleProps> = ({ 
@@ -21,8 +23,11 @@ const Schedule: React.FC<ScheduleProps> = ({
   eventColors,
   onProfileChange, 
   onAddEventClick,
-  onEventClick
+  onEventClick,
+  periods
 }) => {
+  const [expandedSlot, setExpandedSlot] = useState<ScheduleEvent[] | null>(null);
+
   // Helper to get the Saturday of the current week (Start of academic week)
   const getSaturdayOfWeek = (d: Date) => {
     const date = new Date(d);
@@ -69,9 +74,11 @@ const Schedule: React.FC<ScheduleProps> = ({
     const val = h + m/60;
     let closestIdx = -1;
     let minDiff = 100;
-    PERIODS.forEach((p, idx) => {
+    periods.forEach((p, idx) => {
       if (p.isBreak) return;
-      const diff = Math.abs(val - (p.startVal || 0));
+      // Default to 0 if startVal is undefined (fallback)
+      const pVal = p.startVal || 0;
+      const diff = Math.abs(val - pVal);
       if (diff < minDiff) { minDiff = diff; closestIdx = idx; }
     });
     return closestIdx;
@@ -85,8 +92,50 @@ const Schedule: React.FC<ScheduleProps> = ({
     return yiq >= 128 ? '#000000' : '#ffffff';
   };
 
-  const days = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"];
-  const weekEnd = addDays(currentWeekStart, 5);
+  // Helper to render a single event card
+  const renderEventCard = (ev: ScheduleEvent, isSmall: boolean = false) => {
+       const bg = eventColors[ev.type] || '#64748b';
+       const txtColor = getContrastColor(bg);
+       const titleSize = isSmall ? '0.7rem' : '0.85rem';
+       
+       return (
+       <div 
+         key={ev.id} 
+         onClick={() => onEventClick(ev)} 
+         style={{
+           ...styles.eventCard, 
+           backgroundColor: bg, 
+           color: txtColor,
+           marginBottom: 0,
+           height: '100%',
+           width: '100%' 
+         }}
+       >
+         <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2px'}}>
+             <div style={{padding: '2px 6px', borderRadius: '4px', backgroundColor: 'rgba(0,0,0,0.25)', fontSize: '0.55rem', fontWeight: 800, textTransform: 'uppercase'}}>{ev.type}</div>
+             {(ev.type === 'quiz' || ev.type === 'assignment' || ev.type === 'exam') && (
+                <div style={{background: 'rgba(255,255,255,0.3)', borderRadius: '50%', padding: '2px', display: 'flex'}}>
+                    <Brain size={10} color={txtColor} />
+                </div>
+             )}
+         </div>
+
+         <div style={{fontWeight: 700, fontSize: titleSize, lineHeight: '1.2', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '2px'}}>
+            {ev.title}
+         </div>
+         
+         <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: 0.9}}>
+             {ev.location && <div style={{fontSize: '0.65rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '2px'}}><MapPin size={9} /> {ev.location}</div>}
+             {ev.code && <div style={{fontSize: '0.65rem', fontWeight: 500}}>{ev.code}</div>}
+         </div>
+       </div>
+     );
+  };
+
+  const days = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+  const weekEnd = addDays(currentWeekStart, 6);
+
+  const gridTemplateColumns = `60px ${periods.map(p => p.isBreak ? '15px' : '1fr').join(' ')}`;
 
   return (
     <div style={{height: "100%", display: "flex", flexDirection: "column", padding: "20px 20px 100px 20px"}}>
@@ -115,12 +164,12 @@ const Schedule: React.FC<ScheduleProps> = ({
         </div>
 
         <div style={styles.scheduleWrapper}>
-            <div style={styles.scheduleContainer}>
+            <div style={{...styles.scheduleContainer, gridTemplateColumns: gridTemplateColumns, minWidth: periods.length * 100 + 'px'}}>
              <div style={styles.scheduleHeaderCell}></div>
-             {PERIODS.map((p, i) => (
-               p.isBreak ? <div key={i} style={styles.scheduleBreakHeader}>BREAK</div> : 
-                 <div key={i} style={styles.scheduleHeaderCell}>
-                   <span style={{color: theme.accent, fontSize: "0.75rem", fontWeight: 800, textTransform: 'uppercase', marginBottom: '2px'}}>{p.label} Slot</span>
+             {periods.map((p, i) => (
+               p.isBreak ? <div key={p.id} style={styles.scheduleBreakHeader}>{p.label}</div> : 
+                 <div key={p.id} style={styles.scheduleHeaderCell}>
+                   <span style={{color: theme.accent, fontSize: "0.75rem", fontWeight: 800, textTransform: 'uppercase', marginBottom: '2px'}}>{p.label}</span>
                    <span style={{color: "rgba(255,255,255,0.7)", fontSize: "0.65rem", fontWeight: 600}}>
                      {to12h(p.startTime || "")} - {to12h(p.endTime || "")}
                    </span>
@@ -139,8 +188,8 @@ const Schedule: React.FC<ScheduleProps> = ({
                      <span style={{fontSize: "0.75rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: '0.5px'}}>{dayName.slice(0, 3)}</span>
                      <span style={styles.dateBadge}>{formatDate(rowDate)}</span>
                    </div>
-                   {PERIODS.map((p, pIdx) => {
-                      if (p.isBreak) return <div key={`${dayName}-${pIdx}`} style={{...styles.scheduleBreakCell, ...rowStyle}}></div>;
+                   {periods.map((p, pIdx) => {
+                      if (p.isBreak) return <div key={`${dayName}-${p.id}`} style={{...styles.scheduleBreakCell, ...rowStyle}}></div>;
                       const cellEvents = events.filter(e => {
                          if (e.scheduleId !== activeProfileId) return false;
                          const isCorrectPeriod = getEventPeriodIndex(e.startTime) === pIdx;
@@ -151,42 +200,41 @@ const Schedule: React.FC<ScheduleProps> = ({
                       });
 
                       return (
-                        <div key={`${dayName}-${pIdx}`} style={{...styles.scheduleContentCell, ...rowStyle}}>
-                           {cellEvents.map(ev => {
-                               const bg = eventColors[ev.type] || '#64748b';
-                               const txtColor = getContrastColor(bg);
-                               return (
-                               <div 
-                                 key={ev.id} 
-                                 onClick={() => onEventClick(ev)} 
-                                 style={{
-                                   ...styles.eventCard, 
-                                   backgroundColor: bg, 
-                                   color: txtColor,
-                                   marginBottom: cellEvents.length > 1 ? '4px' : '0' 
-                                 }}
-                               >
-                                 {/* Flex layout for clearer content structure */}
-                                 <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2px'}}>
-                                     <div style={{padding: '2px 6px', borderRadius: '4px', backgroundColor: 'rgba(0,0,0,0.25)', fontSize: '0.55rem', fontWeight: 800, textTransform: 'uppercase'}}>{ev.type}</div>
-                                     {(ev.type === 'quiz' || ev.type === 'assignment' || ev.type === 'exam') && (
-                                        <div style={{background: 'rgba(255,255,255,0.3)', borderRadius: '50%', padding: '2px', display: 'flex'}}>
-                                            <Brain size={10} color={txtColor} />
-                                        </div>
-                                     )}
-                                 </div>
-
-                                 <div style={{fontWeight: 700, fontSize: '0.8rem', lineHeight: '1.1', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '2px'}}>
-                                    {ev.title}
-                                 </div>
-                                 
-                                 <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: 0.9}}>
-                                     {ev.location && <div style={{fontSize: '0.65rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '2px'}}><MapPin size={9} /> {ev.location}</div>}
-                                     {ev.code && <div style={{fontSize: '0.65rem', fontWeight: 500}}>{ev.code}</div>}
-                                 </div>
-                               </div>
-                             )
-                           })}
+                        <div key={`${dayName}-${p.id}`} style={{...styles.scheduleContentCell, ...rowStyle}}>
+                           {cellEvents.length > 0 && (
+                               cellEvents.length === 1 ? (
+                                   renderEventCard(cellEvents[0])
+                               ) : (
+                                   <div style={{display: 'flex', gap: '6px', width: '100%', height: '100%'}}>
+                                       <div style={{flex: 1, minWidth: 0}}>
+                                           {renderEventCard(cellEvents[0], true)}
+                                       </div>
+                                       <div 
+                                           onClick={(e) => { e.stopPropagation(); setExpandedSlot(cellEvents); }}
+                                           style={{
+                                               width: '30px', 
+                                               borderRadius: '10px', 
+                                               backgroundColor: 'rgba(255,255,255,0.1)', 
+                                               border: '1px solid rgba(255,255,255,0.1)', 
+                                               display: 'flex', 
+                                               alignItems: 'center', 
+                                               justifyContent: 'center', 
+                                               cursor: 'pointer', 
+                                               color: '#fff', 
+                                               fontWeight: 800, 
+                                               fontSize: '0.8rem',
+                                               flexShrink: 0,
+                                               transition: 'background 0.2s',
+                                               boxShadow: '0 4px 10px rgba(0,0,0,0.2)'
+                                           }}
+                                           onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.2)'}
+                                           onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'}
+                                       >
+                                           +{cellEvents.length - 1}
+                                       </div>
+                                   </div>
+                               )
+                           )}
                         </div>
                       );
                    })}
@@ -195,6 +243,47 @@ const Schedule: React.FC<ScheduleProps> = ({
              })}
           </div>
         </div>
+
+        {expandedSlot && (
+            <div style={styles.modalOverlay} onClick={() => setExpandedSlot(null)}>
+                <div style={{...styles.modalContent, width: '90%', maxWidth: '350px'}} onClick={e => e.stopPropagation()}>
+                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px'}}>
+                        <h3 style={{margin: 0, fontSize: '1.1rem', fontWeight: 800}}>Time Slot Events</h3>
+                        <button onClick={() => setExpandedSlot(null)} style={{background: 'none', border: 'none', color: theme.textMuted, cursor: 'pointer'}}><X size={20}/></button>
+                    </div>
+                    <div style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
+                        {expandedSlot.map(ev => {
+                             const bg = eventColors[ev.type] || '#64748b';
+                             return (
+                                 <div 
+                                    key={ev.id} 
+                                    onClick={() => { setExpandedSlot(null); onEventClick(ev); }}
+                                    style={{
+                                        backgroundColor: bg, 
+                                        borderRadius: '12px', 
+                                        padding: '12px', 
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        boxShadow: '0 4px 10px rgba(0,0,0,0.2)'
+                                    }}
+                                 >
+                                     <div>
+                                         <div style={{fontSize: '0.7rem', fontWeight: 800, opacity: 0.8, textTransform: 'uppercase'}}>{ev.type}</div>
+                                         <div style={{fontSize: '1rem', fontWeight: 700, color: getContrastColor(bg)}}>{ev.title}</div>
+                                         <div style={{fontSize: '0.8rem', opacity: 0.9, marginTop: '2px'}}>{ev.location}</div>
+                                     </div>
+                                     <div style={{background: 'rgba(0,0,0,0.2)', padding: '6px 10px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 600, color: getContrastColor(bg)}}>
+                                         {to12h(ev.startTime)}
+                                     </div>
+                                 </div>
+                             )
+                        })}
+                    </div>
+                </div>
+            </div>
+        )}
     </div>
   );
 };
