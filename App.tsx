@@ -8,16 +8,93 @@ import AIChat from './components/AIChat';
 import Settings from './components/Settings';
 import AddEventModal from './components/AddEventModal';
 import GymView from './components/GymView';
-import { ScheduleEvent, ViewState, MaterialFile, ScheduleProfile, EventColorMap, ExtractedScheduleItem, EventType, CourseGrade, Assessment, PeriodDefinition } from './types';
+import UniversalGradeCalculator from './components/UniversalGradeCalculator';
+import { ScheduleEvent, ViewState, MaterialFile, ScheduleProfile, EventColorMap, ExtractedScheduleItem, EventType, CourseGrade, GradeCategory, PeriodDefinition } from './types';
 import { INITIAL_EVENTS, INITIAL_FILES, INITIAL_PROFILES, INITIAL_COLORS, INITIAL_PERIODS } from './constants';
 import { theme, styles } from './theme';
-import { GraduationCap, Folder, BookOpen, Trash2, FileText, File, Upload, Check, X, Brain, Calendar, Clock, MapPin, AlignLeft, Pencil, Send, Plus, ChevronDown, ChevronUp, Sparkles, Loader2, LogOut } from 'lucide-react';
+import { GraduationCap, Folder, BookOpen, Trash2, FileText, File, Upload, Check, X, Brain, Calendar, Clock, MapPin, AlignLeft, Pencil, Send, Plus, ChevronDown, ChevronUp, Sparkles, Loader2, LogOut, RotateCcw, Calculator, ArrowRight, PieChart, AlertTriangle } from 'lucide-react';
 import { parseScheduleImage, getChatResponse } from './services/geminiService';
 
 // --- Subcomponents for other views ---
 
-const CoursesView = ({ events, eventColors }: { events: ScheduleEvent[], eventColors: EventColorMap }) => {
+const ConfirmModal = ({ 
+    isOpen, 
+    title, 
+    message, 
+    onConfirm, 
+    onCancel 
+}: { 
+    isOpen: boolean, 
+    title: string, 
+    message: string, 
+    onConfirm: () => void, 
+    onCancel: () => void 
+}) => {
+    if (!isOpen) return null;
+    return (
+        <div style={styles.modalOverlay} onClick={onCancel}>
+            <div style={{...styles.modalContent, maxWidth: '320px', padding: '0', overflow: 'hidden'}} onClick={e => e.stopPropagation()}>
+                <div style={{padding: '24px', textAlign: 'center'}}>
+                    <div style={{width: '60px', height: '60px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px'}}>
+                        <AlertTriangle size={32} color={theme.danger} />
+                    </div>
+                    <h3 style={{margin: '0 0 8px 0', fontSize: '1.2rem', fontWeight: 800}}>{title}</h3>
+                    <p style={{margin: 0, fontSize: '0.9rem', color: theme.textMuted, lineHeight: '1.5'}}>
+                        {message}
+                    </p>
+                </div>
+                <div style={{display: 'flex', borderTop: '1px solid rgba(255,255,255,0.1)'}}>
+                    <button 
+                        onClick={onCancel}
+                        style={{flex: 1, padding: '16px', background: 'transparent', border: 'none', color: theme.text, fontSize: '1rem', fontWeight: 600, cursor: 'pointer', borderRight: '1px solid rgba(255,255,255,0.1)'}}
+                    >
+                        Cancel
+                    </button>
+                    <button 
+                        onClick={onConfirm}
+                        style={{flex: 1, padding: '16px', background: 'rgba(239, 68, 68, 0.1)', border: 'none', color: theme.danger, fontSize: '1rem', fontWeight: 800, cursor: 'pointer'}}
+                    >
+                        Confirm
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const CoursesView = ({ 
+    events, 
+    eventColors,
+    onDeleteCourse,
+    onEditCourse
+}: { 
+    events: ScheduleEvent[], 
+    eventColors: EventColorMap,
+    onDeleteCourse: (name: string) => void,
+    onEditCourse: (oldName: string, info: { name: string, code: string, group: string, location: string }) => void
+}) => {
     const uniqueCourses = Array.from(new Set(events.map(e => e.title))).sort();
+    const [editingCourse, setEditingCourse] = useState<string | null>(null);
+    const [editForm, setEditForm] = useState({ name: "", code: "", group: "", location: "" });
+    const [courseToDelete, setCourseToDelete] = useState<string | null>(null);
+
+    const startEdit = (name: string, mainEvent: ScheduleEvent | undefined) => {
+        setEditingCourse(name);
+        setEditForm({
+            name: name,
+            code: mainEvent?.code || "",
+            group: mainEvent?.group || "",
+            location: mainEvent?.location || ""
+        });
+    };
+
+    const saveEdit = () => {
+        if (editingCourse && editForm.name.trim()) {
+            onEditCourse(editingCourse, editForm);
+        }
+        setEditingCourse(null);
+    };
+
     return (
         <div style={styles.scrollableContent}>
             <div style={styles.header}>
@@ -30,25 +107,128 @@ const CoursesView = ({ events, eventColors }: { events: ScheduleEvent[], eventCo
                 </div>
             </div>
             
-            <div style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
+            <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
                 {uniqueCourses.map(courseName => {
                     const courseEvents = events.filter(e => e.title === courseName);
                     const mainEvent = courseEvents.find(e => e.type === 'lecture') || courseEvents[0];
-                    const group = mainEvent?.group || "N/A";
                     const typeColor = eventColors[mainEvent?.type || 'other'] || eventColors.other;
                     
+                    const isEditing = editingCourse === courseName;
+
+                    if (isEditing) {
+                        return (
+                            <div key={courseName} style={{...styles.card, padding: '20px', borderLeft: `5px solid ${theme.accent}`, marginBottom: 0}}>
+                                <h3 style={{marginTop: 0, marginBottom: '16px', fontSize: '1.1rem'}}>Edit Course Details</h3>
+                                <div style={{display: 'grid', gap: '12px'}}>
+                                    <div>
+                                        <label style={styles.label}>Course Name</label>
+                                        <input 
+                                            value={editForm.name} 
+                                            onChange={e => setEditForm({...editForm, name: e.target.value})}
+                                            style={styles.input}
+                                            placeholder="Course Name"
+                                        />
+                                    </div>
+                                    <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px'}}>
+                                        <div>
+                                            <label style={styles.label}>Code</label>
+                                            <input 
+                                                value={editForm.code} 
+                                                onChange={e => setEditForm({...editForm, code: e.target.value})}
+                                                style={styles.input}
+                                                placeholder="Code"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label style={styles.label}>Group</label>
+                                            <input 
+                                                value={editForm.group} 
+                                                onChange={e => setEditForm({...editForm, group: e.target.value})}
+                                                style={styles.input}
+                                                placeholder="Group"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label style={styles.label}>Default Location</label>
+                                        <input 
+                                            value={editForm.location} 
+                                            onChange={e => setEditForm({...editForm, location: e.target.value})}
+                                            style={styles.input}
+                                            placeholder="Location"
+                                        />
+                                    </div>
+                                    <div style={{display: 'flex', gap: '10px', marginTop: '8px'}}>
+                                        <button onClick={saveEdit} style={{...styles.button, flex: 1, justifyContent: 'center'}}>
+                                            <Check size={18} /> Save Changes
+                                        </button>
+                                        <button onClick={() => setEditingCourse(null)} style={{...styles.secondaryButton, flex: 1, justifyContent: 'center'}}>
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )
+                    }
+
                     return (
                         <div key={courseName} style={{...styles.card, padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 0, borderLeft: `5px solid ${typeColor}`}}>
                             <div>
                                 <h2 style={{margin: 0, fontSize: '1.1rem', fontWeight: 700, marginBottom: '6px'}}>{courseName}</h2>
-                                <div style={{display: 'inline-block', backgroundColor: 'rgba(255,255,255,0.05)', padding: '4px 10px', borderRadius: '8px', fontSize: '0.75rem', color: '#ddd', fontWeight: 600}}>
-                                    Group: {group}
+                                <div style={{display: 'flex', gap: '6px', flexWrap: 'wrap'}}>
+                                     {mainEvent.code && (
+                                         <div style={{backgroundColor: 'rgba(255,255,255,0.05)', padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', color: '#ddd', fontWeight: 600}}>
+                                            {mainEvent.code}
+                                         </div>
+                                     )}
+                                     {mainEvent.group && (
+                                         <div style={{backgroundColor: 'rgba(255,255,255,0.05)', padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', color: '#ddd', fontWeight: 600}}>
+                                            Grp {mainEvent.group}
+                                         </div>
+                                     )}
+                                     {mainEvent.location && (
+                                         <div style={{backgroundColor: 'rgba(255,255,255,0.05)', padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', color: '#ddd', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px'}}>
+                                            <MapPin size={10} /> {mainEvent.location}
+                                         </div>
+                                     )}
                                 </div>
+                            </div>
+                            
+                            <div style={{display: 'flex', gap: '8px'}}>
+                                <button 
+                                    onClick={() => startEdit(courseName, mainEvent)}
+                                    style={{background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '8px', padding: '10px', cursor: 'pointer', color: theme.text}}
+                                >
+                                    <Pencil size={18} />
+                                </button>
+                                <button 
+                                    onClick={() => setCourseToDelete(courseName)}
+                                    style={{background: 'rgba(239, 68, 68, 0.1)', border: 'none', borderRadius: '8px', padding: '10px', cursor: 'pointer', color: theme.danger}}
+                                >
+                                    <Trash2 size={18} />
+                                </button>
                             </div>
                         </div>
                     )
                 })}
+                {uniqueCourses.length === 0 && (
+                     <div style={{textAlign: 'center', padding: '40px', color: theme.textMuted}}>
+                         <BookOpen size={40} className="mx-auto mb-4 opacity-30" />
+                         <p>No courses found in schedule.</p>
+                     </div>
+                )}
             </div>
+
+            <ConfirmModal 
+                isOpen={!!courseToDelete}
+                title="Delete Course?"
+                message={`Are you sure you want to delete "${courseToDelete}"? This will remove ALL classes and events associated with this course.`}
+                onConfirm={() => {
+                    if (courseToDelete) onDeleteCourse(courseToDelete);
+                    setCourseToDelete(null);
+                }}
+                onCancel={() => setCourseToDelete(null)}
+            />
         </div>
     );
 };
@@ -97,25 +277,80 @@ const FilesView = ({ materials, setMaterials }: { materials: MaterialFile[], set
     );
 };
 
-const GradesView = ({ grades, setGrades }: { grades: CourseGrade[], setGrades: React.Dispatch<React.SetStateAction<CourseGrade[]>> }) => {
-    const [expandedCourse, setExpandedCourse] = useState<string | null>(null);
-    const [newCourseName, setNewCourseName] = useState("");
-    const [newAssessment, setNewAssessment] = useState<{name: string, weight: string, score: string, total: string}>({ name: "", weight: "", score: "", total: "" });
-    const [isAiModalOpen, setIsAiModalOpen] = useState(false);
-    const [aiQuery, setAiQuery] = useState("");
-    const [aiResponse, setAiResponse] = useState<string | null>(null);
-    const [isAiLoading, setIsAiLoading] = useState(false);
+const CircularProgress = ({ percentage, size = 56, strokeWidth = 5, color = theme.accent }: { percentage: number, size?: number, strokeWidth?: number, color?: string }) => {
+    const radius = (size - strokeWidth) / 2;
+    const circumference = radius * 2 * Math.PI;
+    const safePercentage = isNaN(percentage) ? 0 : Math.max(0, Math.min(100, percentage));
+    const offset = circumference - (safePercentage / 100) * circumference;
+    
+    return (
+        <div style={{ position: 'relative', width: size, height: size, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
+                <circle
+                    cx={size / 2}
+                    cy={size / 2}
+                    r={radius}
+                    stroke="rgba(255,255,255,0.05)"
+                    strokeWidth={strokeWidth}
+                    fill="transparent"
+                />
+                <circle
+                    cx={size / 2}
+                    cy={size / 2}
+                    r={radius}
+                    stroke={color}
+                    strokeWidth={strokeWidth}
+                    fill="transparent"
+                    strokeDasharray={circumference}
+                    strokeDashoffset={offset}
+                    strokeLinecap="round"
+                    style={{ transition: 'stroke-dashoffset 0.5s ease' }}
+                />
+            </svg>
+            <div style={{ position: 'absolute', fontSize: '0.75rem', fontWeight: 800, color: '#fff' }}>
+                {Math.round(safePercentage)}%
+            </div>
+        </div>
+    );
+};
 
-    const calculateAverage = (assessments: Assessment[]) => {
-        let totalWeight = 0;
-        let weightedScore = 0;
-        assessments.forEach(a => {
-            const pct = (a.score / a.total) * 100;
-            weightedScore += (pct * a.weight);
-            totalWeight += a.weight;
+const GradesView = ({ grades, setGrades }: { grades: CourseGrade[], setGrades: React.Dispatch<React.SetStateAction<CourseGrade[]>> }) => {
+    const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
+    const [newCourseName, setNewCourseName] = useState("");
+    const [expandedCourseId, setExpandedCourseId] = useState<string | null>(null);
+    
+    // Confirmation Modal State
+    const [confirmModal, setConfirmModal] = useState<{isOpen: boolean, title: string, message: string, onConfirm: () => void}>({
+        isOpen: false, title: '', message: '', onConfirm: () => {}
+    });
+
+    // Helper to calculate current average for list view (Using simplified logic for preview)
+    const calculateAverage = (course: CourseGrade) => {
+        let totalWeighted = 0;
+        let totalWeightUsed = 0;
+        
+        course.categories?.forEach(cat => {
+            const catWeight = parseFloat(cat.weight) || 0;
+            // Only active items with scores
+            const activeItems = cat.items.filter(i => i.active && i.score !== '');
+            
+            if (activeItems.length === 0) return; // Skip empty categories
+
+            // Simplified average for preview
+            const sumPct = activeItems.reduce((acc, i) => {
+                 const s = parseFloat(i.score) || 0;
+                 const t = parseFloat(i.total) || 100;
+                 return acc + (s/t);
+            }, 0);
+            
+            const avg = sumPct / activeItems.length;
+            
+            totalWeighted += avg * catWeight;
+            totalWeightUsed += catWeight; 
         });
-        if (totalWeight === 0) return "0.0";
-        return (weightedScore / totalWeight).toFixed(1);
+
+        if (totalWeightUsed === 0) return 0; // Default to 0% if no data or no weight used
+        return (totalWeighted / totalWeightUsed) * 100;
     };
 
     const handleAddCourse = () => {
@@ -123,55 +358,75 @@ const GradesView = ({ grades, setGrades }: { grades: CourseGrade[], setGrades: R
         const newGrade: CourseGrade = {
             id: Math.random().toString(36).slice(2, 9),
             title: newCourseName,
-            assessments: []
+            targetGrade: '90',
+            categories: [
+                {
+                    id: Math.random().toString(36).slice(2,9),
+                    name: 'Exams',
+                    weight: '50',
+                    dropLowest: '0',
+                    items: []
+                },
+                {
+                    id: Math.random().toString(36).slice(2,9),
+                    name: 'Assignments',
+                    weight: '50',
+                    dropLowest: '0',
+                    items: []
+                }
+            ]
         };
         setGrades([...grades, newGrade]);
         setNewCourseName("");
     };
 
-    const handleAddAssessment = (courseId: string) => {
-        if (!newAssessment.name || !newAssessment.weight) return;
-        const updatedGrades = grades.map(g => {
-            if (g.id === courseId) {
-                return {
-                    ...g,
-                    assessments: [...g.assessments, {
-                        id: Math.random().toString(36).slice(2, 9),
-                        name: newAssessment.name,
-                        weight: parseFloat(newAssessment.weight),
-                        score: parseFloat(newAssessment.score) || 0,
-                        total: parseFloat(newAssessment.total) || 100
-                    }]
-                };
+    const handleUpdateCourse = (updatedCourse: CourseGrade) => {
+        setGrades(prev => prev.map(g => g.id === updatedCourse.id ? updatedCourse : g));
+    };
+
+    const handleDeleteCourse = (id: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        setConfirmModal({
+            isOpen: true,
+            title: "Delete Course?",
+            message: "Are you sure you want to delete this course and all its data?",
+            onConfirm: () => {
+                setGrades(prev => prev.filter(g => g.id !== id));
+                setConfirmModal(prev => ({...prev, isOpen: false}));
             }
-            return g;
         });
-        setGrades(updatedGrades);
-        setNewAssessment({ name: "", weight: "", score: "", total: "" });
     };
 
-    const handleDeleteCourse = (courseId: string) => {
-        setGrades(grades.filter(g => g.id !== courseId));
+    const handleResetGrades = () => {
+        setConfirmModal({
+            isOpen: true,
+            title: "Reset All Grades?",
+            message: "Are you sure you want to delete all grade data? This cannot be undone.",
+            onConfirm: () => {
+                setGrades([]);
+                setConfirmModal(prev => ({...prev, isOpen: false}));
+            }
+        });
+    };
+
+    const toggleExpand = (id: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        setExpandedCourseId(expandedCourseId === id ? null : id);
+    };
+
+    if (selectedCourseId) {
+        const course = grades.find(g => g.id === selectedCourseId);
+        if (!course) { setSelectedCourseId(null); return null; }
+        return (
+            <div style={styles.scrollableContent}>
+                <UniversalGradeCalculator 
+                    course={course} 
+                    onUpdate={handleUpdateCourse} 
+                    onBack={() => setSelectedCourseId(null)} 
+                />
+            </div>
+        );
     }
-
-    const handleAskAi = async () => {
-        if (!aiQuery.trim()) return;
-        setIsAiLoading(true);
-        try {
-            const context = `My Grades Data: ${JSON.stringify(grades.map(g => ({
-                course: g.title,
-                currentAverage: calculateAverage(g.assessments),
-                assessments: g.assessments.map(a => `${a.name}: ${a.score}/${a.total} (Weight: ${a.weight}%)`)
-            })))}`;
-            
-            const response = await getChatResponse([], aiQuery, context);
-            setAiResponse(response.text);
-        } catch (e) {
-            setAiResponse("Sorry, failed to analyze grades.");
-        } finally {
-            setIsAiLoading(false);
-        }
-    };
 
     return (
         <div style={styles.scrollableContent}>
@@ -180,11 +435,8 @@ const GradesView = ({ grades, setGrades }: { grades: CourseGrade[], setGrades: R
                     <h1 style={styles.title}>Grades</h1>
                     <p style={styles.subtitle}>Calculator & Tracker</p>
                 </div>
-                <div 
-                    onClick={() => setIsAiModalOpen(true)}
-                    style={{background: `linear-gradient(135deg, ${theme.accent}, #c084fc)`, padding: '10px', borderRadius: '50%', cursor: 'pointer', boxShadow: theme.accentGlow}}
-                >
-                    <Brain size={24} color="#fff" />
+                <div style={{background: `linear-gradient(135deg, ${theme.accent}, #c084fc)`, padding: '10px', borderRadius: '50%', boxShadow: theme.accentGlow}}>
+                    <Calculator size={24} color="#fff" />
                 </div>
             </div>
 
@@ -195,6 +447,7 @@ const GradesView = ({ grades, setGrades }: { grades: CourseGrade[], setGrades: R
                     placeholder="New Course Name..." 
                     value={newCourseName}
                     onChange={e => setNewCourseName(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleAddCourse()}
                 />
                 <button style={{...styles.button, padding: '12px'}} onClick={handleAddCourse}>
                     <Plus size={20} />
@@ -204,89 +457,156 @@ const GradesView = ({ grades, setGrades }: { grades: CourseGrade[], setGrades: R
             {/* Course List */}
             <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
                 {grades.map(course => {
-                    const average = calculateAverage(course.assessments);
-                    const isExpanded = expandedCourse === course.id;
-                    const numAvg = parseFloat(average);
+                    const avg = calculateAverage(course);
+                    const color = avg >= 80 ? theme.success : avg >= 60 ? theme.warning : (avg > 0 ? theme.danger : theme.textMuted);
+                    const isExpanded = expandedCourseId === course.id;
                     
                     return (
-                        <div key={course.id} style={{...styles.card, marginBottom: 0, padding: 0, overflow: 'hidden'}}>
-                            <div 
-                                onClick={() => setExpandedCourse(isExpanded ? null : course.id)}
-                                style={{padding: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', background: isExpanded ? 'rgba(255,255,255,0.05)' : 'transparent'}}
-                            >
-                                <div>
-                                    <h2 style={{margin: 0, fontSize: '1.1rem', fontWeight: 700}}>{course.title}</h2>
-                                    <p style={{margin: 0, fontSize: '0.8rem', color: theme.textMuted}}>{course.assessments.length} Assessments</p>
+                        <div 
+                            key={course.id} 
+                            style={{...styles.card, marginBottom: 0, padding: '20px', transition: 'all 0.2s', borderLeft: `4px solid ${color}`}}
+                        >
+                            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                                <div style={{flex: 1, cursor: 'pointer'}} onClick={() => setSelectedCourseId(course.id)}>
+                                    <h2 style={{margin: 0, fontSize: '1.2rem', fontWeight: 700}}>{course.title}</h2>
+                                    <p style={{margin: 0, fontSize: '0.8rem', color: theme.textMuted, marginTop: '4px'}}>
+                                        Target: {course.targetGrade}% • {course.categories.length} Categories
+                                    </p>
                                 </div>
-                                <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
-                                    <div style={{fontSize: '1.4rem', fontWeight: 800, color: numAvg >= 80 ? theme.success : numAvg >= 60 ? theme.warning : theme.danger}}>
-                                        {average}%
+                                <div style={{display: 'flex', alignItems: 'center', gap: '16px'}}>
+                                    <div style={{cursor: 'pointer'}} onClick={() => setSelectedCourseId(course.id)}>
+                                        <CircularProgress percentage={avg} color={color} />
                                     </div>
-                                    {isExpanded ? <ChevronUp size={20} color={theme.textMuted}/> : <ChevronDown size={20} color={theme.textMuted} />}
+                                    <button 
+                                        onClick={(e) => toggleExpand(course.id, e)} 
+                                        style={{
+                                            padding: '8px', 
+                                            background: isExpanded ? 'rgba(255,255,255,0.1)' : 'transparent', 
+                                            borderRadius: '50%', 
+                                            color: theme.textMuted, 
+                                            border: 'none', 
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s'
+                                        }}
+                                    >
+                                        {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                                    </button>
                                 </div>
                             </div>
 
+                            {/* Dropdown Categories */}
                             {isExpanded && (
-                                <div style={{padding: '20px', borderTop: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)'}}>
-                                    <div style={{display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px'}}>
-                                        {course.assessments.map(a => (
-                                            <div key={a.id} style={{display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', padding: '10px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px'}}>
-                                                <span style={{color: '#fff'}}>{a.name} <span style={{color: theme.textMuted, fontSize: '0.75rem'}}>({a.weight}%)</span></span>
-                                                <span style={{fontWeight: 600}}>{a.score}/{a.total}</span>
+                                <div style={{marginTop: '16px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '16px', animation: 'fadeIn 0.2s'}}>
+                                    <div style={{display: 'grid', gap: '8px'}}>
+                                        {course.categories.map(cat => (
+                                            <div 
+                                                key={cat.id}
+                                                onClick={() => setSelectedCourseId(course.id)}
+                                                style={{
+                                                    display: 'flex', 
+                                                    justifyContent: 'space-between', 
+                                                    alignItems: 'center',
+                                                    padding: '12px',
+                                                    backgroundColor: 'rgba(0,0,0,0.2)',
+                                                    borderRadius: '12px',
+                                                    cursor: 'pointer',
+                                                    border: '1px solid rgba(255,255,255,0.03)'
+                                                }}
+                                                className="hover:bg-white/5 transition-colors"
+                                            >
+                                                <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
+                                                    <div style={{width: '6px', height: '6px', borderRadius: '50%', backgroundColor: theme.accent}}></div>
+                                                    <span style={{fontSize: '0.9rem', fontWeight: 600, color: '#fff'}}>{cat.name}</span>
+                                                </div>
+                                                <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
+                                                    <span style={{fontSize: '0.8rem', color: theme.textMuted, fontWeight: 500}}>{cat.weight}% Weight</span>
+                                                    <ArrowRight size={14} color={theme.textMuted} />
+                                                </div>
                                             </div>
                                         ))}
-                                        {course.assessments.length === 0 && <div style={{color: theme.textMuted, fontSize: '0.8rem', fontStyle: 'italic'}}>No assessments added yet.</div>}
                                     </div>
-                                    
-                                    <div style={{display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr auto', gap: '8px', alignItems: 'center', marginBottom: '16px'}}>
-                                        <input placeholder="Name" style={{...styles.input, padding: '10px', fontSize: '0.8rem'}} value={newAssessment.name} onChange={e => setNewAssessment({...newAssessment, name: e.target.value})} />
-                                        <input placeholder="Wgt%" type="number" style={{...styles.input, padding: '10px', fontSize: '0.8rem'}} value={newAssessment.weight} onChange={e => setNewAssessment({...newAssessment, weight: e.target.value})} />
-                                        <input placeholder="Score" type="number" style={{...styles.input, padding: '10px', fontSize: '0.8rem'}} value={newAssessment.score} onChange={e => setNewAssessment({...newAssessment, score: e.target.value})} />
-                                        <input placeholder="Total" type="number" style={{...styles.input, padding: '10px', fontSize: '0.8rem'}} value={newAssessment.total} onChange={e => setNewAssessment({...newAssessment, total: e.target.value})} />
-                                        <button style={{...styles.button, padding: '10px', borderRadius: '12px'}} onClick={() => handleAddAssessment(course.id)}><Plus size={16} /></button>
+                                    <div style={{display: 'flex', justifyContent: 'space-between', marginTop: '16px', paddingTop: '16px', borderTop: '1px dashed rgba(255,255,255,0.1)'}}>
+                                         <button 
+                                            onClick={(e) => handleDeleteCourse(course.id, e)} 
+                                            style={{
+                                                background: 'transparent',
+                                                color: theme.danger,
+                                                border: 'none',
+                                                fontSize: '0.8rem',
+                                                fontWeight: 600,
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '6px',
+                                                opacity: 0.8
+                                            }}
+                                         >
+                                             <Trash2 size={14} /> Delete Course
+                                         </button>
+                                         <button
+                                            onClick={() => setSelectedCourseId(course.id)}
+                                            style={{
+                                                background: 'transparent',
+                                                color: theme.accent,
+                                                border: 'none',
+                                                fontSize: '0.8rem',
+                                                fontWeight: 700,
+                                                cursor: 'pointer'
+                                            }}
+                                         >
+                                             Full Calculator
+                                         </button>
                                     </div>
-                                    
-                                    <button onClick={() => handleDeleteCourse(course.id)} style={{fontSize: '0.8rem', color: theme.danger, background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', opacity: 0.7}}>
-                                        <Trash2 size={14} /> Delete Course
-                                    </button>
                                 </div>
                             )}
                         </div>
                     );
                 })}
+
+                {grades.length === 0 && (
+                     <div style={{textAlign: 'center', padding: '40px', color: theme.textMuted, border: '1px dashed rgba(255,255,255,0.1)', borderRadius: '20px'}}>
+                         <PieChart size={40} className="mx-auto mb-4 opacity-30" />
+                         <p>No courses added yet.</p>
+                     </div>
+                )}
+                
+                {grades.length > 0 && (
+                    <button 
+                        onClick={handleResetGrades}
+                        style={{
+                            ...styles.card,
+                            marginTop: '24px',
+                            marginBottom: '40px',
+                            cursor: 'pointer',
+                            border: `1px solid ${theme.danger}`,
+                            background: 'rgba(239, 68, 68, 0.1)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '10px',
+                            width: '100%',
+                            padding: '16px',
+                            boxSizing: 'border-box'
+                        }}
+                    >
+                        <RotateCcw size={18} color={theme.danger} />
+                        <span style={{color: theme.danger, fontWeight: 700, fontSize: '1rem'}}>Reset All Grades</span>
+                    </button>
+                )}
             </div>
+            
+            {/* Modal Renderer */}
+            <ConfirmModal 
+                isOpen={confirmModal.isOpen}
+                title={confirmModal.title}
+                message={confirmModal.message}
+                onConfirm={confirmModal.onConfirm}
+                onCancel={() => setConfirmModal(prev => ({...prev, isOpen: false}))}
+            />
 
-            {/* AI Modal */}
-            {isAiModalOpen && (
-                <div style={styles.modalOverlay} onClick={() => setIsAiModalOpen(false)}>
-                    <div style={styles.modalContent} onClick={e => e.stopPropagation()}>
-                          <div style={{display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px"}}>
-                            <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
-                                <Sparkles size={20} color={theme.accent} />
-                                <h2 style={{margin: 0, fontSize: "1.2rem", fontWeight: 800}}>Grade Intelligence</h2>
-                            </div>
-                            <button style={{background: "none", border: "none", cursor: "pointer"}} onClick={() => setIsAiModalOpen(false)}><X size={24} color="#fff" /></button>
-                        </div>
-                        
-                        <div style={{minHeight: '100px', maxHeight: '300px', overflowY: 'auto', marginBottom: '20px', whiteSpace: 'pre-wrap', lineHeight: '1.5', fontSize: '0.9rem', color: theme.textMuted}}>
-                            {aiResponse || "Ask me anything about your grades. I know your current scores and weights. Try: 'What do I need on the final to get an A?'"}
-                        </div>
-
-                        <div style={{display: 'flex', gap: '10px'}}>
-                            <input 
-                                style={{...styles.input, padding: '12px'}} 
-                                placeholder="Ask a question..." 
-                                value={aiQuery}
-                                onChange={e => setAiQuery(e.target.value)}
-                                onKeyDown={e => e.key === 'Enter' && handleAskAi()}
-                            />
-                            <button style={{...styles.button, padding: '12px'}} onClick={handleAskAi} disabled={isAiLoading}>
-                                {isAiLoading ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <style>{`
+                @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+            `}</style>
         </div>
     );
 };
@@ -482,7 +802,6 @@ const App: React.FC = () => {
       return saved ? JSON.parse(saved) : [];
   });
 
-  // --- NEW: Periods State ---
   const [periods, setPeriods] = useState<PeriodDefinition[]>(() => {
       const saved = localStorage.getItem('college-container-periods');
       return saved ? JSON.parse(saved) : INITIAL_PERIODS;
@@ -547,6 +866,28 @@ const App: React.FC = () => {
 
   const handleDeleteEvent = (id: string) => {
       setEvents(prev => prev.filter(e => e.id !== id));
+  };
+
+  // --- NEW HANDLERS ---
+  const handleDeleteCourseByName = (name: string) => {
+      setEvents(prev => prev.filter(e => e.title !== name));
+  };
+
+  const handleEditCourseByName = (oldName: string, info: { name: string, code: string, group: string, location: string }) => {
+      setEvents(prev => prev.map(e => {
+          if (e.title === oldName) {
+              return { 
+                  ...e, 
+                  title: info.name,
+                  code: info.code,
+                  group: info.group,
+                  // Only update location if it matched previous default or if user wants to force update?
+                  // For simplicity in this app, we update the location if it was previously set to something, or just update it.
+                  location: info.location
+              };
+          }
+          return e;
+      }));
   };
 
   const handleAddProfile = (name: string) => {
@@ -622,6 +963,26 @@ const App: React.FC = () => {
       }
   };
 
+  const handleResetApp = () => {
+    localStorage.clear();
+    setEvents(INITIAL_EVENTS);
+    setMaterials(INITIAL_FILES);
+    setProfiles(INITIAL_PROFILES);
+    setActiveProfileId('main');
+    setGrades([]);
+    setPeriods(INITIAL_PERIODS);
+    setEventColors(INITIAL_COLORS);
+    // Soft reset - just reset state and navigate home, do NOT reload the page as it causes crashes
+    setCurrentView('dashboard');
+  };
+
+  // Calculate unique existing courses for auto-complete
+  const existingCourses = Array.from(new Set(events.map(e => e.title)))
+        .map(title => {
+            const ev = events.find(e => e.title === title);
+            return { title, code: ev?.code || '', type: ev?.type || 'lecture' as EventType };
+        });
+
   const renderContent = () => {
     switch (currentView) {
       case 'dashboard':
@@ -653,11 +1014,18 @@ const App: React.FC = () => {
       case 'gym':
         return <GymView onBack={() => setCurrentView('dashboard')} />;
       case 'courses':
-        return <CoursesView events={events.filter(e => e.scheduleId === activeProfileId)} eventColors={eventColors} />;
+        return (
+            <CoursesView 
+                events={events.filter(e => e.scheduleId === activeProfileId)} 
+                eventColors={eventColors}
+                onDeleteCourse={handleDeleteCourseByName}
+                onEditCourse={handleEditCourseByName}
+            />
+        );
       case 'materials':
         return <FilesView materials={materials} setMaterials={setMaterials} />;
       case 'ai':
-        return <AIChat onAddEvent={handleAddEvent} />;
+        return <AIChat onAddEvent={handleAddEvent} periods={periods} />;
       case 'settings':
         return (
           <Settings
@@ -674,7 +1042,7 @@ const App: React.FC = () => {
              onImageUpload={handleImageUpload}
              onDeleteProfile={handleDeleteProfile}
              isAnalyzing={isAnalyzing}
-             onResetGrades={() => { if(confirm("Reset all grades?")) setGrades([]); }}
+             onResetApp={handleResetApp}
              onSignOut={handleSignOut}
              periods={periods}
              setPeriods={setPeriods}
@@ -692,47 +1060,12 @@ const App: React.FC = () => {
   return (
     <div style={styles.container}>
       <main style={styles.main}>
-        {renderContent()}
-      </main>
-
+        {renderContent()}</main>
       {currentView !== 'gym' && <Navigation currentView={currentView} onNavigate={setCurrentView} />}
-
-      {isEventModalOpen && (
-        <AddEventModal 
-            isOpen={isEventModalOpen}
-            onClose={() => setIsEventModalOpen(false)}
-            onSave={handleAddEvent}
-            eventColors={eventColors}
-            initialData={editingEvent}
-        />
-      )}
-
-      {selectedTask && (
-        <TaskDetailsModal 
-            event={selectedTask} 
-            onClose={() => setSelectedTask(null)} 
-            onEdit={(task) => {
-                setEditingEvent(task);
-                setIsEventModalOpen(true);
-                setSelectedTask(null);
-            }}
-            onDelete={handleDeleteEvent}
-        />
-      )}
-
-      {isVerifyModalOpen && (
-          <VerifyImportModal 
-            items={extractedEvents}
-            onConfirm={handleConfirmImport}
-            onCancel={() => setIsVerifyModalOpen(false)}
-          />
-      )}
-      
-      <style>{`
-        @keyframes scaleIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        ::-webkit-scrollbar { width: 0px; background: transparent; }
-      `}</style>
+      {isEventModalOpen && <AddEventModal isOpen={isEventModalOpen} onClose={() => setIsEventModalOpen(false)} onSave={handleAddEvent} eventColors={eventColors} initialData={editingEvent} periods={periods} existingCourses={existingCourses} />}
+      {selectedTask && <TaskDetailsModal event={selectedTask} onClose={() => setSelectedTask(null)} onEdit={(task) => { setEditingEvent(task); setIsEventModalOpen(true); setSelectedTask(null); }} onDelete={handleDeleteEvent} />}
+      {isVerifyModalOpen && <VerifyImportModal items={extractedEvents} onConfirm={handleConfirmImport} onCancel={() => setIsVerifyModalOpen(false)} />}
+      <style>{`@keyframes scaleIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } } @keyframes spin { to { transform: rotate(360deg); } } ::-webkit-scrollbar { width: 0px; background: transparent; }`}</style>
     </div>
   );
 };

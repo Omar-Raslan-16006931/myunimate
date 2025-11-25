@@ -30,17 +30,33 @@ const ScheduleSettings: React.FC<ScheduleSettingsProps> = ({ periods, setPeriods
         return n + (s[(v - 20) % 10] || s[v] || s[0]);
     };
 
-    // Smart index calculation ignoring breaks
-    const getPeriodLabel = (currentPeriod: PeriodDefinition, allPeriods: PeriodDefinition[]) => {
-        if (currentPeriod.isBreak) return null;
-        let count = 0;
-        for (const p of allPeriods) {
-            if (p.id === currentPeriod.id) {
-                return `${getOrdinal(count + 1)} Slot`;
+    // Recalculate labels and startVals for all periods to ensure consistency
+    const recalculatePeriods = (newPeriods: PeriodDefinition[]) => {
+        let slotCount = 0;
+        const calculated = newPeriods.map(p => {
+            // Update startVal
+            const [h, m] = p.startTime.split(':').map(Number);
+            const startVal = h + m / 60;
+
+            // Update Label based on type and sequence
+            let label = "Break";
+            if (!p.isBreak) {
+                slotCount++;
+                label = getOrdinal(slotCount);
             }
-            if (!p.isBreak) count++;
-        }
-        return "Slot";
+
+            return { ...p, startVal, label };
+        });
+        setPeriods(calculated);
+    };
+
+    // Smart index calculation for display in this component
+    const getPeriodLabelDisplay = (currentPeriod: PeriodDefinition, allPeriods: PeriodDefinition[]) => {
+        if (currentPeriod.isBreak) return null;
+        // Use the label we just calculated if available, otherwise fallback to index logic
+        // Actually, let's trust the recalculatePeriods logic which runs on every change.
+        // But for the visual 'Slot' suffix which isn't in the saved label:
+        return `${currentPeriod.label} Slot`;
     };
 
     const addPeriod = () => {
@@ -49,10 +65,6 @@ const ScheduleSettings: React.FC<ScheduleSettingsProps> = ({ periods, setPeriods
         let newEnd = "10:00";
         let isBreak = false;
         
-        // Count non-break slots for smart labeling
-        const nonBreakCount = periods.filter(p => !p.isBreak).length;
-        let label = "New Period";
-
         if (lastPeriod) {
             // Suggest next slot
             const lastEndMins = getMinutes(lastPeriod.endTime);
@@ -63,25 +75,23 @@ const ScheduleSettings: React.FC<ScheduleSettingsProps> = ({ periods, setPeriods
                 newStart = formatTime(lastEndMins);
                 newEnd = formatTime(lastEndMins + 15);
                 isBreak = true;
-                label = "Break";
             } else {
                 // If previous was break, suggest a class
                 newStart = formatTime(lastEndMins);
                 newEnd = formatTime(lastEndMins + 90);
                 isBreak = false;
-                label = `${getOrdinal(nonBreakCount + 1)} Period`;
             }
         }
 
         const newPeriod: PeriodDefinition = {
             id: Math.random().toString(36).substr(2, 9),
-            label,
+            label: "Temp", // Will be fixed by recalculatePeriods
             startTime: newStart,
             endTime: newEnd,
             isBreak
         };
         
-        recalculateStartVals([...periods, newPeriod]);
+        recalculatePeriods([...periods, newPeriod]);
     };
 
     const updatePeriod = (id: string, field: keyof PeriodDefinition, value: any) => {
@@ -91,21 +101,12 @@ const ScheduleSettings: React.FC<ScheduleSettingsProps> = ({ periods, setPeriods
             }
             return p;
         });
-        recalculateStartVals(updated);
+        recalculatePeriods(updated);
     };
 
     const deletePeriod = (id: string) => {
         const updated = periods.filter(p => p.id !== id);
-        recalculateStartVals(updated);
-    };
-
-    const recalculateStartVals = (newPeriods: PeriodDefinition[]) => {
-        // Calculate startVal for logic helpers (same logic as before: H + M/60)
-        const calculated = newPeriods.map(p => {
-            const [h, m] = p.startTime.split(':').map(Number);
-            return { ...p, startVal: h + m / 60 };
-        });
-        setPeriods(calculated);
+        recalculatePeriods(updated);
     };
 
     const to12h = (time24: string) => {
@@ -124,7 +125,7 @@ const ScheduleSettings: React.FC<ScheduleSettingsProps> = ({ periods, setPeriods
 
             <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
                 {periods.map((period, index) => {
-                    const slotLabel = getPeriodLabel(period, periods);
+                    const slotLabel = getPeriodLabelDisplay(period, periods);
                     return (
                         <div key={period.id} style={{
                             display: 'grid', 
@@ -155,7 +156,7 @@ const ScheduleSettings: React.FC<ScheduleSettingsProps> = ({ periods, setPeriods
                                 )}
                             </div>
                             
-                            {/* Empty spacer or custom label input if needed in future */}
+                            {/* Empty spacer */}
                             <div />
 
                             {/* Middle Column: Vertical Time Stack */}
@@ -289,7 +290,7 @@ const ScheduleSettings: React.FC<ScheduleSettingsProps> = ({ periods, setPeriods
                                 <Coffee size={12} color={theme.textMuted} />
                             ) : (
                                 <span style={{fontSize: '0.7rem', fontWeight: 700, color: '#fff'}}>
-                                    {getPeriodLabel(p, periods)}
+                                    {p.label}
                                 </span>
                             )}
                             
