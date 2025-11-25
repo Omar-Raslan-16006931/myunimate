@@ -320,9 +320,7 @@ const GradesView = ({ grades, setGrades }: { grades: CourseGrade[], setGrades: R
     const [expandedCourseId, setExpandedCourseId] = useState<string | null>(null);
     
     // Confirmation Modal State
-    const [confirmModal, setConfirmModal] = useState<{isOpen: boolean, title: string, message: string, onConfirm: () => void}>({
-        isOpen: false, title: '', message: '', onConfirm: () => {}
-    });
+    const [modalAction, setModalAction] = useState<{ type: 'delete' | 'reset', id?: string } | null>(null);
 
     // Helper to calculate current average for list view (Using simplified logic for preview)
     const calculateAverage = (course: CourseGrade) => {
@@ -384,29 +382,13 @@ const GradesView = ({ grades, setGrades }: { grades: CourseGrade[], setGrades: R
         setGrades(prev => prev.map(g => g.id === updatedCourse.id ? updatedCourse : g));
     };
 
-    const handleDeleteCourse = (id: string, e: React.MouseEvent) => {
-        e.stopPropagation();
-        setConfirmModal({
-            isOpen: true,
-            title: "Delete Course?",
-            message: "Are you sure you want to delete this course and all its data?",
-            onConfirm: () => {
-                setGrades(prev => prev.filter(g => g.id !== id));
-                setConfirmModal(prev => ({...prev, isOpen: false}));
-            }
-        });
-    };
-
-    const handleResetGrades = () => {
-        setConfirmModal({
-            isOpen: true,
-            title: "Reset All Grades?",
-            message: "Are you sure you want to delete all grade data? This cannot be undone.",
-            onConfirm: () => {
-                setGrades([]);
-                setConfirmModal(prev => ({...prev, isOpen: false}));
-            }
-        });
+    const confirmAction = () => {
+        if (modalAction?.type === 'delete' && modalAction.id) {
+             setGrades(prev => prev.filter(g => g.id !== modalAction.id));
+        } else if (modalAction?.type === 'reset') {
+             setGrades([]);
+        }
+        setModalAction(null);
     };
 
     const toggleExpand = (id: string, e: React.MouseEvent) => {
@@ -527,7 +509,7 @@ const GradesView = ({ grades, setGrades }: { grades: CourseGrade[], setGrades: R
                                     </div>
                                     <div style={{display: 'flex', justifyContent: 'space-between', marginTop: '16px', paddingTop: '16px', borderTop: '1px dashed rgba(255,255,255,0.1)'}}>
                                          <button 
-                                            onClick={(e) => handleDeleteCourse(course.id, e)} 
+                                            onClick={(e) => { e.stopPropagation(); setModalAction({ type: 'delete', id: course.id }); }} 
                                             style={{
                                                 background: 'transparent',
                                                 color: theme.danger,
@@ -572,7 +554,7 @@ const GradesView = ({ grades, setGrades }: { grades: CourseGrade[], setGrades: R
                 
                 {grades.length > 0 && (
                     <button 
-                        onClick={handleResetGrades}
+                        onClick={() => setModalAction({ type: 'reset' })}
                         style={{
                             ...styles.card,
                             marginTop: '24px',
@@ -597,11 +579,11 @@ const GradesView = ({ grades, setGrades }: { grades: CourseGrade[], setGrades: R
             
             {/* Modal Renderer */}
             <ConfirmModal 
-                isOpen={confirmModal.isOpen}
-                title={confirmModal.title}
-                message={confirmModal.message}
-                onConfirm={confirmModal.onConfirm}
-                onCancel={() => setConfirmModal(prev => ({...prev, isOpen: false}))}
+                isOpen={!!modalAction}
+                title={modalAction?.type === 'delete' ? "Delete Course?" : "Reset All Grades?"}
+                message={modalAction?.type === 'delete' ? "Are you sure you want to delete this course and all its data?" : "Are you sure you want to delete all grade data? This cannot be undone."}
+                onConfirm={confirmAction}
+                onCancel={() => setModalAction(null)}
             />
 
             <style>{`
