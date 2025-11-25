@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight, MapPin, Plus, Brain, ChevronDown, X } from 'lucide-react';
 import { ScheduleEvent, EventColorMap, ScheduleProfile, PeriodDefinition } from '../types';
@@ -97,8 +96,8 @@ const Schedule: React.FC<ScheduleProps> = ({
        const bg = eventColors[ev.type] || '#64748b';
        const txtColor = getContrastColor(bg);
        
-       const titleSize = isSmall ? '0.75rem' : '0.9rem';
-       const padding = isSmall ? '8px' : '10px';
+       const titleSize = isSmall ? '0.7rem' : '0.8rem';
+       const padding = isSmall ? '6px' : '8px';
        
        return (
        <div 
@@ -135,7 +134,7 @@ const Schedule: React.FC<ScheduleProps> = ({
          {/* Course Code */}
          {ev.code && (
              <div style={{
-                 fontSize: isSmall ? '0.65rem' : '0.7rem', 
+                 fontSize: isSmall ? '0.6rem' : '0.65rem', 
                  fontWeight: 600, 
                  opacity: 0.85,
                  whiteSpace: 'nowrap', 
@@ -149,7 +148,7 @@ const Schedule: React.FC<ScheduleProps> = ({
          {/* Location - Pushed to bottom left */}
          {ev.location && (
              <div style={{
-                 fontSize: isSmall ? '0.65rem' : '0.7rem', 
+                 fontSize: isSmall ? '0.6rem' : '0.65rem', 
                  fontWeight: 600, 
                  display: 'flex', 
                  alignItems: 'center', 
@@ -159,7 +158,7 @@ const Schedule: React.FC<ScheduleProps> = ({
                  opacity: 0.95,
                  maxWidth: '60%' // Prevent overlap with badge
              }}>
-                 <MapPin size={isSmall ? 10 : 12} style={{flexShrink: 0}} /> 
+                 <MapPin size={isSmall ? 9 : 11} style={{flexShrink: 0}} /> 
                  <span style={{whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{ev.location}</span>
              </div>
          )}
@@ -172,7 +171,7 @@ const Schedule: React.FC<ScheduleProps> = ({
              padding: '2px 6px', 
              borderRadius: '5px', 
              backgroundColor: 'rgba(0,0,0,0.2)', 
-             fontSize: '0.5rem', 
+             fontSize: '0.45rem', 
              fontWeight: 800, 
              textTransform: 'uppercase',
              letterSpacing: '0.5px',
@@ -191,16 +190,17 @@ const Schedule: React.FC<ScheduleProps> = ({
   const days = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
   const weekEnd = addDays(currentWeekStart, 6);
 
-  const gridTemplateColumns = `60px ${periods.map(p => p.isBreak ? '15px' : '1fr').join(' ')}`;
+  // Reduced size grid calculation: 54px header, 13px breaks
+  const gridTemplateColumns = `54px ${periods.map(p => p.isBreak ? '13px' : '1fr').join(' ')}`;
 
   return (
-    <div style={{height: "100%", display: "flex", flexDirection: "column", padding: "20px 20px 100px 20px"}}>
+    <div style={{height: "100%", display: "flex", flexDirection: "column", padding: "18px 18px 100px 18px"}}>
         <div style={styles.header}>
           <div>
              <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
                 <h1 style={styles.title}>Schedule</h1>
                 <div style={{position: 'relative'}}>
-                   <select value={activeProfileId} onChange={(e) => onProfileChange(e.target.value)} style={{appearance: 'none', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.05)', color: theme.text, fontSize: '0.85rem', padding: '6px 24px 6px 10px', borderRadius: '12px', outline: 'none', fontWeight: 600, cursor: 'pointer', backdropFilter: 'blur(10px)'}}>
+                   <select value={activeProfileId} onChange={(e) => onProfileChange(e.target.value)} style={{appearance: 'none', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.05)', color: theme.text, fontSize: '0.8rem', padding: '6px 24px 6px 10px', borderRadius: '12px', outline: 'none', fontWeight: 600, cursor: 'pointer', backdropFilter: 'blur(10px)'}}>
                      {profiles.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                    </select>
                    <ChevronDown size={14} style={{position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)', color: theme.textMuted, pointerEvents: 'none'}} />
@@ -208,25 +208,25 @@ const Schedule: React.FC<ScheduleProps> = ({
              </div>
              <div style={{display: 'flex', alignItems: 'center', gap: '16px', marginTop: '8px'}}>
                  <button onClick={() => handleNavWeek('prev')} style={{background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '4px', border: 'none', color: theme.text, cursor: 'pointer'}}><ChevronLeft size={18}/></button>
-                 <span style={{fontSize: '0.9rem', color: theme.textMuted, fontWeight: 600, letterSpacing: '0.5px'}}>
+                 <span style={{fontSize: '0.85rem', color: theme.textMuted, fontWeight: 600, letterSpacing: '0.5px'}}>
                    {formatDate(currentWeekStart)} - {formatDate(weekEnd)}
                  </span>
                  <button onClick={() => handleNavWeek('next')} style={{background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '4px', border: 'none', color: theme.text, cursor: 'pointer'}}><ChevronRight size={18}/></button>
              </div>
           </div>
-           <button style={{...styles.button, borderRadius: '50%', width: '48px', height: '48px', padding: 0, justifyContent: 'center', boxShadow: '0 5px 15px rgba(0,0,0,0.3)'}} onClick={onAddEventClick}>
-            <Plus size={24} />
+           <button style={{...styles.button, borderRadius: '50%', width: '44px', height: '44px', padding: 0, justifyContent: 'center', boxShadow: '0 5px 15px rgba(0,0,0,0.3)'}} onClick={onAddEventClick}>
+            <Plus size={22} />
            </button>
         </div>
 
         <div style={styles.scheduleWrapper}>
-            <div style={{...styles.scheduleContainer, gridTemplateColumns: gridTemplateColumns, minWidth: periods.length * 100 + 'px'}}>
+            <div style={{...styles.scheduleContainer, gridTemplateColumns: gridTemplateColumns, minWidth: periods.length * 90 + 'px'}}>
              <div style={styles.scheduleHeaderCell}></div>
              {periods.map((p, i) => (
                p.isBreak ? <div key={p.id} style={styles.scheduleBreakHeader}>{p.label}</div> : 
                  <div key={p.id} style={styles.scheduleHeaderCell}>
-                   <span style={{color: theme.accent, fontSize: "0.75rem", fontWeight: 800, textTransform: 'uppercase', marginBottom: '2px'}}>{p.label}</span>
-                   <span style={{color: "rgba(255,255,255,0.7)", fontSize: "0.65rem", fontWeight: 600}}>
+                   <span style={{color: theme.accent, fontSize: "0.7rem", fontWeight: 800, textTransform: 'uppercase', marginBottom: '2px'}}>{p.label}</span>
+                   <span style={{color: "rgba(255,255,255,0.7)", fontSize: "0.6rem", fontWeight: 600}}>
                      {to12h(p.startTime || "")} - {to12h(p.endTime || "")}
                    </span>
                  </div>
@@ -241,7 +241,7 @@ const Schedule: React.FC<ScheduleProps> = ({
                return (
                  <React.Fragment key={dayName}>
                    <div style={{...styles.scheduleDayCell, ...rowStyle, borderLeft: isToday ? `4px solid ${theme.accent}` : "none", color: isToday ? theme.accent : theme.text}}>
-                     <span style={{fontSize: "0.75rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: '0.5px'}}>{dayName.slice(0, 3)}</span>
+                     <span style={{fontSize: "0.7rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: '0.5px'}}>{dayName.slice(0, 3)}</span>
                      <span style={styles.dateBadge}>{formatDate(rowDate)}</span>
                    </div>
                    {periods.map((p, pIdx) => {
@@ -261,15 +261,15 @@ const Schedule: React.FC<ScheduleProps> = ({
                                cellEvents.length === 1 ? (
                                    renderEventCard(cellEvents[0])
                                ) : (
-                                   <div style={{display: 'flex', gap: '4px', width: '100%', height: '100%'}}>
+                                   <div style={{display: 'flex', gap: '3px', width: '100%', height: '100%'}}>
                                        <div style={{flex: 1, minWidth: 0}}>
                                            {renderEventCard(cellEvents[0], true)}
                                        </div>
                                        <div 
                                            onClick={(e) => { e.stopPropagation(); setExpandedSlot(cellEvents); }}
                                            style={{
-                                               width: '26px', 
-                                               borderRadius: '8px', 
+                                               width: '24px', 
+                                               borderRadius: '7px', 
                                                backgroundColor: 'rgba(255,255,255,0.1)', 
                                                border: '1px solid rgba(255,255,255,0.1)', 
                                                display: 'flex', 
@@ -278,7 +278,7 @@ const Schedule: React.FC<ScheduleProps> = ({
                                                cursor: 'pointer', 
                                                color: '#fff', 
                                                fontWeight: 800, 
-                                               fontSize: '0.75rem',
+                                               fontSize: '0.65rem',
                                                flexShrink: 0,
                                                transition: 'background 0.2s',
                                                boxShadow: '0 4px 10px rgba(0,0,0,0.2)'
@@ -302,12 +302,12 @@ const Schedule: React.FC<ScheduleProps> = ({
 
         {expandedSlot && (
             <div style={styles.modalOverlay} onClick={() => setExpandedSlot(null)}>
-                <div style={{...styles.modalContent, width: '90%', maxWidth: '350px'}} onClick={e => e.stopPropagation()}>
+                <div style={{...styles.modalContent, width: '90%', maxWidth: '320px'}} onClick={e => e.stopPropagation()}>
                     <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px'}}>
-                        <h3 style={{margin: 0, fontSize: '1.1rem', fontWeight: 800}}>Time Slot Events</h3>
-                        <button onClick={() => setExpandedSlot(null)} style={{background: 'none', border: 'none', color: theme.textMuted, cursor: 'pointer'}}><X size={20}/></button>
+                        <h3 style={{margin: 0, fontSize: '1rem', fontWeight: 800}}>Time Slot Events</h3>
+                        <button onClick={() => setExpandedSlot(null)} style={{background: 'none', border: 'none', color: theme.textMuted, cursor: 'pointer'}}><X size={18}/></button>
                     </div>
-                    <div style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
+                    <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
                         {expandedSlot.map(ev => {
                              const bg = eventColors[ev.type] || '#64748b';
                              const txtColor = getContrastColor(bg);
@@ -317,8 +317,8 @@ const Schedule: React.FC<ScheduleProps> = ({
                                     onClick={() => { setExpandedSlot(null); onEventClick(ev); }}
                                     style={{
                                         backgroundColor: bg, 
-                                        borderRadius: '12px', 
-                                        padding: '12px', 
+                                        borderRadius: '10px', 
+                                        padding: '10px', 
                                         cursor: 'pointer',
                                         display: 'flex',
                                         justifyContent: 'space-between',
@@ -327,11 +327,11 @@ const Schedule: React.FC<ScheduleProps> = ({
                                     }}
                                  >
                                      <div>
-                                         <div style={{fontSize: '0.7rem', fontWeight: 800, opacity: 0.8, textTransform: 'uppercase', color: txtColor}}>{ev.type}</div>
-                                         <div style={{fontSize: '1rem', fontWeight: 700, color: txtColor}}>{ev.title}</div>
-                                         <div style={{fontSize: '0.8rem', opacity: 0.9, marginTop: '2px', color: txtColor}}>{ev.location}</div>
+                                         <div style={{fontSize: '0.65rem', fontWeight: 800, opacity: 0.8, textTransform: 'uppercase', color: txtColor}}>{ev.type}</div>
+                                         <div style={{fontSize: '0.9rem', fontWeight: 700, color: txtColor}}>{ev.title}</div>
+                                         <div style={{fontSize: '0.75rem', opacity: 0.9, marginTop: '2px', color: txtColor}}>{ev.location}</div>
                                      </div>
-                                     <div style={{background: 'rgba(0,0,0,0.2)', padding: '6px 10px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 600, color: txtColor}}>
+                                     <div style={{background: 'rgba(0,0,0,0.2)', padding: '5px 8px', borderRadius: '7px', fontSize: '0.75rem', fontWeight: 600, color: txtColor}}>
                                          {to12h(ev.startTime)}
                                      </div>
                                  </div>
