@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, Sparkles, Loader2, Wand2 } from 'lucide-react';
-import { ScheduleEvent, EventColorMap, EventType } from '../types';
+import { X, Sparkles, Loader2, Wand2, Clock, Calendar, BookOpen, ChevronRight } from 'lucide-react';
+import { ScheduleEvent, EventColorMap, EventType, PeriodDefinition } from '../types';
 import { parseNaturalLanguageEvent } from '../services/geminiService';
 import { styles, theme } from '../theme';
 import { getLocalISOString } from '../constants';
@@ -12,9 +12,11 @@ interface AddEventModalProps {
   onSave: (event: Partial<ScheduleEvent>) => void;
   eventColors: EventColorMap;
   initialData: Partial<ScheduleEvent> | null;
+  periods: PeriodDefinition[];
+  existingCourses?: { title: string, code: string, type: EventType }[];
 }
 
-const AddEventModal: React.FC<AddEventModalProps> = ({ isOpen, onClose, onSave, eventColors, initialData }) => {
+const AddEventModal: React.FC<AddEventModalProps> = ({ isOpen, onClose, onSave, eventColors, initialData, periods, existingCourses = [] }) => {
   const [formData, setFormData] = useState<Partial<ScheduleEvent>>({
     isRecurring: false,
     type: "lecture",
@@ -25,12 +27,18 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ isOpen, onClose, onSave, 
   });
   const [magicPrompt, setMagicPrompt] = useState("");
   const [isMagicLoading, setIsMagicLoading] = useState(false);
+  const [timeMode, setTimeMode] = useState<'time' | 'slot'>('time');
+  const [showCoursePicker, setShowCoursePicker] = useState(false);
 
   useEffect(() => {
     if (initialData) {
         setFormData({ ...formData, ...initialData });
+        // Auto-detect mode if editing
+        if (initialData.startTime) {
+             const isSlot = periods.some(p => p.startTime === initialData.startTime);
+             if (isSlot) setTimeMode('slot');
+        }
     } else {
-        // Reset defaults
         setFormData({
             isRecurring: false,
             type: "lecture",
@@ -48,9 +56,15 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ isOpen, onClose, onSave, 
     if (!magicPrompt.trim()) return;
     setIsMagicLoading(true);
     try {
-      const result = await parseNaturalLanguageEvent(magicPrompt);
+      const result = await parseNaturalLanguageEvent(magicPrompt, periods);
       if (result) {
         setFormData(prev => ({ ...prev, ...result }));
+        // If result maps to a slot, switch mode?
+        if (result.startTime && periods.some(p => p.startTime === result.startTime)) {
+            setTimeMode('slot');
+        } else {
+            setTimeMode('time');
+        }
       }
     } catch (e) {
       console.error(e);
@@ -59,68 +73,274 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ isOpen, onClose, onSave, 
     }
   };
 
+  const handleSlotChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+      const periodId = e.target.value;
+      const period = periods.find(p => p.id === periodId);
+      if (period) {
+          const [hStart, mStart] = period.startTime.split(':').map(Number);
+          const [hEnd, mEnd] = period.endTime.split(':').map(Number);
+          const startMins = hStart * 60 + mStart;
+          const endMins = hEnd * 60 + mEnd;
+          
+          setFormData(prev => ({
+              ...prev,
+              startTime: period.startTime,
+              durationMinutes: endMins - startMins
+          }));
+      }
+  };
+
+  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const val = e.target.value;
+      const match = existingCourses.find(c => c.title === val);
+      
+      setFormData(prev => ({
+          ...prev,
+          title: val,
+          ...(match ? { code: match.code, type: match.type } : {})
+      }));
+  };
+
+  const selectCourse = (course: { title: string, code: string, type: EventType }) => {
+      setFormData(prev => ({
+          ...prev,
+          title: course.title,
+          code: course.code,
+          type: course.type
+      }));
+      setShowCoursePicker(false);
+  };
+
+  const RequiredMark = () => <span style={{color: theme.danger, marginLeft: '4px'}}>*</span>;
+
   return (
     <div style={styles.modalOverlay} onClick={onClose}>
-        <div style={styles.modalContent} onClick={e => e.stopPropagation()}>
-            <div style={{display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px"}}>
-              <h2 style={{margin: 0, fontSize: "1.4rem", fontWeight: 800}}>
+        <div style={{...styles.modalContent, width: '90%', maxWidth: '450px', maxHeight: '90vh', overflowY: 'auto'}} onClick={e => e.stopPropagation()}>
+            {/* Header */}
+            <div style={{display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px"}}>
+              <h2 style={{margin: 0, fontSize: "1.5rem", fontWeight: 800}}>
                   {formData.id ? 'Edit Event' : 'New Event'}
               </h2>
-              <button style={{background: "none", border: "none", cursor: "pointer"}} onClick={onClose}><X size={24} color="#fff" /></button>
+              <button 
+                style={{background: "rgba(255,255,255,0.1)", border: "none", cursor: "pointer", borderRadius: '50%', padding: '8px', display: 'flex'}} 
+                onClick={onClose}
+              >
+                  <X size={20} color="#fff" />
+              </button>
             </div>
 
             {/* Magic Autofill Section */}
             {!formData.id && (
-                <div style={{background: `linear-gradient(135deg, ${theme.accent}22 0%, rgba(0,0,0,0) 100%)`, borderRadius: '16px', padding: '16px', border: '1px solid rgba(139, 92, 246, 0.2)', marginBottom: '20px'}}>
-                <div style={{display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px'}}>
-                    <Sparkles size={16} color={theme.accent} />
-                    <span style={{fontSize: '0.85rem', fontWeight: 700, color: theme.accent}}>Magic Autofill</span>
-                </div>
-                <div style={{display: 'flex', gap: '8px'}}>
-                    <input 
-                            style={{...styles.input, padding: '10px', fontSize: '0.9rem', border: '1px solid rgba(139, 92, 246, 0.2)'}} 
-                            placeholder="e.g. Math quiz next Monday at 10am" 
-                            value={magicPrompt}
-                            onChange={(e) => setMagicPrompt(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && handleMagicAutofill()}
-                    />
-                    <button 
-                            style={{...styles.button, padding: '0 12px', borderRadius: '12px', minWidth: '40px', justifyContent: 'center'}} 
-                            onClick={handleMagicAutofill}
-                            disabled={isMagicLoading}
-                    >
-                        {isMagicLoading ? <Loader2 size={18} className="spin" style={{animation: "spin 1s linear infinite"}} /> : <Wand2 size={18} />}
-                    </button>
-                </div>
+                <div style={{background: `linear-gradient(135deg, ${theme.accent}22 0%, rgba(0,0,0,0) 100%)`, borderRadius: '20px', padding: '18px', border: '1px solid rgba(139, 92, 246, 0.3)', marginBottom: '24px', boxShadow: '0 8px 32px rgba(0,0,0,0.2)'}}>
+                    <div style={{display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px'}}>
+                        <Sparkles size={16} color={theme.accent} />
+                        <span style={{fontSize: '0.9rem', fontWeight: 700, color: theme.accent}}>Magic Autofill</span>
+                    </div>
+                    <div style={{display: 'flex', gap: '10px'}}>
+                        <input 
+                                style={{...styles.input, padding: '12px', fontSize: '0.9rem', border: '1px solid rgba(139, 92, 246, 0.2)', backgroundColor: 'rgba(0,0,0,0.3)'}} 
+                                placeholder="e.g. Math quiz next Monday at 10am" 
+                                value={magicPrompt}
+                                onChange={(e) => setMagicPrompt(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && handleMagicAutofill()}
+                        />
+                        <button 
+                                style={{...styles.button, padding: '0 14px', borderRadius: '14px', minWidth: '44px', justifyContent: 'center'}} 
+                                onClick={handleMagicAutofill}
+                                disabled={isMagicLoading}
+                        >
+                            {isMagicLoading ? <Loader2 size={20} className="spin" style={{animation: "spin 1s linear infinite"}} /> : <Wand2 size={20} />}
+                        </button>
+                    </div>
                 </div>
             )}
 
-            <div style={styles.formGroup}><label style={styles.label}>Title</label><input style={{...styles.input, width: "100%", boxSizing: 'border-box'}} placeholder="e.g. Calculus" value={formData.title || ''} onChange={e => setFormData({...formData, title: e.target.value})} /></div>
-            <div style={{display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px"}}>
-                <div style={styles.formGroup}><label style={styles.label}>Code</label><input style={{...styles.input, width: "100%", boxSizing: 'border-box'}} placeholder="e.g. CS101" value={formData.code || ''} onChange={e => setFormData({...formData, code: e.target.value})} /></div>
-                <div style={styles.formGroup}><label style={styles.label}>Group</label><input style={{...styles.input, width: "100%", boxSizing: 'border-box'}} placeholder="e.g. A1" value={formData.group || ''} onChange={e => setFormData({...formData, group: e.target.value})} /></div>
+            <div style={{display: 'flex', flexDirection: 'column', gap: '20px'}}>
+                {/* Title Input with Suggestions */}
+                <div style={styles.formGroup}>
+                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
+                        <label style={{...styles.label, marginBottom: 0}}>Title <RequiredMark /></label>
+                        {existingCourses.length > 0 && (
+                            <button 
+                                onClick={() => setShowCoursePicker(!showCoursePicker)}
+                                style={{fontSize: '0.75rem', color: theme.accent, background: 'rgba(139, 92, 246, 0.1)', border: 'none', padding: '4px 8px', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px'}}
+                            >
+                                <BookOpen size={12} /> Select Course
+                            </button>
+                        )}
+                    </div>
+                    
+                    {showCoursePicker && (
+                         <div style={{marginBottom: '12px', background: 'rgba(0,0,0,0.3)', borderRadius: '12px', padding: '8px', maxHeight: '150px', overflowY: 'auto', border: '1px solid rgba(255,255,255,0.1)', animation: 'fadeIn 0.2s'}}>
+                             {existingCourses.map((c, i) => (
+                                 <div 
+                                    key={i} 
+                                    onClick={() => selectCourse(c)}
+                                    style={{padding: '8px', cursor: 'pointer', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}
+                                    className="hover:bg-white/5 transition-colors"
+                                 >
+                                     <span style={{fontSize: '0.9rem', fontWeight: 600, color: '#fff'}}>{c.title}</span>
+                                     <ChevronRight size={14} color={theme.textMuted} />
+                                 </div>
+                             ))}
+                         </div>
+                    )}
+
+                    <input 
+                        list="course-suggestions"
+                        style={{...styles.input, width: "100%", boxSizing: 'border-box', fontSize: '1.1rem', fontWeight: 600}} 
+                        placeholder="Event Title" 
+                        value={formData.title || ''} 
+                        onChange={handleTitleChange} 
+                    />
+                    <datalist id="course-suggestions">
+                        {existingCourses.map((c, i) => <option key={i} value={c.title} />)}
+                    </datalist>
+                </div>
+                
+                {/* Code & Group Grid */}
+                <div style={{display: "flex", flexWrap: "wrap", gap: "16px"}}>
+                    <div style={{flex: '1 1 140px'}}>
+                        <label style={styles.label}>Code</label>
+                        <input style={{...styles.input, width: "100%", boxSizing: 'border-box'}} placeholder="CS101" value={formData.code || ''} onChange={e => setFormData({...formData, code: e.target.value})} />
+                    </div>
+                    <div style={{flex: '1 1 140px'}}>
+                        <label style={styles.label}>Group</label>
+                        <input style={{...styles.input, width: "100%", boxSizing: 'border-box'}} placeholder="A1" value={formData.group || ''} onChange={e => setFormData({...formData, group: e.target.value})} />
+                    </div>
+                </div>
+
+                {/* 1. Type Selection (Moved to Top of Time section) */}
+                <div>
+                    <label style={{...styles.label, fontSize: '0.75rem'}}>Type <RequiredMark /></label>
+                    <select style={{...styles.select, padding: '12px'}} value={formData.type} onChange={e => setFormData({...formData, type: e.target.value as EventType})}>
+                        {Object.keys(eventColors).map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
+                    </select>
+                </div>
+
+                {/* 2. Date/Day Selection */}
+                <div>
+                     <label style={{...styles.label, fontSize: '0.75rem'}}>{formData.isRecurring ? 'Weekly Day' : 'Date'} <RequiredMark /></label>
+                     {formData.isRecurring ? (
+                         <div style={{position: 'relative'}}>
+                            <select style={{...styles.select, padding: '12px'}} value={formData.dayOfWeek} onChange={e => setFormData({...formData, dayOfWeek: e.target.value})}>
+                                {["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"].map(d => <option key={d} value={d}>{d}</option>)}
+                            </select>
+                            <div style={{position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none'}}>
+                                <Calendar size={16} color={theme.textMuted} />
+                            </div>
+                         </div>
+                     ) : (
+                         <input type="date" style={{...styles.input, width: "100%", boxSizing: 'border-box', padding: '12px'}} value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} />
+                     )}
+                </div>
+
+                {/* 3. Recurring Checkbox (Moved Below Date) */}
+                <div style={{background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '12px', border: theme.glassBorder}}>
+                   <label style={{...styles.label, marginBottom: 0, textTransform: 'none', display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', fontSize: '0.9rem', color: '#fff', width: '100%'}}>
+                     <div style={{position: 'relative', display: 'flex', alignItems: 'center'}}>
+                         <input type="checkbox" checked={formData.isRecurring} onChange={e => setFormData({...formData, isRecurring: e.target.checked})} style={{width: '20px', height: '20px', accentColor: theme.accent, cursor: 'pointer'}} /> 
+                     </div>
+                     <span>Repeat Weekly (Base Schedule)</span>
+                   </label>
+                </div>
+
+                {/* 4. Time Selection Section */}
+                <div style={{background: 'rgba(255,255,255,0.03)', borderRadius: '20px', padding: '20px', border: theme.glassBorder}}>
+                    <label style={{...styles.label, marginBottom: '12px', color: '#fff', fontSize: '0.75rem'}}>Time & Duration <RequiredMark /></label>
+                    
+                    <div style={{display: 'flex', gap: '8px', marginBottom: '16px', background: 'rgba(0,0,0,0.2)', padding: '4px', borderRadius: '12px'}}>
+                        <button 
+                            onClick={() => setTimeMode('time')} 
+                            style={{
+                                flex: 1,
+                                padding: '8px 10px', 
+                                borderRadius: '10px',
+                                border: 'none',
+                                background: timeMode === 'time' ? theme.accent : 'transparent', 
+                                color: timeMode === 'time' ? '#fff' : theme.textMuted,
+                                fontWeight: 700,
+                                fontSize: '0.8rem',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                            }}
+                        >
+                            Specific Time
+                        </button>
+                        <button 
+                            onClick={() => setTimeMode('slot')} 
+                            style={{
+                                flex: 1,
+                                padding: '8px 10px', 
+                                borderRadius: '10px',
+                                border: 'none',
+                                background: timeMode === 'slot' ? theme.accent : 'transparent', 
+                                color: timeMode === 'slot' ? '#fff' : theme.textMuted,
+                                fontWeight: 700,
+                                fontSize: '0.8rem',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                            }}
+                        >
+                            Select Slot
+                        </button>
+                    </div>
+
+                    {timeMode === 'time' ? (
+                        <div style={{display: "flex", flexWrap: "wrap", gap: "12px", animation: "fadeIn 0.2s"}}>
+                            <div style={{flex: '1 1 120px'}}>
+                                <label style={{...styles.label, fontSize: '0.7rem'}}>Starts At</label>
+                                <div style={{position: 'relative'}}>
+                                    <input type="time" style={{...styles.input, width: "100%", boxSizing: 'border-box', padding: '10px'}} value={formData.startTime} onChange={e => setFormData({...formData, startTime: e.target.value})} />
+                                </div>
+                            </div>
+                            <div style={{flex: '1 1 120px'}}>
+                                <label style={{...styles.label, fontSize: '0.7rem'}}>Duration (Min)</label>
+                                <input type="number" style={{...styles.input, width: "100%", boxSizing: 'border-box', padding: '10px'}} value={formData.durationMinutes} onChange={e => setFormData({...formData, durationMinutes: parseInt(e.target.value) || 0})} />
+                            </div>
+                        </div>
+                    ) : (
+                        <div style={{animation: "fadeIn 0.2s"}}>
+                            <label style={{...styles.label, fontSize: '0.7rem'}}>Available Slots</label>
+                            <select 
+                                style={{...styles.select, padding: '10px'}} 
+                                onChange={handleSlotChange}
+                                defaultValue=""
+                            >
+                                <option value="" disabled>Choose a time slot...</option>
+                                {periods.filter(p => !p.isBreak).map(p => (
+                                    <option key={p.id} value={p.id}>
+                                        {p.label} ({p.startTime} - {p.endTime})
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+                </div>
+                
+                {/* Location */}
+                <div>
+                    <label style={styles.label}>Location</label>
+                    <input style={{...styles.input, width: "100%", boxSizing: 'border-box'}} placeholder="e.g. Room 204" value={formData.location || ''} onChange={e => setFormData({...formData, location: e.target.value})} />
+                </div>
+
+                {/* Description */}
+                <div>
+                    <label style={styles.label}>Description</label>
+                    <textarea style={{...styles.input, width: "100%", boxSizing: 'border-box', minHeight: '100px', resize: 'none', lineHeight: '1.5'}} placeholder="Details about the event..." value={formData.description || ''} onChange={e => setFormData({...formData, description: e.target.value})} />
+                </div>
             </div>
-            <div style={styles.formGroup}><label style={styles.label}>Location</label><input style={{...styles.input, width: "100%", boxSizing: 'border-box'}} placeholder="e.g. M1.205" value={formData.location || ''} onChange={e => setFormData({...formData, location: e.target.value})} /></div>
-            <div style={styles.formGroup}><label style={styles.label}>Description</label><textarea style={{...styles.input, width: "100%", boxSizing: 'border-box', minHeight: '80px', resize: 'none'}} placeholder="Details about the event..." value={formData.description || ''} onChange={e => setFormData({...formData, description: e.target.value})} /></div>
-            <div style={styles.formGroup}>
-               <label style={{...styles.label, textTransform: 'none', display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '0.9rem'}}>
-                 <input type="checkbox" checked={formData.isRecurring} onChange={e => setFormData({...formData, isRecurring: e.target.checked})} style={{width: '16px', height: '16px'}} /> Repeat Weekly (Base Schedule)
-               </label>
-            </div>
-            <div style={{display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px"}}>
-              <div style={styles.formGroup}><label style={styles.label}>{formData.isRecurring ? 'Day' : 'Date'}</label>
-                {formData.isRecurring ? <select style={styles.select} value={formData.dayOfWeek} onChange={e => setFormData({...formData, dayOfWeek: e.target.value})}>{["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"].map(d => <option key={d} value={d}>{d}</option>)}</select> : <input type="date" style={{...styles.input, width: "100%", boxSizing: 'border-box'}} value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} />}
-              </div>
-              <div style={styles.formGroup}><label style={styles.label}>Type</label><select style={styles.select} value={formData.type} onChange={e => setFormData({...formData, type: e.target.value as EventType})}>{Object.keys(eventColors).map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}</select></div>
-            </div>
-            <div style={{display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px"}}>
-              <div style={styles.formGroup}><label style={styles.label}>Start Time</label><input type="time" style={{...styles.input, width: "100%", boxSizing: 'border-box'}} value={formData.startTime} onChange={e => setFormData({...formData, startTime: e.target.value})} /></div>
-              <div style={styles.formGroup}><label style={styles.label}>Duration (min)</label><input type="number" style={{...styles.input, width: "100%", boxSizing: 'border-box'}} value={formData.durationMinutes} onChange={e => setFormData({...formData, durationMinutes: parseInt(e.target.value) || 0})} /></div>
-            </div>
-            <button style={{...styles.button, width: "100%", justifyContent: "center", marginTop: "10px"}} onClick={() => onSave(formData)}>
+
+            <button 
+                style={{...styles.button, width: "100%", justifyContent: "center", marginTop: "32px", padding: "18px", fontSize: '1.1rem', boxShadow: '0 8px 25px rgba(139, 92, 246, 0.4)'}} 
+                onClick={() => onSave(formData)}
+            >
                 {formData.id ? "Update Event" : "Add to Schedule"}
             </button>
         </div>
+        <style>{`
+            @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+        `}</style>
     </div>
   );
 };

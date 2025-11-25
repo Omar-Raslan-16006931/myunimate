@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Bot, Send, CheckCircle2, AlertCircle } from 'lucide-react';
 import { theme, styles } from '../theme';
 import { getChatResponse } from '../services/geminiService';
-import { ScheduleEvent } from '../types';
+import { ScheduleEvent, PeriodDefinition } from '../types';
 
 interface AIChatProps {
   onAddEvent?: (event: Partial<ScheduleEvent>) => void;
+  periods: PeriodDefinition[];
 }
 
-const AIChat: React.FC<AIChatProps> = ({ onAddEvent }) => {
+const AIChat: React.FC<AIChatProps> = ({ onAddEvent, periods }) => {
   const [aiPrompt, setAiPrompt] = useState("");
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [aiResponse, setAiResponse] = useState<string | null>(null);
@@ -21,7 +22,7 @@ const AIChat: React.FC<AIChatProps> = ({ onAddEvent }) => {
     setAiResponse(null);
     setIsError(false);
     try {
-        const { text, eventData } = await getChatResponse([], aiPrompt);
+        const { text, eventData } = await getChatResponse([], aiPrompt, periods);
         setAiResponse(text);
         
         if (eventData && onAddEvent) {

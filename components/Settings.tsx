@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Plus, Trash2, CalendarDays, Palette, Layers, Pencil, Upload, ImageIcon, Loader2, RotateCcw, LogOut, ChevronDown, ChevronUp, Columns } from 'lucide-react';
+import { Plus, Trash2, CalendarDays, Palette, Layers, Pencil, Upload, ImageIcon, Loader2, LogOut, ChevronDown, ChevronUp, Columns, AlertTriangle } from 'lucide-react';
 import { ScheduleProfile, EventColorMap, EventType, ScheduleEvent, PeriodDefinition } from '../types';
 import { theme, styles } from '../theme';
 import ScheduleSettings from './ScheduleSettings';
@@ -19,7 +19,7 @@ interface SettingsProps {
   onAddBaseEventClick: () => void;
   onImageUpload: (file: File) => void;
   isAnalyzing: boolean;
-  onResetGrades?: () => void;
+  onResetApp: () => void;
   onSignOut: () => void;
   periods: PeriodDefinition[];
   setPeriods: (periods: PeriodDefinition[]) => void;
@@ -39,7 +39,7 @@ const Settings: React.FC<SettingsProps> = ({
   onAddBaseEventClick,
   onImageUpload,
   isAnalyzing,
-  onResetGrades,
+  onResetApp,
   onSignOut,
   periods,
   setPeriods
@@ -49,6 +49,7 @@ const Settings: React.FC<SettingsProps> = ({
   const [isProfilesExpanded, setIsProfilesExpanded] = useState(false);
   const [isColorsExpanded, setIsColorsExpanded] = useState(false);
   const [isBaseScheduleExpanded, setIsBaseScheduleExpanded] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleCreateProfile = () => {
@@ -259,32 +260,78 @@ const Settings: React.FC<SettingsProps> = ({
                     </div>
                 </div>
 
-                {onResetGrades && (
-                    <div style={styles.card} onClick={onResetGrades}>
-                        <div style={{display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer'}}>
-                            <div style={{background: 'rgba(239, 68, 68, 0.15)', padding: '10px', borderRadius: '50%'}}>
-                                <RotateCcw size={20} color={theme.danger} />
-                            </div>
-                            <div>
-                                <h3 style={{margin: 0, fontSize: '1rem', color: theme.text}}>Reset Grades</h3>
-                                <p style={{margin: 0, fontSize: '0.8rem', color: theme.textMuted}}>Clear all grade calculator data</p>
-                            </div>
+                <div 
+                    style={{
+                        ...styles.card, 
+                        cursor: 'pointer',
+                        border: `1px solid ${theme.danger}`,
+                        background: 'rgba(239, 68, 68, 0.1)'
+                    }} 
+                    onClick={() => setShowResetConfirm(true)}
+                >
+                    <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
+                        <div style={{background: 'rgba(239, 68, 68, 0.2)', padding: '10px', borderRadius: '50%'}}>
+                            <AlertTriangle size={20} color={theme.danger} />
+                        </div>
+                        <div>
+                            <h3 style={{margin: 0, fontSize: '1rem', color: theme.danger, fontWeight: 800}}>Factory Reset</h3>
+                            <p style={{margin: 0, fontSize: '0.8rem', color: 'rgba(255,255,255,0.7)'}}>Wipe all data & restore defaults</p>
                         </div>
                     </div>
-                )}
+                </div>
 
-                <div style={styles.card} onClick={onSignOut}>
-                    <div style={{display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer'}}>
-                        <div style={{background: 'rgba(239, 68, 68, 0.15)', padding: '10px', borderRadius: '50%'}}>
+                <div 
+                    style={{
+                        ...styles.card, 
+                        cursor: 'pointer',
+                        border: `1px solid ${theme.danger}`,
+                        background: 'rgba(239, 68, 68, 0.1)'
+                    }} 
+                    onClick={onSignOut}
+                >
+                    <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
+                        <div style={{background: 'rgba(239, 68, 68, 0.2)', padding: '10px', borderRadius: '50%'}}>
                             <LogOut size={20} color={theme.danger} />
                         </div>
                         <div>
-                            <h3 style={{margin: 0, fontSize: '1rem', color: theme.text}}>Log Out</h3>
-                            <p style={{margin: 0, fontSize: '0.8rem', color: theme.textMuted}}>Sign out of your account</p>
+                            <h3 style={{margin: 0, fontSize: '1rem', color: theme.danger, fontWeight: 800}}>Log Out</h3>
+                            <p style={{margin: 0, fontSize: '0.8rem', color: 'rgba(255,255,255,0.7)'}}>Sign out of your account</p>
                         </div>
                     </div>
                 </div>
           </div>
+          
+          {/* Reset Confirmation Modal */}
+          {showResetConfirm && (
+             <div style={styles.modalOverlay}>
+                 <div style={{...styles.modalContent, maxWidth: '320px', padding: '0', overflow: 'hidden'}} onClick={e => e.stopPropagation()}>
+                     <div style={{padding: '24px', textAlign: 'center'}}>
+                         <div style={{width: '60px', height: '60px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px'}}>
+                             <AlertTriangle size={32} color={theme.danger} />
+                         </div>
+                         <h3 style={{margin: '0 0 8px 0', fontSize: '1.2rem', fontWeight: 800}}>Factory Reset?</h3>
+                         <p style={{margin: 0, fontSize: '0.9rem', color: theme.textMuted, lineHeight: '1.5'}}>
+                             This will wipe <b>ALL</b> your data including schedules, grades, and gym history. This cannot be undone.
+                         </p>
+                     </div>
+                     <div style={{display: 'flex', borderTop: '1px solid rgba(255,255,255,0.1)'}}>
+                         <button 
+                             onClick={() => setShowResetConfirm(false)}
+                             style={{flex: 1, padding: '16px', background: 'transparent', border: 'none', color: theme.text, fontSize: '1rem', fontWeight: 600, cursor: 'pointer', borderRight: '1px solid rgba(255,255,255,0.1)'}}
+                         >
+                             Cancel
+                         </button>
+                         <button 
+                             onClick={() => { setShowResetConfirm(false); onResetApp(); }}
+                             style={{flex: 1, padding: '16px', background: 'rgba(239, 68, 68, 0.1)', border: 'none', color: theme.danger, fontSize: '1rem', fontWeight: 800, cursor: 'pointer'}}
+                         >
+                             Reset App
+                         </button>
+                     </div>
+                 </div>
+             </div>
+          )}
+
           <style>{`
             @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
           `}</style>

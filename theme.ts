@@ -240,7 +240,8 @@ export const styles: { [key: string]: React.CSSProperties } = {
     backgroundColor: "rgba(255,255,255,0.05)",
     color: "white",
     transition: "all 0.2s",
-    backdropFilter: "blur(10px)"
+    backdropFilter: "blur(10px)",
+    boxSizing: "border-box"
   },
   button: {
     padding: "12px 18px",
@@ -330,6 +331,7 @@ export const styles: { [key: string]: React.CSSProperties } = {
     fontSize: "0.95rem",
     outline: "none",
     appearance: "none",
+    boxSizing: "border-box"
   },
   dropZone: {
     border: "2px dashed rgba(255,255,255,0.15)",

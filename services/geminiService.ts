@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type, Schema, FunctionDeclaration } from "@google/genai";
-import { ScheduleEvent, EventType, Macros } from "../types";
+import { ScheduleEvent, EventType, Macros, PeriodDefinition } from "../types";
 
 const MODEL_NAME = 'gemini-2.5-flash';
 
@@ -122,9 +122,16 @@ export const analyzeFoodImage = async (base64Image: string): Promise<Macros & { 
 };
 
 // --- Magic Autofill (Schedule) ---
-export const parseNaturalLanguageEvent = async (input: string): Promise<Partial<ScheduleEvent> | null> => {
+export const parseNaturalLanguageEvent = async (input: string, periods: PeriodDefinition[] = []): Promise<Partial<ScheduleEvent> | null> => {
   if (!input) return null;
   const now = new Date();
+  
+  // Format period info for the model
+  const periodContext = periods.length > 0 
+    ? `\nAvailable Time Slots (use these start times if user says "1st slot", "period 2", etc):
+       ${periods.map(p => `- ${p.label}: Starts ${p.startTime}, Duration ${90} mins approx`).join('\n')}`
+    : "";
+
   const dateContext = `Today is ${now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}.`;
 
   try {
@@ -133,11 +140,16 @@ export const parseNaturalLanguageEvent = async (input: string): Promise<Partial<
       model: MODEL_NAME,
       contents: `Extract event details from this text: "${input}".
             ${dateContext}
+            ${periodContext}
             Return JSON only with this schema: { title: string, type: string (lecture/tutorial/lab/quiz/assignment/exam/study/other), date: string (YYYY-MM-DD), startTime: string (HH:MM), durationMinutes: number, location: string, description: string }.
-            Rules for dates:
-            - If user says "next Thursday" and today is Monday, calculate the date for the Thursday of the NEXT week (7+ days away).
-            - If user says "this Thursday" or just "Thursday", calculate for the upcoming Thursday of THIS week.
-            - Ensure YYYY-MM-DD format is accurate based on ${now.getFullYear()}.`,
+            
+            CRITICAL RULES:
+            1. DATE LOGIC: "Next [Day]" (e.g., "Next Thursday") ALWAYS means the VERY NEXT occurrence of that day, even if it is in the current week.
+               - Example: If today is Monday Nov 24, "Next Thursday" is Nov 27 (the closest upcoming Thursday).
+               - Do NOT skip a week unless the user says "week after next".
+            2. TIME SLOTS: If the user mentions a slot (e.g. "1st slot"), map it to the corresponding 'startTime' from the provided list.
+            3. DURATION: Default to 90 minutes if not specified.
+            4. Ensure YYYY-MM-DD format is accurate based on ${now.getFullYear()}.`,
       config: {
         responseMimeType: "application/json"
       },
@@ -226,7 +238,12 @@ export const parseScheduleImage = async (base64Data: string): Promise<any[]> => 
 };
 
 // --- Chat Assistant ---
-export const getChatResponse = async (history: {role: string, text: string}[], message: string, context?: string): Promise<{ text: string, eventData?: Partial<ScheduleEvent> }> => {
+export const getChatResponse = async (
+    history: {role: string, text: string}[], 
+    message: string, 
+    periods: PeriodDefinition[] = [],
+    context?: string
+): Promise<{ text: string, eventData?: Partial<ScheduleEvent> }> => {
     // Allow errors to propagate to the caller for proper UI handling
     try {
         const ai = getAiClient();
@@ -238,23 +255,25 @@ export const getChatResponse = async (history: {role: string, text: string}[], m
         const now = new Date();
         const dateContext = `
         Current Date: ${now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}.
-        Current Time: ${now.toLocaleTimeString('en-US', { hour12: false })}.
-        Date Calculation Rules:
-        - "Next Thursday" usually means the Thursday of the following week (7+ days away).
-        - "This Thursday" or just "Thursday" usually means the upcoming Thursday of the current week.
-        - Always double check the calculated date against the current date.
+        
+        CRITICAL INSTRUCTIONS:
+        1. DATES: "Next [Day]" (e.g. Next Thursday) means the closest upcoming Thursday, even if it's this week. Do not skip weeks unless explicitly told.
+        2. SLOTS: Use the grid below. If user says "1st slot", use start time ${periods[0]?.startTime || '08:30'}.
+        
+        SCHEDULE GRID:
+        ${periods.map(p => `- "${p.label}" (${p.startTime} - ${p.endTime})`).join('\n')}
         `;
 
         const chatSession = ai.chats.create({
         model: MODEL_NAME,
         config: {
-            systemInstruction: `You are a helpful assistant for a university student. 
+            systemInstruction: `You are a concise, helpful assistant for a university student. 
             ${dateContext}
             ${context || ""}
-            IMPORTANT BEHAVIOR RULES:
-            1. Be concise, direct, and simple. No cringe, no emojis, no overly enthusiastic language.
-            2. If the user asks to add or schedule an event (quiz, exam, class, etc.), YOU MUST use the 'addEvent' tool.
-            3. Do not ask for confirmation if the details are clear. Just use the tool.
+            Behavior:
+            - No cringe. No emojis. Be brief and direct.
+            - If user asks to add an event, call 'addEvent'.
+            - If user asks about "next Thursday", assume the closest upcoming Thursday.
             `,
             tools: [{ functionDeclarations: [addEventTool] }]
         },

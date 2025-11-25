@@ -49,20 +49,31 @@ export interface ExtractedScheduleItem {
     type: string;
 }
 
-export interface Assessment {
+// --- UNIVERSAL GRADE TYPES ---
+
+export interface GradeItem {
   id: string;
   name: string;
-  weight: number; // percentage 0-100
-  score: number;
-  total: number;
+  score: string; // String to handle empty state
+  total: string; // String to handle empty state
+  weight?: string; // Optional individual weight within category
+  active: boolean; // "What-if" toggle
+}
+
+export interface GradeCategory {
+  id: string;
+  name: string;
+  weight: string; // Percentage (0-100)
+  dropLowest: string; // Number of items to drop
+  items: GradeItem[];
 }
 
 export interface CourseGrade {
   id: string;
   title: string;
   code?: string;
-  assessments: Assessment[];
-  targetGrade?: number;
+  targetGrade: string;
+  categories: GradeCategory[];
 }
 
 export type ViewState = "dashboard" | "schedule" | "courses" | "materials" | "ai" | "settings" | "grades" | "gym";
