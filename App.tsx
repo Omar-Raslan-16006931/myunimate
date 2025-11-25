@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from './lib/supabase';
 import Auth from './components/Auth';
@@ -66,12 +67,14 @@ const CoursesView = ({
     events, 
     eventColors,
     onDeleteCourse,
-    onEditCourse
+    onEditCourse,
+    onAddCourse
 }: { 
     events: ScheduleEvent[], 
     eventColors: EventColorMap,
     onDeleteCourse: (name: string) => void,
-    onEditCourse: (oldName: string, info: { name: string, code: string, group: string, location: string }) => void
+    onEditCourse: (oldName: string, info: { name: string, code: string, group: string, location: string }) => void,
+    onAddCourse: () => void
 }) => {
     const uniqueCourses = Array.from(new Set(events.map(e => e.title))).sort();
     const [editingCourse, setEditingCourse] = useState<string | null>(null);
@@ -102,9 +105,12 @@ const CoursesView = ({
                     <h1 style={styles.title}>Classes</h1>
                     <p style={styles.subtitle}>Your academic courses</p>
                 </div>
-                <div style={{background: 'rgba(255,255,255,0.05)', padding: '10px', borderRadius: '50%'}}>
-                    <GraduationCap size={24} color="#fff" />
-                </div>
+                <button 
+                    onClick={onAddCourse}
+                    style={{...styles.button, borderRadius: '50%', width: '48px', height: '48px', padding: 0, justifyContent: 'center', boxShadow: '0 5px 15px rgba(0,0,0,0.3)'}}
+                >
+                    <Plus size={24} />
+                </button>
             </div>
             
             <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
@@ -1002,6 +1008,7 @@ const App: React.FC = () => {
                 eventColors={eventColors}
                 onDeleteCourse={handleDeleteCourseByName}
                 onEditCourse={handleEditCourseByName}
+                onAddCourse={() => { setEditingEvent({isRecurring: true, type: 'lecture'}); setIsEventModalOpen(true); }}
             />
         );
       case 'materials':
