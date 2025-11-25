@@ -303,8 +303,8 @@ export const GymDashboard: React.FC<GymDashboardProps> = ({ foodLogs, waterLogs,
                  <RadarIcon className="text-indigo-400" size={20} />
                  <h3 className="text-sm font-bold text-white">Muscle Breakdown</h3>
              </div>
-             <div className="h-48 w-full flex justify-center">
-                 <ResponsiveContainer width="100%" height="100%">
+             <div className="h-48 w-full">
+                 <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                      <RadarChart cx="50%" cy="50%" outerRadius="70%" data={muscleSplitData}>
                          <PolarGrid stroke="#334155" />
                          <PolarAngleAxis dataKey="subject" tick={{ fill: '#94a3b8', fontSize: 10 }} />
@@ -331,106 +331,9 @@ export const GymDashboard: React.FC<GymDashboardProps> = ({ foodLogs, waterLogs,
                     </div>
                 </div>
                 <div className="h-32 w-full">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                         <BarChart data={weeklyData}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
                             <XAxis dataKey="short" stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} />
                             <Tooltip content={<CustomTooltip />} cursor={{fill: 'transparent'}} />
-                            <Bar dataKey="workouts" fill="#6366f1" radius={[4, 4, 4, 4]} barSize={30} />
-                        </BarChart>
-                    </ResponsiveContainer>
-                </div>
-         </div>
-
-        {/* Analytics Section */}
-        <div className="bg-slate-800/50 backdrop-blur-md rounded-2xl p-5 border border-white/10">
-            <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-2">
-                    <Activity className="text-emerald-400" size={20} />
-                    <h3 className="font-bold text-white text-sm">Volume Progression</h3>
-                </div>
-                {uniqueExercises.length > 0 && (
-                    <div className="relative">
-                        <select 
-                            value={selectedExercise} 
-                            onChange={(e) => setSelectedExercise(e.target.value)}
-                            className="bg-slate-900 border border-slate-700 text-white text-xs rounded-lg py-1.5 pl-3 pr-8 appearance-none focus:ring-1 focus:ring-emerald-500 outline-none cursor-pointer max-w-[140px] truncate"
-                        >
-                            {uniqueExercises.map(name => (
-                                <option key={name} value={name}>{name}</option>
-                            ))}
-                        </select>
-                        <ChevronDown className="absolute right-2 top-2 text-slate-500 pointer-events-none" size={14} />
-                    </div>
-                )}
-            </div>
-            
-            <div className="h-40 w-full">
-                {exerciseProgressData.length > 1 ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={exerciseProgressData}>
-                            <defs>
-                                <linearGradient id="colorVolume" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/>
-                                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
-                            <XAxis 
-                                dataKey="date" 
-                                stroke="#64748b" 
-                                fontSize={10} 
-                                tickLine={false} 
-                                axisLine={false}
-                            />
-                            <Tooltip content={<CustomTooltip />} />
-                            <Area 
-                                type="monotone" 
-                                dataKey="volume" 
-                                stroke="#10b981" 
-                                fillOpacity={1} 
-                                fill="url(#colorVolume)" 
-                                strokeWidth={2}
-                            />
-                        </AreaChart>
-                    </ResponsiveContainer>
-                ) : (
-                    <div className="h-full flex flex-col items-center justify-center text-slate-600 bg-slate-900/30 rounded-xl border border-dashed border-slate-700">
-                        <BarChart3 size={24} className="mb-2 opacity-50" />
-                        <span className="text-xs">Log more data to see trends</span>
-                    </div>
-                )}
-            </div>
-        </div>
-      </div>
-
-      {/* Recent Activity List */}
-      <div>
-        <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">Recent Activity</h3>
-        <div className="space-y-3">
-          {recentWorkouts.length === 0 && (
-            <p className="text-slate-500 text-sm text-center py-6 bg-slate-800/50 rounded-xl border border-dashed border-slate-700">No workouts yet. Start one today!</p>
-          )}
-          {recentWorkouts.map((session) => (
-            <div key={session.id} className="bg-slate-800/50 p-4 rounded-xl border border-white/10 flex items-center gap-4">
-              <div className="h-10 w-10 bg-indigo-500/20 rounded-full flex items-center justify-center text-indigo-400 flex-shrink-0">
-                  <Trophy size={18} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h4 className="font-bold text-white truncate">{session.name}</h4>
-                <div className="flex gap-2 text-xs text-slate-500 mt-0.5">
-                    <span className="flex items-center gap-1"><Calendar size={10} /> {new Date(session.startTime).toLocaleDateString()}</span>
-                    <span>•</span>
-                    <span>{session.exercises.length} Exercises</span>
-                </div>
-              </div>
-              <div className="text-right">
-                  <span className="block text-xs font-bold text-slate-300">{Math.round((session.endTime - session.startTime)/60000)}m</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-};
+                            <Bar dataKey="workouts" fill="#6366f1" radius={[4, 4, 4, 4
