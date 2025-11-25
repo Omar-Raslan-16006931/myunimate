@@ -28,7 +28,7 @@ export const styles: { [key: string]: React.CSSProperties } = {
     overflow: "hidden",
     position: "relative"
   },
-  // Floating Navigation Pill
+  // Floating Navigation Pill - UNCHANGED
   bottomNav: {
     position: "absolute",
     bottom: "30px",
@@ -68,13 +68,14 @@ export const styles: { [key: string]: React.CSSProperties } = {
     boxShadow: "0 0 15px rgba(139, 92, 246, 0.3)",
     transform: "scale(1.05)"
   },
+  // Main Content - Scaled Down ~10%
   main: {
     flex: 1,
     overflow: "hidden",
     position: "relative",
     display: "flex",
     flexDirection: "column",
-    maxWidth: "600px", 
+    maxWidth: "540px", // Reduced from 600px
     width: "100%",
     margin: "0 auto",
     boxSizing: "border-box"
@@ -82,18 +83,18 @@ export const styles: { [key: string]: React.CSSProperties } = {
   scrollableContent: {
     flex: 1,
     overflowY: "auto",
-    padding: "20px 20px 120px 20px",
+    padding: "18px 18px 110px 18px", // Reduced from 20px 20px 120px 20px
     WebkitOverflowScrolling: "touch",
   },
   header: {
-    marginBottom: "24px",
+    marginBottom: "20px", // Reduced from 24px
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingTop: "10px"
+    paddingTop: "8px" // Reduced from 10px
   },
   title: {
-    fontSize: "2rem",
+    fontSize: "1.8rem", // Reduced from 2rem
     fontWeight: 800,
     color: "#fff",
     letterSpacing: "-0.8px",
@@ -102,52 +103,53 @@ export const styles: { [key: string]: React.CSSProperties } = {
   },
   subtitle: {
     color: theme.textMuted,
-    fontSize: "0.95rem",
-    marginTop: "4px",
+    fontSize: "0.85rem", // Reduced from 0.95rem
+    marginTop: "3px", // Reduced from 4px
     fontWeight: 500,
   },
   card: {
     backgroundColor: theme.cardBg,
     backdropFilter: "blur(40px)",
     WebkitBackdropFilter: "blur(40px)",
-    borderRadius: "24px",
-    padding: "20px",
+    borderRadius: "22px", // Reduced from 24px
+    padding: "18px", // Reduced from 20px
     border: theme.glassBorder,
     boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3)",
-    marginBottom: "16px",
+    marginBottom: "14px", // Reduced from 16px
     position: "relative",
     overflow: "hidden"
   },
-  // Schedule Grid
+  // Schedule Grid - Scaled Down
   scheduleWrapper: {
     display: "flex",
     flex: 1,
     overflow: "auto",
-    borderRadius: "24px",
+    borderRadius: "22px", // Reduced from 24px
     border: theme.glassBorder,
     backgroundColor: "rgba(20,20,30,0.4)", 
     WebkitOverflowScrolling: "touch",
     backdropFilter: "blur(30px)",
-    maxHeight: "calc(100vh - 200px)", 
+    maxHeight: "calc(100vh - 180px)", 
     position: 'relative'
   },
   scheduleContainer: {
     display: "grid",
-    gridTemplateColumns: "60px 1fr 15px 1fr 15px 1fr 15px 1fr 15px 1fr", 
+    // 60px -> 54px, 15px -> 13px
+    gridTemplateColumns: "54px 1fr 13px 1fr 13px 1fr 13px 1fr 13px 1fr", 
     backgroundColor: "transparent", 
-    minWidth: "800px",
+    minWidth: "720px", // Reduced from 800px
     position: "relative" 
   },
   scheduleHeaderCell: {
-    backgroundColor: "rgba(10, 10, 15, 0.95)", // Almost opaque
-    padding: "8px 4px",
+    backgroundColor: "rgba(10, 10, 15, 0.95)", 
+    padding: "7px 3px", // Reduced from 8px 4px
     textAlign: "center",
     color: theme.text,
     display: "flex",
     flexDirection: "column",
     justifyContent: "center",
     alignItems: "center",
-    minHeight: "50px",
+    minHeight: "45px", // Reduced from 50px
     borderBottom: "1px solid rgba(255,255,255,0.1)",
     borderRight: "1px solid rgba(255,255,255,0.08)",
     position: "sticky",
@@ -161,7 +163,7 @@ export const styles: { [key: string]: React.CSSProperties } = {
     transform: "rotate(180deg)",
     textAlign: "center",
     color: theme.textMuted,
-    fontSize: "0.6rem",
+    fontSize: "0.55rem", // Reduced from 0.6rem
     padding: "2px",
     display: "flex",
     alignItems: "center",
@@ -177,15 +179,15 @@ export const styles: { [key: string]: React.CSSProperties } = {
     zIndex: 20
   },
   scheduleDayCell: {
-    backgroundColor: "rgba(10, 10, 15, 0.95)", // Almost opaque
-    padding: "8px 4px",
+    backgroundColor: "rgba(10, 10, 15, 0.95)", 
+    padding: "7px 3px", // Reduced from 8px 4px
     display: "flex",
     flexDirection: "column",
     justifyContent: "center",
     alignItems: "center",
     fontWeight: 700,
     color: theme.text,
-    fontSize: "0.75rem",
+    fontSize: "0.7rem", // Reduced from 0.75rem
     borderBottom: "1px solid rgba(255,255,255,0.1)",
     borderRight: "1px solid rgba(255,255,255,0.1)",
     position: "sticky",
@@ -194,12 +196,12 @@ export const styles: { [key: string]: React.CSSProperties } = {
     backdropFilter: "blur(20px)"
   },
   scheduleContentCell: {
-    padding: "4px",
-    minHeight: "80px", 
+    padding: "3px", // Reduced from 4px
+    minHeight: "72px", // Reduced from 80px
     position: "relative",
     display: "flex",
     flexDirection: "column",
-    gap: "4px", 
+    gap: "3px", // Reduced from 4px
     overflow: "hidden",
     transition: "background-color 0.2s",
     borderBottom: "1px solid rgba(255,255,255,0.08)",
@@ -213,29 +215,29 @@ export const styles: { [key: string]: React.CSSProperties } = {
     borderLeft: "1px dashed rgba(255,255,255,0.08)",
   },
   eventCard: {
-    padding: "8px",
-    borderRadius: "10px",
-    fontSize: "0.75rem",
+    padding: "7px", // Reduced from 8px
+    borderRadius: "9px", // Reduced from 10px
+    fontSize: "0.7rem", // Reduced from 0.75rem
     cursor: "pointer",
     transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
     boxSizing: "border-box",
     display: "flex",
     flexDirection: "column",
-    justifyContent: "space-between", // Ensure spacing between header, body, footer
+    justifyContent: "space-between", 
     position: "relative",
     boxShadow: "0 4px 12px rgba(0,0,0,0.4)", 
-    minHeight: "60px", // Increased min-height
+    minHeight: "54px", // Reduced from 60px
     flex: 1,
     border: "none",
     zIndex: 5,
   },
-  // UI Elements
+  // UI Elements - Scaled Down
   input: {
     flex: 1,
-    padding: "14px",
-    borderRadius: "16px",
-    border: "1px solid rgba(255,255,255,0.1)",
-    fontSize: "0.95rem",
+    padding: "12px", // Reduced from 14px
+    borderRadius: "14px", // Reduced from 16px
+    border: "1px solid rgba(255, 255, 255, 0.1)",
+    fontSize: "0.85rem", // Reduced from 0.95rem
     outline: "none",
     backgroundColor: "rgba(255,255,255,0.05)",
     color: "white",
@@ -244,40 +246,40 @@ export const styles: { [key: string]: React.CSSProperties } = {
     boxSizing: "border-box"
   },
   button: {
-    padding: "12px 18px",
+    padding: "10px 16px", // Reduced from 12px 18px
     backgroundColor: theme.accent,
     color: "white",
     border: "none",
-    borderRadius: "18px", 
+    borderRadius: "16px", // Reduced from 18px
     fontWeight: 600,
     cursor: "pointer",
     transition: "all 0.2s",
     display: "flex",
     alignItems: "center",
-    gap: "8px",
-    fontSize: "0.9rem",
+    gap: "7px", // Reduced from 8px
+    fontSize: "0.85rem", // Reduced from 0.9rem
     boxShadow: theme.accentGlow,
   },
   secondaryButton: {
-    padding: "12px 18px",
+    padding: "10px 16px", // Reduced from 12px 18px
     backgroundColor: "rgba(255,255,255,0.1)",
     color: "#fff",
     border: "1px solid rgba(255,255,255,0.05)",
-    borderRadius: "18px",
+    borderRadius: "16px", // Reduced from 18px
     fontWeight: 600,
     cursor: "pointer",
-    fontSize: "0.9rem",
+    fontSize: "0.85rem", // Reduced from 0.9rem
     display: "flex",
     alignItems: "center",
-    gap: "8px",
+    gap: "7px", // Reduced from 8px
     backdropFilter: "blur(10px)"
   },
   fileItem: {
     display: "flex",
     alignItems: "center",
-    padding: "14px",
+    padding: "12px", // Reduced from 14px
     borderBottom: "1px solid rgba(255,255,255,0.05)",
-    gap: "14px",
+    gap: "12px", // Reduced from 14px
   },
   modalOverlay: {
     position: "fixed",
@@ -285,21 +287,21 @@ export const styles: { [key: string]: React.CSSProperties } = {
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "rgba(0,0,0,0.85)", // Darker overlay
+    backgroundColor: "rgba(0,0,0,0.85)", 
     backdropFilter: "blur(10px)",
     WebkitBackdropFilter: "blur(10px)",
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
     zIndex: 2000,
-    padding: "20px"
+    padding: "18px" // Reduced from 20px
   },
   modalContent: {
-    backgroundColor: "#130f1c", // Solid background to prevent transparency issues
-    borderRadius: "32px",
-    padding: "28px",
+    backgroundColor: "#130f1c", 
+    borderRadius: "28px", // Reduced from 32px
+    padding: "24px", // Reduced from 28px
     width: "100%",
-    maxWidth: "400px", 
+    maxWidth: "360px", // Reduced from 400px
     maxHeight: "80vh",
     overflowY: "auto",
     border: "1px solid rgba(255,255,255,0.1)",
@@ -310,12 +312,12 @@ export const styles: { [key: string]: React.CSSProperties } = {
     flexDirection: "column"
   },
   formGroup: {
-    marginBottom: "18px",
+    marginBottom: "16px", // Reduced from 18px
   },
   label: {
     display: "block",
-    marginBottom: "8px",
-    fontSize: "0.8rem",
+    marginBottom: "7px", // Reduced from 8px
+    fontSize: "0.75rem", // Reduced from 0.8rem
     fontWeight: 700,
     color: "rgba(255,255,255,0.7)",
     textTransform: "uppercase",
@@ -323,38 +325,38 @@ export const styles: { [key: string]: React.CSSProperties } = {
   },
   select: {
     width: "100%",
-    padding: "14px",
-    borderRadius: "16px",
+    padding: "12px", // Reduced from 14px
+    borderRadius: "14px", // Reduced from 16px
     border: "1px solid rgba(255,255,255,0.1)",
     backgroundColor: "rgba(255,255,255,0.05)",
     color: "white",
-    fontSize: "0.95rem",
+    fontSize: "0.85rem", // Reduced from 0.95rem
     outline: "none",
     appearance: "none",
     boxSizing: "border-box"
   },
   dropZone: {
     border: "2px dashed rgba(255,255,255,0.15)",
-    borderRadius: "24px",
-    padding: "30px",
+    borderRadius: "22px", // Reduced from 24px
+    padding: "26px", // Reduced from 30px
     textAlign: "center",
     cursor: "pointer",
     transition: "all 0.2s",
     backgroundColor: "rgba(255,255,255,0.02)",
   },
   dateBadge: {
-    fontSize: "0.65rem",
+    fontSize: "0.6rem", // Reduced from 0.65rem
     color: theme.textMuted,
-    marginTop: "4px",
+    marginTop: "3px", // Reduced from 4px
     fontWeight: 500
   },
   colorPickerContainer: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: '10px',
+    padding: "9px", // Reduced from 10px
     backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: '12px',
-    marginBottom: '8px',
+    borderRadius: "11px", // Reduced from 12px
+    marginBottom: "7px", // Reduced from 8px
   }
 };

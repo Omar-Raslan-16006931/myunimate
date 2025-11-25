@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from './lib/supabase';
 import Auth from './components/Auth';
@@ -15,6 +14,43 @@ import { INITIAL_EVENTS, INITIAL_FILES, INITIAL_PROFILES, INITIAL_COLORS, INITIA
 import { theme, styles } from './theme';
 import { GraduationCap, Folder, BookOpen, Trash2, FileText, File, Upload, Check, X, Brain, Calendar, Clock, MapPin, AlignLeft, Pencil, Send, Plus, ChevronDown, ChevronUp, Sparkles, Loader2, LogOut, RotateCcw, Calculator, ArrowRight, PieChart, AlertTriangle } from 'lucide-react';
 import { parseScheduleImage, getChatResponse } from './services/geminiService';
+
+// --- HELPER: Default Grade Structure ---
+const createDefaultCourseGrade = (title: string): CourseGrade => ({
+    id: Math.random().toString(36).slice(2, 9),
+    title: title,
+    targetGrade: '90',
+    categories: [
+        {
+            id: Math.random().toString(36).slice(2, 9),
+            name: 'Final Exam',
+            weight: '40',
+            dropLowest: '0',
+            items: [
+                { id: crypto.randomUUID(), name: 'Final', score: '', total: '100', active: true }
+            ]
+        },
+        {
+            id: Math.random().toString(36).slice(2, 9),
+            name: 'Midterm',
+            weight: '30',
+            dropLowest: '0',
+            items: [
+                { id: crypto.randomUUID(), name: 'Midterm', score: '', total: '100', active: true }
+            ]
+        },
+        {
+            id: Math.random().toString(36).slice(2, 9),
+            name: 'Quizzes',
+            weight: '30',
+            dropLowest: '0',
+            items: [
+                { id: crypto.randomUUID(), name: 'Quiz 1', score: '', total: '100', active: true },
+                { id: crypto.randomUUID(), name: 'Quiz 2', score: '', total: '100', active: true }
+            ]
+        }
+    ]
+});
 
 // --- Subcomponents for other views ---
 
@@ -359,27 +395,8 @@ const GradesView = ({ grades, setGrades }: { grades: CourseGrade[], setGrades: R
 
     const handleAddCourse = () => {
         if (!newCourseName.trim()) return;
-        const newGrade: CourseGrade = {
-            id: Math.random().toString(36).slice(2, 9),
-            title: newCourseName,
-            targetGrade: '90',
-            categories: [
-                {
-                    id: Math.random().toString(36).slice(2,9),
-                    name: 'Exams',
-                    weight: '50',
-                    dropLowest: '0',
-                    items: []
-                },
-                {
-                    id: Math.random().toString(36).slice(2,9),
-                    name: 'Assignments',
-                    weight: '50',
-                    dropLowest: '0',
-                    items: []
-                }
-            ]
-        };
+        // Use default structure
+        const newGrade = createDefaultCourseGrade(newCourseName);
         setGrades([...grades, newGrade]);
         setNewCourseName("");
     };
@@ -846,6 +863,15 @@ const App: React.FC = () => {
              description: eventData.description
            };
            setEvents(prev => [...prev, newEvent]);
+
+           // Sync with Grades: Add course if it doesn't exist AND it is a course type
+           const excludedTypes = ['quiz', 'assignment', 'exam', 'study', 'other'];
+           const isCourseEvent = !excludedTypes.includes(eventData.type || 'lecture');
+
+           if (isCourseEvent && !grades.find(g => g.title === eventData.title)) {
+               const newCourse = createDefaultCourseGrade(eventData.title || 'New Course');
+               setGrades(prev => [...prev, newCourse]);
+           }
        }
        setIsEventModalOpen(false);
        setEditingEvent(null);
@@ -859,6 +885,8 @@ const App: React.FC = () => {
   // --- NEW HANDLERS ---
   const handleDeleteCourseByName = (name: string) => {
       setEvents(prev => prev.filter(e => e.title !== name));
+      // Sync with Grades: Remove course
+      setGrades(prev => prev.filter(g => g.title !== name));
   };
 
   const handleEditCourseByName = (oldName: string, info: { name: string, code: string, group: string, location: string }) => {
@@ -876,6 +904,8 @@ const App: React.FC = () => {
           }
           return e;
       }));
+      // Sync with Grades: Rename course
+      setGrades(prev => prev.map(g => g.title === oldName ? { ...g, title: info.name } : g));
   };
 
   const handleAddProfile = (name: string) => {
@@ -939,6 +969,22 @@ const App: React.FC = () => {
     }));
 
     setEvents(prev => [...prev, ...newEvents]);
+    
+    // Sync with Grades: Add any new courses found in import
+    const newCourseTitles = new Set(newEvents.map(e => e.title));
+    const existingGradeTitles = new Set(grades.map(g => g.title));
+    
+    const coursesToAdd: CourseGrade[] = [];
+    newCourseTitles.forEach(title => {
+        if (!existingGradeTitles.has(title)) {
+            coursesToAdd.push(createDefaultCourseGrade(title));
+        }
+    });
+    
+    if (coursesToAdd.length > 0) {
+        setGrades(prev => [...prev, ...coursesToAdd]);
+    }
+
     setIsVerifyModalOpen(false);
     setExtractedEvents([]);
   };
