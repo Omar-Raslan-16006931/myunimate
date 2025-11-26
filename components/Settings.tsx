@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Plus, Trash2, CalendarDays, Palette, Layers, Pencil, Upload, ImageIcon, Loader2, LogOut, ChevronDown, ChevronUp, Columns, AlertTriangle } from 'lucide-react';
+import { Plus, Trash2, CalendarDays, Palette, Layers, Pencil, Upload, ImageIcon, Loader2, LogOut, ChevronDown, ChevronUp, Columns, AlertTriangle, User } from 'lucide-react';
 import { ScheduleProfile, EventColorMap, EventType, ScheduleEvent, PeriodDefinition } from '../types';
 import { theme, styles } from '../theme';
 import ScheduleSettings from './ScheduleSettings';
@@ -23,6 +23,7 @@ interface SettingsProps {
   onSignOut: () => void;
   periods: PeriodDefinition[];
   setPeriods: (periods: PeriodDefinition[]) => void;
+  accountInfo?: { email: string, username: string, id: string } | null;
 }
 
 const Settings: React.FC<SettingsProps> = ({
@@ -42,7 +43,8 @@ const Settings: React.FC<SettingsProps> = ({
   onResetApp,
   onSignOut,
   periods,
-  setPeriods
+  setPeriods,
+  accountInfo
 }) => {
   const [newProfileName, setNewProfileName] = useState('');
   const [isScheduleSettingsExpanded, setIsScheduleSettingsExpanded] = useState(false);
@@ -75,6 +77,32 @@ const Settings: React.FC<SettingsProps> = ({
           <p style={styles.subtitle}>Personalize your app</p>
           <div style={{display: "flex", flexDirection: "column", gap: "20px", marginTop: "24px"}}>
                 
+                {/* Account Info Card */}
+                {accountInfo && (
+                  <div style={styles.card}>
+                      <h3 style={{marginTop: 0, display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', fontSize: '1.1rem'}}>
+                          <div style={{background: 'rgba(59, 130, 246, 0.15)', padding: '8px', borderRadius: '50%', color: '#60a5fa', display: 'flex', alignItems: 'center', justifyItems: 'center'}}>
+                              <User size={20} />
+                          </div>
+                          <span>Account Info</span>
+                      </h3>
+                      <div style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
+                          <div style={{backgroundColor: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)'}}>
+                              <div style={styles.label}>Username</div>
+                              <div style={{color: '#fff', fontWeight: 600, fontSize: '0.9rem'}}>{accountInfo.username || 'N/A'}</div>
+                          </div>
+                          <div style={{backgroundColor: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)'}}>
+                              <div style={styles.label}>Email</div>
+                              <div style={{color: '#fff', fontWeight: 600, fontSize: '0.9rem'}}>{accountInfo.email}</div>
+                          </div>
+                          <div style={{backgroundColor: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)'}}>
+                              <div style={styles.label}>User ID</div>
+                              <div style={{color: theme.textMuted, fontFamily: 'monospace', fontSize: '0.8rem', wordBreak: 'break-all'}}>{accountInfo.id}</div>
+                          </div>
+                      </div>
+                  </div>
+                )}
+
                 {/* Profiles Accordion */}
                 <div style={styles.card}>
                     <div 

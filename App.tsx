@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from './lib/supabase';
 import Auth from './components/Auth';
 import Navigation from './components/Navigation';
@@ -9,10 +10,10 @@ import Settings from './components/Settings';
 import AddEventModal from './components/AddEventModal';
 import GymView from './components/GymView';
 import UniversalGradeCalculator from './components/UniversalGradeCalculator';
-import { ScheduleEvent, ViewState, MaterialFile, ScheduleProfile, EventColorMap, ExtractedScheduleItem, EventType, CourseGrade, GradeCategory, PeriodDefinition } from './types';
-import { INITIAL_EVENTS, INITIAL_FILES, INITIAL_PROFILES, INITIAL_COLORS, INITIAL_PERIODS } from './constants';
+import { ScheduleEvent, ViewState, MaterialFile, ScheduleProfile, EventColorMap, ExtractedScheduleItem, EventType, CourseGrade, GradeCategory, PeriodDefinition, FoodItem, WaterLog, WorkoutSession, WorkoutRoutine, ExerciseDefinition, GymSettings } from './types';
+import { INITIAL_EVENTS, INITIAL_FILES, INITIAL_PROFILES, INITIAL_COLORS, INITIAL_PERIODS, DEFAULT_GYM_SETTINGS, DEFAULT_ROUTINES } from './constants';
 import { theme, styles } from './theme';
-import { GraduationCap, Folder, BookOpen, Trash2, FileText, File, Upload, Check, X, Brain, Calendar, Clock, MapPin, AlignLeft, Pencil, Send, Plus, ChevronDown, ChevronUp, Sparkles, Loader2, LogOut, RotateCcw, Calculator, ArrowRight, PieChart, AlertTriangle } from 'lucide-react';
+import { GraduationCap, Folder, BookOpen, Trash2, FileText, File, Upload, Check, X, Brain, Calendar, Clock, MapPin, AlignLeft, Pencil, Send, Plus, ChevronDown, ChevronUp, Sparkles, Loader2, LogOut, RotateCcw, Calculator, ArrowRight, PieChart, AlertTriangle, Cloud, CloudOff } from 'lucide-react';
 import { parseScheduleImage, getChatResponse } from './services/geminiService';
 
 // --- HELPER: Default Grade Structure ---
@@ -764,6 +765,33 @@ const VerifyImportModal = ({ items, onConfirm, onCancel }: { items: ExtractedSch
 const App: React.FC = () => {
   const [session, setSession] = useState<any | null>(null);
   const [isTestMode, setIsTestMode] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<'synced' | 'saving' | 'error' | 'offline'>('synced');
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // --- STATE DEFINITIONS ---
+  const [currentView, setCurrentView] = useState<ViewState>('dashboard');
+  
+  // App Data
+  const [events, setEvents] = useState<ScheduleEvent[]>(INITIAL_EVENTS);
+  const [materials, setMaterials] = useState<MaterialFile[]>(INITIAL_FILES);
+  const [profiles, setProfiles] = useState<ScheduleProfile[]>(INITIAL_PROFILES);
+  const [activeProfileId, setActiveProfileId] = useState<string>("main");
+  const [grades, setGrades] = useState<CourseGrade[]>([]);
+  const [periods, setPeriods] = useState<PeriodDefinition[]>(INITIAL_PERIODS);
+  const [eventColors, setEventColors] = useState<EventColorMap>(INITIAL_COLORS);
+
+  // Gym Data (Lifted from GymView)
+  const [foodLogs, setFoodLogs] = useState<FoodItem[]>([]);
+  const [waterLogs, setWaterLogs] = useState<WaterLog[]>([]);
+  const [workoutSessions, setWorkoutSessions] = useState<WorkoutSession[]>([]);
+  const [routines, setRoutines] = useState<WorkoutRoutine[]>(DEFAULT_ROUTINES);
+  const [customExercises, setCustomExercises] = useState<ExerciseDefinition[]>([]);
+  const [gymSettings, setGymSettings] = useState<GymSettings>(DEFAULT_GYM_SETTINGS);
+
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const [accountInfo, setAccountInfo] = useState<{email: string, username: string, id: string} | null>(null);
+
+  // --- AUTH & LOAD LOGIC ---
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -779,48 +807,126 @@ const App: React.FC = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  // --- Persistent State Initialization ---
-  const [currentView, setCurrentView] = useState<ViewState>('dashboard');
-  
-  const [events, setEvents] = useState<ScheduleEvent[]>(() => {
-      const saved = localStorage.getItem('college-container-events');
-      return saved ? JSON.parse(saved) : INITIAL_EVENTS;
-  });
-  
-  const [materials, setMaterials] = useState<MaterialFile[]>(() => {
-      const saved = localStorage.getItem('college-container-materials');
-      return saved ? JSON.parse(saved) : INITIAL_FILES;
-  });
+  // Fetch data from Supabase Profiles Table on Login
+  useEffect(() => {
+    const loadUserData = async () => {
+        if (!session?.user?.id) return;
+        
+        setIsDataLoaded(false);
+        try {
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('data')
+                .eq('id', session.user.id)
+                .single();
+            
+            if (error && error.code !== 'PGRST116') { // PGRST116 is "not found", which is fine for new users
+                console.error("Error loading profile:", error);
+            }
 
-  const [profiles, setProfiles] = useState<ScheduleProfile[]>(() => {
-      const saved = localStorage.getItem('college-container-profiles');
-      return saved ? JSON.parse(saved) : INITIAL_PROFILES;
-  });
+            // Set basic account info from auth session
+            setAccountInfo({
+                email: session.user.email,
+                username: session.user.user_metadata?.username,
+                id: session.user.id
+            });
 
-  const [activeProfileId, setActiveProfileId] = useState<string>(() => {
-      const saved = localStorage.getItem('college-container-active-profile');
-      return saved ? JSON.parse(saved) : "main";
-  });
+            if (data?.data) {
+                const d = data.data;
+                // Hydrate State
+                if (d.events) setEvents(d.events);
+                if (d.materials) setMaterials(d.materials);
+                if (d.profiles) setProfiles(d.profiles);
+                if (d.activeProfileId) setActiveProfileId(d.activeProfileId);
+                if (d.grades) setGrades(d.grades);
+                if (d.periods) setPeriods(d.periods);
+                if (d.eventColors) setEventColors(d.eventColors);
+                
+                // Hydrate Gym
+                if (d.gym) {
+                    if (d.gym.foodLogs) setFoodLogs(d.gym.foodLogs);
+                    if (d.gym.waterLogs) setWaterLogs(d.gym.waterLogs);
+                    if (d.gym.workoutSessions) setWorkoutSessions(d.gym.workoutSessions);
+                    if (d.gym.routines) setRoutines(d.gym.routines);
+                    if (d.gym.customExercises) setCustomExercises(d.gym.customExercises);
+                    if (d.gym.settings) setGymSettings(d.gym.settings);
+                }
+            }
+        } catch (e) {
+            console.error("Load error", e);
+        } finally {
+            setIsDataLoaded(true);
+        }
+    };
 
-  const [grades, setGrades] = useState<CourseGrade[]>(() => {
-      const saved = localStorage.getItem('college-container-grades');
-      return saved ? JSON.parse(saved) : [];
-  });
+    if (session) {
+        loadUserData();
+    } else if (isTestMode) {
+        setIsDataLoaded(true); // Test mode uses defaults
+        setAccountInfo({email: 'test@example.com', username: 'TestUser', id: 'test-123'});
+    }
+  }, [session, isTestMode]);
 
-  const [periods, setPeriods] = useState<PeriodDefinition[]>(() => {
-      const saved = localStorage.getItem('college-container-periods');
-      return saved ? JSON.parse(saved) : INITIAL_PERIODS;
-  });
 
-  const [eventColors, setEventColors] = useState<EventColorMap>(INITIAL_COLORS);
-  
-  // --- Effects for Persistence ---
-  useEffect(() => localStorage.setItem('college-container-events', JSON.stringify(events)), [events]);
-  useEffect(() => localStorage.setItem('college-container-materials', JSON.stringify(materials)), [materials]);
-  useEffect(() => localStorage.setItem('college-container-profiles', JSON.stringify(profiles)), [profiles]);
-  useEffect(() => localStorage.setItem('college-container-active-profile', JSON.stringify(activeProfileId)), [activeProfileId]);
-  useEffect(() => localStorage.setItem('college-container-grades', JSON.stringify(grades)), [grades]);
-  useEffect(() => localStorage.setItem('college-container-periods', JSON.stringify(periods)), [periods]);
+  // --- AUTO SAVE LOGIC ---
+
+  const debouncedSave = useCallback(() => {
+      if (!session?.user?.id || !isDataLoaded) return;
+      
+      setSyncStatus('saving');
+      
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+
+      saveTimeoutRef.current = setTimeout(async () => {
+          const payload = {
+              events,
+              materials,
+              profiles,
+              activeProfileId,
+              grades,
+              periods,
+              eventColors,
+              gym: {
+                  foodLogs,
+                  waterLogs,
+                  workoutSessions,
+                  routines,
+                  customExercises,
+                  settings: gymSettings
+              },
+              // SYNC ACCOUNT INFO TO DB FOR VISIBILITY
+              account: {
+                id: session.user.id,
+                email: session.user.email,
+                username: session.user.user_metadata?.username
+              }
+          };
+
+          try {
+              const { error } = await supabase
+                  .from('profiles')
+                  .upsert({
+                      id: session.user.id,
+                      data: payload,
+                      updated_at: new Date().toISOString()
+                  });
+
+              if (error) throw error;
+              setSyncStatus('synced');
+          } catch (e) {
+              console.error("Save error:", e);
+              setSyncStatus('error');
+          }
+      }, 2000); // Save after 2 seconds of inactivity
+  }, [events, materials, profiles, activeProfileId, grades, periods, eventColors, foodLogs, waterLogs, workoutSessions, routines, customExercises, gymSettings, session, isDataLoaded]);
+
+  // Trigger save whenever relevant state changes
+  useEffect(() => {
+      debouncedSave();
+  }, [debouncedSave]);
+
+
+  // --- UI STATE & HANDLERS ---
 
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<ScheduleEvent | null>(null);
@@ -882,7 +988,6 @@ const App: React.FC = () => {
       setEvents(prev => prev.filter(e => e.id !== id));
   };
 
-  // --- NEW HANDLERS ---
   const handleDeleteCourseByName = (name: string) => {
       setEvents(prev => prev.filter(e => e.title !== name));
       // Sync with Grades: Remove course
@@ -897,8 +1002,6 @@ const App: React.FC = () => {
                   title: info.name,
                   code: info.code,
                   group: info.group,
-                  // Only update location if it matched previous default or if user wants to force update?
-                  // For simplicity in this app, we update the location if it was previously set to something, or just update it.
                   location: info.location
               };
           }
@@ -998,7 +1101,8 @@ const App: React.FC = () => {
   };
 
   const handleResetApp = () => {
-    localStorage.clear();
+    // Reset local state to defaults. 
+    // This will trigger debouncedSave, which will wipe the DB profile as well.
     setEvents(INITIAL_EVENTS);
     setMaterials(INITIAL_FILES);
     setProfiles(INITIAL_PROFILES);
@@ -1006,9 +1110,38 @@ const App: React.FC = () => {
     setGrades([]);
     setPeriods(INITIAL_PERIODS);
     setEventColors(INITIAL_COLORS);
-    // Soft reset - just reset state and navigate home, do NOT reload the page as it causes crashes
+    // Gym Resets
+    setFoodLogs([]);
+    setWaterLogs([]);
+    setWorkoutSessions([]);
+    setRoutines(DEFAULT_ROUTINES);
+    setCustomExercises([]);
+    setGymSettings(DEFAULT_GYM_SETTINGS);
+
     setCurrentView('dashboard');
   };
+
+  // Gym Helpers to update state from subcomponent
+  const addFoodLog = (item: FoodItem) => setFoodLogs(prev => [...prev, item]);
+  const updateFoodLog = (updatedItem: FoodItem) => setFoodLogs(prev => prev.map(item => item.id === updatedItem.id ? updatedItem : item));
+  const deleteFoodLog = (id: string) => setFoodLogs(prev => prev.filter(item => item.id !== id));
+  const addWaterLog = (amount: number) => setWaterLogs(prev => [...prev, { id: Date.now().toString(), amount, timestamp: Date.now() }]);
+  const addWorkoutSession = (session: WorkoutSession) => {
+    setWorkoutSessions(prev => [session, ...prev]); 
+    if (session.routineId) {
+        setRoutines(prev => prev.map(r => r.id === session.routineId ? { ...r, lastPerformed: Date.now() } : r));
+    }
+  };
+  const saveRoutine = (routine: WorkoutRoutine) => {
+      setRoutines(prev => {
+          const exists = prev.find(r => r.id === routine.id);
+          if (exists) return prev.map(r => r.id === routine.id ? routine : r);
+          return [...prev, routine];
+      });
+  };
+  const deleteRoutine = (id: string) => setRoutines(prev => prev.filter(r => r.id !== id));
+  const addCustomExercise = (ex: ExerciseDefinition) => setCustomExercises(prev => [...prev, ex]);
+  const updateSettings = (newSettings: GymSettings) => setGymSettings(newSettings);
 
   // Calculate unique existing courses for auto-complete
   const existingCourses = Array.from(new Set(events.map(e => e.title)))
@@ -1046,7 +1179,28 @@ const App: React.FC = () => {
       case 'grades':
         return <GradesView grades={grades} setGrades={setGrades} />;
       case 'gym':
-        return <GymView onBack={() => setCurrentView('dashboard')} />;
+        return (
+            <GymView 
+                onBack={() => setCurrentView('dashboard')} 
+                // Props
+                foodLogs={foodLogs}
+                waterLogs={waterLogs}
+                workoutSessions={workoutSessions}
+                routines={routines}
+                customExercises={customExercises}
+                settings={gymSettings}
+                // Handlers
+                addFoodLog={addFoodLog}
+                updateFoodLog={updateFoodLog}
+                deleteFoodLog={deleteFoodLog}
+                addWaterLog={addWaterLog}
+                addWorkoutSession={addWorkoutSession}
+                saveRoutine={saveRoutine}
+                deleteRoutine={deleteRoutine}
+                addCustomExercise={addCustomExercise}
+                updateSettings={updateSettings}
+            />
+        );
       case 'courses':
         return (
             <CoursesView 
@@ -1081,6 +1235,7 @@ const App: React.FC = () => {
              onSignOut={handleSignOut}
              periods={periods}
              setPeriods={setPeriods}
+             accountInfo={accountInfo}
           />
         );
       default:
@@ -1092,14 +1247,34 @@ const App: React.FC = () => {
     return <Auth onEnterTestMode={() => setIsTestMode(true)} />;
   }
 
+  if (session && !isDataLoaded) {
+      return (
+          <div style={{...styles.container, alignItems: 'center', justifyContent: 'center'}}>
+              <Loader2 className="animate-spin text-white" size={48} />
+              <p style={{marginTop: '20px', color: 'rgba(255,255,255,0.7)'}}>Syncing your world...</p>
+          </div>
+      );
+  }
+
   return (
     <div style={styles.container}>
+      {/* Cloud Sync Status Indicator */}
+      <div style={{position: 'absolute', top: '10px', left: '10px', zIndex: 50}}>
+          {syncStatus === 'saving' && <Cloud className="text-white/50 animate-pulse" size={16} />}
+          {syncStatus === 'synced' && <Cloud className="text-emerald-500/50" size={16} />}
+          {syncStatus === 'error' && <CloudOff className="text-red-500" size={16} />}
+      </div>
+
       <main style={styles.main}>
-        {renderContent()}</main>
+        {renderContent()}
+      </main>
+      
       {currentView !== 'gym' && <Navigation currentView={currentView} onNavigate={setCurrentView} />}
+      
       {isEventModalOpen && <AddEventModal isOpen={isEventModalOpen} onClose={() => setIsEventModalOpen(false)} onSave={handleAddEvent} eventColors={eventColors} initialData={editingEvent} periods={periods} existingCourses={existingCourses} />}
       {selectedTask && <TaskDetailsModal event={selectedTask} onClose={() => setSelectedTask(null)} onEdit={(task) => { setEditingEvent(task); setIsEventModalOpen(true); setSelectedTask(null); }} onDelete={handleDeleteEvent} />}
       {isVerifyModalOpen && <VerifyImportModal items={extractedEvents} onConfirm={handleConfirmImport} onCancel={() => setIsVerifyModalOpen(false)} />}
+      
       <style>{`@keyframes scaleIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } } @keyframes spin { to { transform: rotate(360deg); } } ::-webkit-scrollbar { width: 0px; background: transparent; }`}</style>
     </div>
   );
