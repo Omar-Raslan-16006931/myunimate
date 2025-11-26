@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
-import { Plus, Trash2, CalendarDays, Palette, Layers, Pencil, Upload, ImageIcon, Loader2, LogOut, ChevronDown, ChevronUp, Columns, AlertTriangle, User, GraduationCap, Calendar, Building, Users } from 'lucide-react';
-import { ScheduleProfile, EventColorMap, EventType, ScheduleEvent, PeriodDefinition } from '../types';
+import { Plus, Trash2, CalendarDays, Palette, Layers, Pencil, Upload, ImageIcon, Loader2, LogOut, ChevronDown, ChevronUp, Columns, AlertTriangle, User, GraduationCap, Calendar, Building, Users, Moon, Sun } from 'lucide-react';
+import { ScheduleProfile, EventColorMap, EventType, ScheduleEvent, PeriodDefinition, ThemeMode } from '../types';
 import { theme, styles } from '../theme';
 import ScheduleSettings from './ScheduleSettings';
 
@@ -24,6 +24,8 @@ interface SettingsProps {
   periods: PeriodDefinition[];
   setPeriods: (periods: PeriodDefinition[]) => void;
   accountInfo?: { email: string, username: string, id: string, gender?: string, major?: string, year?: string, college?: string } | null;
+  themeMode: ThemeMode;
+  setThemeMode: (mode: ThemeMode) => void;
 }
 
 const Settings: React.FC<SettingsProps> = ({
@@ -44,7 +46,9 @@ const Settings: React.FC<SettingsProps> = ({
   onSignOut,
   periods,
   setPeriods,
-  accountInfo
+  accountInfo,
+  themeMode,
+  setThemeMode
 }) => {
   const [newProfileName, setNewProfileName] = useState('');
   const [isScheduleSettingsExpanded, setIsScheduleSettingsExpanded] = useState(false);
@@ -87,28 +91,28 @@ const Settings: React.FC<SettingsProps> = ({
                           <span>Account Info</span>
                       </h3>
                       <div style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
-                          <div style={{backgroundColor: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)'}}>
+                          <div style={{backgroundColor: 'var(--input-bg)', padding: '12px', borderRadius: '12px', border: '1px solid var(--glass-border)'}}>
                               <div style={styles.label}>Username</div>
-                              <div style={{color: '#fff', fontWeight: 600, fontSize: '0.9rem'}}>{accountInfo.username || 'N/A'}</div>
+                              <div style={{color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.9rem'}}>{accountInfo.username || 'N/A'}</div>
                           </div>
-                          <div style={{backgroundColor: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)'}}>
+                          <div style={{backgroundColor: 'var(--input-bg)', padding: '12px', borderRadius: '12px', border: '1px solid var(--glass-border)'}}>
                               <div style={styles.label}>Email</div>
-                              <div style={{color: '#fff', fontWeight: 600, fontSize: '0.9rem'}}>{accountInfo.email}</div>
+                              <div style={{color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.9rem'}}>{accountInfo.email}</div>
                           </div>
                           
                           {/* Optional Fields Display */}
                           {(accountInfo.major || accountInfo.college) && (
                               <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px'}}>
                                   {accountInfo.major && (
-                                    <div style={{backgroundColor: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)'}}>
+                                    <div style={{backgroundColor: 'var(--input-bg)', padding: '12px', borderRadius: '12px', border: '1px solid var(--glass-border)'}}>
                                         <div style={{...styles.label, display: 'flex', alignItems: 'center', gap: '4px'}}><GraduationCap size={12}/> Major</div>
-                                        <div style={{color: '#fff', fontWeight: 600, fontSize: '0.85rem'}}>{accountInfo.major}</div>
+                                        <div style={{color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.85rem'}}>{accountInfo.major}</div>
                                     </div>
                                   )}
                                   {accountInfo.year && (
-                                    <div style={{backgroundColor: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)'}}>
+                                    <div style={{backgroundColor: 'var(--input-bg)', padding: '12px', borderRadius: '12px', border: '1px solid var(--glass-border)'}}>
                                         <div style={{...styles.label, display: 'flex', alignItems: 'center', gap: '4px'}}><Calendar size={12}/> Year</div>
-                                        <div style={{color: '#fff', fontWeight: 600, fontSize: '0.85rem', textTransform: 'capitalize'}}>{accountInfo.year}</div>
+                                        <div style={{color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.85rem', textTransform: 'capitalize'}}>{accountInfo.year}</div>
                                     </div>
                                   )}
                               </div>
@@ -117,27 +121,74 @@ const Settings: React.FC<SettingsProps> = ({
                           {(accountInfo.college || accountInfo.gender) && (
                               <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px'}}>
                                   {accountInfo.college && (
-                                    <div style={{backgroundColor: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)'}}>
+                                    <div style={{backgroundColor: 'var(--input-bg)', padding: '12px', borderRadius: '12px', border: '1px solid var(--glass-border)'}}>
                                         <div style={{...styles.label, display: 'flex', alignItems: 'center', gap: '4px'}}><Building size={12}/> College</div>
-                                        <div style={{color: '#fff', fontWeight: 600, fontSize: '0.85rem'}}>{accountInfo.college}</div>
+                                        <div style={{color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.85rem'}}>{accountInfo.college}</div>
                                     </div>
                                   )}
                                   {accountInfo.gender && (
-                                    <div style={{backgroundColor: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)'}}>
+                                    <div style={{backgroundColor: 'var(--input-bg)', padding: '12px', borderRadius: '12px', border: '1px solid var(--glass-border)'}}>
                                         <div style={{...styles.label, display: 'flex', alignItems: 'center', gap: '4px'}}><Users size={12}/> Gender</div>
-                                        <div style={{color: '#fff', fontWeight: 600, fontSize: '0.85rem', textTransform: 'capitalize'}}>{accountInfo.gender}</div>
+                                        <div style={{color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.85rem', textTransform: 'capitalize'}}>{accountInfo.gender}</div>
                                     </div>
                                   )}
                               </div>
                           )}
 
-                          <div style={{backgroundColor: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)'}}>
+                          <div style={{backgroundColor: 'var(--input-bg)', padding: '12px', borderRadius: '12px', border: '1px solid var(--glass-border)'}}>
                               <div style={styles.label}>User ID</div>
                               <div style={{color: theme.textMuted, fontFamily: 'monospace', fontSize: '0.8rem', wordBreak: 'break-all'}}>{accountInfo.id}</div>
                           </div>
                       </div>
                   </div>
                 )}
+
+                {/* Appearance Card */}
+                <div style={styles.card}>
+                     <h3 style={{marginTop: 0, display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', fontSize: '1.1rem'}}>
+                          <div style={{background: 'rgba(255, 255, 255, 0.1)', padding: '8px', borderRadius: '50%', color: theme.text, display: 'flex', alignItems: 'center', justifyItems: 'center'}}>
+                              {themeMode === 'dark' ? <Moon size={20} /> : <Sun size={20} />}
+                          </div>
+                          <span>Appearance</span>
+                      </h3>
+                      <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
+                          <span style={{fontSize: '0.9rem', color: theme.textMuted}}>App Theme</span>
+                          <div style={{display: 'flex', gap: '4px', background: 'var(--input-bg)', padding: '4px', borderRadius: '12px', border: '1px solid var(--glass-border)'}}>
+                              <button 
+                                onClick={() => setThemeMode('light')}
+                                style={{
+                                    padding: '6px 12px',
+                                    borderRadius: '8px',
+                                    border: 'none',
+                                    background: themeMode === 'light' ? theme.accent : 'transparent',
+                                    color: themeMode === 'light' ? '#fff' : theme.textMuted,
+                                    fontSize: '0.8rem',
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    display: 'flex', alignItems: 'center', gap: '4px'
+                                }}
+                              >
+                                  <Sun size={14} /> Light
+                              </button>
+                              <button 
+                                onClick={() => setThemeMode('dark')}
+                                style={{
+                                    padding: '6px 12px',
+                                    borderRadius: '8px',
+                                    border: 'none',
+                                    background: themeMode === 'dark' ? theme.accent : 'transparent',
+                                    color: themeMode === 'dark' ? '#fff' : theme.textMuted,
+                                    fontSize: '0.8rem',
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    display: 'flex', alignItems: 'center', gap: '4px'
+                                }}
+                              >
+                                  <Moon size={14} /> Dark
+                              </button>
+                          </div>
+                      </div>
+                </div>
 
                 {/* Profiles Accordion */}
                 <div style={styles.card}>
@@ -269,9 +320,9 @@ const Settings: React.FC<SettingsProps> = ({
                                             <div style={{fontSize: '0.8rem', fontWeight: 700, color: theme.textMuted, marginBottom: '8px', textTransform: 'uppercase'}}>{day}</div>
                                             <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
                                                 {dayEvents.map(e => (
-                                                    <div key={e.id} style={{backgroundColor: 'rgba(255,255,255,0.03)', padding: '10px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                                                    <div key={e.id} style={{backgroundColor: 'var(--input-bg)', padding: '10px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
                                                         <div>
-                                                            <div style={{fontWeight: 600, fontSize: '0.9rem'}}>{e.title}</div>
+                                                            <div style={{fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)'}}>{e.title}</div>
                                                             <div style={{fontSize: '0.75rem', color: theme.textMuted}}>{to12h(e.startTime)} • {e.type}</div>
                                                         </div>
                                                         <div style={{display: 'flex', gap: '8px'}}>
@@ -339,7 +390,7 @@ const Settings: React.FC<SettingsProps> = ({
                         </div>
                         <div>
                             <h3 style={{margin: 0, fontSize: '1rem', color: theme.danger, fontWeight: 800}}>Factory Reset</h3>
-                            <p style={{margin: 0, fontSize: '0.8rem', color: 'rgba(255,255,255,0.7)'}}>Wipe all data & restore defaults</p>
+                            <p style={{margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)'}}>Wipe all data & restore defaults</p>
                         </div>
                     </div>
                 </div>
@@ -359,7 +410,7 @@ const Settings: React.FC<SettingsProps> = ({
                         </div>
                         <div>
                             <h3 style={{margin: 0, fontSize: '1rem', color: theme.danger, fontWeight: 800}}>Log Out</h3>
-                            <p style={{margin: 0, fontSize: '0.8rem', color: 'rgba(255,255,255,0.7)'}}>Sign out of your account</p>
+                            <p style={{margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)'}}>Sign out of your account</p>
                         </div>
                     </div>
                 </div>

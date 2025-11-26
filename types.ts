@@ -20,11 +20,15 @@ export interface ScheduleEvent {
 export interface MaterialFile {
   id: string;
   name: string;
-  type: "pdf" | "folder" | "image" | "other";
+  type: "pdf" | "folder" | "image" | "google-doc" | "google-sheet" | "google-slide" | "other";
   size?: string;
   dateAdded: string;
   parentId?: string;
   content?: string; 
+  source?: "local" | "drive";
+  webViewLink?: string;
+  iconLink?: string;
+  mimeType?: string;
 }
 
 export interface ScheduleProfile {
@@ -188,3 +192,5 @@ export enum GymViewType {
   NUTRITION = 'NUTRITION',
   SETTINGS = 'SETTINGS'
 }
+
+export type ThemeMode = 'dark' | 'light';

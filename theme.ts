@@ -3,13 +3,13 @@ import React from "react";
 // --- iOS 26 Liquid Glass Theme - Visual Design System ---
 
 export const theme = {
-  bgGradient: "radial-gradient(circle at 50% -20%, #1e0a45 0%, #000000 60%, #000000 100%)", // Deep Void with Violet undertone
-  cardBg: "rgba(30, 30, 40, 0.6)", // Higher opacity for readability
-  cardBorder: "1px solid rgba(255, 255, 255, 0.1)",
-  glassBorder: "1px solid rgba(255, 255, 255, 0.1)",
-  text: "#FFFFFF",
-  textMuted: "rgba(255, 255, 255, 0.6)", 
-  accent: "#8b5cf6", // Violet Accent
+  bgGradient: "var(--bg-gradient)",
+  cardBg: "var(--card-bg)",
+  cardBorder: "var(--card-border)",
+  glassBorder: "var(--glass-border)",
+  text: "var(--text-primary)",
+  textMuted: "var(--text-muted)", 
+  accent: "#8b5cf6", // Keeping Hex for JS logic usage, mapped to CSS var visual
   accentGlow: "0 0 25px rgba(139, 92, 246, 0.2)",
   success: "#34d399",
   danger: "#f87171",
@@ -22,11 +22,11 @@ export const styles: { [key: string]: React.CSSProperties } = {
     flexDirection: "column",
     height: "100vh",
     fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-    background: "#000",
-    backgroundImage: theme.bgGradient,
-    color: theme.text,
+    background: "var(--bg-gradient)", // Use var
+    color: "var(--text-primary)", // Use var
     overflow: "hidden",
-    position: "relative"
+    position: "relative",
+    transition: "background 0.5s ease"
   },
   // Floating Navigation Pill - Updated to Fixed Position
   bottomNav: {
@@ -35,12 +35,12 @@ export const styles: { [key: string]: React.CSSProperties } = {
     left: "50%",
     transform: "translateX(-50%)",
     height: "65px",
-    background: "linear-gradient(135deg, rgba(30, 10, 60, 0.9), rgba(50, 20, 90, 0.9))", // More vibrant gradient
+    background: "var(--nav-bg)", // Use var
     backdropFilter: "blur(20px)", 
     WebkitBackdropFilter: "blur(20px)",
     borderRadius: "35px",
-    border: "1px solid rgba(139, 92, 246, 0.3)", 
-    boxShadow: "0 20px 40px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1)",
+    border: "var(--glass-border)", // Use var
+    boxShadow: "0 20px 40px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.1)",
     display: "flex",
     justifyContent: "space-evenly",
     alignItems: "center",
@@ -56,15 +56,15 @@ export const styles: { [key: string]: React.CSSProperties } = {
     justifyContent: "center",
     cursor: "pointer",
     transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-    color: "rgba(255, 255, 255, 0.5)",
+    color: "var(--text-muted)", // Use var
     width: "45px",
     height: "45px",
     borderRadius: "50%",
     position: "relative"
   },
   activeNavItem: {
-    color: "#fff",
-    backgroundColor: "rgba(139, 92, 246, 0.2)",
+    color: "var(--text-primary)", // Use var
+    backgroundColor: "var(--nav-active-bg)", // Use var
     boxShadow: "0 0 15px rgba(139, 92, 246, 0.3)",
     transform: "scale(1.05)"
   },
@@ -75,7 +75,7 @@ export const styles: { [key: string]: React.CSSProperties } = {
     position: "relative",
     display: "flex",
     flexDirection: "column",
-    maxWidth: "540px", // Reduced from 600px
+    maxWidth: "540px", 
     width: "100%",
     margin: "0 auto",
     boxSizing: "border-box"
@@ -83,50 +83,51 @@ export const styles: { [key: string]: React.CSSProperties } = {
   scrollableContent: {
     flex: 1,
     overflowY: "auto",
-    padding: "18px 18px 110px 18px", // Reduced from 20px 20px 120px 20px
+    padding: "18px 18px 110px 18px", 
     WebkitOverflowScrolling: "touch",
   },
   header: {
-    marginBottom: "20px", // Reduced from 24px
+    marginBottom: "20px",
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingTop: "8px" // Reduced from 10px
+    paddingTop: "8px" 
   },
   title: {
-    fontSize: "1.8rem", // Reduced from 2rem
+    fontSize: "1.8rem",
     fontWeight: 800,
-    color: "#fff",
+    color: "var(--text-primary)", // Use var
     letterSpacing: "-0.8px",
     margin: 0,
-    textShadow: "0 2px 10px rgba(0,0,0,0.3)"
+    textShadow: "0 2px 10px rgba(0,0,0,0.1)"
   },
   subtitle: {
-    color: theme.textMuted,
-    fontSize: "0.85rem", // Reduced from 0.95rem
-    marginTop: "3px", // Reduced from 4px
+    color: "var(--text-muted)", // Use var
+    fontSize: "0.85rem",
+    marginTop: "3px",
     fontWeight: 500,
   },
   card: {
-    backgroundColor: theme.cardBg,
+    backgroundColor: "var(--card-bg)", // Use var
     backdropFilter: "blur(40px)",
     WebkitBackdropFilter: "blur(40px)",
-    borderRadius: "22px", // Reduced from 24px
-    padding: "18px", // Reduced from 20px
-    border: theme.glassBorder,
-    boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3)",
-    marginBottom: "14px", // Reduced from 16px
+    borderRadius: "22px",
+    padding: "18px",
+    border: "var(--card-border)", // Use var
+    boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
+    marginBottom: "14px",
     position: "relative",
-    overflow: "hidden"
+    overflow: "hidden",
+    color: "var(--text-primary)"
   },
   // Schedule Grid - Scaled Down
   scheduleWrapper: {
     display: "flex",
     flex: 1,
     overflow: "auto",
-    borderRadius: "22px", // Reduced from 24px
-    border: theme.glassBorder,
-    backgroundColor: "rgba(20,20,30,0.4)", 
+    borderRadius: "22px",
+    border: "var(--glass-border)",
+    backgroundColor: "rgba(20,20,30,0.05)", 
     WebkitOverflowScrolling: "touch",
     backdropFilter: "blur(30px)",
     maxHeight: "calc(100vh - 180px)", 
@@ -134,36 +135,35 @@ export const styles: { [key: string]: React.CSSProperties } = {
   },
   scheduleContainer: {
     display: "grid",
-    // 60px -> 54px, 15px -> 13px
     gridTemplateColumns: "54px 1fr 13px 1fr 13px 1fr 13px 1fr 13px 1fr", 
     backgroundColor: "transparent", 
-    minWidth: "720px", // Reduced from 800px
+    minWidth: "720px", 
     position: "relative" 
   },
   scheduleHeaderCell: {
-    backgroundColor: "rgba(10, 10, 15, 0.95)", 
-    padding: "7px 3px", // Reduced from 8px 4px
+    backgroundColor: "var(--schedule-header-bg)", // Use var
+    padding: "7px 3px",
     textAlign: "center",
-    color: theme.text,
+    color: "var(--text-primary)", // Use var
     display: "flex",
     flexDirection: "column",
     justifyContent: "center",
     alignItems: "center",
-    minHeight: "45px", // Reduced from 50px
-    borderBottom: "1px solid rgba(255,255,255,0.1)",
-    borderRight: "1px solid rgba(255,255,255,0.08)",
+    minHeight: "45px",
+    borderBottom: "1px solid var(--schedule-grid-lines)", // Use var
+    borderRight: "1px solid var(--schedule-grid-lines)", // Use var
     position: "sticky",
     top: 0,
     zIndex: 20,
     backdropFilter: "blur(20px)"
   },
   scheduleBreakHeader: {
-    backgroundColor: "rgba(10, 10, 15, 0.95)",
+    backgroundColor: "var(--schedule-header-bg)", // Use var
     writingMode: "vertical-rl",
     transform: "rotate(180deg)",
     textAlign: "center",
-    color: theme.textMuted,
-    fontSize: "0.55rem", // Reduced from 0.6rem
+    color: "var(--text-muted)", // Use var
+    fontSize: "0.55rem",
     padding: "2px",
     display: "flex",
     alignItems: "center",
@@ -171,53 +171,53 @@ export const styles: { [key: string]: React.CSSProperties } = {
     letterSpacing: "1px",
     fontWeight: 700,
     textTransform: "uppercase",
-    borderBottom: "1px solid rgba(255,255,255,0.1)",
-    borderRight: "1px dashed rgba(255,255,255,0.08)",
-    borderLeft: "1px dashed rgba(255,255,255,0.08)",
+    borderBottom: "1px solid var(--schedule-grid-lines)",
+    borderRight: "1px dashed var(--schedule-grid-lines)",
+    borderLeft: "1px dashed var(--schedule-grid-lines)",
     position: "sticky",
     top: 0,
     zIndex: 20
   },
   scheduleDayCell: {
-    backgroundColor: "rgba(10, 10, 15, 0.95)", 
-    padding: "7px 3px", // Reduced from 8px 4px
+    backgroundColor: "var(--schedule-header-bg)", // Use var
+    padding: "7px 3px",
     display: "flex",
     flexDirection: "column",
     justifyContent: "center",
     alignItems: "center",
     fontWeight: 700,
-    color: theme.text,
-    fontSize: "0.7rem", // Reduced from 0.75rem
-    borderBottom: "1px solid rgba(255,255,255,0.1)",
-    borderRight: "1px solid rgba(255,255,255,0.1)",
+    color: "var(--text-primary)", // Use var
+    fontSize: "0.7rem",
+    borderBottom: "1px solid var(--schedule-grid-lines)",
+    borderRight: "1px solid var(--schedule-grid-lines)",
     position: "sticky",
     left: 0,
     zIndex: 10,
     backdropFilter: "blur(20px)"
   },
   scheduleContentCell: {
-    padding: "3px", // Reduced from 4px
-    minHeight: "72px", // Reduced from 80px
+    padding: "3px",
+    minHeight: "72px",
     position: "relative",
     display: "flex",
     flexDirection: "column",
-    gap: "3px", // Reduced from 4px
+    gap: "3px",
     overflow: "hidden",
     transition: "background-color 0.2s",
-    borderBottom: "1px solid rgba(255,255,255,0.08)",
-    borderRight: "1px solid rgba(255,255,255,0.08)",
+    borderBottom: "1px solid var(--schedule-grid-lines)",
+    borderRight: "1px solid var(--schedule-grid-lines)",
   },
   scheduleBreakCell: {
     backgroundColor: "transparent",
-    backgroundImage: "repeating-linear-gradient(45deg, rgba(255,255,255,0.03), rgba(255,255,255,0.03) 10px, transparent 10px, transparent 20px)",
-    borderBottom: "1px solid rgba(255,255,255,0.08)",
-    borderRight: "1px dashed rgba(255,255,255,0.08)",
-    borderLeft: "1px dashed rgba(255,255,255,0.08)",
+    backgroundImage: "repeating-linear-gradient(45deg, rgba(100,100,100,0.03), rgba(100,100,100,0.03) 10px, transparent 10px, transparent 20px)",
+    borderBottom: "1px solid var(--schedule-grid-lines)",
+    borderRight: "1px dashed var(--schedule-grid-lines)",
+    borderLeft: "1px dashed var(--schedule-grid-lines)",
   },
   eventCard: {
-    padding: "7px", // Reduced from 8px
-    borderRadius: "9px", // Reduced from 10px
-    fontSize: "0.7rem", // Reduced from 0.75rem
+    padding: "7px",
+    borderRadius: "9px",
+    fontSize: "0.7rem",
     cursor: "pointer",
     transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
     boxSizing: "border-box",
@@ -225,8 +225,8 @@ export const styles: { [key: string]: React.CSSProperties } = {
     flexDirection: "column",
     justifyContent: "space-between", 
     position: "relative",
-    boxShadow: "0 4px 12px rgba(0,0,0,0.4)", 
-    minHeight: "54px", // Reduced from 60px
+    boxShadow: "0 4px 12px rgba(0,0,0,0.1)", 
+    minHeight: "54px",
     flex: 1,
     border: "none",
     zIndex: 5,
@@ -234,52 +234,52 @@ export const styles: { [key: string]: React.CSSProperties } = {
   // UI Elements - Scaled Down
   input: {
     flex: 1,
-    padding: "12px", // Reduced from 14px
-    borderRadius: "14px", // Reduced from 16px
+    padding: "12px",
+    borderRadius: "14px",
     border: "1px solid rgba(255, 255, 255, 0.1)",
-    fontSize: "0.85rem", // Reduced from 0.95rem
+    fontSize: "0.85rem",
     outline: "none",
-    backgroundColor: "rgba(255,255,255,0.05)",
-    color: "white",
+    backgroundColor: "var(--input-bg)", // Use var
+    color: "var(--text-primary)", // Use var
     transition: "all 0.2s",
     backdropFilter: "blur(10px)",
     boxSizing: "border-box"
   },
   button: {
-    padding: "10px 16px", // Reduced from 12px 18px
+    padding: "10px 16px",
     backgroundColor: theme.accent,
     color: "white",
     border: "none",
-    borderRadius: "16px", // Reduced from 18px
+    borderRadius: "16px",
     fontWeight: 600,
     cursor: "pointer",
     transition: "all 0.2s",
     display: "flex",
     alignItems: "center",
-    gap: "7px", // Reduced from 8px
-    fontSize: "0.85rem", // Reduced from 0.9rem
+    gap: "7px",
+    fontSize: "0.85rem",
     boxShadow: theme.accentGlow,
   },
   secondaryButton: {
-    padding: "10px 16px", // Reduced from 12px 18px
-    backgroundColor: "rgba(255,255,255,0.1)",
-    color: "#fff",
-    border: "1px solid rgba(255,255,255,0.05)",
-    borderRadius: "16px", // Reduced from 18px
+    padding: "10px 16px",
+    backgroundColor: "var(--input-bg)",
+    color: "var(--text-primary)",
+    border: "1px solid var(--glass-border)",
+    borderRadius: "16px",
     fontWeight: 600,
     cursor: "pointer",
-    fontSize: "0.85rem", // Reduced from 0.9rem
+    fontSize: "0.85rem",
     display: "flex",
     alignItems: "center",
-    gap: "7px", // Reduced from 8px
+    gap: "7px",
     backdropFilter: "blur(10px)"
   },
   fileItem: {
     display: "flex",
     alignItems: "center",
-    padding: "12px", // Reduced from 14px
-    borderBottom: "1px solid rgba(255,255,255,0.05)",
-    gap: "12px", // Reduced from 14px
+    padding: "12px",
+    borderBottom: "1px solid var(--glass-border)",
+    gap: "12px",
   },
   modalOverlay: {
     position: "fixed",
@@ -294,69 +294,69 @@ export const styles: { [key: string]: React.CSSProperties } = {
     justifyContent: "center",
     alignItems: "center",
     zIndex: 2000,
-    padding: "18px" // Reduced from 20px
+    padding: "18px"
   },
   modalContent: {
-    backgroundColor: "#130f1c", 
-    borderRadius: "28px", // Reduced from 32px
-    padding: "24px", // Reduced from 28px
+    backgroundColor: "var(--modal-bg)", 
+    borderRadius: "28px",
+    padding: "24px",
     width: "100%",
-    maxWidth: "360px", // Reduced from 400px
+    maxWidth: "360px",
     maxHeight: "80vh",
     overflowY: "auto",
     border: "1px solid rgba(255,255,255,0.1)",
-    boxShadow: "0 40px 80px rgba(0,0,0,0.9)",
+    boxShadow: "0 40px 80px rgba(0,0,0,0.5)",
     animation: "scaleIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
-    color: "#fff",
+    color: "var(--text-primary)",
     display: "flex",
     flexDirection: "column"
   },
   formGroup: {
-    marginBottom: "16px", // Reduced from 18px
+    marginBottom: "16px",
   },
   label: {
     display: "block",
-    marginBottom: "7px", // Reduced from 8px
-    fontSize: "0.75rem", // Reduced from 0.8rem
+    marginBottom: "7px",
+    fontSize: "0.75rem",
     fontWeight: 700,
-    color: "rgba(255,255,255,0.7)",
+    color: "var(--text-muted)",
     textTransform: "uppercase",
     letterSpacing: "0.5px",
   },
   select: {
     width: "100%",
-    padding: "12px", // Reduced from 14px
-    borderRadius: "14px", // Reduced from 16px
+    padding: "12px",
+    borderRadius: "14px",
     border: "1px solid rgba(255,255,255,0.1)",
-    backgroundColor: "rgba(255,255,255,0.05)",
-    color: "white",
-    fontSize: "0.85rem", // Reduced from 0.95rem
+    backgroundColor: "var(--input-bg)",
+    color: "var(--text-primary)",
+    fontSize: "0.85rem",
     outline: "none",
     appearance: "none",
     boxSizing: "border-box"
   },
   dropZone: {
-    border: "2px dashed rgba(255,255,255,0.15)",
-    borderRadius: "22px", // Reduced from 24px
-    padding: "26px", // Reduced from 30px
+    border: "2px dashed var(--text-muted)",
+    borderRadius: "22px",
+    padding: "26px",
     textAlign: "center",
     cursor: "pointer",
     transition: "all 0.2s",
-    backgroundColor: "rgba(255,255,255,0.02)",
+    backgroundColor: "var(--input-bg)",
   },
   dateBadge: {
-    fontSize: "0.6rem", // Reduced from 0.65rem
-    color: theme.textMuted,
-    marginTop: "3px", // Reduced from 4px
+    fontSize: "0.6rem",
+    color: "var(--text-muted)",
+    marginTop: "3px",
     fontWeight: 500
   },
   colorPickerContainer: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: "9px", // Reduced from 10px
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: "11px", // Reduced from 12px
-    marginBottom: "7px", // Reduced from 8px
+    padding: "9px",
+    backgroundColor: "var(--input-bg)",
+    borderRadius: "11px",
+    marginBottom: "7px",
   }
 };
