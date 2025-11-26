@@ -30,6 +30,8 @@ const CompleteProfile: React.FC<CompleteProfileProps> = ({ onComplete, loading }
     }
   };
 
+  const isFormValid = username.trim().length > 0;
+
   return (
     <div style={{...styles.container, justifyContent: 'center', alignItems: 'center', overflow: 'hidden', position: 'fixed', inset: 0, zIndex: 3000}}>
       {/* Background Ambience similar to Auth */}
@@ -139,8 +141,8 @@ const CompleteProfile: React.FC<CompleteProfileProps> = ({ onComplete, loading }
 
             <button
               type="submit"
-              disabled={loading}
-              style={{...styles.button, justifyContent: 'center', marginTop: '12px', padding: '16px'}}
+              disabled={loading || !isFormValid}
+              style={{...styles.button, justifyContent: 'center', marginTop: '12px', padding: '16px', opacity: isFormValid ? 1 : 0.5, cursor: isFormValid ? 'pointer' : 'not-allowed'}}
               className="group shadow-lg shadow-indigo-900/20 hover:scale-[1.02] active:scale-95 transition-all"
             >
               {loading ? (
