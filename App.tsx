@@ -11,10 +11,10 @@ import AddEventModal from './components/AddEventModal';
 import GymView from './components/GymView';
 import UniversalGradeCalculator from './components/UniversalGradeCalculator';
 import CompleteProfile from './components/CompleteProfile';
-import { ScheduleEvent, ViewState, MaterialFile, ScheduleProfile, EventColorMap, ExtractedScheduleItem, EventType, CourseGrade, GradeCategory, PeriodDefinition, FoodItem, WaterLog, WorkoutSession, WorkoutRoutine, ExerciseDefinition, GymSettings } from './types';
+import { ScheduleEvent, ViewState, MaterialFile, ScheduleProfile, EventColorMap, ExtractedScheduleItem, EventType, CourseGrade, GradeCategory, PeriodDefinition, FoodItem, WaterLog, WorkoutSession, WorkoutRoutine, ExerciseDefinition, GymSettings, ThemeMode } from './types';
 import { INITIAL_EVENTS, INITIAL_FILES, INITIAL_PROFILES, INITIAL_COLORS, INITIAL_PERIODS, DEFAULT_GYM_SETTINGS, DEFAULT_ROUTINES } from './constants';
 import { theme, styles } from './theme';
-import { GraduationCap, Folder, BookOpen, Trash2, FileText, File, Upload, Check, X, Brain, Calendar, Clock, MapPin, AlignLeft, Pencil, Send, Plus, ChevronDown, ChevronUp, Sparkles, Loader2, LogOut, RotateCcw, Calculator, ArrowRight, PieChart, AlertTriangle, Cloud, CloudOff } from 'lucide-react';
+import { GraduationCap, Folder, BookOpen, Trash2, FileText, File, Upload, Check, X, Brain, Calendar, Clock, MapPin, AlignLeft, Pencil, Send, Plus, ChevronDown, ChevronUp, Sparkles, Loader2, LogOut, RotateCcw, Calculator, ArrowRight, PieChart, AlertTriangle, Cloud, CloudOff, FileImage, Sheet, Link as LinkIcon, RefreshCcw } from 'lucide-react';
 import { parseScheduleImage, getChatResponse } from './services/geminiService';
 
 // --- HELPER: Default Grade Structure ---
@@ -139,7 +139,7 @@ const CoursesView = ({
                 </div>
                 <button 
                     onClick={onAddCourse}
-                    style={{...styles.button, borderRadius: '50%', width: '48px', height: '48px', padding: 0, justifyContent: 'center', boxShadow: '0 5px 15px rgba(0,0,0,0.3)'}}
+                    style={{...styles.button, borderRadius: '50%', width: '48px', height: '48px', padding: 0, justifyContent: 'center', boxShadow: '0 5px 15px rgba(0,0,0,0.1)'}}
                 >
                     <Plus size={24} />
                 </button>
@@ -215,17 +215,17 @@ const CoursesView = ({
                                 <h2 style={{margin: 0, fontSize: '1.1rem', fontWeight: 700, marginBottom: '6px'}}>{courseName}</h2>
                                 <div style={{display: 'flex', gap: '6px', flexWrap: 'wrap'}}>
                                      {mainEvent.code && (
-                                         <div style={{backgroundColor: 'rgba(255,255,255,0.05)', padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', color: '#ddd', fontWeight: 600}}>
+                                         <div style={{backgroundColor: 'var(--input-bg)', padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', color: theme.textMuted, fontWeight: 600}}>
                                             {mainEvent.code}
                                          </div>
                                      )}
                                      {mainEvent.group && (
-                                         <div style={{backgroundColor: 'rgba(255,255,255,0.05)', padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', color: '#ddd', fontWeight: 600}}>
+                                         <div style={{backgroundColor: 'var(--input-bg)', padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', color: theme.textMuted, fontWeight: 600}}>
                                             Grp {mainEvent.group}
                                          </div>
                                      )}
                                      {mainEvent.location && (
-                                         <div style={{backgroundColor: 'rgba(255,255,255,0.05)', padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', color: '#ddd', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px'}}>
+                                         <div style={{backgroundColor: 'var(--input-bg)', padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', color: theme.textMuted, fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px'}}>
                                             <MapPin size={10} /> {mainEvent.location}
                                          </div>
                                      )}
@@ -235,7 +235,7 @@ const CoursesView = ({
                             <div style={{display: 'flex', gap: '8px'}}>
                                 <button 
                                     onClick={() => startEdit(courseName, mainEvent)}
-                                    style={{background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '8px', padding: '10px', cursor: 'pointer', color: theme.text}}
+                                    style={{background: 'var(--input-bg)', border: 'none', borderRadius: '8px', padding: '10px', cursor: 'pointer', color: theme.text}}
                                 >
                                     <Pencil size={18} />
                                 </button>
@@ -271,7 +271,15 @@ const CoursesView = ({
     );
 };
 
-const FilesView = ({ materials, setMaterials }: { materials: MaterialFile[], setMaterials: React.Dispatch<React.SetStateAction<MaterialFile[]>> }) => {
+const FilesView = ({ materials, setMaterials, onConnectDrive, driveFiles, isDriveLoading, onFetchDrive }: { materials: MaterialFile[], setMaterials: React.Dispatch<React.SetStateAction<MaterialFile[]>>, onConnectDrive: () => void, driveFiles: MaterialFile[], isDriveLoading: boolean, onFetchDrive: () => void }) => {
+    const [activeTab, setActiveTab] = useState<'local' | 'drive'>('local');
+    const [isConnectedToDrive, setIsConnectedToDrive] = useState(false);
+
+    useEffect(() => {
+        // Simple check if we have drive files populated or just switch tab logic
+        if (driveFiles.length > 0) setIsConnectedToDrive(true);
+    }, [driveFiles]);
+
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
@@ -280,11 +288,38 @@ const FilesView = ({ materials, setMaterials }: { materials: MaterialFile[], set
             name: file.name,
             type: file.type.includes("pdf") ? "pdf" : file.type.includes("image") ? "image" : "other",
             size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
-            dateAdded: new Date().toISOString().split('T')[0]
+            dateAdded: new Date().toISOString().split('T')[0],
+            source: 'local'
           };
           setMaterials(prev => [...prev, newFile]);
         }
     };
+
+    const FileList = ({ items, canDelete }: { items: MaterialFile[], canDelete: boolean }) => (
+        <div style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
+              {items.length === 0 ? <div style={{padding: "40px", textAlign: "center", color: theme.textMuted, fontSize: '0.95rem', fontStyle: 'italic'}}>No files found.</div> : 
+                items.map(file => (
+                  <div key={file.id} style={styles.fileItem} className="hover:bg-white/5 transition-colors cursor-pointer" onClick={() => file.webViewLink && window.open(file.webViewLink, '_blank')}>
+                    {file.type === 'pdf' && <FileText color={theme.danger} size={22} />}
+                    {file.type === 'folder' && <Folder color={theme.accent} fill={theme.accent} fillOpacity={0.2} size={22} />}
+                    {file.type === 'image' && <FileImage color={theme.success} size={22} />}
+                    {(file.type === 'google-doc' || file.type === 'google-sheet' || file.type === 'google-slide') && <LinkIcon color="#3b82f6" size={22} />}
+                    {file.type === 'other' && <File color={theme.textMuted} size={22} />}
+                    <div style={{flex: 1, minWidth: 0}}>
+                      <div style={{fontWeight: 600, fontSize: "0.95rem", color: "var(--text-primary)", whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{file.name}</div>
+                      <div style={{fontSize: "0.75rem", color: theme.textMuted, marginTop: "2px"}}>
+                          {file.source === 'drive' ? 'Google Drive' : `${file.size} • ${file.dateAdded}`}
+                      </div>
+                    </div>
+                    {canDelete && (
+                        <button onClick={(e) => { e.stopPropagation(); setMaterials(prev => prev.filter(m => m.id !== file.id)); }} style={{padding: "8px", background: "none", border: "none", cursor: "pointer", color: theme.textMuted, opacity: 0.7}}><Trash2 size={18} /></button>
+                    )}
+                  </div>
+                ))
+              }
+        </div>
+    );
+
     return (
         <div style={styles.scrollableContent}>
            <div style={styles.header}>
@@ -294,59 +329,50 @@ const FilesView = ({ materials, setMaterials }: { materials: MaterialFile[], set
                 <input id="file-upload" type="file" style={{display: "none"}} onChange={handleFileUpload} />
               </div>
             </div>
-            <div style={styles.card}>
-              {materials.length === 0 ? <div style={{padding: "60px", textAlign: "center", color: theme.textMuted, fontSize: '0.95rem'}}>No files yet.</div> : 
-                materials.sort((a,b) => (a.type === 'folder' ? -1 : 1)).map(file => (
-                  <div key={file.id} style={styles.fileItem}>
-                    {file.type === 'pdf' && <FileText color={theme.danger} size={22} />}
-                    {file.type === 'folder' && <Folder color={theme.accent} fill={theme.accent} fillOpacity={0.2} size={22} />}
-                    {file.type === 'image' && <BookOpen color={theme.success} size={22} />}
-                    {file.type === 'other' && <File color={theme.textMuted} size={22} />}
-                    <div style={{flex: 1}}>
-                      <div style={{fontWeight: 600, fontSize: "0.95rem", color: "#fff"}}>{file.name}</div>
-                      <div style={{fontSize: "0.75rem", color: theme.textMuted, marginTop: "2px"}}>{file.type === 'folder' ? 'Folder' : `${file.size} • ${file.dateAdded}`}</div>
-                    </div>
-                    <button onClick={() => setMaterials(prev => prev.filter(m => m.id !== file.id))} style={{padding: "8px", background: "none", border: "none", cursor: "pointer", color: theme.textMuted, opacity: 0.7}}><Trash2 size={18} /></button>
-                  </div>
-                ))
-              }
+            
+            {/* Tabs */}
+            <div style={{display: 'flex', gap: '10px', marginBottom: '16px'}}>
+                <button 
+                    onClick={() => setActiveTab('local')}
+                    style={{...styles.secondaryButton, background: activeTab === 'local' ? theme.accent : 'transparent', border: activeTab === 'local' ? 'none' : styles.secondaryButton.border, color: activeTab === 'local' ? '#fff' : theme.text}}
+                >
+                    Uploaded
+                </button>
+                <button 
+                    onClick={() => setActiveTab('drive')}
+                    style={{...styles.secondaryButton, background: activeTab === 'drive' ? theme.accent : 'transparent', border: activeTab === 'drive' ? 'none' : styles.secondaryButton.border, color: activeTab === 'drive' ? '#fff' : theme.text}}
+                >
+                    Google Drive
+                </button>
             </div>
-        </div>
-    );
-};
 
-const CircularProgress = ({ percentage, size = 56, strokeWidth = 5, color = theme.accent }: { percentage: number, size?: number, strokeWidth?: number, color?: string }) => {
-    const radius = (size - strokeWidth) / 2;
-    const circumference = radius * 2 * Math.PI;
-    const safePercentage = isNaN(percentage) ? 0 : Math.max(0, Math.min(100, percentage));
-    const offset = circumference - (safePercentage / 100) * circumference;
-    
-    return (
-        <div style={{ position: 'relative', width: size, height: size, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
-                <circle
-                    cx={size / 2}
-                    cy={size / 2}
-                    r={radius}
-                    stroke="rgba(255,255,255,0.05)"
-                    strokeWidth={strokeWidth}
-                    fill="transparent"
-                />
-                <circle
-                    cx={size / 2}
-                    cy={size / 2}
-                    r={radius}
-                    stroke={color}
-                    strokeWidth={strokeWidth}
-                    fill="transparent"
-                    strokeDasharray={circumference}
-                    strokeDashoffset={offset}
-                    strokeLinecap="round"
-                    style={{ transition: 'stroke-dashoffset 0.5s ease' }}
-                />
-            </svg>
-            <div style={{ position: 'absolute', fontSize: '0.75rem', fontWeight: 800, color: '#fff' }}>
-                {Math.round(safePercentage)}%
+            <div style={styles.card}>
+              {activeTab === 'local' ? (
+                  <FileList items={materials} canDelete={true} />
+              ) : (
+                  <div>
+                      <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px'}}>
+                           <h3 style={{margin: 0, fontSize: '1rem', fontWeight: 700}}>Recent Drive Files</h3>
+                           <div style={{display: 'flex', gap: '8px'}}>
+                               <button onClick={onFetchDrive} disabled={isDriveLoading} style={{background: 'rgba(255,255,255,0.1)', border: 'none', padding: '6px', borderRadius: '50%', cursor: 'pointer', color: theme.text}}>
+                                   <RefreshCcw size={16} className={isDriveLoading ? 'animate-spin' : ''} />
+                               </button>
+                           </div>
+                      </div>
+                      
+                      {!isConnectedToDrive && driveFiles.length === 0 ? (
+                          <div style={{textAlign: 'center', padding: '30px 20px'}}>
+                               <p style={{marginBottom: '16px', color: theme.textMuted}}>Connect to access your study materials directly from Google Drive.</p>
+                               <button onClick={onConnectDrive} style={{...styles.button, width: '100%', justifyContent: 'center', background: '#fff', color: '#000'}}>
+                                   <img src="https://upload.wikimedia.org/wikipedia/commons/1/12/Google_Drive_icon_%282020%29.svg" width="20" height="20" alt="Drive" />
+                                   Connect Google Drive
+                               </button>
+                          </div>
+                      ) : (
+                          <FileList items={driveFiles} canDelete={false} />
+                      )}
+                  </div>
+              )}
             </div>
         </div>
     );
@@ -354,392 +380,93 @@ const CircularProgress = ({ percentage, size = 56, strokeWidth = 5, color = them
 
 const GradesView = ({ grades, setGrades }: { grades: CourseGrade[], setGrades: React.Dispatch<React.SetStateAction<CourseGrade[]>> }) => {
     const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
-    const [newCourseName, setNewCourseName] = useState("");
-    const [expandedCourseId, setExpandedCourseId] = useState<string | null>(null);
-    const [modalAction, setModalAction] = useState<{ type: 'delete' | 'reset', id?: string } | null>(null);
 
-    const calculateAverage = (course: CourseGrade) => {
-        let totalWeighted = 0;
-        let totalWeightUsed = 0;
-        
-        course.categories?.forEach(cat => {
-            const catWeight = parseFloat(cat.weight) || 0;
-            const activeItems = cat.items.filter(i => i.active && i.score !== '');
-            if (activeItems.length === 0) return;
-            const sumPct = activeItems.reduce((acc, i) => {
-                 const s = parseFloat(i.score) || 0;
-                 const t = parseFloat(i.total) || 100;
-                 return acc + (s/t);
-            }, 0);
-            const avg = sumPct / activeItems.length;
-            totalWeighted += avg * catWeight;
-            totalWeightUsed += catWeight; 
-        });
+    const selectedCourse = grades.find(g => g.id === selectedCourseId);
 
-        if (totalWeightUsed === 0) return 0;
-        return (totalWeighted / totalWeightUsed) * 100;
+    const handleUpdateCourse = (updated: CourseGrade) => {
+        setGrades(prev => prev.map(g => g.id === updated.id ? updated : g));
     };
 
-    const handleAddCourse = () => {
-        if (!newCourseName.trim()) return;
-        const newGrade = createDefaultCourseGrade(newCourseName);
-        setGrades([...grades, newGrade]);
-        setNewCourseName("");
-    };
-
-    const handleUpdateCourse = (updatedCourse: CourseGrade) => {
-        setGrades(prev => prev.map(g => g.id === updatedCourse.id ? updatedCourse : g));
-    };
-
-    const confirmAction = () => {
-        if (modalAction?.type === 'delete' && modalAction.id) {
-             setGrades(prev => prev.filter(g => g.id !== modalAction.id));
-        } else if (modalAction?.type === 'reset') {
-             setGrades([]);
-        }
-        setModalAction(null);
-    };
-
-    const toggleExpand = (id: string, e: React.MouseEvent) => {
-        e.stopPropagation();
-        setExpandedCourseId(expandedCourseId === id ? null : id);
-    };
-
-    if (selectedCourseId) {
-        const course = grades.find(g => g.id === selectedCourseId);
-        if (!course) { setSelectedCourseId(null); return null; }
+    if (selectedCourse) {
         return (
-            <div style={styles.scrollableContent}>
-                <UniversalGradeCalculator 
-                    course={course} 
-                    onUpdate={handleUpdateCourse} 
-                    onBack={() => setSelectedCourseId(null)} 
-                />
-            </div>
+            <UniversalGradeCalculator 
+                course={selectedCourse} 
+                onUpdate={handleUpdateCourse} 
+                onBack={() => setSelectedCourseId(null)} 
+            />
         );
     }
 
     return (
         <div style={styles.scrollableContent}>
-              <div style={styles.header}>
+            <div style={styles.header}>
                 <div>
                     <h1 style={styles.title}>Grades</h1>
-                    <p style={styles.subtitle}>Calculator & Tracker</p>
-                </div>
-                <div style={{background: `linear-gradient(135deg, ${theme.accent}, #c084fc)`, padding: '10px', borderRadius: '50%', boxShadow: theme.accentGlow}}>
-                    <Calculator size={24} color="#fff" />
+                    <p style={styles.subtitle}>Track your performance</p>
                 </div>
             </div>
 
-            <div style={{...styles.card, padding: '16px', display: 'flex', gap: '10px', alignItems: 'center'}}>
-                <input 
-                    style={{...styles.input, padding: '12px'}} 
-                    placeholder="New Course Name..." 
-                    value={newCourseName}
-                    onChange={e => setNewCourseName(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && handleAddCourse()}
-                />
-                <button style={{...styles.button, padding: '12px'}} onClick={handleAddCourse}>
-                    <Plus size={20} />
-                </button>
-            </div>
-
-            <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 {grades.map(course => {
-                    const avg = calculateAverage(course);
-                    const color = avg >= 80 ? theme.success : avg >= 60 ? theme.warning : (avg > 0 ? theme.danger : theme.textMuted);
-                    const isExpanded = expandedCourseId === course.id;
-                    
+                    let totalWeightedScore = 0;
+                    let totalWeightUsed = 0;
+
+                    course.categories.forEach(cat => {
+                        const weight = parseFloat(cat.weight) || 0;
+                        const usableItems = cat.items.filter(i => i.active !== false && i.score !== ''); 
+                        
+                        if (usableItems.length > 0) {
+                            const percentages = usableItems.map(i => {
+                                const s = parseFloat(i.score);
+                                const t = parseFloat(i.total);
+                                const totalVal = (isNaN(t) || t === 0) ? 100 : t; 
+                                return (s / totalVal) * 100;
+                            }).sort((a, b) => a - b);
+                            
+                            const dropCount = parseInt(cat.dropLowest) || 0;
+                            const kept = percentages.slice(dropCount);
+                            
+                            if (kept.length > 0) {
+                                const catAverage = kept.reduce((a, b) => a + b, 0) / kept.length;
+                                const points = catAverage * (weight / 100);
+                                totalWeightedScore += points;
+                                totalWeightUsed += weight;
+                            }
+                        }
+                    });
+
+                    const currentAverage = totalWeightUsed > 0 ? (totalWeightedScore / (totalWeightUsed / 100)) : 0;
+                    const gradeColor = currentAverage >= 90 ? theme.accent : currentAverage >= 80 ? theme.success : currentAverage >= 70 ? theme.warning : theme.danger;
+
                     return (
                         <div 
                             key={course.id} 
-                            style={{...styles.card, marginBottom: 0, padding: '20px', transition: 'all 0.2s', borderLeft: `4px solid ${color}`}}
+                            onClick={() => setSelectedCourseId(course.id)}
+                            style={{ ...styles.card, cursor: 'pointer', marginBottom: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
                         >
-                            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                                <div style={{flex: 1, cursor: 'pointer'}} onClick={() => setSelectedCourseId(course.id)}>
-                                    <h2 style={{margin: 0, fontSize: '1.2rem', fontWeight: 700}}>{course.title}</h2>
-                                    <p style={{margin: 0, fontSize: '0.8rem', color: theme.textMuted, marginTop: '4px'}}>
-                                        Target: {course.targetGrade}% • {course.categories.length} Categories
-                                    </p>
-                                </div>
-                                <div style={{display: 'flex', alignItems: 'center', gap: '16px'}}>
-                                    <div style={{cursor: 'pointer'}} onClick={() => setSelectedCourseId(course.id)}>
-                                        <CircularProgress percentage={avg} color={color} />
-                                    </div>
-                                    <button 
-                                        onClick={(e) => toggleExpand(course.id, e)} 
-                                        style={{
-                                            padding: '8px', 
-                                            background: isExpanded ? 'rgba(255,255,255,0.1)' : 'transparent', 
-                                            borderRadius: '50%', 
-                                            color: theme.textMuted, 
-                                            border: 'none', 
-                                            cursor: 'pointer',
-                                            transition: 'all 0.2s'
-                                        }}
-                                    >
-                                        {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-                                    </button>
-                                </div>
+                            <div>
+                                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#fff' }}>{course.title}</h3>
+                                <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: theme.textMuted }}>Target: {course.targetGrade}%</p>
                             </div>
-
-                            {isExpanded && (
-                                <div style={{marginTop: '16px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '16px', animation: 'fadeIn 0.2s'}}>
-                                    <div style={{display: 'grid', gap: '8px'}}>
-                                        {course.categories.map(cat => (
-                                            <div 
-                                                key={cat.id}
-                                                onClick={() => setSelectedCourseId(course.id)}
-                                                style={{
-                                                    display: 'flex', 
-                                                    justifyContent: 'space-between', 
-                                                    alignItems: 'center',
-                                                    padding: '12px',
-                                                    backgroundColor: 'rgba(0,0,0,0.2)',
-                                                    borderRadius: '12px',
-                                                    cursor: 'pointer',
-                                                    border: '1px solid rgba(255,255,255,0.03)'
-                                                }}
-                                                className="hover:bg-white/5 transition-colors"
-                                            >
-                                                <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
-                                                    <div style={{width: '6px', height: '6px', borderRadius: '50%', backgroundColor: theme.accent}}></div>
-                                                    <span style={{fontSize: '0.9rem', fontWeight: 600, color: '#fff'}}>{cat.name}</span>
-                                                </div>
-                                                <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
-                                                    <span style={{fontSize: '0.8rem', color: theme.textMuted, fontWeight: 500}}>{cat.weight}% Weight</span>
-                                                    <ArrowRight size={14} color={theme.textMuted} />
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <div style={{display: 'flex', justifyContent: 'space-between', marginTop: '16px', paddingTop: '16px', borderTop: '1px dashed rgba(255,255,255,0.1)'}}>
-                                         <button 
-                                            onClick={(e) => { e.stopPropagation(); setModalAction({ type: 'delete', id: course.id }); }} 
-                                            style={{
-                                                background: 'transparent',
-                                                color: theme.danger,
-                                                border: 'none',
-                                                fontSize: '0.8rem',
-                                                fontWeight: 600,
-                                                cursor: 'pointer',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '6px',
-                                                opacity: 0.8
-                                            }}
-                                         >
-                                             <Trash2 size={14} /> Delete Course
-                                         </button>
-                                         <button
-                                            onClick={() => setSelectedCourseId(course.id)}
-                                            style={{
-                                                background: 'transparent',
-                                                color: theme.accent,
-                                                border: 'none',
-                                                fontSize: '0.8rem',
-                                                fontWeight: 700,
-                                                cursor: 'pointer'
-                                            }}
-                                         >
-                                             Full Calculator
-                                         </button>
-                                    </div>
+                            <div style={{ textAlign: 'right' }}>
+                                <div style={{ fontSize: '1.5rem', fontWeight: 800, color: gradeColor }}>
+                                    {currentAverage.toFixed(1)}%
                                 </div>
-                            )}
+                                <div style={{ fontSize: '0.7rem', color: theme.textMuted }}>Current Avg</div>
+                            </div>
                         </div>
                     );
                 })}
 
                 {grades.length === 0 && (
-                     <div style={{textAlign: 'center', padding: '40px', color: theme.textMuted, border: '1px dashed rgba(255,255,255,0.1)', borderRadius: '20px'}}>
-                         <PieChart size={40} className="mx-auto mb-4 opacity-30" />
-                         <p>No courses added yet.</p>
+                     <div style={{ textAlign: 'center', padding: '40px', color: theme.textMuted }}>
+                         <p>No courses found. Add courses in the Classes tab or Schedule to start tracking grades.</p>
                      </div>
                 )}
-                
-                {grades.length > 0 && (
-                    <button 
-                        onClick={() => setModalAction({ type: 'reset' })}
-                        style={{
-                            ...styles.card,
-                            marginTop: '24px',
-                            marginBottom: '40px',
-                            cursor: 'pointer',
-                            border: `1px solid ${theme.danger}`,
-                            background: 'rgba(239, 68, 68, 0.1)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '10px',
-                            width: '100%',
-                            padding: '16px',
-                            boxSizing: 'border-box'
-                        }}
-                    >
-                        <RotateCcw size={18} color={theme.danger} />
-                        <span style={{color: theme.danger, fontWeight: 700, fontSize: '1rem'}}>Reset All Grades</span>
-                    </button>
-                )}
-            </div>
-            
-            <ConfirmModal 
-                isOpen={!!modalAction}
-                title={modalAction?.type === 'delete' ? "Delete Course?" : "Reset All Grades?"}
-                message={modalAction?.type === 'delete' ? "Are you sure you want to delete this course and all its data?" : "Are you sure you want to delete all grade data? This cannot be undone."}
-                onConfirm={confirmAction}
-                onCancel={() => setModalAction(null)}
-            />
-            <style>{`@keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }`}</style>
-        </div>
-    );
-};
-
-const TaskDetailsModal = ({ event, onClose, onEdit, onDelete }: { event: ScheduleEvent, onClose: () => void, onEdit: (e: ScheduleEvent) => void, onDelete: (id: string) => void }) => {
-    const [isDeleting, setIsDeleting] = useState(false);
-    
-    const to12h = (time24: string) => {
-        if (!time24) return "";
-        const [h, m] = time24.split(":").map(Number);
-        const period = h >= 12 ? "PM" : "AM";
-        const h12 = h % 12 || 12;
-        return `${h12}:${m.toString().padStart(2, "0")} ${period}`;
-    };
-
-    return (
-        <div style={styles.modalOverlay} onClick={onClose}>
-            <div style={{...styles.modalContent, width: '100%', maxWidth: '360px', padding: 0}} onClick={e => e.stopPropagation()}>
-                <div style={{padding: '24px', background: `linear-gradient(135deg, ${theme.accent}22 0%, rgba(0,0,0,0) 100%)`, borderBottom: '1px solid rgba(255,255,255,0.1)'}}>
-                   <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}}>
-                       <div style={{backgroundColor: theme.accent, padding: '4px 10px', borderRadius: '8px', fontSize: '0.7rem', fontWeight: 700, color: '#fff', textTransform: 'uppercase', marginBottom: '12px', display: 'inline-block'}}>
-                           {event.type}
-                       </div>
-                       <div style={{display: 'flex', gap: '8px'}}>
-                            <button 
-                                onClick={() => { 
-                                    if(isDeleting) {
-                                        onDelete(event.id); 
-                                        onClose(); 
-                                    } else {
-                                        setIsDeleting(true);
-                                    }
-                                }} 
-                                style={{
-                                    background: isDeleting ? theme.danger : 'rgba(239, 68, 68, 0.2)', 
-                                    border: 'none', 
-                                    borderRadius: '12px', 
-                                    padding: '6px 12px', 
-                                    cursor: 'pointer', 
-                                    color: isDeleting ? '#fff' : theme.danger, 
-                                    display: 'flex', 
-                                    alignItems: 'center', 
-                                    gap: '6px', 
-                                    fontSize: '0.8rem', 
-                                    fontWeight: 600,
-                                    transition: 'all 0.2s'
-                                }}
-                            >
-                               {isDeleting ? "Confirm" : <Trash2 size={14} />}
-                           </button>
-                           <button onClick={() => onEdit(event)} style={{background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '12px', padding: '6px 12px', cursor: 'pointer', color: '#fff', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 600}}>
-                               <Pencil size={14} /> Edit
-                           </button>
-                           <button onClick={onClose} style={{background: 'rgba(0,0,0,0.3)', border: 'none', borderRadius: '50%', padding: '6px', cursor: 'pointer', color: '#fff'}}><X size={16} /></button>
-                       </div>
-                   </div>
-                   <h2 style={{margin: '0 0 6px 0', fontSize: '1.4rem', fontWeight: 800, lineHeight: 1.2}}>{event.title}</h2>
-                   <div style={{fontSize: '0.9rem', color: 'rgba(255,255,255,0.8)', fontWeight: 500}}>{event.code}</div>
-                </div>
-                
-                <div style={{padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px'}}>
-                    
-                    <div style={{display: 'flex', gap: '16px'}}>
-                        <div style={{flex: 1, backgroundColor: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)'}}>
-                            <div style={{display: 'flex', alignItems: 'center', gap: '6px', color: theme.textMuted, fontSize: '0.75rem', fontWeight: 700, marginBottom: '4px', textTransform: 'uppercase'}}>
-                                <Calendar size={14} /> Date
-                            </div>
-                            <div style={{fontSize: '0.95rem', fontWeight: 600}}>
-                                {new Date(event.date || "").toLocaleDateString('en-US', {weekday: 'short', month: 'short', day: 'numeric'})}
-                            </div>
-                        </div>
-                        <div style={{flex: 1, backgroundColor: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)'}}>
-                             <div style={{display: 'flex', alignItems: 'center', gap: '6px', color: theme.textMuted, fontSize: '0.75rem', fontWeight: 700, marginBottom: '4px', textTransform: 'uppercase'}}>
-                                <Clock size={14} /> Time
-                            </div>
-                            <div style={{fontSize: '0.95rem', fontWeight: 600}}>
-                                {to12h(event.startTime)}
-                            </div>
-                        </div>
-                    </div>
-
-                    {event.location && (
-                        <div>
-                             <div style={styles.label}>Location</div>
-                             <div style={{display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1rem', fontWeight: 500}}>
-                                 <MapPin size={18} color={theme.accent} /> {event.location}
-                             </div>
-                        </div>
-                    )}
-
-                    <div>
-                        <div style={styles.label}><AlignLeft size={14} style={{display: 'inline', marginRight: '6px', verticalAlign: 'text-bottom'}}/> Description</div>
-                        <div style={{fontSize: '0.95rem', lineHeight: 1.6, color: 'rgba(255,255,255,0.8)', backgroundColor: 'rgba(255,255,255,0.03)', padding: '16px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)'}}>
-                            {event.description || "No description provided."}
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
     );
 };
-
-// Verify Import Modal...
-const VerifyImportModal = ({ items, onConfirm, onCancel }: { items: ExtractedScheduleItem[], onConfirm: () => void, onCancel: () => void }) => {
-    const to12h = (time24: string) => {
-        if (!time24) return "";
-        const [h, m] = time24.split(":").map(Number);
-        const period = h >= 12 ? "PM" : "AM";
-        const h12 = h % 12 || 12;
-        return `${h12}:${m.toString().padStart(2, "0")} ${period}`;
-    };
-    return (
-        <div style={styles.modalOverlay}>
-            <div style={{...styles.modalContent, width: '100%', maxWidth: '500px', padding: 0}} onClick={e => e.stopPropagation()}>
-                <div style={{padding: '20px', borderBottom: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.03)', display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
-                    <h2 style={{margin: 0, fontSize: '1.2rem'}}>Verify Schedule</h2>
-                    <button onClick={onCancel} style={{background: 'none', border: 'none', cursor: 'pointer', color: '#fff'}}><X size={24} /></button>
-                </div>
-                <div style={{padding: '20px', maxHeight: '60vh', overflowY: 'auto'}}>
-                    <p style={{fontSize: '0.9rem', color: theme.textMuted, marginBottom: '16px'}}>
-                        Found {items.length} classes. Please review before importing.
-                    </p>
-                    <div style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
-                        {items.map((item, i) => (
-                            <div key={i} style={{backgroundColor: 'rgba(255,255,255,0.05)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)'}}>
-                                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}}>
-                                    <div>
-                                        <div style={{fontWeight: 700, fontSize: '1rem', color: '#fff'}}>{item.course_name || "Unknown Course"}</div>
-                                        <div style={{fontSize: '0.8rem', color: theme.textMuted, marginTop: '2px'}}>{item.type} • {item.room}</div>
-                                    </div>
-                                    <div style={{textAlign: 'right'}}>
-                                        <div style={{fontSize: '0.8rem', fontWeight: 600, color: theme.accent}}>{item.day}</div>
-                                        <div style={{fontSize: '0.75rem', color: theme.textMuted}}>{to12h(item.time_start)} - {to12h(item.time_end)}</div>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-                <div style={{padding: '20px', borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', gap: '10px'}}>
-                    <button style={{...styles.secondaryButton, flex: 1, justifyContent: 'center'}} onClick={onCancel}>Cancel</button>
-                    <button style={{...styles.button, flex: 1, justifyContent: 'center'}} onClick={onConfirm}>
-                        <Check size={18} /> Confirm Import
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-}
 
 const App: React.FC = () => {
   const [session, setSession] = useState<any | null>(null);
@@ -751,6 +478,7 @@ const App: React.FC = () => {
 
   // --- STATE DEFINITIONS ---
   const [currentView, setCurrentView] = useState<ViewState>('dashboard');
+  const [themeMode, setThemeMode] = useState<ThemeMode>('dark');
   
   // App Data
   const [events, setEvents] = useState<ScheduleEvent[]>(INITIAL_EVENTS);
@@ -779,6 +507,19 @@ const App: React.FC = () => {
       year?: string,
       college?: string
   } | null>(null);
+
+  // Drive Data
+  const [driveFiles, setDriveFiles] = useState<MaterialFile[]>([]);
+  const [isDriveLoading, setIsDriveLoading] = useState(false);
+
+  // --- THEME EFFECT ---
+  useEffect(() => {
+      if (themeMode === 'light') {
+          document.body.classList.add('light-mode');
+      } else {
+          document.body.classList.remove('light-mode');
+      }
+  }, [themeMode]);
 
   // --- AUTH & LOAD LOGIC ---
 
@@ -843,6 +584,7 @@ const App: React.FC = () => {
                 if (d.grades) setGrades(d.grades);
                 if (d.periods) setPeriods(d.periods);
                 if (d.eventColors) setEventColors(d.eventColors);
+                if (d.themeMode) setThemeMode(d.themeMode);
                 
                 // Hydrate Gym
                 if (d.gym) {
@@ -854,6 +596,12 @@ const App: React.FC = () => {
                     if (d.gym.settings) setGymSettings(d.gym.settings);
                 }
             }
+
+            // Attempt to load Drive files if provider token is present
+            if (session.provider_token) {
+                fetchDriveFiles(session.provider_token);
+            }
+
         } catch (e) {
             console.error("Load error", e);
         } finally {
@@ -868,6 +616,70 @@ const App: React.FC = () => {
         setAccountInfo({email: 'test@example.com', username: 'TestUser', id: 'test-123'});
     }
   }, [session, isTestMode]);
+
+  // --- DRIVE LOGIC ---
+
+  const fetchDriveFiles = async (token: string) => {
+      setIsDriveLoading(true);
+      try {
+          const response = await fetch(
+              'https://www.googleapis.com/drive/v3/files?pageSize=20&fields=nextPageToken,files(id,name,mimeType,size,createdTime,webViewLink,iconLink)&q=trashed=false', 
+              {
+                  headers: { Authorization: `Bearer ${token}` }
+              }
+          );
+          
+          if (!response.ok) {
+              // If unauthorized, token might be expired or scope missing
+              throw new Error("Failed to fetch Drive files");
+          }
+
+          const data = await response.json();
+          const files: MaterialFile[] = data.files.map((f: any) => ({
+              id: f.id,
+              name: f.name,
+              type: mapMimeType(f.mimeType),
+              size: f.size ? `${(parseInt(f.size) / (1024 * 1024)).toFixed(2)} MB` : undefined,
+              dateAdded: new Date(f.createdTime).toLocaleDateString(),
+              source: 'drive',
+              webViewLink: f.webViewLink,
+              iconLink: f.iconLink,
+              mimeType: f.mimeType
+          }));
+
+          setDriveFiles(files);
+      } catch (e) {
+          console.error("Drive Fetch Error", e);
+      } finally {
+          setIsDriveLoading(false);
+      }
+  };
+
+  const mapMimeType = (mime: string): MaterialFile['type'] => {
+      if (mime.includes('pdf')) return 'pdf';
+      if (mime.includes('image')) return 'image';
+      if (mime.includes('folder')) return 'folder';
+      if (mime.includes('google-apps.document')) return 'google-doc';
+      if (mime.includes('google-apps.spreadsheet')) return 'google-sheet';
+      if (mime.includes('google-apps.presentation')) return 'google-slide';
+      return 'other';
+  };
+
+  const handleConnectDrive = async () => {
+      if (!session) return;
+      // Trigger OAuth re-auth to get the token/scope
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          scopes: 'https://www.googleapis.com/auth/drive.readonly',
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
+        },
+      });
+      if (error) console.error(error);
+  };
 
   const handleCompleteOnboarding = async (data: { username: string, gender: string, major: string, year: string, college: string }) => {
       if (!session) return;
@@ -928,6 +740,7 @@ const App: React.FC = () => {
               grades,
               periods,
               eventColors,
+              themeMode,
               gym: {
                   foodLogs,
                   waterLogs,
@@ -956,7 +769,7 @@ const App: React.FC = () => {
               setSyncStatus('error');
           }
       }, 2000); // Save after 2 seconds of inactivity
-  }, [events, materials, profiles, activeProfileId, grades, periods, eventColors, foodLogs, waterLogs, workoutSessions, routines, customExercises, gymSettings, session, isDataLoaded, accountInfo, showOnboarding]);
+  }, [events, materials, profiles, activeProfileId, grades, periods, eventColors, themeMode, foodLogs, waterLogs, workoutSessions, routines, customExercises, gymSettings, session, isDataLoaded, accountInfo, showOnboarding]);
 
   // Trigger save whenever relevant state changes
   useEffect(() => {
@@ -1142,6 +955,7 @@ const App: React.FC = () => {
     setRoutines(DEFAULT_ROUTINES);
     setCustomExercises([]);
     setGymSettings(DEFAULT_GYM_SETTINGS);
+    setDriveFiles([]);
     // Reset View
     setCurrentView('dashboard');
   };
@@ -1249,7 +1063,14 @@ const App: React.FC = () => {
             />
         );
       case 'materials':
-        return <FilesView materials={materials} setMaterials={setMaterials} />;
+        return <FilesView 
+            materials={materials} 
+            setMaterials={setMaterials} 
+            onConnectDrive={handleConnectDrive}
+            driveFiles={driveFiles}
+            isDriveLoading={isDriveLoading}
+            onFetchDrive={() => session?.provider_token && fetchDriveFiles(session.provider_token)}
+        />;
       case 'ai':
         return <AIChat onAddEvent={handleAddEvent} periods={periods} />;
       case 'settings':
@@ -1273,6 +1094,8 @@ const App: React.FC = () => {
              periods={periods}
              setPeriods={setPeriods}
              accountInfo={accountInfo}
+             themeMode={themeMode}
+             setThemeMode={setThemeMode}
           />
         );
       default:
@@ -1322,8 +1145,30 @@ const App: React.FC = () => {
       {currentView !== 'gym' && <Navigation currentView={currentView} onNavigate={setCurrentView} />}
       
       {isEventModalOpen && <AddEventModal isOpen={isEventModalOpen} onClose={() => setIsEventModalOpen(false)} onSave={handleAddEvent} eventColors={eventColors} initialData={editingEvent} periods={periods} existingCourses={existingCourses} />}
-      {selectedTask && <TaskDetailsModal event={selectedTask} onClose={() => setSelectedTask(null)} onEdit={(task) => { setEditingEvent(task); setIsEventModalOpen(true); setSelectedTask(null); }} onDelete={handleDeleteEvent} />}
-      {isVerifyModalOpen && <VerifyImportModal items={extractedEvents} onConfirm={handleConfirmImport} onCancel={() => setIsVerifyModalOpen(false)} />}
+      {selectedTask && (
+        <div style={styles.modalOverlay} onClick={() => setSelectedTask(null)}>
+            <div style={{...styles.modalContent, padding: '24px'}} onClick={e => e.stopPropagation()}>
+                <h2 style={{color: 'var(--text-primary)', margin: '0 0 10px 0'}}>{selectedTask.title}</h2>
+                <div style={{display: 'flex', gap: '8px', marginBottom: '16px'}}>
+                    <button onClick={() => { setEditingEvent(selectedTask); setIsEventModalOpen(true); setSelectedTask(null); }} style={styles.button}><Pencil size={16}/> Edit</button>
+                    <button onClick={() => { handleDeleteEvent(selectedTask.id); setSelectedTask(null); }} style={{...styles.button, backgroundColor: theme.danger}}><Trash2 size={16}/> Delete</button>
+                </div>
+                <button onClick={() => setSelectedTask(null)} style={styles.secondaryButton}>Close</button>
+            </div>
+        </div>
+      )}
+      {isVerifyModalOpen && (
+         <div style={styles.modalOverlay}>
+             <div style={{...styles.modalContent}}>
+                 <h2 style={{color: 'var(--text-primary)', marginBottom: '16px'}}>Import Schedule</h2>
+                 <p style={{color: theme.textMuted}}>Found {extractedEvents.length} events.</p>
+                 <div style={{display: 'flex', gap: '8px', marginTop: '16px'}}>
+                     <button onClick={handleConfirmImport} style={styles.button}><Check size={16}/> Confirm</button>
+                     <button onClick={() => setIsVerifyModalOpen(false)} style={styles.secondaryButton}>Cancel</button>
+                 </div>
+             </div>
+         </div>
+      )}
       
       <style>{`@keyframes scaleIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } } @keyframes spin { to { transform: rotate(360deg); } } ::-webkit-scrollbar { width: 0px; background: transparent; }`}</style>
     </div>
