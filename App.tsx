@@ -480,9 +480,9 @@ const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewState>('dashboard');
   const [themeMode, setThemeMode] = useState<ThemeMode>('dark');
   
-  // App Data
-  const [events, setEvents] = useState<ScheduleEvent[]>(INITIAL_EVENTS);
-  const [materials, setMaterials] = useState<MaterialFile[]>(INITIAL_FILES);
+  // App Data - START EMPTY (Only load samples in Test Mode)
+  const [events, setEvents] = useState<ScheduleEvent[]>([]);
+  const [materials, setMaterials] = useState<MaterialFile[]>([]);
   const [profiles, setProfiles] = useState<ScheduleProfile[]>(INITIAL_PROFILES);
   const [activeProfileId, setActiveProfileId] = useState<string>("main");
   const [grades, setGrades] = useState<CourseGrade[]>([]);
@@ -532,10 +532,14 @@ const App: React.FC = () => {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
+      // Force reset if session is lost (Logged out)
+      if (!session && !isTestMode) {
+          handleResetApp(true);
+      }
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [isTestMode]);
 
   // Fetch data from Supabase Profiles Table on Login
   useEffect(() => {
@@ -546,6 +550,8 @@ const App: React.FC = () => {
 
         // Check for Missing Username (e.g. Google Login first time)
         const meta = session.user.user_metadata || {};
+        
+        // Critical: If no username is present in metadata, we MUST show onboarding.
         if (!meta.username) {
             setShowOnboarding(true);
             setIsDataLoaded(true); // Stop loading spinner so modal can show
@@ -595,6 +601,9 @@ const App: React.FC = () => {
                     if (d.gym.customExercises) setCustomExercises(d.gym.customExercises);
                     if (d.gym.settings) setGymSettings(d.gym.settings);
                 }
+            } else {
+                 // New user? Ensure state is empty.
+                 // handleResetApp(true) logic effectively does this, but good to be explicit here if needed.
             }
 
             // Attempt to load Drive files if provider token is present
@@ -612,8 +621,11 @@ const App: React.FC = () => {
     if (session) {
         loadUserData();
     } else if (isTestMode) {
-        setIsDataLoaded(true); // Test mode uses defaults
-        setAccountInfo({email: 'test@example.com', username: 'TestUser', id: 'test-123'});
+        setIsDataLoaded(true); 
+        // Load Sample Data for Admin Mode
+        setEvents(INITIAL_EVENTS);
+        setMaterials(INITIAL_FILES);
+        setAccountInfo({email: 'admin@unimate.app', username: 'Admin', id: 'admin'});
     }
   }, [session, isTestMode]);
 
@@ -940,9 +952,9 @@ const App: React.FC = () => {
     setExtractedEvents([]);
   };
 
-  const handleResetApp = () => {
-    setEvents(INITIAL_EVENTS);
-    setMaterials(INITIAL_FILES);
+  const handleResetApp = (fullClear = false) => {
+    setEvents(fullClear ? [] : INITIAL_EVENTS);
+    setMaterials(fullClear ? [] : INITIAL_FILES);
     setProfiles(INITIAL_PROFILES);
     setActiveProfileId('main');
     setGrades([]);
@@ -962,7 +974,7 @@ const App: React.FC = () => {
 
   const handleSignOut = async () => {
       // 1. CLEAR LOCAL STATE FIRST to prevent "flash" of old data
-      handleResetApp();
+      handleResetApp(true); // TRUE means wipe to empty array, don't use samples
       setAccountInfo(null); 
       setShowOnboarding(false);
 
@@ -1089,7 +1101,7 @@ const App: React.FC = () => {
              onImageUpload={handleImageUpload}
              onDeleteProfile={handleDeleteProfile}
              isAnalyzing={isAnalyzing}
-             onResetApp={handleResetApp}
+             onResetApp={() => handleResetApp(true)}
              onSignOut={handleSignOut}
              periods={periods}
              setPeriods={setPeriods}
@@ -1107,10 +1119,12 @@ const App: React.FC = () => {
     return <Auth onEnterTestMode={() => setIsTestMode(true)} />;
   }
 
+  // Safeguard: If we are loaded, have a session, but NO username in accountInfo, blocking onboarding MUST be active.
+  // This acts as a double check against bypassing the modal.
+  const isMissingUsername = session && isDataLoaded && !accountInfo?.username;
+
   // BLOCKING ONBOARDING VIEW
-  // If user is logged in but missing a username (e.g. fresh Google OAuth),
-  // we render ONLY the CompleteProfile component. No dashboard, no navigation.
-  if (session && showOnboarding) {
+  if (session && (showOnboarding || isMissingUsername)) {
       return (
           <CompleteProfile 
              onComplete={handleCompleteOnboarding} 

@@ -25,6 +25,18 @@ export default function Auth({ onEnterTestMode }: AuthProps) {
   const [year, setYear] = useState('');
   const [college, setCollege] = useState('');
 
+  const clearForm = () => {
+      setEmail('');
+      setPassword('');
+      setUsername('');
+      setGender('');
+      setMajor('');
+      setYear('');
+      setCollege('');
+      setError(null);
+      setMessage(null);
+  };
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -108,13 +120,13 @@ export default function Auth({ onEnterTestMode }: AuthProps) {
           {/* Tabs */}
           <div className="flex p-1 bg-white/5 rounded-xl border border-white/10 relative shrink-0">
             <button
-              onClick={() => { setMode('signin'); setError(null); setMessage(null); }}
+              onClick={() => { setMode('signin'); clearForm(); }}
               className={`flex-1 py-2.5 text-sm font-bold rounded-lg transition-all ${mode === 'signin' ? 'bg-violet-600 text-white shadow-lg' : 'text-white/50 hover:text-white'}`}
             >
               Sign In
             </button>
             <button
-              onClick={() => { setMode('signup'); setError(null); setMessage(null); }}
+              onClick={() => { setMode('signup'); clearForm(); }}
               className={`flex-1 py-2.5 text-sm font-bold rounded-lg transition-all ${mode === 'signup' ? 'bg-violet-600 text-white shadow-lg' : 'text-white/50 hover:text-white'}`}
             >
               Sign Up
