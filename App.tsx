@@ -334,13 +334,39 @@ const FilesView = ({ materials, setMaterials, onConnectDrive, driveFiles, isDriv
             <div style={{display: 'flex', gap: '10px', marginBottom: '16px'}}>
                 <button 
                     onClick={() => setActiveTab('local')}
-                    style={{...styles.secondaryButton, background: activeTab === 'local' ? theme.accent : 'transparent', border: activeTab === 'local' ? 'none' : styles.secondaryButton.border, color: activeTab === 'local' ? '#fff' : theme.text}}
+                    style={{
+                        flex: 1, 
+                        padding: '12px', 
+                        borderRadius: '16px', 
+                        border: 'none', 
+                        // EXPLICIT COLORS
+                        backgroundColor: activeTab === 'local' ? theme.accent : 'rgba(255,255,255,0.05)', 
+                        color: '#fff', 
+                        fontWeight: 700, 
+                        fontSize: '0.9rem',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        boxShadow: activeTab === 'local' ? '0 4px 12px rgba(139, 92, 246, 0.3)' : 'none'
+                    }}
                 >
                     Uploaded
                 </button>
                 <button 
                     onClick={() => setActiveTab('drive')}
-                    style={{...styles.secondaryButton, background: activeTab === 'drive' ? theme.accent : 'transparent', border: activeTab === 'drive' ? 'none' : styles.secondaryButton.border, color: activeTab === 'drive' ? '#fff' : theme.text}}
+                    style={{
+                        flex: 1, 
+                        padding: '12px', 
+                        borderRadius: '16px', 
+                        border: 'none', 
+                        // EXPLICIT COLORS
+                        backgroundColor: activeTab === 'drive' ? theme.accent : 'rgba(255,255,255,0.05)', 
+                        color: '#fff', 
+                        fontWeight: 700, 
+                        fontSize: '0.9rem',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        boxShadow: activeTab === 'drive' ? '0 4px 12px rgba(139, 92, 246, 0.3)' : 'none'
+                    }}
                 >
                     Google Drive
                 </button>
@@ -710,14 +736,33 @@ const App: React.FC = () => {
           if (error) throw error;
 
           // 2. Set Local State immediately to unblock UI
-          setAccountInfo({
+          const newAccountInfo = {
               email: session.user.email,
               id: session.user.id,
               ...data
-          });
-          
+          };
+          setAccountInfo(newAccountInfo);
           setShowOnboarding(false);
-          
+
+          // 3. Immediately sync this new profile to the DB
+          // This prevents a race condition where the auto-saver hasn't fired yet
+          // and the user reloads the page.
+          await supabase
+            .from('profiles')
+            .upsert({
+                id: session.user.id,
+                data: {
+                    // We save just the account part initially to ensure it exists
+                    // The auto-saver will pick up the rest shortly
+                    account: newAccountInfo,
+                    events: [], materials: [], profiles: INITIAL_PROFILES,
+                    activeProfileId: 'main', grades: [], periods: INITIAL_PERIODS,
+                    eventColors: INITIAL_COLORS, themeMode: 'dark',
+                    gym: { foodLogs: [], waterLogs: [], workoutSessions: [], routines: DEFAULT_ROUTINES, customExercises: [], settings: DEFAULT_GYM_SETTINGS }
+                },
+                updated_at: new Date().toISOString()
+            });
+
       } catch (e) {
           console.error("Onboarding error:", e);
           alert("Failed to save profile. Please try again.");
@@ -1121,7 +1166,7 @@ const App: React.FC = () => {
 
   // Safeguard: If we are loaded, have a session, but NO username in accountInfo, blocking onboarding MUST be active.
   // This acts as a double check against bypassing the modal.
-  const isMissingUsername = session && isDataLoaded && !accountInfo?.username;
+  const isMissingUsername = session && isDataLoaded && (!accountInfo?.username || accountInfo.username.trim() === '');
 
   // BLOCKING ONBOARDING VIEW
   if (session && (showOnboarding || isMissingUsername)) {
@@ -1129,6 +1174,7 @@ const App: React.FC = () => {
           <CompleteProfile 
              onComplete={handleCompleteOnboarding} 
              loading={onboardingLoading} 
+             onSignOut={handleSignOut}
           />
       );
   }

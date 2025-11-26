@@ -1,14 +1,15 @@
 
 import React, { useState } from 'react';
-import { User, GraduationCap, Calendar, Building, Users, Sparkles, Loader2 } from 'lucide-react';
+import { User, GraduationCap, Calendar, Building, Users, Sparkles, Loader2, LogOut } from 'lucide-react';
 import { theme, styles } from '../theme';
 
 interface CompleteProfileProps {
   onComplete: (data: { username: string; gender: string; major: string; year: string; college: string }) => Promise<void>;
   loading: boolean;
+  onSignOut?: () => void;
 }
 
-const CompleteProfile: React.FC<CompleteProfileProps> = ({ onComplete, loading }) => {
+const CompleteProfile: React.FC<CompleteProfileProps> = ({ onComplete, loading, onSignOut }) => {
   const [username, setUsername] = useState('');
   const [gender, setGender] = useState('');
   const [major, setMajor] = useState('');
@@ -40,12 +41,22 @@ const CompleteProfile: React.FC<CompleteProfileProps> = ({ onComplete, loading }
       
       <div className="w-full max-w-[420px] mx-4 max-h-[90vh] overflow-y-auto bg-slate-900/40 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl relative z-10 animate-in zoom-in-95 duration-300">
         <div className="p-8 flex flex-col gap-6">
-          <div className="text-center">
+          <div className="text-center relative">
             <div className="mx-auto w-14 h-14 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-violet-500/20">
               <Sparkles size={28} className="text-white" />
             </div>
             <h1 className="text-2xl font-bold text-white mb-2">Welcome to UniMate!</h1>
             <p className="text-white/60 text-sm">Let's set up your student profile to get started.</p>
+            
+            {onSignOut && (
+                <button 
+                    onClick={onSignOut}
+                    className="absolute top-0 right-0 text-white/30 hover:text-white transition"
+                    title="Sign Out"
+                >
+                    <LogOut size={18} />
+                </button>
+            )}
           </div>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
