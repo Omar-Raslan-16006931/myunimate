@@ -32,9 +32,11 @@ const CompleteProfile: React.FC<CompleteProfileProps> = ({ onComplete, loading }
 
   return (
     <div style={{...styles.container, justifyContent: 'center', alignItems: 'center', overflow: 'hidden', position: 'fixed', inset: 0, zIndex: 3000}}>
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-md" />
+      {/* Background Ambience similar to Auth */}
+      <div className="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] bg-violet-600/20 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[400px] h-[400px] bg-blue-600/10 rounded-full blur-[80px] pointer-events-none" />
       
-      <div className="w-full max-w-[420px] mx-4 max-h-[90vh] overflow-y-auto bg-[#1e1b2e] border border-white/10 rounded-3xl shadow-2xl relative z-10 animate-in zoom-in-95 duration-300">
+      <div className="w-full max-w-[420px] mx-4 max-h-[90vh] overflow-y-auto bg-slate-900/40 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl relative z-10 animate-in zoom-in-95 duration-300">
         <div className="p-8 flex flex-col gap-6">
           <div className="text-center">
             <div className="mx-auto w-14 h-14 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-violet-500/20">
