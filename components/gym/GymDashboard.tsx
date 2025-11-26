@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState, useEffect } from 'react';
 import { FoodItem, WorkoutSession, GymSettings, WaterLog, GymViewType, MuscleGroup } from '../../types';
 import { 
@@ -336,4 +335,62 @@ export const GymDashboard: React.FC<GymDashboardProps> = ({ foodLogs, waterLogs,
                             <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
                             <XAxis dataKey="short" stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} />
                             <Tooltip content={<CustomTooltip />} cursor={{fill: 'transparent'}} />
-                            <Bar dataKey="workouts" fill="#6366f1" radius={[4, 4, 4, 4
+                            <Bar dataKey="workouts" fill="#6366f1" radius={[4, 4, 4, 4]} />
+                        </BarChart>
+                    </ResponsiveContainer>
+                </div>
+         </div>
+
+         {/* Volume Progress Chart */}
+         <div className="bg-slate-800/50 backdrop-blur-md rounded-2xl p-4 border border-white/10">
+            <div className="flex justify-between items-center mb-4">
+                <div className="flex items-center gap-2">
+                    <Activity className="text-pink-400" size={20} />
+                    <h3 className="text-sm font-bold text-white">Volume Progress</h3>
+                </div>
+                
+                {uniqueExercises.length > 0 && (
+                    <div className="relative">
+                        <select 
+                            value={selectedExercise}
+                            onChange={(e) => setSelectedExercise(e.target.value)}
+                            className="bg-slate-900 border border-slate-700 text-white text-xs rounded-lg pl-2 pr-6 py-1 appearance-none focus:outline-none focus:border-indigo-500"
+                        >
+                            {uniqueExercises.map(ex => (
+                                <option key={ex} value={ex}>{ex}</option>
+                            ))}
+                        </select>
+                        <ChevronDown className="absolute right-2 top-1.5 text-slate-500 pointer-events-none" size={12} />
+                    </div>
+                )}
+            </div>
+            
+            <div className="h-48 w-full">
+                {exerciseProgressData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                        <AreaChart data={exerciseProgressData}>
+                            <defs>
+                                <linearGradient id="colorVolume" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#ec4899" stopOpacity={0.3}/>
+                                    <stop offset="95%" stopColor="#ec4899" stopOpacity={0}/>
+                                </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
+                            <XAxis dataKey="date" stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} />
+                            <Tooltip content={<CustomTooltip />} cursor={{stroke: '#ec4899', strokeWidth: 1, strokeDasharray: '4 4'}} />
+                            <Area type="monotone" dataKey="volume" stroke="#ec4899" strokeWidth={2} fillOpacity={1} fill="url(#colorVolume)" />
+                        </AreaChart>
+                    </ResponsiveContainer>
+                ) : (
+                    <div className="h-full flex flex-col items-center justify-center text-slate-500 text-xs">
+                        <BarChart3 size={24} className="mb-2 opacity-50" />
+                        <p>No data for this exercise yet</p>
+                    </div>
+                )}
+            </div>
+         </div>
+
+      </div>
+    </div>
+  );
+};
