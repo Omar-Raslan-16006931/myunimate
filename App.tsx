@@ -789,7 +789,15 @@ const App: React.FC = () => {
   const [gymSettings, setGymSettings] = useState<GymSettings>(DEFAULT_GYM_SETTINGS);
 
   const [isDataLoaded, setIsDataLoaded] = useState(false);
-  const [accountInfo, setAccountInfo] = useState<{email: string, username: string, id: string} | null>(null);
+  const [accountInfo, setAccountInfo] = useState<{
+      email: string, 
+      username: string, 
+      id: string,
+      gender?: string,
+      major?: string,
+      year?: string,
+      college?: string
+  } | null>(null);
 
   // --- AUTH & LOAD LOGIC ---
 
@@ -824,11 +832,15 @@ const App: React.FC = () => {
                 console.error("Error loading profile:", error);
             }
 
-            // Set basic account info from auth session
+            // Set basic account info from auth session metadata
             setAccountInfo({
                 email: session.user.email,
                 username: session.user.user_metadata?.username,
-                id: session.user.id
+                id: session.user.id,
+                gender: session.user.user_metadata?.gender,
+                major: session.user.user_metadata?.major,
+                year: session.user.user_metadata?.year,
+                college: session.user.user_metadata?.college
             });
 
             if (data?.data) {
@@ -898,7 +910,11 @@ const App: React.FC = () => {
               account: {
                 id: session.user.id,
                 email: session.user.email,
-                username: session.user.user_metadata?.username
+                username: session.user.user_metadata?.username,
+                gender: session.user.user_metadata?.gender,
+                major: session.user.user_metadata?.major,
+                year: session.user.user_metadata?.year,
+                college: session.user.user_metadata?.college
               }
           };
 

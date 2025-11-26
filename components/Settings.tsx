@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Plus, Trash2, CalendarDays, Palette, Layers, Pencil, Upload, ImageIcon, Loader2, LogOut, ChevronDown, ChevronUp, Columns, AlertTriangle, User } from 'lucide-react';
+import { Plus, Trash2, CalendarDays, Palette, Layers, Pencil, Upload, ImageIcon, Loader2, LogOut, ChevronDown, ChevronUp, Columns, AlertTriangle, User, GraduationCap, Calendar, Building, Users } from 'lucide-react';
 import { ScheduleProfile, EventColorMap, EventType, ScheduleEvent, PeriodDefinition } from '../types';
 import { theme, styles } from '../theme';
 import ScheduleSettings from './ScheduleSettings';
@@ -23,7 +23,7 @@ interface SettingsProps {
   onSignOut: () => void;
   periods: PeriodDefinition[];
   setPeriods: (periods: PeriodDefinition[]) => void;
-  accountInfo?: { email: string, username: string, id: string } | null;
+  accountInfo?: { email: string, username: string, id: string, gender?: string, major?: string, year?: string, college?: string } | null;
 }
 
 const Settings: React.FC<SettingsProps> = ({
@@ -95,6 +95,42 @@ const Settings: React.FC<SettingsProps> = ({
                               <div style={styles.label}>Email</div>
                               <div style={{color: '#fff', fontWeight: 600, fontSize: '0.9rem'}}>{accountInfo.email}</div>
                           </div>
+                          
+                          {/* Optional Fields Display */}
+                          {(accountInfo.major || accountInfo.college) && (
+                              <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px'}}>
+                                  {accountInfo.major && (
+                                    <div style={{backgroundColor: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)'}}>
+                                        <div style={{...styles.label, display: 'flex', alignItems: 'center', gap: '4px'}}><GraduationCap size={12}/> Major</div>
+                                        <div style={{color: '#fff', fontWeight: 600, fontSize: '0.85rem'}}>{accountInfo.major}</div>
+                                    </div>
+                                  )}
+                                  {accountInfo.year && (
+                                    <div style={{backgroundColor: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)'}}>
+                                        <div style={{...styles.label, display: 'flex', alignItems: 'center', gap: '4px'}}><Calendar size={12}/> Year</div>
+                                        <div style={{color: '#fff', fontWeight: 600, fontSize: '0.85rem', textTransform: 'capitalize'}}>{accountInfo.year}</div>
+                                    </div>
+                                  )}
+                              </div>
+                          )}
+                          
+                          {(accountInfo.college || accountInfo.gender) && (
+                              <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px'}}>
+                                  {accountInfo.college && (
+                                    <div style={{backgroundColor: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)'}}>
+                                        <div style={{...styles.label, display: 'flex', alignItems: 'center', gap: '4px'}}><Building size={12}/> College</div>
+                                        <div style={{color: '#fff', fontWeight: 600, fontSize: '0.85rem'}}>{accountInfo.college}</div>
+                                    </div>
+                                  )}
+                                  {accountInfo.gender && (
+                                    <div style={{backgroundColor: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)'}}>
+                                        <div style={{...styles.label, display: 'flex', alignItems: 'center', gap: '4px'}}><Users size={12}/> Gender</div>
+                                        <div style={{color: '#fff', fontWeight: 600, fontSize: '0.85rem', textTransform: 'capitalize'}}>{accountInfo.gender}</div>
+                                    </div>
+                                  )}
+                              </div>
+                          )}
+
                           <div style={{backgroundColor: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)'}}>
                               <div style={styles.label}>User ID</div>
                               <div style={{color: theme.textMuted, fontFamily: 'monospace', fontSize: '0.8rem', wordBreak: 'break-all'}}>{accountInfo.id}</div>
