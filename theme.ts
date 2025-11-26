@@ -28,10 +28,10 @@ export const styles: { [key: string]: React.CSSProperties } = {
     overflow: "hidden",
     position: "relative"
   },
-  // Floating Navigation Pill - UNCHANGED
+  // Floating Navigation Pill - Updated to Fixed Position
   bottomNav: {
-    position: "absolute",
-    bottom: "30px",
+    position: "fixed",
+    bottom: "calc(30px + env(safe-area-inset-bottom))",
     left: "50%",
     transform: "translateX(-50%)",
     height: "65px",
