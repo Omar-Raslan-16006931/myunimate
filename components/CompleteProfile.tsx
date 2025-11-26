@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { User, GraduationCap, Calendar, Building, Users, Sparkles, Loader2, LogOut } from 'lucide-react';
+import { User, GraduationCap, Calendar, Building, Users, Sparkles, Loader2, LogOut, ArrowRight } from 'lucide-react';
 import { theme, styles } from '../theme';
 
 interface CompleteProfileProps {
@@ -39,19 +39,19 @@ const CompleteProfile: React.FC<CompleteProfileProps> = ({ onComplete, loading, 
       <div className="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] bg-violet-600/20 rounded-full blur-[100px] pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[400px] h-[400px] bg-blue-600/10 rounded-full blur-[80px] pointer-events-none" />
       
-      <div className="w-full max-w-[420px] mx-4 max-h-[90vh] overflow-y-auto bg-slate-900/40 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl relative z-10 animate-in zoom-in-95 duration-300">
+      <div className="w-full max-w-[420px] mx-4 max-h-[90vh] overflow-y-auto bg-[#130f1c] border border-white/10 rounded-3xl shadow-2xl relative z-10 animate-in zoom-in-95 duration-300">
         <div className="p-8 flex flex-col gap-6">
           <div className="text-center relative">
-            <div className="mx-auto w-14 h-14 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-violet-500/20">
-              <Sparkles size={28} className="text-white" />
+            <div className="mx-auto w-16 h-16 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-violet-500/20 animate-pulse-slow">
+              <Sparkles size={32} className="text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-white mb-2">Welcome to UniMate!</h1>
-            <p className="text-white/60 text-sm">Let's set up your student profile to get started.</p>
+            <h1 className="text-2xl font-bold text-white mb-2">Almost There!</h1>
+            <p className="text-white/60 text-sm">Finish setting up your profile to start using UniMate.</p>
             
             {onSignOut && (
                 <button 
                     onClick={onSignOut}
-                    className="absolute top-0 right-0 text-white/30 hover:text-white transition"
+                    className="absolute top-0 right-0 text-white/30 hover:text-white transition p-2"
                     title="Sign Out"
                 >
                     <LogOut size={18} />
@@ -64,27 +64,31 @@ const CompleteProfile: React.FC<CompleteProfileProps> = ({ onComplete, loading, 
             {/* Mandatory Username */}
             <div className="space-y-1">
               <label style={styles.label}>Username <span className="text-red-400">*</span></label>
-              <div className="relative">
-                <User className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40" size={18} />
+              <div className="relative group">
+                <User className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 group-focus-within:text-violet-400 transition-colors" size={18} />
                 <input
                   type="text"
                   required
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   style={{...styles.input, paddingLeft: '44px', width: '100%', boxSizing: 'border-box'}}
-                  placeholder="Choose a unique username"
+                  placeholder="Choose a display name"
+                  autoFocus
                 />
               </div>
             </div>
 
             <div className="h-px bg-white/10 my-2" />
-            <p className="text-xs font-bold text-white/40 uppercase tracking-widest text-center">Optional Details</p>
+            <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-white/40 uppercase tracking-widest">Optional Details</span>
+                <div className="h-px bg-white/10 flex-1"></div>
+            </div>
 
             <div className="grid grid-cols-2 gap-3">
                <div>
                    <label style={styles.label}>Gender</label>
-                   <div className="relative">
-                     <Users className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" size={14} />
+                   <div className="relative group">
+                     <Users className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 group-focus-within:text-violet-400 transition-colors" size={14} />
                      <select
                        value={gender}
                        onChange={(e) => setGender(e.target.value)}
@@ -93,13 +97,14 @@ const CompleteProfile: React.FC<CompleteProfileProps> = ({ onComplete, loading, 
                        <option value="" disabled>Select...</option>
                        <option value="male">Male</option>
                        <option value="female">Female</option>
+                       <option value="other">Other</option>
                      </select>
                    </div>
                </div>
                <div>
                    <label style={styles.label}>Year</label>
-                   <div className="relative">
-                     <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" size={14} />
+                   <div className="relative group">
+                     <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 group-focus-within:text-violet-400 transition-colors" size={14} />
                      <select
                        value={year}
                        onChange={(e) => setYear(e.target.value)}
@@ -110,7 +115,7 @@ const CompleteProfile: React.FC<CompleteProfileProps> = ({ onComplete, loading, 
                        <option value="2">Year 2</option>
                        <option value="3">Year 3</option>
                        <option value="4">Year 4</option>
-                       <option value="5">Year 5</option>
+                       <option value="5">Year 5+</option>
                      </select>
                    </div>
                </div>
@@ -118,8 +123,8 @@ const CompleteProfile: React.FC<CompleteProfileProps> = ({ onComplete, loading, 
 
             <div>
                <label style={styles.label}>Major</label>
-               <div className="relative">
-                 <GraduationCap className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40" size={18} />
+               <div className="relative group">
+                 <GraduationCap className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 group-focus-within:text-violet-400 transition-colors" size={18} />
                  <input
                    type="text"
                    value={major}
@@ -132,14 +137,14 @@ const CompleteProfile: React.FC<CompleteProfileProps> = ({ onComplete, loading, 
 
             <div>
                <label style={styles.label}>College</label>
-               <div className="relative">
-                 <Building className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40" size={18} />
+               <div className="relative group">
+                 <Building className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 group-focus-within:text-violet-400 transition-colors" size={18} />
                  <input
                    type="text"
                    value={college}
                    onChange={(e) => setCollege(e.target.value)}
                    style={{...styles.input, paddingLeft: '44px', width: '100%', boxSizing: 'border-box'}}
-                   placeholder="e.g. University of Tech"
+                   placeholder="e.g. University of Technology"
                  />
                </div>
             </div>
@@ -154,12 +159,14 @@ const CompleteProfile: React.FC<CompleteProfileProps> = ({ onComplete, loading, 
               type="submit"
               disabled={loading || !isFormValid}
               style={{...styles.button, justifyContent: 'center', marginTop: '12px', padding: '16px', opacity: isFormValid ? 1 : 0.5, cursor: isFormValid ? 'pointer' : 'not-allowed'}}
-              className="group shadow-lg shadow-indigo-900/20 hover:scale-[1.02] active:scale-95 transition-all"
+              className="group shadow-lg shadow-indigo-900/20 hover:scale-[1.02] active:scale-95 transition-all bg-white text-black font-extrabold"
             >
               {loading ? (
                 <Loader2 className="animate-spin" size={20} />
               ) : (
-                'Complete Setup'
+                <>
+                  Complete Setup <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                </>
               )}
             </button>
           </form>
