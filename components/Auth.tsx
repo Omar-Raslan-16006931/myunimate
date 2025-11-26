@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { theme, styles } from '../theme';
-import { Loader2, Mail, Lock, LogIn, UserPlus, Sparkles, Shield } from 'lucide-react';
+import { Loader2, Mail, Lock, LogIn, UserPlus, Sparkles, Shield, User } from 'lucide-react';
 
 interface AuthProps {
   onEnterTestMode?: () => void;
@@ -12,6 +12,7 @@ export default function Auth({ onEnterTestMode }: AuthProps) {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('');
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -24,9 +25,16 @@ export default function Auth({ onEnterTestMode }: AuthProps) {
 
     try {
       if (mode === 'signup') {
+        if (!username.trim()) throw new Error("Username is required");
+        
         const { error } = await supabase.auth.signUp({
           email,
           password,
+          options: {
+            data: {
+              username: username,
+            }
+          }
         });
         if (error) throw error;
         setMessage('Check your email for the confirmation link!');
@@ -77,6 +85,24 @@ export default function Auth({ onEnterTestMode }: AuthProps) {
         </div>
 
         <form onSubmit={handleAuth} className="flex flex-col gap-4">
+          
+          {mode === 'signup' && (
+             <div className="animate-in slide-in-from-top-2 fade-in duration-300">
+                <label style={styles.label}>Username</label>
+                <div className="relative">
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40" size={18} />
+                  <input
+                    type="text"
+                    required
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    style={{...styles.input, paddingLeft: '44px', width: '100%', boxSizing: 'border-box'}}
+                    placeholder="johndoe123"
+                  />
+                </div>
+              </div>
+          )}
+
           <div>
             <label style={styles.label}>Email</label>
             <div className="relative">

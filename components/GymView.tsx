@@ -1,85 +1,55 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { GymViewType, FoodItem, WorkoutSession, WaterLog, GymSettings, WorkoutRoutine, ExerciseDefinition } from '../types';
-import { DEFAULT_GYM_SETTINGS, DEFAULT_ROUTINES, DEFAULT_EXERCISES } from '../constants';
 import { GymDashboard } from './gym/GymDashboard';
 import { GymWorkoutLogger } from './gym/GymWorkoutLogger';
 import { GymNutritionLogger } from './gym/GymNutritionLogger';
 import { GymSettingsComponent } from './gym/GymSettings';
 import { GymNavigation } from './gym/GymNavigation';
 import { styles } from '../theme';
+import { DEFAULT_EXERCISES } from '../constants';
 
 interface GymViewProps {
   onBack: () => void;
+  // Data passed from App.tsx (Synced)
+  foodLogs: FoodItem[];
+  waterLogs: WaterLog[];
+  workoutSessions: WorkoutSession[];
+  routines: WorkoutRoutine[];
+  customExercises: ExerciseDefinition[];
+  settings: GymSettings;
+  // Handlers
+  addFoodLog: (item: FoodItem) => void;
+  updateFoodLog: (item: FoodItem) => void;
+  deleteFoodLog: (id: string) => void;
+  addWaterLog: (amount: number) => void;
+  addWorkoutSession: (session: WorkoutSession) => void;
+  saveRoutine: (routine: WorkoutRoutine) => void;
+  deleteRoutine: (id: string) => void;
+  addCustomExercise: (ex: ExerciseDefinition) => void;
+  updateSettings: (newSettings: GymSettings) => void;
 }
 
-const GymView: React.FC<GymViewProps> = ({ onBack }) => {
+const GymView: React.FC<GymViewProps> = ({ 
+    onBack, 
+    foodLogs, 
+    waterLogs, 
+    workoutSessions, 
+    routines, 
+    customExercises, 
+    settings,
+    addFoodLog,
+    updateFoodLog,
+    deleteFoodLog,
+    addWaterLog,
+    addWorkoutSession,
+    saveRoutine,
+    deleteRoutine,
+    addCustomExercise,
+    updateSettings
+}) => {
   const [currentView, setCurrentView] = useState<GymViewType>(GymViewType.DASHBOARD);
   
-  // --- Data Initialization ---
-  const [foodLogs, setFoodLogs] = useState<FoodItem[]>(() => {
-    const saved = localStorage.getItem('gym-foodLogs');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [waterLogs, setWaterLogs] = useState<WaterLog[]>(() => {
-    const saved = localStorage.getItem('gym-waterLogs');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [workoutSessions, setWorkoutSessions] = useState<WorkoutSession[]>(() => {
-    const saved = localStorage.getItem('gym-workoutSessions');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [routines, setRoutines] = useState<WorkoutRoutine[]>(() => {
-    const saved = localStorage.getItem('gym-workoutRoutines');
-    return saved ? JSON.parse(saved) : DEFAULT_ROUTINES;
-  });
-
-  const [customExercises, setCustomExercises] = useState<ExerciseDefinition[]>(() => {
-    const saved = localStorage.getItem('gym-customExercises');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [settings, setSettings] = useState<GymSettings>(() => {
-    const saved = localStorage.getItem('gym-userSettings');
-    return saved ? JSON.parse(saved) : DEFAULT_GYM_SETTINGS;
-  });
-
-  // --- Persistence ---
-  useEffect(() => { localStorage.setItem('gym-foodLogs', JSON.stringify(foodLogs)); }, [foodLogs]);
-  useEffect(() => { localStorage.setItem('gym-waterLogs', JSON.stringify(waterLogs)); }, [waterLogs]);
-  useEffect(() => { localStorage.setItem('gym-workoutSessions', JSON.stringify(workoutSessions)); }, [workoutSessions]);
-  useEffect(() => { localStorage.setItem('gym-workoutRoutines', JSON.stringify(routines)); }, [routines]);
-  useEffect(() => { localStorage.setItem('gym-customExercises', JSON.stringify(customExercises)); }, [customExercises]);
-  useEffect(() => { localStorage.setItem('gym-userSettings', JSON.stringify(settings)); }, [settings]);
-
-  // --- Handlers ---
-  const addFoodLog = (item: FoodItem) => setFoodLogs(prev => [...prev, item]);
-  const updateFoodLog = (updatedItem: FoodItem) => setFoodLogs(prev => prev.map(item => item.id === updatedItem.id ? updatedItem : item));
-  const deleteFoodLog = (id: string) => setFoodLogs(prev => prev.filter(item => item.id !== id));
-  const addWaterLog = (amount: number) => setWaterLogs(prev => [...prev, { id: Date.now().toString(), amount, timestamp: Date.now() }]);
-
-  const addWorkoutSession = (session: WorkoutSession) => {
-    setWorkoutSessions(prev => [session, ...prev]); 
-    if (session.routineId) {
-        setRoutines(prev => prev.map(r => r.id === session.routineId ? { ...r, lastPerformed: Date.now() } : r));
-    }
-  };
-  
-  const saveRoutine = (routine: WorkoutRoutine) => {
-      setRoutines(prev => {
-          const exists = prev.find(r => r.id === routine.id);
-          if (exists) return prev.map(r => r.id === routine.id ? routine : r);
-          return [...prev, routine];
-      });
-  };
-
-  const deleteRoutine = (id: string) => setRoutines(prev => prev.filter(r => r.id !== id));
-  const addCustomExercise = (ex: ExerciseDefinition) => setCustomExercises(prev => [...prev, ex]);
-  const updateSettings = (newSettings: GymSettings) => setSettings(newSettings);
-
   const allExercises = [...DEFAULT_EXERCISES, ...customExercises];
   const today = new Date().setHours(0,0,0,0);
   const todaysFood = foodLogs.filter(item => item.timestamp >= today);
