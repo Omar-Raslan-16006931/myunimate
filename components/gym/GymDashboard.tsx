@@ -1,11 +1,11 @@
+
 import React, { useMemo, useState, useEffect } from 'react';
 import { FoodItem, WorkoutSession, GymSettings, WaterLog, GymViewType, MuscleGroup } from '../../types';
 import { 
   BarChart, Bar, XAxis, Tooltip, ResponsiveContainer,
   AreaChart, Area, CartesianGrid, Radar, RadarChart, PolarGrid, PolarAngleAxis
 } from 'recharts';
-import { Activity, Flame, Trophy, Droplets, TrendingUp, BarChart3, ChevronDown, Calendar, Utensils, AlertCircle, Plus, Radar as RadarIcon } from 'lucide-react';
-import { theme } from '../../theme';
+import { Activity, Flame, Droplets, TrendingUp, BarChart3, ChevronDown, Utensils, AlertCircle, Plus, Radar as RadarIcon } from 'lucide-react';
 
 interface GymDashboardProps {
   foodLogs: FoodItem[];
@@ -42,8 +42,6 @@ export const GymDashboard: React.FC<GymDashboardProps> = ({ foodLogs, waterLogs,
   const fatPct = (totalMacros.fat / settings.targets.fat) * 100;
 
   // --- WORKOUT LOGIC ---
-  const recentWorkouts = [...workoutSessions].sort((a, b) => b.startTime - a.startTime).slice(0, 3);
-
   // Weekly Consistency Logic
   const weeklyData = useMemo(() => {
       const data = [];
