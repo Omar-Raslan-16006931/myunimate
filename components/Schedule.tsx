@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight, MapPin, Plus, Brain, ChevronDown, X } from 'lucide-react';
 import { ScheduleEvent, EventColorMap, ScheduleProfile, PeriodDefinition } from '../types';
@@ -12,6 +13,7 @@ interface ScheduleProps {
   onProfileChange: (id: string) => void;
   onAddEventClick: () => void;
   onEventClick: (event: ScheduleEvent) => void;
+  onUpdateEvent?: (event: Partial<ScheduleEvent>) => void;
   periods: PeriodDefinition[];
 }
 
@@ -23,9 +25,11 @@ const Schedule: React.FC<ScheduleProps> = ({
   onProfileChange, 
   onAddEventClick,
   onEventClick,
+  onUpdateEvent,
   periods
 }) => {
   const [expandedSlot, setExpandedSlot] = useState<ScheduleEvent[] | null>(null);
+  const [draggedEventId, setDraggedEventId] = useState<string | null>(null);
 
   // Helper to get the Saturday of the current week (Start of academic week)
   const getSaturdayOfWeek = (d: Date) => {
@@ -91,17 +95,50 @@ const Schedule: React.FC<ScheduleProps> = ({
     return yiq >= 128 ? '#000000' : '#ffffff';
   };
 
+  // --- DRAG AND DROP HANDLERS ---
+
+  const handleDragStart = (e: React.DragEvent, event: ScheduleEvent) => {
+    setDraggedEventId(event.id);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', event.id);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (e: React.DragEvent, dayName: string, dateStr: string, periodIndex: number) => {
+    e.preventDefault();
+    setDraggedEventId(null);
+    const eventId = e.dataTransfer.getData('text/plain');
+    
+    // Find valid period time
+    const targetPeriod = periods[periodIndex];
+    if (!targetPeriod || !onUpdateEvent) return;
+
+    // Call update
+    onUpdateEvent({
+      id: eventId,
+      dayOfWeek: dayName,
+      date: dateStr, // Update specific date too if it's a non-recurring event being moved
+      startTime: targetPeriod.startTime
+    });
+  };
+
   // Helper to render a single event card
   const renderEventCard = (ev: ScheduleEvent, isSmall: boolean = false) => {
        const bg = eventColors[ev.type] || '#64748b';
        const txtColor = getContrastColor(bg);
-       
+       const isDragging = draggedEventId === ev.id;
        const titleSize = isSmall ? '0.7rem' : '0.8rem';
        const padding = isSmall ? '6px' : '8px';
        
        return (
        <div 
          key={ev.id} 
+         draggable={true}
+         onDragStart={(e) => handleDragStart(e, ev)}
          onClick={() => onEventClick(ev)} 
          style={{
            ...styles.eventCard, 
@@ -114,7 +151,9 @@ const Schedule: React.FC<ScheduleProps> = ({
            display: 'flex',
            flexDirection: 'column',
            position: 'relative',
-           justifyContent: 'flex-start'
+           justifyContent: 'flex-start',
+           opacity: isDragging ? 0.5 : 1,
+           cursor: isSmall ? 'pointer' : 'grab'
          }}
        >
          {/* Title (Course Name) */}
@@ -126,7 +165,7 @@ const Schedule: React.FC<ScheduleProps> = ({
              whiteSpace: 'nowrap', 
              overflow: 'hidden', 
              textOverflow: 'ellipsis', 
-             width: '100%'
+             width: '95%' 
          }}>
             {ev.title}
          </div>
@@ -246,6 +285,7 @@ const Schedule: React.FC<ScheduleProps> = ({
                    </div>
                    {periods.map((p, pIdx) => {
                       if (p.isBreak) return <div key={`${dayName}-${p.id}`} style={{...styles.scheduleBreakCell, ...rowStyle}}></div>;
+                      
                       const cellEvents = events.filter(e => {
                          if (e.scheduleId !== activeProfileId) return false;
                          const isCorrectPeriod = getEventPeriodIndex(e.startTime) === pIdx;
@@ -256,7 +296,12 @@ const Schedule: React.FC<ScheduleProps> = ({
                       });
 
                       return (
-                        <div key={`${dayName}-${p.id}`} style={{...styles.scheduleContentCell, ...rowStyle}}>
+                        <div 
+                            key={`${dayName}-${p.id}`} 
+                            style={{...styles.scheduleContentCell, ...rowStyle}}
+                            onDragOver={handleDragOver}
+                            onDrop={(e) => handleDrop(e, dayName, rowDateStr, pIdx)}
+                        >
                            {cellEvents.length > 0 && (
                                cellEvents.length === 1 ? (
                                    renderEventCard(cellEvents[0])
@@ -320,7 +365,7 @@ const Schedule: React.FC<ScheduleProps> = ({
                                         borderRadius: '10px', 
                                         padding: '10px', 
                                         cursor: 'pointer',
-                                        display: 'flex',
+                                        display: 'flex', 
                                         justifyContent: 'space-between',
                                         alignItems: 'center',
                                         boxShadow: '0 4px 10px rgba(0,0,0,0.2)'

@@ -1,6 +1,7 @@
 
-import React, { useState } from 'react';
-import { Plus, Trash2, CalendarDays, Palette, Layers, Pencil, Upload, ImageIcon, Loader2, LogOut, ChevronDown, ChevronUp, Columns, AlertTriangle, User, GraduationCap, Calendar, Building, Users, Moon, Sun, CreditCard } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
+import { Plus, Trash2, CalendarDays, Palette, Layers, Pencil, Upload, ImageIcon, Loader2, LogOut, ChevronDown, ChevronUp, Columns, AlertTriangle, User, GraduationCap, Calendar, Building, Users, Moon, Sun, CreditCard, Lock, Check, X, AlertCircle } from 'lucide-react';
 import { ScheduleProfile, EventColorMap, EventType, ScheduleEvent, PeriodDefinition, ThemeMode } from '../types';
 import { theme, styles } from '../theme';
 import ScheduleSettings from './ScheduleSettings';
@@ -23,7 +24,19 @@ interface SettingsProps {
   onSignOut: () => void;
   periods: PeriodDefinition[];
   setPeriods: (periods: PeriodDefinition[]) => void;
-  accountInfo?: { email: string, username: string, id: string, gender?: string, major?: string, year?: string, college?: string, subscription_tier?: number } | null;
+  accountInfo?: { 
+      email: string, 
+      username: string, 
+      id: string, 
+      gender?: string, 
+      major?: string, 
+      year?: string, 
+      college?: string, 
+      subscription_tier?: number,
+      lastUsernameChange?: string,
+      genderChangeCount?: number
+  } | null;
+  onUpdateAccount: (data: any) => void;
   themeMode: ThemeMode;
   setThemeMode: (mode: ThemeMode) => void;
 }
@@ -47,6 +60,7 @@ const Settings: React.FC<SettingsProps> = ({
   periods,
   setPeriods,
   accountInfo,
+  onUpdateAccount,
   themeMode,
   setThemeMode
 }) => {
@@ -58,6 +72,14 @@ const Settings: React.FC<SettingsProps> = ({
   const [isAccountExpanded, setIsAccountExpanded] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Edit Account State
+  const [isEditingAccount, setIsEditingAccount] = useState(false);
+  const [editForm, setEditForm] = useState<any>({});
+  
+  // Username Availability State
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
+  const [isCheckingUsername, setIsCheckingUsername] = useState(false);
 
   const handleCreateProfile = () => {
     if (newProfileName.trim()) {
@@ -82,7 +104,83 @@ const Settings: React.FC<SettingsProps> = ({
       }
   };
 
+  const startEditingAccount = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      setEditForm({ ...accountInfo });
+      setIsEditingAccount(true);
+      setIsAccountExpanded(true); // Force expand
+      setUsernameAvailable(null);
+  };
+
+  const cancelEditingAccount = () => {
+      setIsEditingAccount(false);
+      setEditForm({});
+      setUsernameAvailable(null);
+      setIsCheckingUsername(false);
+  };
+
+  const saveEditingAccount = () => {
+      onUpdateAccount(editForm);
+      setIsEditingAccount(false);
+      setUsernameAvailable(null);
+  };
+
+  // Real-time Username Check
+  useEffect(() => {
+    if (!isEditingAccount || !editForm.username) return;
+
+    // If username hasn't changed from original, clear check status
+    if (editForm.username === accountInfo?.username) {
+        setUsernameAvailable(null);
+        setIsCheckingUsername(false);
+        return;
+    }
+
+    // Basic validation length check
+    if (editForm.username.length < 4) {
+        setUsernameAvailable(null); // Just invalid length, not taken check
+        return;
+    }
+
+    setIsCheckingUsername(true);
+    const timer = setTimeout(async () => {
+        try {
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('username')
+                .ilike('username', editForm.username.trim())
+                .neq('id', accountInfo?.id || '') // Ensure we don't count ourselves if logic gets weird
+                .maybeSingle();
+            
+            if (data) {
+                setUsernameAvailable(false);
+            } else {
+                setUsernameAvailable(true);
+            }
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setIsCheckingUsername(false);
+        }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [editForm.username, isEditingAccount, accountInfo]);
+
+  // Constraint Logic
+  const canEditUsername = !accountInfo?.lastUsernameChange || (new Date().getTime() - new Date(accountInfo.lastUsernameChange).getTime()) > 14 * 24 * 60 * 60 * 1000;
+  
+  const nextUsernameEditDate = accountInfo?.lastUsernameChange 
+        ? new Date(new Date(accountInfo.lastUsernameChange).getTime() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString() 
+        : null;
+
+  // Gender Constraint: 1 change allowed (starts at 0 count)
+  const genderChangesLeft = 1 - (accountInfo?.genderChangeCount || 0);
+  const canEditGender = genderChangesLeft > 0;
+
   const days = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+  
+  const isSaveDisabled = isCheckingUsername || (usernameAvailable === false && editForm.username !== accountInfo?.username) || (editForm.username && editForm.username.length < 4);
 
   return (
     <div style={styles.scrollableContent}>
@@ -103,18 +201,98 @@ const Settings: React.FC<SettingsProps> = ({
                               </div>
                               <span>Account Info</span>
                           </h3>
-                          {isAccountExpanded ? <ChevronUp size={20} color={theme.textMuted} /> : <ChevronDown size={20} color={theme.textMuted} />}
+                          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
+                              {!isEditingAccount && (
+                                  <button 
+                                    onClick={startEditingAccount}
+                                    style={{background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '8px', padding: '6px 12px', fontSize: '0.75rem', fontWeight: 600, color: theme.text, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px'}}
+                                  >
+                                      <Pencil size={12} /> Edit
+                                  </button>
+                              )}
+                              {isAccountExpanded ? <ChevronUp size={20} color={theme.textMuted} /> : <ChevronDown size={20} color={theme.textMuted} />}
+                          </div>
                       </div>
 
                       {isAccountExpanded && (
                           <div style={{marginTop: '20px', paddingTop: '20px', borderTop: '1px solid rgba(255,255,255,0.1)', animation: 'fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)', display: 'flex', flexDirection: 'column', gap: '12px'}}>
+                              
+                              {/* Edit Mode: Action Buttons */}
+                              {isEditingAccount && (
+                                  <div style={{display: 'flex', gap: '8px', marginBottom: '8px'}}>
+                                      <button 
+                                        onClick={saveEditingAccount} 
+                                        disabled={isSaveDisabled}
+                                        style={{
+                                            ...styles.button, 
+                                            flex: 1, 
+                                            justifyContent: 'center', 
+                                            fontSize: '0.85rem',
+                                            opacity: isSaveDisabled ? 0.5 : 1,
+                                            cursor: isSaveDisabled ? 'not-allowed' : 'pointer'
+                                        }}
+                                      >
+                                          <Check size={16} /> Save Changes
+                                      </button>
+                                      <button onClick={cancelEditingAccount} style={{...styles.secondaryButton, flex: 1, justifyContent: 'center', fontSize: '0.85rem'}}>
+                                          <X size={16} /> Cancel
+                                      </button>
+                                  </div>
+                              )}
+
                               <div style={{backgroundColor: 'var(--input-bg)', padding: '12px', borderRadius: '12px', border: '1px solid var(--glass-border)'}}>
                                   <div style={styles.label}>Username</div>
-                                  <div style={{color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.9rem'}}>{accountInfo.username || 'N/A'}</div>
+                                  {isEditingAccount ? (
+                                      <div>
+                                          <div style={{position: 'relative'}}>
+                                              <input 
+                                                value={editForm.username}
+                                                onChange={e => setEditForm({...editForm, username: e.target.value})}
+                                                disabled={!canEditUsername}
+                                                style={{...styles.input, width: '100%', boxSizing: 'border-box', opacity: canEditUsername ? 1 : 0.5, paddingRight: canEditUsername ? '36px' : '40px'}}
+                                              />
+                                              
+                                              {/* Status Icons for Username */}
+                                              <div style={{position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center'}}>
+                                                  {isCheckingUsername ? (
+                                                      <Loader2 size={16} className="animate-spin text-white/50" />
+                                                  ) : !canEditUsername ? (
+                                                      <Lock size={16} style={{color: theme.textMuted}} />
+                                                  ) : editForm.username !== accountInfo?.username && editForm.username.length >= 4 ? (
+                                                      usernameAvailable === true ? (
+                                                          <Check size={16} className="text-emerald-500" />
+                                                      ) : usernameAvailable === false ? (
+                                                          <AlertCircle size={16} className="text-red-500" />
+                                                      ) : null
+                                                  ) : null}
+                                              </div>
+                                          </div>
+                                          
+                                          {/* Feedback Messages */}
+                                          {!canEditUsername && (
+                                              <div style={{fontSize: '0.7rem', color: theme.textMuted, marginTop: '4px', fontStyle: 'italic'}}>
+                                                  Next change available: {nextUsernameEditDate}
+                                              </div>
+                                          )}
+                                          {canEditUsername && usernameAvailable === false && !isCheckingUsername && editForm.username.length >= 4 && (
+                                              <div style={{fontSize: '0.7rem', color: theme.danger, marginTop: '4px', fontWeight: 600}}>
+                                                  Username already taken
+                                              </div>
+                                          )}
+                                          {canEditUsername && editForm.username.length > 0 && editForm.username.length < 4 && (
+                                              <div style={{fontSize: '0.7rem', color: theme.danger, marginTop: '4px', fontWeight: 600}}>
+                                                  Must be at least 4 characters
+                                              </div>
+                                          )}
+                                      </div>
+                                  ) : (
+                                      <div style={{color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.9rem'}}>{accountInfo.username || 'N/A'}</div>
+                                  )}
                               </div>
+
                               <div style={{backgroundColor: 'var(--input-bg)', padding: '12px', borderRadius: '12px', border: '1px solid var(--glass-border)'}}>
-                                  <div style={styles.label}>Email</div>
-                                  <div style={{color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.9rem'}}>{accountInfo.email}</div>
+                                  <div style={styles.label}>Email <Lock size={10} style={{display: 'inline', marginLeft: '4px', opacity: 0.5}}/></div>
+                                  <div style={{color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.9rem', opacity: isEditingAccount ? 0.7 : 1}}>{accountInfo.email}</div>
                               </div>
 
                               {/* Subscription Tier */}
@@ -123,39 +301,81 @@ const Settings: React.FC<SettingsProps> = ({
                                   <div style={{color: '#fff', fontWeight: 800, fontSize: '0.9rem'}}>{getTierName(accountInfo.subscription_tier || 0)}</div>
                               </div>
                               
-                              {(accountInfo.major || accountInfo.college) && (
-                                  <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px'}}>
-                                      {accountInfo.major && (
-                                        <div style={{backgroundColor: 'var(--input-bg)', padding: '12px', borderRadius: '12px', border: '1px solid var(--glass-border)'}}>
-                                            <div style={{...styles.label, display: 'flex', alignItems: 'center', gap: '4px'}}><GraduationCap size={12}/> Major</div>
-                                            <div style={{color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.85rem'}}>{accountInfo.major}</div>
-                                        </div>
-                                      )}
-                                      {accountInfo.year && (
-                                        <div style={{backgroundColor: 'var(--input-bg)', padding: '12px', borderRadius: '12px', border: '1px solid var(--glass-border)'}}>
-                                            <div style={{...styles.label, display: 'flex', alignItems: 'center', gap: '4px'}}><Calendar size={12}/> Year</div>
-                                            <div style={{color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.85rem', textTransform: 'capitalize'}}>{accountInfo.year}</div>
-                                        </div>
+                              <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px'}}>
+                                  <div style={{backgroundColor: 'var(--input-bg)', padding: '12px', borderRadius: '12px', border: '1px solid var(--glass-border)'}}>
+                                      <div style={{...styles.label, display: 'flex', alignItems: 'center', gap: '4px'}}><GraduationCap size={12}/> Major</div>
+                                      {isEditingAccount ? (
+                                          <input 
+                                            value={editForm.major || ''}
+                                            onChange={e => setEditForm({...editForm, major: e.target.value})}
+                                            style={{...styles.input, width: '100%', boxSizing: 'border-box', padding: '8px', fontSize: '0.85rem'}}
+                                            placeholder="Major"
+                                          />
+                                      ) : (
+                                          <div style={{color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.85rem'}}>{accountInfo.major || 'Not set'}</div>
                                       )}
                                   </div>
-                              )}
+                                  
+                                  <div style={{backgroundColor: 'var(--input-bg)', padding: '12px', borderRadius: '12px', border: '1px solid var(--glass-border)'}}>
+                                      <div style={{...styles.label, display: 'flex', alignItems: 'center', gap: '4px'}}><Calendar size={12}/> Year</div>
+                                      {isEditingAccount ? (
+                                          <select
+                                            value={editForm.year || ''}
+                                            onChange={(e) => setEditForm({...editForm, year: e.target.value})}
+                                            style={{...styles.select, padding: '8px', fontSize: '0.85rem'}}
+                                          >
+                                            <option value="">Select...</option>
+                                            <option value="1">Year 1</option>
+                                            <option value="2">Year 2</option>
+                                            <option value="3">Year 3</option>
+                                            <option value="4">Year 4</option>
+                                            <option value="5">Year 5+</option>
+                                          </select>
+                                      ) : (
+                                          <div style={{color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.85rem', textTransform: 'capitalize'}}>{accountInfo.year ? `Year ${accountInfo.year}` : 'Not set'}</div>
+                                      )}
+                                  </div>
+                              </div>
                               
-                              {(accountInfo.college || accountInfo.gender) && (
-                                  <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px'}}>
-                                      {accountInfo.college && (
-                                        <div style={{backgroundColor: 'var(--input-bg)', padding: '12px', borderRadius: '12px', border: '1px solid var(--glass-border)'}}>
-                                            <div style={{...styles.label, display: 'flex', alignItems: 'center', gap: '4px'}}><Building size={12}/> College</div>
-                                            <div style={{color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.85rem'}}>{accountInfo.college}</div>
-                                        </div>
-                                      )}
-                                      {accountInfo.gender && (
-                                        <div style={{backgroundColor: 'var(--input-bg)', padding: '12px', borderRadius: '12px', border: '1px solid var(--glass-border)'}}>
-                                            <div style={{...styles.label, display: 'flex', alignItems: 'center', gap: '4px'}}><Users size={12}/> Gender</div>
-                                            <div style={{color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.85rem', textTransform: 'capitalize'}}>{accountInfo.gender}</div>
-                                        </div>
+                              <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px'}}>
+                                  <div style={{backgroundColor: 'var(--input-bg)', padding: '12px', borderRadius: '12px', border: '1px solid var(--glass-border)'}}>
+                                      <div style={{...styles.label, display: 'flex', alignItems: 'center', gap: '4px'}}><Building size={12}/> College</div>
+                                      {isEditingAccount ? (
+                                          <input 
+                                            value={editForm.college || ''}
+                                            onChange={e => setEditForm({...editForm, college: e.target.value})}
+                                            style={{...styles.input, width: '100%', boxSizing: 'border-box', padding: '8px', fontSize: '0.85rem'}}
+                                            placeholder="College"
+                                          />
+                                      ) : (
+                                          <div style={{color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.85rem'}}>{accountInfo.college || 'Not set'}</div>
                                       )}
                                   </div>
-                              )}
+                                  
+                                  <div style={{backgroundColor: 'var(--input-bg)', padding: '12px', borderRadius: '12px', border: '1px solid var(--glass-border)'}}>
+                                      <div style={{...styles.label, display: 'flex', alignItems: 'center', gap: '4px'}}><Users size={12}/> Gender</div>
+                                      {isEditingAccount ? (
+                                          <div>
+                                              <select
+                                                value={editForm.gender || ''}
+                                                onChange={(e) => setEditForm({...editForm, gender: e.target.value})}
+                                                disabled={!canEditGender}
+                                                style={{...styles.select, padding: '8px', fontSize: '0.85rem', opacity: canEditGender ? 1 : 0.5}}
+                                              >
+                                                <option value="">Select...</option>
+                                                <option value="male">Male</option>
+                                                <option value="female">Female</option>
+                                                <option value="other">Other</option>
+                                              </select>
+                                              <div style={{fontSize: '0.7rem', color: canEditGender ? theme.textMuted : theme.danger, marginTop: '4px', fontStyle: 'italic'}}>
+                                                  {genderChangesLeft} change{genderChangesLeft !== 1 ? 's' : ''} remaining
+                                              </div>
+                                          </div>
+                                      ) : (
+                                          <div style={{color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.85rem', textTransform: 'capitalize'}}>{accountInfo.gender || 'Not set'}</div>
+                                      )}
+                                  </div>
+                              </div>
 
                               <div style={{backgroundColor: 'var(--input-bg)', padding: '12px', borderRadius: '12px', border: '1px solid var(--glass-border)'}}>
                                   <div style={styles.label}>User ID</div>
