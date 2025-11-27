@@ -1,7 +1,8 @@
-import React, { useState, memo } from 'react';
+
+import React, { useState, memo, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { styles } from '../theme';
-import { Loader2, Mail, Lock, Sparkles, ArrowRight, User, GraduationCap, Calendar, Building, Users, LogIn } from 'lucide-react';
+import { Loader2, Mail, Lock, Sparkles, ArrowRight, User, GraduationCap, Calendar, Building, Users, LogIn, Check, AlertCircle, X } from 'lucide-react';
 
 interface AuthProps {
   onEnterTestMode?: () => void;
@@ -16,9 +17,13 @@ function Auth({ onEnterTestMode }: AuthProps) {
   // Auth Identifier (Email or Username for login, Email for signup)
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   
   // Profile Fields (Signup Only)
   const [username, setUsername] = useState('');
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
+  const [isCheckingUsername, setIsCheckingUsername] = useState(false);
+
   const [gender, setGender] = useState('');
   const [major, setMajor] = useState('');
   const [year, setYear] = useState('');
@@ -27,7 +32,9 @@ function Auth({ onEnterTestMode }: AuthProps) {
   const clearForm = () => {
       setIdentifier('');
       setPassword('');
+      setConfirmPassword('');
       setUsername('');
+      setUsernameAvailable(null);
       setGender('');
       setMajor('');
       setYear('');
@@ -35,6 +42,39 @@ function Auth({ onEnterTestMode }: AuthProps) {
       setError(null);
       setMessage(null);
   };
+
+  // Real-time username check
+  useEffect(() => {
+    // Only check availability if in signup mode and length requirement is met
+    if (mode === 'signup' && username.trim().length >= 4) {
+      const timer = setTimeout(async () => {
+        setIsCheckingUsername(true);
+        try {
+          // Check if username exists (case insensitive)
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('username')
+            .ilike('username', username.trim())
+            .maybeSingle();
+          
+          if (data) {
+             setUsernameAvailable(false);
+          } else {
+             setUsernameAvailable(true);
+          }
+        } catch (err) {
+           console.error("Error checking username:", err);
+        } finally {
+           setIsCheckingUsername(false);
+        }
+      }, 500); // 500ms debounce
+      
+      return () => clearTimeout(timer);
+    } else {
+        setUsernameAvailable(null);
+        setIsCheckingUsername(false);
+    }
+  }, [username, mode]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,7 +87,18 @@ function Auth({ onEnterTestMode }: AuthProps) {
         // --- SIGN UP FLOW ---
         if (!username.trim()) throw new Error("Username is required.");
         if (username.trim().length < 4) throw new Error("Username must be at least 4 characters long.");
+        
+        if (usernameAvailable === false) {
+             throw new Error("Username is already taken. Please choose another.");
+        }
+
         if (!identifier.includes('@')) throw new Error("Please enter a valid email address for registration.");
+        
+        if (password.length < 6) throw new Error("Password must be at least 6 characters long.");
+
+        if (password !== confirmPassword) {
+            throw new Error("Passwords do not match.");
+        }
 
         const { error } = await supabase.auth.signUp({
           email: identifier,
@@ -208,9 +259,11 @@ function Auth({ onEnterTestMode }: AuthProps) {
                 >
                     <div className="overflow-hidden min-h-0">
                         <div className="pb-4">
-                            <label className="block text-xs font-bold text-slate-400 mb-1.5 ml-1 uppercase tracking-wide">
-                                Username <span className="text-red-500">*</span>
-                            </label>
+                            <div className="flex justify-between items-center mb-1.5 ml-1">
+                                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wide">
+                                    Username <span className="text-red-500">*</span>
+                                </label>
+                            </div>
                             <div className="relative group">
                                 <User className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 group-focus-within:text-violet-400 transition-colors" size={18} />
                                 <input
@@ -218,10 +271,33 @@ function Auth({ onEnterTestMode }: AuthProps) {
                                     required={mode === 'signup'}
                                     value={username}
                                     onChange={(e) => setUsername(e.target.value)}
-                                    className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-white placeholder-white/20 focus:outline-none focus:border-violet-500/50 transition-all focus:bg-white/10"
+                                    className={`w-full bg-white/5 border rounded-xl py-3.5 pl-11 pr-10 text-white placeholder-white/20 focus:outline-none focus:bg-white/10 transition-all
+                                        ${(usernameAvailable === false && !isCheckingUsername) ? 'border-red-500/50 focus:border-red-500' : 'border-white/10 focus:border-violet-500/50'}
+                                    `}
                                     placeholder="Min 4 characters"
                                 />
+                                {mode === 'signup' && username.length >= 4 && (
+                                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                                        {isCheckingUsername ? (
+                                            <Loader2 className="animate-spin text-white/40" size={16} />
+                                        ) : usernameAvailable === true ? (
+                                            <Check className="text-emerald-500 animate-in zoom-in" size={16} />
+                                        ) : usernameAvailable === false ? (
+                                            <X className="text-red-500 animate-in zoom-in" size={16} />
+                                        ) : null}
+                                    </div>
+                                )}
                             </div>
+                            
+                            {/* Username Validation Alerts */}
+                            {mode === 'signup' && username.length > 0 && username.length < 4 && (
+                                <p className="text-[10px] text-red-500 font-bold ml-1 mt-1">Must be at least 4 characters</p>
+                            )}
+                            {mode === 'signup' && usernameAvailable === false && !isCheckingUsername && (
+                                <p className="text-[10px] text-red-500 font-bold ml-1 mt-1 flex items-center gap-1">
+                                    <AlertCircle size={10} /> Username already taken
+                                </p>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -262,6 +338,42 @@ function Auth({ onEnterTestMode }: AuthProps) {
                             className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-white placeholder-white/20 focus:outline-none focus:border-violet-500/50 transition-all focus:bg-white/10"
                             placeholder="••••••••"
                         />
+                    </div>
+                    {mode === 'signup' && password.length > 0 && password.length < 6 && (
+                        <p className="text-[10px] text-red-500 font-bold ml-1 mt-1">Must be at least 6 characters</p>
+                    )}
+                </div>
+
+                {/* Confirm Password - Only in Signup */}
+                <div 
+                    className={`grid transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                        mode === 'signup' 
+                            ? 'grid-rows-[1fr] opacity-100 mb-0' 
+                            : 'grid-rows-[0fr] opacity-0 mb-0'
+                    }`}
+                >
+                    <div className="overflow-hidden min-h-0">
+                         <div className="pt-2"> 
+                            <label className="block text-xs font-bold text-slate-400 mb-1.5 ml-1 uppercase tracking-wide">
+                                Confirm Password <span className="text-red-500">*</span>
+                            </label>
+                            <div className="relative group">
+                                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 group-focus-within:text-violet-400 transition-colors" size={18} />
+                                <input
+                                    type="password"
+                                    required={mode === 'signup'}
+                                    value={confirmPassword}
+                                    onChange={(e) => setConfirmPassword(e.target.value)}
+                                    className={`w-full bg-white/5 border rounded-xl py-3.5 pl-11 pr-4 text-white placeholder-white/20 focus:outline-none transition-all focus:bg-white/10
+                                        ${confirmPassword && confirmPassword !== password ? 'border-red-500/50 focus:border-red-500' : 'border-white/10 focus:border-violet-500/50'}
+                                    `}
+                                    placeholder="••••••••"
+                                />
+                            </div>
+                            {confirmPassword && confirmPassword !== password && (
+                                <p className="text-[10px] text-red-500 font-bold ml-1 mt-1">Passwords do not match</p>
+                            )}
+                         </div>
                     </div>
                 </div>
 

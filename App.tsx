@@ -532,7 +532,9 @@ const App: React.FC = () => {
       major?: string,
       year?: string,
       college?: string,
-      subscription_tier?: number // Added Subscription Tier
+      subscription_tier?: number,
+      lastUsernameChange?: string,
+      genderChangeCount?: number
   } | null>(null);
 
   // Drive Data
@@ -591,6 +593,24 @@ const App: React.FC = () => {
       } else {
           await supabase.auth.signOut();
       }
+  };
+
+  const handleUpdateAccount = (newData: any) => {
+    setAccountInfo(prev => {
+        if (!prev) return null;
+        const updates: any = { ...newData };
+        const now = new Date().toISOString();
+
+        // Metadata updates for constraints
+        if (newData.username !== prev.username) {
+            updates.lastUsernameChange = now;
+        }
+        if (newData.gender !== prev.gender) {
+            updates.genderChangeCount = (prev.genderChangeCount || 0) + 1;
+        }
+
+        return { ...prev, ...updates };
+    });
   };
 
   // --- AUTH & LOAD LOGIC ---
@@ -951,12 +971,20 @@ const App: React.FC = () => {
   };
 
   const handleAddEvent = (eventData: Partial<ScheduleEvent>) => {
+    // 1. Handle Updates (Edit or Drag & Drop)
+    if (eventData.id) {
+        setEvents(prev => prev.map(e => e.id === eventData.id ? { ...e, ...eventData } as ScheduleEvent : e));
+        
+        // Only close modal if it was the source of the edit
+        if (isEventModalOpen) {
+             setIsEventModalOpen(false);
+             setEditingEvent(null);
+        }
+        return;
+    }
+
+    // 2. Handle New Creations (Requires Title & StartTime)
     if (eventData.title && eventData.startTime) {
-       if (eventData.id) {
-           // Edit
-           setEvents(prev => prev.map(e => e.id === eventData.id ? { ...e, ...eventData } as ScheduleEvent : e));
-       } else {
-           // Create
            const newEvent: ScheduleEvent = {
              id: Math.random().toString(36).slice(2, 11),
              scheduleId: activeProfileId,
@@ -974,17 +1002,8 @@ const App: React.FC = () => {
            };
            setEvents(prev => [...prev, newEvent]);
 
-           // Sync with Grades (Add course if not exists)
-           const excludedTypes = ['quiz', 'assignment', 'exam', 'study', 'other'];
-           const isCourseEvent = !excludedTypes.includes(eventData.type || 'lecture');
-           
-           if (isCourseEvent && !grades.find(g => g.title === eventData.title)) {
-               const newCourse = createDefaultCourseGrade(eventData.title || 'New Course');
-               setGrades(prev => [...prev, newCourse]);
-           }
-       }
-       setIsEventModalOpen(false);
-       setEditingEvent(null);
+           setIsEventModalOpen(false);
+           setEditingEvent(null);
     }
   };
 
@@ -1174,6 +1193,7 @@ const App: React.FC = () => {
             onProfileChange={setActiveProfileId}
             onAddEventClick={() => { setEditingEvent(null); setIsEventModalOpen(true); }}
             onEventClick={(e) => setSelectedTask(e)}
+            onUpdateEvent={handleAddEvent}
             periods={periods}
           />
         );
@@ -1244,6 +1264,7 @@ const App: React.FC = () => {
              periods={periods}
              setPeriods={setPeriods}
              accountInfo={accountInfo}
+             onUpdateAccount={handleUpdateAccount}
              themeMode={themeMode}
              setThemeMode={setThemeMode}
           />
