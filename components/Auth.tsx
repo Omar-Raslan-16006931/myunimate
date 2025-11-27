@@ -1,26 +1,37 @@
-
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
 import { supabase } from '../lib/supabase';
 import { styles } from '../theme';
-import { Loader2, Mail, Lock, Sparkles, ArrowRight, Github } from 'lucide-react';
+import { Loader2, Mail, Lock, Sparkles, ArrowRight, User, GraduationCap, Calendar, Building, Users, LogIn } from 'lucide-react';
 
 interface AuthProps {
   onEnterTestMode?: () => void;
 }
 
-export default function Auth({ onEnterTestMode }: AuthProps) {
+function Auth({ onEnterTestMode }: AuthProps) {
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
-  // Form Fields
-  const [email, setEmail] = useState('');
+  // Auth Identifier (Email or Username for login, Email for signup)
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
+  
+  // Profile Fields (Signup Only)
+  const [username, setUsername] = useState('');
+  const [gender, setGender] = useState('');
+  const [major, setMajor] = useState('');
+  const [year, setYear] = useState('');
+  const [college, setCollege] = useState('');
 
   const clearForm = () => {
-      setEmail('');
+      setIdentifier('');
       setPassword('');
+      setUsername('');
+      setGender('');
+      setMajor('');
+      setYear('');
+      setCollege('');
       setError(null);
       setMessage(null);
   };
@@ -33,16 +44,57 @@ export default function Auth({ onEnterTestMode }: AuthProps) {
 
     try {
       if (mode === 'signup') {
-        // Simple sign up - Profile details will be collected in CompleteProfile step
+        // --- SIGN UP FLOW ---
+        if (!username.trim()) throw new Error("Username is required.");
+        if (username.trim().length < 4) throw new Error("Username must be at least 4 characters long.");
+        if (!identifier.includes('@')) throw new Error("Please enter a valid email address for registration.");
+
         const { error } = await supabase.auth.signUp({
-          email,
+          email: identifier,
           password,
+          options: {
+            // CRITICAL: Passing metadata here lets the Postgres Trigger 'on_auth_user_created'
+            // automatically create the profile row with the correct data.
+            data: {
+                username,
+                full_name: username,    
+                display_name: username, 
+                name: username,         
+                gender,
+                major,
+                year,
+                college,
+                subscription_tier: 0 
+            }
+          }
         });
         if (error) throw error;
+
         setMessage('Check your email for the confirmation link!');
       } else {
+        // --- SIGN IN FLOW ---
+        let emailToUse = identifier.trim();
+
+        // Check if input is NOT an email (assuming it is a username)
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(emailToUse)) {
+            // Attempt to resolve username to email via Profile lookup
+            const { data, error: lookupError } = await supabase
+                .from('profiles')
+                .select('email')
+                .eq('username', emailToUse) // Queries the CITEXT username column
+                .maybeSingle();
+
+            if (lookupError || !data || !data.email) {
+                throw new Error("Username not found. Please try your email address.");
+            }
+            
+            // Found the email associated with the username
+            emailToUse = data.email;
+        }
+
         const { error } = await supabase.auth.signInWithPassword({
-          email,
+          email: emailToUse,
           password,
         });
         if (error) throw error;
@@ -74,65 +126,132 @@ export default function Auth({ onEnterTestMode }: AuthProps) {
     }
   };
 
+  const toggleMode = () => {
+    setMode(mode === 'signin' ? 'signup' : 'signin');
+    clearForm();
+  };
+
   return (
     <div style={{...styles.container, justifyContent: 'center', alignItems: 'center', overflow: 'hidden'}}>
       {/* Background Ambience */}
-      <div className="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] bg-violet-600/20 rounded-full blur-[100px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[400px] h-[400px] bg-blue-600/10 rounded-full blur-[80px] pointer-events-none" />
+      <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-violet-600/20 rounded-full blur-[120px] pointer-events-none animate-pulse-slow" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[100px] pointer-events-none" />
 
       {/* Main Card */}
       <div 
-        className="w-full max-w-[400px] mx-4 bg-[#130f1c] border border-white/10 rounded-3xl shadow-2xl relative z-10 overflow-hidden animate-in zoom-in-95 duration-300"
+        className="w-full max-w-[420px] mx-4 bg-[#0a0a0f] border border-white/10 rounded-3xl shadow-2xl relative z-10 overflow-hidden animate-pop-in flex flex-col max-h-[90vh]"
       >
-        {/* Header Image / Gradient */}
-        <div className="h-32 bg-gradient-to-br from-violet-600 to-indigo-900 relative flex items-center justify-center">
-            <div className="absolute inset-0 bg-black/20" />
+        {/* Animated Header */}
+        <div className="h-40 relative flex items-center justify-center shrink-0 overflow-hidden bg-gradient-to-br from-violet-600 via-fuchsia-600 to-indigo-800 bg-[length:200%_200%] animate-gradient-x">
+            {/* Liquid Background Overlay */}
+            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay" />
+            <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-white/20 blur-3xl rounded-full animate-blob" />
+            <div className="absolute -top-10 -right-10 w-40 h-40 bg-indigo-300/20 blur-3xl rounded-full animate-blob animation-delay-2000" />
+            
             <div className="relative z-10 flex flex-col items-center">
-                 <div className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-xl flex items-center justify-center mb-2 shadow-lg border border-white/20">
-                    <Sparkles className="text-white" size={24} />
+                 <div className="w-16 h-16 bg-white/10 backdrop-blur-xl rounded-2xl flex items-center justify-center mb-3 shadow-2xl border border-white/30 transform transition-transform hover:scale-105 duration-300 group animate-float">
+                    {mode === 'signin' ? (
+                         <Sparkles className="text-white group-hover:rotate-12 transition-transform duration-300" size={32} />
+                    ) : (
+                         <GraduationCap className="text-white group-hover:-rotate-12 transition-transform duration-300" size={32} />
+                    )}
                  </div>
-                 <h1 className="text-2xl font-bold text-white tracking-tight">UniMate</h1>
-                 <p className="text-white/60 text-xs mt-1">Your AI Productivity Hub</p>
+                 
+                 {/* Stacked Titles for Smooth Transition */}
+                 <div className="relative h-9 w-64 flex justify-center items-center overflow-hidden">
+                    <h1 
+                        className={`text-3xl font-bold text-white tracking-tight absolute transition-all duration-500 transform ${mode === 'signin' ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'}`}
+                    >
+                        Welcome Back
+                    </h1>
+                    <h1 
+                        className={`text-3xl font-bold text-white tracking-tight absolute transition-all duration-500 transform ${mode === 'signup' ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'}`}
+                    >
+                        Join UniMate
+                    </h1>
+                 </div>
+
+                 <p className="text-white/70 text-xs font-medium tracking-wide uppercase opacity-80 mt-1">
+                    {mode === 'signin' ? 'Your AI Productivity Hub' : 'Start your journey today'}
+                 </p>
             </div>
         </div>
 
-        <div className="p-8">
-            <h2 className="text-xl font-bold text-white mb-6 text-center">
-                {mode === 'signin' ? 'Welcome Back' : 'Create Account'}
-            </h2>
-
+        {/* Scrollable Content Area */}
+        <div className="p-8 overflow-y-auto custom-scrollbar bg-gradient-to-b from-[#0a0a0f] to-[#130f1c]">
             {/* Google Button - Always Primary */}
             <button
                 onClick={handleGoogleLogin}
                 disabled={loading}
-                className="w-full bg-white hover:bg-gray-100 text-black font-bold py-3.5 px-4 rounded-xl transition-all flex items-center justify-center gap-3 mb-6 relative group shadow-lg shadow-white/5"
+                className="w-full bg-white hover:bg-slate-200 text-black font-bold py-3.5 px-4 rounded-xl transition-all flex items-center justify-center gap-3 mb-6 relative group shadow-lg shadow-white/5 active:scale-[0.98] animate-fade-in-up"
+                style={{animationDelay: '0.1s'}}
             >
                 <img src="https://www.google.com/favicon.ico" alt="G" className="w-5 h-5" />
                 <span>Continue with Google</span>
-                <ArrowRight size={18} className="absolute right-4 opacity-0 group-hover:opacity-100 transition-all transform group-hover:translate-x-1" />
+                <ArrowRight size={18} className="absolute right-4 opacity-0 group-hover:opacity-100 transition-all transform group-hover:translate-x-1 text-black/50" />
             </button>
 
-            <div className="relative mb-6">
+            <div className="relative mb-6 animate-fade-in-up" style={{animationDelay: '0.2s'}}>
                 <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/10"></div></div>
-                <div className="relative flex justify-center text-xs uppercase"><span className="bg-[#130f1c] px-2 text-white/30">Or via Email</span></div>
+                <div className="relative flex justify-center text-[10px] font-bold uppercase tracking-widest"><span className="bg-[#0f0f16] px-3 text-white/30">Or via Credentials</span></div>
             </div>
 
             <form onSubmit={handleAuth} className="space-y-4">
-                <div>
+                
+                {/* 1. Username Field - Snappy Collapse/Expand */}
+                <div 
+                    className={`grid transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                        mode === 'signup' 
+                            ? 'grid-rows-[1fr] opacity-100 mb-0' 
+                            : 'grid-rows-[0fr] opacity-0 mb-0'
+                    }`}
+                >
+                    <div className="overflow-hidden min-h-0">
+                        <div className="pb-4">
+                            <label className="block text-xs font-bold text-slate-400 mb-1.5 ml-1 uppercase tracking-wide">
+                                Username <span className="text-red-500">*</span>
+                            </label>
+                            <div className="relative group">
+                                <User className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 group-focus-within:text-violet-400 transition-colors" size={18} />
+                                <input
+                                    type="text"
+                                    required={mode === 'signup'}
+                                    value={username}
+                                    onChange={(e) => setUsername(e.target.value)}
+                                    className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-white placeholder-white/20 focus:outline-none focus:border-violet-500/50 transition-all focus:bg-white/10"
+                                    placeholder="Min 4 characters"
+                                />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* 2. Static Fields (Email & Password) */}
+                <div className="animate-fade-in-up" style={{animationDelay: '0.3s'}}>
+                    <label className="block text-xs font-bold text-slate-400 mb-1.5 ml-1 uppercase tracking-wide">
+                        {mode === 'signin' ? 'Email or Username' : 'Email Address'} <span className="text-red-500">*</span>
+                    </label>
                     <div className="relative group">
-                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 group-focus-within:text-violet-400 transition-colors" size={18} />
+                        {mode === 'signin' ? (
+                            <LogIn className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 group-focus-within:text-violet-400 transition-colors" size={18} />
+                        ) : (
+                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 group-focus-within:text-violet-400 transition-colors" size={18} />
+                        )}
                         <input
-                            type="email"
+                            type="text"
                             required
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-white placeholder-white/20 focus:outline-none focus:border-violet-500/50 transition-all"
-                            placeholder="Email address"
+                            value={identifier}
+                            onChange={(e) => setIdentifier(e.target.value)}
+                            className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-white placeholder-white/20 focus:outline-none focus:border-violet-500/50 transition-all focus:bg-white/10"
+                            placeholder={mode === 'signin' ? "username or user@example.com" : "user@example.com"}
                         />
                     </div>
                 </div>
                 
-                <div>
+                <div className="animate-fade-in-up" style={{animationDelay: '0.4s'}}>
+                    <label className="block text-xs font-bold text-slate-400 mb-1.5 ml-1 uppercase tracking-wide">
+                        Password <span className="text-red-500">*</span>
+                    </label>
                     <div className="relative group">
                         <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 group-focus-within:text-violet-400 transition-colors" size={18} />
                         <input
@@ -140,29 +259,111 @@ export default function Auth({ onEnterTestMode }: AuthProps) {
                             required
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-white placeholder-white/20 focus:outline-none focus:border-violet-500/50 transition-all"
-                            placeholder="Password"
+                            className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-white placeholder-white/20 focus:outline-none focus:border-violet-500/50 transition-all focus:bg-white/10"
+                            placeholder="••••••••"
                         />
                     </div>
                 </div>
 
-                {error && <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs text-center">{error}</div>}
-                {message && <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400 text-xs text-center">{message}</div>}
+                {/* 3. Optional Fields - Snappy Collapse/Expand */}
+                <div 
+                    className={`grid transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                        mode === 'signup' 
+                            ? 'grid-rows-[1fr] opacity-100 pt-2' 
+                            : 'grid-rows-[0fr] opacity-0 pt-0'
+                    }`}
+                >
+                  <div className="overflow-hidden min-h-0 space-y-4">
+                    <div className="flex items-center gap-2">
+                        <div className="h-px bg-white/10 flex-1"></div>
+                        <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Optional Details</span>
+                        <div className="h-px bg-white/10 flex-1"></div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                             <label className="block text-xs font-bold text-slate-500 mb-1.5 ml-1 uppercase tracking-wide">Gender</label>
+                             <div className="relative group">
+                                 <Users className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 group-focus-within:text-violet-400 transition-colors" size={14} />
+                                 <select
+                                   value={gender}
+                                   onChange={(e) => setGender(e.target.value)}
+                                   className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-9 pr-2 text-white/80 text-sm focus:outline-none focus:border-violet-500/50 appearance-none focus:bg-white/10"
+                                 >
+                                   <option value="" disabled className="bg-slate-900">Select</option>
+                                   <option value="male" className="bg-slate-900">Male</option>
+                                   <option value="female" className="bg-slate-900">Female</option>
+                                   <option value="other" className="bg-slate-900">Other</option>
+                                 </select>
+                             </div>
+                        </div>
+                        <div>
+                             <label className="block text-xs font-bold text-slate-500 mb-1.5 ml-1 uppercase tracking-wide">Year</label>
+                             <div className="relative group">
+                                 <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 group-focus-within:text-violet-400 transition-colors" size={14} />
+                                 <select
+                                   value={year}
+                                   onChange={(e) => setYear(e.target.value)}
+                                   className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-9 pr-2 text-white/80 text-sm focus:outline-none focus:border-violet-500/50 appearance-none focus:bg-white/10"
+                                 >
+                                   <option value="" disabled className="bg-slate-900">Select</option>
+                                   <option value="1" className="bg-slate-900">Year 1</option>
+                                   <option value="2" className="bg-slate-900">Year 2</option>
+                                   <option value="3" className="bg-slate-900">Year 3</option>
+                                   <option value="4" className="bg-slate-900">Year 4</option>
+                                   <option value="5" className="bg-slate-900">Year 5+</option>
+                                 </select>
+                             </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 mb-1.5 ml-1 uppercase tracking-wide">Major</label>
+                        <div className="relative group">
+                            <GraduationCap className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 group-focus-within:text-violet-400 transition-colors" size={18} />
+                            <input
+                                type="text"
+                                value={major}
+                                onChange={(e) => setMajor(e.target.value)}
+                                className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-white placeholder-white/20 focus:outline-none focus:border-violet-500/50 transition-all text-sm focus:bg-white/10"
+                                placeholder="Major (e.g. CS)"
+                            />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 mb-1.5 ml-1 uppercase tracking-wide">College</label>
+                        <div className="relative group">
+                            <Building className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 group-focus-within:text-violet-400 transition-colors" size={18} />
+                            <input
+                                type="text"
+                                value={college}
+                                onChange={(e) => setCollege(e.target.value)}
+                                className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-white placeholder-white/20 focus:outline-none focus:border-violet-500/50 transition-all text-sm focus:bg-white/10"
+                                placeholder="College"
+                            />
+                        </div>
+                    </div>
+                  </div>
+                </div>
+
+                {error && <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs text-center font-medium animate-in slide-in-from-top-2">{error}</div>}
+                {message && <div className="p-3 rounded-xl bg-green-500/10 border border-green-500/20 text-green-400 text-xs text-center font-medium animate-in slide-in-from-top-2">{message}</div>}
 
                 <button
                     type="submit"
                     disabled={loading}
-                    className="w-full bg-violet-600 hover:bg-violet-500 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-violet-900/20 flex items-center justify-center gap-2"
+                    className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-violet-900/30 flex items-center justify-center gap-2 mt-4 active:scale-[0.98] animate-fade-in-up"
+                    style={{animationDelay: '0.6s'}}
                 >
                     {loading ? <Loader2 className="animate-spin" size={20} /> : (mode === 'signin' ? 'Sign In' : 'Create Account')}
                 </button>
             </form>
 
-            <div className="mt-6 text-center">
+            <div className="mt-6 text-center animate-fade-in-up" style={{animationDelay: '0.7s'}}>
                 <p className="text-white/40 text-sm">
                     {mode === 'signin' ? "New here?" : "Already have an account?"}
                     <button 
-                        onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); clearForm(); }}
+                        onClick={toggleMode}
                         className="ml-2 text-violet-400 hover:text-violet-300 font-bold transition-colors"
                     >
                         {mode === 'signin' ? 'Create Account' : 'Sign In'}
@@ -172,7 +373,7 @@ export default function Auth({ onEnterTestMode }: AuthProps) {
             
              {onEnterTestMode && (
                 <div className="text-center mt-6 border-t border-white/5 pt-4">
-                   <button onClick={onEnterTestMode} className="text-[10px] text-white/20 hover:text-white/50 transition uppercase tracking-widest">
+                   <button onClick={onEnterTestMode} className="text-[10px] text-white/20 hover:text-white/50 transition uppercase tracking-widest font-semibold">
                      Admin Mode
                    </button>
                 </div>
@@ -182,3 +383,5 @@ export default function Auth({ onEnterTestMode }: AuthProps) {
     </div>
   );
 }
+
+export default memo(Auth);

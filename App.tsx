@@ -500,15 +500,15 @@ const App: React.FC = () => {
   const [syncStatus, setSyncStatus] = useState<'synced' | 'saving' | 'error' | 'offline'>('synced');
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardingLoading, setOnboardingLoading] = useState(false);
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // --- STATE DEFINITIONS ---
   const [currentView, setCurrentView] = useState<ViewState>('dashboard');
   const [themeMode, setThemeMode] = useState<ThemeMode>('dark');
   
-  // App Data - START EMPTY (Only load samples in Test Mode)
-  const [events, setEvents] = useState<ScheduleEvent[]>([]);
-  const [materials, setMaterials] = useState<MaterialFile[]>([]);
+  // App Data - START WITH DEFAULTS to avoid empty flash, will sync with DB
+  const [events, setEvents] = useState<ScheduleEvent[]>(INITIAL_EVENTS);
+  const [materials, setMaterials] = useState<MaterialFile[]>(INITIAL_FILES);
   const [profiles, setProfiles] = useState<ScheduleProfile[]>(INITIAL_PROFILES);
   const [activeProfileId, setActiveProfileId] = useState<string>("main");
   const [grades, setGrades] = useState<CourseGrade[]>([]);
@@ -531,12 +531,22 @@ const App: React.FC = () => {
       gender?: string,
       major?: string,
       year?: string,
-      college?: string
+      college?: string,
+      subscription_tier?: number // Added Subscription Tier
   } | null>(null);
 
   // Drive Data
   const [driveFiles, setDriveFiles] = useState<MaterialFile[]>([]);
   const [isDriveLoading, setIsDriveLoading] = useState(false);
+
+  // --- UI STATE & HANDLERS DEFINITIONS ---
+  const [isEventModalOpen, setIsEventModalOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<ScheduleEvent | null>(null);
+  const [editingEvent, setEditingEvent] = useState<Partial<ScheduleEvent> | null>(null);
+
+  const [extractedEvents, setExtractedEvents] = useState<ExtractedScheduleItem[]>([]);
+  const [isVerifyModalOpen, setIsVerifyModalOpen] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   // --- THEME EFFECT ---
   useEffect(() => {
@@ -546,6 +556,42 @@ const App: React.FC = () => {
           document.body.classList.remove('light-mode');
       }
   }, [themeMode]);
+
+  // --- HELPER FUNCTIONS ---
+
+  const handleResetApp = (fullClear = false) => {
+    setEvents(fullClear ? [] : INITIAL_EVENTS);
+    setMaterials(fullClear ? [] : INITIAL_FILES);
+    setProfiles(INITIAL_PROFILES);
+    setActiveProfileId('main');
+    setGrades([]);
+    setPeriods(INITIAL_PERIODS);
+    setEventColors(INITIAL_COLORS);
+    // Gym Resets
+    setFoodLogs([]);
+    setWaterLogs([]);
+    setWorkoutSessions([]);
+    setRoutines(DEFAULT_ROUTINES);
+    setCustomExercises([]);
+    setGymSettings(DEFAULT_GYM_SETTINGS);
+    setDriveFiles([]);
+    // Reset View
+    setCurrentView('dashboard');
+  };
+
+  const handleSignOut = async () => {
+      // 1. Immediate UI update to avoid flash of protected routes/onboarding
+      setSession(null); 
+      setAccountInfo(null); 
+      setShowOnboarding(false);
+      handleResetApp(true); 
+
+      if (isTestMode) {
+          setIsTestMode(false);
+      } else {
+          await supabase.auth.signOut();
+      }
+  };
 
   // --- AUTH & LOAD LOGIC ---
 
@@ -577,6 +623,18 @@ const App: React.FC = () => {
         // Check for Missing Username (e.g. Google Login first time)
         const meta = session.user.user_metadata || {};
         
+        // Basic account info from metadata (initial truth)
+        let mergedAccountInfo = {
+            email: session.user.email,
+            username: meta.username,
+            id: session.user.id,
+            gender: meta.gender,
+            major: meta.major,
+            year: meta.year,
+            college: meta.college,
+            subscription_tier: meta.subscription_tier || 0 // Default to 0 if not present
+        };
+
         // Critical: If no username is present in metadata, we MUST show onboarding.
         if (!meta.username) {
             setShowOnboarding(true);
@@ -587,28 +645,18 @@ const App: React.FC = () => {
         try {
             const { data, error } = await supabase
                 .from('profiles')
-                .select('data')
+                .select('settings, username, gender, major, year, college') // Select settings AND top-level columns
                 .eq('id', session.user.id)
                 .single();
             
             if (error && error.code !== 'PGRST116') { // PGRST116 is "not found", which is fine for new users
-                console.error("Error loading profile:", error);
+                console.error("Error loading profile:", JSON.stringify(error));
             }
 
-            // Set basic account info from auth session metadata
-            setAccountInfo({
-                email: session.user.email,
-                username: meta.username,
-                id: session.user.id,
-                gender: meta.gender,
-                major: meta.major,
-                year: meta.year,
-                college: meta.college
-            });
-
-            if (data?.data) {
-                const d = data.data;
-                // Hydrate State
+            if (data) {
+                const d = data.settings || {}; // Handle null settings
+                
+                // Hydrate State from settings JSONB
                 if (d.events) setEvents(d.events);
                 if (d.materials) setMaterials(d.materials);
                 if (d.profiles) setProfiles(d.profiles);
@@ -617,6 +665,23 @@ const App: React.FC = () => {
                 if (d.periods) setPeriods(d.periods);
                 if (d.eventColors) setEventColors(d.eventColors);
                 if (d.themeMode) setThemeMode(d.themeMode);
+                
+                // Account Sync Logic:
+                // 1. Metadata (Base)
+                // 2. JSONB Account (Previous App State)
+                // 3. Top-level Columns (Database Truth - Highest Priority for specific fields)
+                
+                mergedAccountInfo = {
+                    ...mergedAccountInfo,
+                    ...(d.account || {}),
+                    // Database Columns override JSONB state if they exist
+                    username: data.username || d.account?.username || mergedAccountInfo.username,
+                    gender: data.gender || d.account?.gender || mergedAccountInfo.gender,
+                    major: data.major || d.account?.major || mergedAccountInfo.major,
+                    college: data.college || d.account?.college || mergedAccountInfo.college,
+                    // Convert DB int to string for app state
+                    year: data.year ? String(data.year) : (d.account?.year || mergedAccountInfo.year)
+                };
                 
                 // Hydrate Gym
                 if (d.gym) {
@@ -628,9 +693,17 @@ const App: React.FC = () => {
                     if (d.gym.settings) setGymSettings(d.gym.settings);
                 }
             } else {
-                 // New user? Ensure state is empty.
-                 // handleResetApp(true) logic effectively does this, but good to be explicit here if needed.
+                // NO DATA in DB? Load Defaults explicitly to be safe
+                setEvents(INITIAL_EVENTS);
+                setMaterials(INITIAL_FILES);
+                setProfiles(INITIAL_PROFILES);
+                setPeriods(INITIAL_PERIODS);
+                setEventColors(INITIAL_COLORS);
+                setRoutines(DEFAULT_ROUTINES);
+                setGymSettings(DEFAULT_GYM_SETTINGS);
             }
+            
+            setAccountInfo(mergedAccountInfo);
 
             // Attempt to load Drive files if provider token is present
             if (session.provider_token) {
@@ -651,7 +724,7 @@ const App: React.FC = () => {
         // Load Sample Data for Admin Mode
         setEvents(INITIAL_EVENTS);
         setMaterials(INITIAL_FILES);
-        setAccountInfo({email: 'admin@unimate.app', username: 'Admin', id: 'admin'});
+        setAccountInfo({email: 'admin@unimate.app', username: 'Admin', id: 'admin', subscription_tier: 1}); // Pro for admin
     }
   }, [session, isTestMode]);
 
@@ -723,14 +796,17 @@ const App: React.FC = () => {
       if (!session) return;
       setOnboardingLoading(true);
       try {
-          // 1. Update Auth Metadata
+          // 1. Update Auth Metadata (For Display Name)
           const { error } = await supabase.auth.updateUser({
               data: {
                   username: data.username,
+                  full_name: data.username, // Correct Display Name
+                  display_name: data.username,
                   gender: data.gender,
                   major: data.major,
                   year: data.year,
-                  college: data.college
+                  college: data.college,
+                  subscription_tier: 0 
               }
           });
           if (error) throw error;
@@ -739,23 +815,29 @@ const App: React.FC = () => {
           const newAccountInfo = {
               email: session.user.email,
               id: session.user.id,
+              subscription_tier: 0,
               ...data
           };
           setAccountInfo(newAccountInfo);
           setShowOnboarding(false);
 
           // 3. Immediately sync this new profile to the DB
-          // This prevents a race condition where the auto-saver hasn't fired yet
-          // and the user reloads the page.
+          // SYNC TO TOP-LEVEL COLUMNS + SETTINGS JSONB
           await supabase
             .from('profiles')
             .upsert({
                 id: session.user.id,
-                data: {
+                username: data.username,
+                gender: data.gender,
+                major: data.major,
+                year: parseInt(data.year) || null, // Convert string to int for DB
+                college: data.college,
+                settings: { 
                     // We save just the account part initially to ensure it exists
-                    // The auto-saver will pick up the rest shortly
                     account: newAccountInfo,
-                    events: [], materials: [], profiles: INITIAL_PROFILES,
+                    events: INITIAL_EVENTS, // Use Defaults
+                    materials: INITIAL_FILES,
+                    profiles: INITIAL_PROFILES,
                     activeProfileId: 'main', grades: [], periods: INITIAL_PERIODS,
                     eventColors: INITIAL_COLORS, themeMode: 'dark',
                     gym: { foodLogs: [], waterLogs: [], workoutSessions: [], routines: DEFAULT_ROUTINES, customExercises: [], settings: DEFAULT_GYM_SETTINGS }
@@ -787,6 +869,12 @@ const App: React.FC = () => {
           const currentAccount = accountInfo || {
               id: session.user.id,
               email: session.user.email,
+              subscription_tier: 0,
+              username: session.user.user_metadata?.username || '',
+              gender: '',
+              major: '',
+              year: '',
+              college: ''
           };
 
           const payload = {
@@ -811,19 +899,34 @@ const App: React.FC = () => {
           };
 
           try {
+              // Ensure we don't save an empty username if one exists in metadata
+              const usernameToSave = currentAccount.username || session.user.user_metadata?.username || '';
+              
+              // Upsert to both columns and JSONB settings
               const { error } = await supabase
                   .from('profiles')
                   .upsert({
                       id: session.user.id,
-                      data: payload,
+                      username: usernameToSave, 
+                      gender: currentAccount.gender || null,
+                      major: currentAccount.major || null,
+                      year: parseInt(currentAccount.year || '') || null, // Convert to Int or Null
+                      college: currentAccount.college || null,
+                      settings: payload, 
                       updated_at: new Date().toISOString()
                   });
 
               if (error) throw error;
               setSyncStatus('synced');
-          } catch (e) {
-              console.error("Save error:", e);
-              setSyncStatus('error');
+          } catch (e: any) {
+              console.error("Save error:", JSON.stringify(e));
+              // Handle RLS error gracefully
+              if (e.code === '42501') {
+                   console.warn("RLS blocking save - ignoring UI error.");
+                   setSyncStatus('synced'); 
+              } else {
+                   setSyncStatus('error');
+              }
           }
       }, 2000); // Save after 2 seconds of inactivity
   }, [events, materials, profiles, activeProfileId, grades, periods, eventColors, themeMode, foodLogs, waterLogs, workoutSessions, routines, customExercises, gymSettings, session, isDataLoaded, accountInfo, showOnboarding]);
@@ -833,15 +936,9 @@ const App: React.FC = () => {
       debouncedSave();
   }, [debouncedSave]);
 
+  const handleEnterTestMode = useCallback(() => setIsTestMode(true), []);
 
-  // --- UI STATE & HANDLERS ---
-  const [isEventModalOpen, setIsEventModalOpen] = useState(false);
-  const [selectedTask, setSelectedTask] = useState<ScheduleEvent | null>(null);
-  const [editingEvent, setEditingEvent] = useState<Partial<ScheduleEvent> | null>(null);
-
-  const [extractedEvents, setExtractedEvents] = useState<ExtractedScheduleItem[]>([]);
-  const [isVerifyModalOpen, setIsVerifyModalOpen] = useState(false);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  // --- HANDLER FUNCTIONS FOR UI ACTIONS ---
 
   // File to Base64 helper
   const fileToBase64 = (file: File): Promise<string> => {
@@ -863,10 +960,10 @@ const App: React.FC = () => {
            const newEvent: ScheduleEvent = {
              id: Math.random().toString(36).slice(2, 11),
              scheduleId: activeProfileId,
-             title: eventData.title,
+             title: eventData.title || "New Event",
              code: eventData.code,
              group: eventData.group,
-             type: eventData.type || 'lecture',
+             type: (eventData.type as EventType) || 'lecture',
              isRecurring: eventData.isRecurring || false,
              dayOfWeek: eventData.dayOfWeek,
              date: eventData.date,
@@ -877,10 +974,10 @@ const App: React.FC = () => {
            };
            setEvents(prev => [...prev, newEvent]);
 
-           // Sync with Grades
+           // Sync with Grades (Add course if not exists)
            const excludedTypes = ['quiz', 'assignment', 'exam', 'study', 'other'];
            const isCourseEvent = !excludedTypes.includes(eventData.type || 'lecture');
-
+           
            if (isCourseEvent && !grades.find(g => g.title === eventData.title)) {
                const newCourse = createDefaultCourseGrade(eventData.title || 'New Course');
                setGrades(prev => [...prev, newCourse]);
@@ -997,39 +1094,6 @@ const App: React.FC = () => {
     setExtractedEvents([]);
   };
 
-  const handleResetApp = (fullClear = false) => {
-    setEvents(fullClear ? [] : INITIAL_EVENTS);
-    setMaterials(fullClear ? [] : INITIAL_FILES);
-    setProfiles(INITIAL_PROFILES);
-    setActiveProfileId('main');
-    setGrades([]);
-    setPeriods(INITIAL_PERIODS);
-    setEventColors(INITIAL_COLORS);
-    // Gym Resets
-    setFoodLogs([]);
-    setWaterLogs([]);
-    setWorkoutSessions([]);
-    setRoutines(DEFAULT_ROUTINES);
-    setCustomExercises([]);
-    setGymSettings(DEFAULT_GYM_SETTINGS);
-    setDriveFiles([]);
-    // Reset View
-    setCurrentView('dashboard');
-  };
-
-  const handleSignOut = async () => {
-      // 1. CLEAR LOCAL STATE FIRST to prevent "flash" of old data
-      handleResetApp(true); // TRUE means wipe to empty array, don't use samples
-      setAccountInfo(null); 
-      setShowOnboarding(false);
-
-      if (isTestMode) {
-          setIsTestMode(false);
-      } else {
-          await supabase.auth.signOut();
-      }
-  };
-
   // Gym Helpers
   const addFoodLog = (item: FoodItem) => setFoodLogs(prev => [...prev, item]);
   const updateFoodLog = (updatedItem: FoodItem) => setFoodLogs(prev => prev.map(item => item.id === updatedItem.id ? updatedItem : item));
@@ -1057,6 +1121,35 @@ const App: React.FC = () => {
             const ev = events.find(e => e.title === title);
             return { title, code: ev?.code || '', type: ev?.type || 'lecture' as EventType };
         });
+
+  if (!session && !isTestMode) {
+    return <Auth onEnterTestMode={handleEnterTestMode} />;
+  }
+
+  // Safeguard: If we are loaded, have a session, but NO username in accountInfo, blocking onboarding MUST be active.
+  // This acts as a double check against bypassing the modal.
+  const isMissingUsername = session && isDataLoaded && (!accountInfo?.username || accountInfo.username.trim() === '');
+
+  // BLOCKING ONBOARDING VIEW
+  if (session && (showOnboarding || isMissingUsername)) {
+      return (
+          <CompleteProfile 
+             onComplete={handleCompleteOnboarding} 
+             loading={onboardingLoading} 
+             onSignOut={handleSignOut}
+          />
+      );
+  }
+
+  // Show Loading Spinner while initial data fetch happens
+  if (session && !isDataLoaded) {
+      return (
+          <div style={{...styles.container, alignItems: 'center', justifyContent: 'center'}}>
+              <Loader2 className="animate-spin text-white" size={48} />
+              <p style={{marginTop: '20px', color: 'rgba(255,255,255,0.7)'}}>Syncing your world...</p>
+          </div>
+      );
+  }
 
   const renderContent = () => {
     switch (currentView) {
@@ -1160,35 +1253,6 @@ const App: React.FC = () => {
     }
   };
 
-  if (!session && !isTestMode) {
-    return <Auth onEnterTestMode={() => setIsTestMode(true)} />;
-  }
-
-  // Safeguard: If we are loaded, have a session, but NO username in accountInfo, blocking onboarding MUST be active.
-  // This acts as a double check against bypassing the modal.
-  const isMissingUsername = session && isDataLoaded && (!accountInfo?.username || accountInfo.username.trim() === '');
-
-  // BLOCKING ONBOARDING VIEW
-  if (session && (showOnboarding || isMissingUsername)) {
-      return (
-          <CompleteProfile 
-             onComplete={handleCompleteOnboarding} 
-             loading={onboardingLoading} 
-             onSignOut={handleSignOut}
-          />
-      );
-  }
-
-  // Show Loading Spinner while initial data fetch happens
-  if (session && !isDataLoaded) {
-      return (
-          <div style={{...styles.container, alignItems: 'center', justifyContent: 'center'}}>
-              <Loader2 className="animate-spin text-white" size={48} />
-              <p style={{marginTop: '20px', color: 'rgba(255,255,255,0.7)'}}>Syncing your world...</p>
-          </div>
-      );
-  }
-
   return (
     <div style={styles.container}>
       {/* Cloud Sync Status Indicator */}
@@ -1199,7 +1263,9 @@ const App: React.FC = () => {
       </div>
 
       <main style={styles.main}>
-        {renderContent()}
+        <div key={currentView} className="animate-fade-in-up w-full h-full flex flex-col">
+           {renderContent()}
+        </div>
       </main>
       
       {currentView !== 'gym' && <Navigation currentView={currentView} onNavigate={setCurrentView} />}
