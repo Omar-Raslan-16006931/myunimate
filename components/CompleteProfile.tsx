@@ -63,7 +63,7 @@ const CompleteProfile: React.FC<CompleteProfileProps> = ({ onComplete, loading, 
             
             {/* Mandatory Username */}
             <div className="space-y-1">
-              <label style={styles.label}>Username <span className="text-red-400">*</span></label>
+              <label style={styles.label}>Username <span className="text-red-500">*</span></label>
               <div className="relative group">
                 <User className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 group-focus-within:text-violet-400 transition-colors" size={18} />
                 <input

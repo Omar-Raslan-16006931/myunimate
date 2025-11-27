@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Plus, Trash2, CalendarDays, Palette, Layers, Pencil, Upload, ImageIcon, Loader2, LogOut, ChevronDown, ChevronUp, Columns, AlertTriangle, User, GraduationCap, Calendar, Building, Users, Moon, Sun } from 'lucide-react';
+import { Plus, Trash2, CalendarDays, Palette, Layers, Pencil, Upload, ImageIcon, Loader2, LogOut, ChevronDown, ChevronUp, Columns, AlertTriangle, User, GraduationCap, Calendar, Building, Users, Moon, Sun, CreditCard } from 'lucide-react';
 import { ScheduleProfile, EventColorMap, EventType, ScheduleEvent, PeriodDefinition, ThemeMode } from '../types';
 import { theme, styles } from '../theme';
 import ScheduleSettings from './ScheduleSettings';
@@ -23,7 +23,7 @@ interface SettingsProps {
   onSignOut: () => void;
   periods: PeriodDefinition[];
   setPeriods: (periods: PeriodDefinition[]) => void;
-  accountInfo?: { email: string, username: string, id: string, gender?: string, major?: string, year?: string, college?: string } | null;
+  accountInfo?: { email: string, username: string, id: string, gender?: string, major?: string, year?: string, college?: string, subscription_tier?: number } | null;
   themeMode: ThemeMode;
   setThemeMode: (mode: ThemeMode) => void;
 }
@@ -55,6 +55,7 @@ const Settings: React.FC<SettingsProps> = ({
   const [isProfilesExpanded, setIsProfilesExpanded] = useState(false);
   const [isColorsExpanded, setIsColorsExpanded] = useState(false);
   const [isBaseScheduleExpanded, setIsBaseScheduleExpanded] = useState(false);
+  const [isAccountExpanded, setIsAccountExpanded] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -73,6 +74,14 @@ const Settings: React.FC<SettingsProps> = ({
     return `${h12}:${m.toString().padStart(2, "0")} ${period}`;
   };
 
+  const getTierName = (tier: number) => {
+      switch(tier) {
+          case 0: return "Free Tier";
+          case 1: return "Pro Tier";
+          default: return "Free Tier";
+      }
+  };
+
   const days = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
   return (
@@ -81,65 +90,79 @@ const Settings: React.FC<SettingsProps> = ({
           <p style={styles.subtitle}>Personalize your app</p>
           <div style={{display: "flex", flexDirection: "column", gap: "20px", marginTop: "24px"}}>
                 
-                {/* Account Info Card */}
+                {/* Account Info Accordion */}
                 {accountInfo && (
                   <div style={styles.card}>
-                      <h3 style={{marginTop: 0, display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', fontSize: '1.1rem'}}>
-                          <div style={{background: 'rgba(59, 130, 246, 0.15)', padding: '8px', borderRadius: '50%', color: '#60a5fa', display: 'flex', alignItems: 'center', justifyItems: 'center'}}>
-                              <User size={20} />
-                          </div>
-                          <span>Account Info</span>
-                      </h3>
-                      <div style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
-                          <div style={{backgroundColor: 'var(--input-bg)', padding: '12px', borderRadius: '12px', border: '1px solid var(--glass-border)'}}>
-                              <div style={styles.label}>Username</div>
-                              <div style={{color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.9rem'}}>{accountInfo.username || 'N/A'}</div>
-                          </div>
-                          <div style={{backgroundColor: 'var(--input-bg)', padding: '12px', borderRadius: '12px', border: '1px solid var(--glass-border)'}}>
-                              <div style={styles.label}>Email</div>
-                              <div style={{color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.9rem'}}>{accountInfo.email}</div>
-                          </div>
-                          
-                          {/* Optional Fields Display */}
-                          {(accountInfo.major || accountInfo.college) && (
-                              <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px'}}>
-                                  {accountInfo.major && (
-                                    <div style={{backgroundColor: 'var(--input-bg)', padding: '12px', borderRadius: '12px', border: '1px solid var(--glass-border)'}}>
-                                        <div style={{...styles.label, display: 'flex', alignItems: 'center', gap: '4px'}}><GraduationCap size={12}/> Major</div>
-                                        <div style={{color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.85rem'}}>{accountInfo.major}</div>
-                                    </div>
-                                  )}
-                                  {accountInfo.year && (
-                                    <div style={{backgroundColor: 'var(--input-bg)', padding: '12px', borderRadius: '12px', border: '1px solid var(--glass-border)'}}>
-                                        <div style={{...styles.label, display: 'flex', alignItems: 'center', gap: '4px'}}><Calendar size={12}/> Year</div>
-                                        <div style={{color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.85rem', textTransform: 'capitalize'}}>{accountInfo.year}</div>
-                                    </div>
-                                  )}
+                      <div 
+                        onClick={() => setIsAccountExpanded(!isAccountExpanded)}
+                        style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '4px 0'}}
+                      >
+                          <h3 style={{marginTop: 0, display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.1rem', margin: 0}}>
+                              <div style={{background: 'rgba(59, 130, 246, 0.15)', padding: '8px', borderRadius: '50%', color: '#60a5fa', display: 'flex', alignItems: 'center', justifyItems: 'center'}}>
+                                  <User size={20} />
                               </div>
-                          )}
-                          
-                          {(accountInfo.college || accountInfo.gender) && (
-                              <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px'}}>
-                                  {accountInfo.college && (
-                                    <div style={{backgroundColor: 'var(--input-bg)', padding: '12px', borderRadius: '12px', border: '1px solid var(--glass-border)'}}>
-                                        <div style={{...styles.label, display: 'flex', alignItems: 'center', gap: '4px'}}><Building size={12}/> College</div>
-                                        <div style={{color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.85rem'}}>{accountInfo.college}</div>
-                                    </div>
-                                  )}
-                                  {accountInfo.gender && (
-                                    <div style={{backgroundColor: 'var(--input-bg)', padding: '12px', borderRadius: '12px', border: '1px solid var(--glass-border)'}}>
-                                        <div style={{...styles.label, display: 'flex', alignItems: 'center', gap: '4px'}}><Users size={12}/> Gender</div>
-                                        <div style={{color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.85rem', textTransform: 'capitalize'}}>{accountInfo.gender}</div>
-                                    </div>
-                                  )}
-                              </div>
-                          )}
-
-                          <div style={{backgroundColor: 'var(--input-bg)', padding: '12px', borderRadius: '12px', border: '1px solid var(--glass-border)'}}>
-                              <div style={styles.label}>User ID</div>
-                              <div style={{color: theme.textMuted, fontFamily: 'monospace', fontSize: '0.8rem', wordBreak: 'break-all'}}>{accountInfo.id}</div>
-                          </div>
+                              <span>Account Info</span>
+                          </h3>
+                          {isAccountExpanded ? <ChevronUp size={20} color={theme.textMuted} /> : <ChevronDown size={20} color={theme.textMuted} />}
                       </div>
+
+                      {isAccountExpanded && (
+                          <div style={{marginTop: '20px', paddingTop: '20px', borderTop: '1px solid rgba(255,255,255,0.1)', animation: 'fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)', display: 'flex', flexDirection: 'column', gap: '12px'}}>
+                              <div style={{backgroundColor: 'var(--input-bg)', padding: '12px', borderRadius: '12px', border: '1px solid var(--glass-border)'}}>
+                                  <div style={styles.label}>Username</div>
+                                  <div style={{color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.9rem'}}>{accountInfo.username || 'N/A'}</div>
+                              </div>
+                              <div style={{backgroundColor: 'var(--input-bg)', padding: '12px', borderRadius: '12px', border: '1px solid var(--glass-border)'}}>
+                                  <div style={styles.label}>Email</div>
+                                  <div style={{color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.9rem'}}>{accountInfo.email}</div>
+                              </div>
+
+                              {/* Subscription Tier */}
+                              <div style={{backgroundColor: 'rgba(16, 185, 129, 0.1)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(16, 185, 129, 0.2)'}}>
+                                  <div style={{...styles.label, display: 'flex', alignItems: 'center', gap: '4px', color: '#34d399'}}><CreditCard size={12}/> Subscription</div>
+                                  <div style={{color: '#fff', fontWeight: 800, fontSize: '0.9rem'}}>{getTierName(accountInfo.subscription_tier || 0)}</div>
+                              </div>
+                              
+                              {(accountInfo.major || accountInfo.college) && (
+                                  <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px'}}>
+                                      {accountInfo.major && (
+                                        <div style={{backgroundColor: 'var(--input-bg)', padding: '12px', borderRadius: '12px', border: '1px solid var(--glass-border)'}}>
+                                            <div style={{...styles.label, display: 'flex', alignItems: 'center', gap: '4px'}}><GraduationCap size={12}/> Major</div>
+                                            <div style={{color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.85rem'}}>{accountInfo.major}</div>
+                                        </div>
+                                      )}
+                                      {accountInfo.year && (
+                                        <div style={{backgroundColor: 'var(--input-bg)', padding: '12px', borderRadius: '12px', border: '1px solid var(--glass-border)'}}>
+                                            <div style={{...styles.label, display: 'flex', alignItems: 'center', gap: '4px'}}><Calendar size={12}/> Year</div>
+                                            <div style={{color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.85rem', textTransform: 'capitalize'}}>{accountInfo.year}</div>
+                                        </div>
+                                      )}
+                                  </div>
+                              )}
+                              
+                              {(accountInfo.college || accountInfo.gender) && (
+                                  <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px'}}>
+                                      {accountInfo.college && (
+                                        <div style={{backgroundColor: 'var(--input-bg)', padding: '12px', borderRadius: '12px', border: '1px solid var(--glass-border)'}}>
+                                            <div style={{...styles.label, display: 'flex', alignItems: 'center', gap: '4px'}}><Building size={12}/> College</div>
+                                            <div style={{color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.85rem'}}>{accountInfo.college}</div>
+                                        </div>
+                                      )}
+                                      {accountInfo.gender && (
+                                        <div style={{backgroundColor: 'var(--input-bg)', padding: '12px', borderRadius: '12px', border: '1px solid var(--glass-border)'}}>
+                                            <div style={{...styles.label, display: 'flex', alignItems: 'center', gap: '4px'}}><Users size={12}/> Gender</div>
+                                            <div style={{color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.85rem', textTransform: 'capitalize'}}>{accountInfo.gender}</div>
+                                        </div>
+                                      )}
+                                  </div>
+                              )}
+
+                              <div style={{backgroundColor: 'var(--input-bg)', padding: '12px', borderRadius: '12px', border: '1px solid var(--glass-border)'}}>
+                                  <div style={styles.label}>User ID</div>
+                                  <div style={{color: theme.textMuted, fontFamily: 'monospace', fontSize: '0.8rem', wordBreak: 'break-all'}}>{accountInfo.id}</div>
+                              </div>
+                          </div>
+                      )}
                   </div>
                 )}
 
@@ -206,7 +229,7 @@ const Settings: React.FC<SettingsProps> = ({
                     </div>
 
                     {isProfilesExpanded && (
-                        <div style={{marginTop: '20px', paddingTop: '20px', borderTop: '1px solid rgba(255,255,255,0.1)', animation: 'fadeIn 0.2s'}}>
+                        <div style={{marginTop: '20px', paddingTop: '20px', borderTop: '1px solid rgba(255,255,255,0.1)', animation: 'fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)'}}>
                             <div style={{marginBottom: "16px"}}>
                                 <label style={styles.label}>Active Profile</label>
                                 <div style={{display: 'flex', gap: '10px'}}>
@@ -252,7 +275,7 @@ const Settings: React.FC<SettingsProps> = ({
                     </div>
                     
                     {isScheduleSettingsExpanded && (
-                        <div style={{marginTop: '20px', paddingTop: '20px', borderTop: '1px solid rgba(255,255,255,0.1)', animation: 'fadeIn 0.2s'}}>
+                        <div style={{marginTop: '20px', paddingTop: '20px', borderTop: '1px solid rgba(255,255,255,0.1)', animation: 'fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)'}}>
                              <ScheduleSettings periods={periods} setPeriods={setPeriods} />
                         </div>
                     )}
@@ -274,7 +297,7 @@ const Settings: React.FC<SettingsProps> = ({
                     </div>
 
                     {isColorsExpanded && (
-                        <div style={{marginTop: '20px', paddingTop: '20px', borderTop: '1px solid rgba(255,255,255,0.1)', animation: 'fadeIn 0.2s'}}>
+                        <div style={{marginTop: '20px', paddingTop: '20px', borderTop: '1px solid rgba(255,255,255,0.1)', animation: 'fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)'}}>
                             <div style={{display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px"}}>
                                 {Object.keys(eventColors).map(key => (
                                     <div key={key} style={styles.colorPickerContainer}>
@@ -305,7 +328,7 @@ const Settings: React.FC<SettingsProps> = ({
                     </div>
 
                     {isBaseScheduleExpanded && (
-                        <div style={{marginTop: '20px', paddingTop: '20px', borderTop: '1px solid rgba(255,255,255,0.1)', animation: 'fadeIn 0.2s'}}>
+                        <div style={{marginTop: '20px', paddingTop: '20px', borderTop: '1px solid rgba(255,255,255,0.1)', animation: 'fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)'}}>
                             <div style={{display: 'flex', justifyContent: 'flex-end', marginBottom: '16px'}}>
                                 <button onClick={onAddBaseEventClick} style={{...styles.secondaryButton, padding: '8px 16px', fontSize: '0.8rem'}}>
                                     <Plus size={16} /> Add Class
