@@ -202,16 +202,16 @@ function Auth({ onEnterTestMode }: AuthProps) {
         // --- EXPLICIT UPDATE FOR REFERRED_BY ---
         // If the database trigger fails to map referred_by from metadata, we do it manually here.
         if (signUpData.user && verifiedReferralCode) {
-            try {
-                // Use a short timeout to reduce race condition probability with the initial trigger
-                setTimeout(async () => {
+            // Use a short timeout to reduce race condition probability with the initial trigger
+            setTimeout(async () => {
+                try {
                     await supabase.from('profiles')
                         .update({ referred_by: verifiedReferralCode })
                         .eq('id', signUpData.user!.id);
-                }, 1000);
-            } catch (err) {
-                console.warn("Manual profile update failed", err);
-            }
+                } catch (err) {
+                    console.warn("Manual profile update failed", err);
+                }
+            }, 1000);
         }
 
         setMessage('Check your email for the confirmation link!');

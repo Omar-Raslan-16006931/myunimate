@@ -1,11 +1,12 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import { Plus, Trash2, CalendarDays, Palette, Layers, Pencil, Upload, ImageIcon, Loader2, LogOut, ChevronDown, ChevronUp, Columns, AlertTriangle, User, GraduationCap, Calendar, Building, Users, Moon, Sun, CreditCard, Lock, Check, X, AlertCircle, Ticket, Copy, Shield, Search, Zap, Ban, RotateCcw, Activity, BarChart3, Coins, PieChart as PieIcon, Megaphone, Eye, Mail, MessageSquare, Bug, Lightbulb } from 'lucide-react';
-import { ScheduleProfile, EventColorMap, EventType, ScheduleEvent, PeriodDefinition, ThemeMode, ReferralCode, FeedbackItem } from '../types';
+import { Plus, Trash2, CalendarDays, Palette, Layers, Pencil, Upload, ImageIcon, Loader2, LogOut, ChevronDown, ChevronUp, Columns, AlertTriangle, User, GraduationCap, Calendar, Building, Users, Moon, Sun, Check, X, Shield, Search, Ban, MessageSquare, Sparkles, Clock, ChevronRight } from 'lucide-react';
+import { ScheduleProfile, EventColorMap, EventType, ScheduleEvent, PeriodDefinition, ThemeMode, ReferralCode, AppFeedback } from '../types';
 import { theme, styles } from '../theme';
 import ScheduleSettings from './ScheduleSettings';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from 'recharts';
+import FeedbackModal from './FeedbackModal';
+import AdminInbox from './AdminInbox';
 
 interface SettingsProps {
   profiles: ScheduleProfile[];
@@ -45,6 +46,112 @@ interface SettingsProps {
   onImpersonate?: (userId: string) => void;
 }
 
+const SupportHistoryModal = ({ isOpen, onClose, userId }: { isOpen: boolean, onClose: () => void, userId?: string }) => {
+    const [tickets, setTickets] = useState<AppFeedback[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [expandedTicketId, setExpandedTicketId] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (isOpen && userId) {
+            setLoading(true);
+            supabase.from('app_feedback')
+                .select('*')
+                .eq('user_id', userId)
+                .order('created_at', { ascending: false })
+                .then(({ data }) => {
+                    setTickets(data || []);
+                    setLoading(false);
+                });
+        }
+    }, [isOpen, userId]);
+
+    if (!isOpen) return null;
+
+    return (
+        <div style={styles.modalOverlay} onClick={onClose}>
+            <div style={{...styles.modalContent, width: '90%', maxWidth: '400px', maxHeight: '80vh', padding: '0', display: 'flex', flexDirection: 'column'}} onClick={e => e.stopPropagation()}>
+                <div style={{padding: '16px', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                    <h3 style={{margin: 0, fontSize: '1.1rem', fontWeight: 800}}>My Support Tickets</h3>
+                    <button onClick={onClose} style={{background: 'transparent', border: 'none', color: theme.textMuted, cursor: 'pointer'}}><X size={20} /></button>
+                </div>
+                
+                <div style={{padding: '16px', overflowY: 'auto', flex: 1}}>
+                    {loading ? (
+                        <div style={{textAlign: 'center', padding: '20px'}}><Loader2 className="animate-spin" /></div>
+                    ) : tickets.length === 0 ? (
+                        <div style={{textAlign: 'center', color: theme.textMuted, padding: '20px', fontSize: '0.9rem'}}>No tickets found.</div>
+                    ) : (
+                        <div style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
+                            {tickets.map(t => (
+                                <div key={t.id} style={{background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)', overflow: 'hidden'}}>
+                                    <div 
+                                        onClick={() => setExpandedTicketId(expandedTicketId === t.id ? null : t.id)}
+                                        style={{padding: '12px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}
+                                    >
+                                        <div style={{flex: 1, minWidth: 0}}>
+                                            <div style={{display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px'}}>
+                                                <span style={{fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', color: theme.textMuted, background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px'}}>{t.category}</span>
+                                                <span style={{fontSize: '0.65rem', color: theme.textMuted}}>{new Date(t.created_at).toLocaleDateString()}</span>
+                                            </div>
+                                            <p style={{margin: 0, fontSize: '0.85rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#fff'}}>{t.message}</p>
+                                        </div>
+                                        <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                                            {t.admin_reply ? (
+                                                <span style={{fontSize: '0.65rem', fontWeight: 700, color: theme.accent, background: 'rgba(139, 92, 246, 0.1)', padding: '2px 6px', borderRadius: '4px'}}>Replied</span>
+                                            ) : (
+                                                <span style={{fontSize: '0.65rem', fontWeight: 700, color: theme.textMuted}}>Sent</span>
+                                            )}
+                                            {expandedTicketId === t.id ? <ChevronUp size={16} color={theme.textMuted}/> : <ChevronDown size={16} color={theme.textMuted}/>}
+                                        </div>
+                                    </div>
+                                    
+                                    {expandedTicketId === t.id && (
+                                        <div style={{background: 'rgba(0,0,0,0.2)', padding: '12px', borderTop: '1px solid rgba(255,255,255,0.05)'}}>
+                                            <p style={{fontSize: '0.85rem', color: theme.textMuted, whiteSpace: 'pre-wrap', marginBottom: '12px'}}>{t.message}</p>
+                                            {t.admin_reply ? (
+                                                <div style={{background: 'rgba(139, 92, 246, 0.1)', padding: '10px', borderRadius: '8px', borderLeft: `3px solid ${theme.accent}`}}>
+                                                    <div style={{fontSize: '0.7rem', fontWeight: 700, color: theme.accent, marginBottom: '4px'}}>Support Reply</div>
+                                                    <p style={{fontSize: '0.85rem', color: '#fff', whiteSpace: 'pre-wrap', margin: 0}}>{t.admin_reply}</p>
+                                                </div>
+                                            ) : (
+                                                <p style={{fontSize: '0.75rem', color: theme.textMuted, fontStyle: 'italic'}}>Waiting for reply...</p>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const BanModal = ({ isOpen, onClose, onConfirm, username }: { isOpen: boolean, onClose: () => void, onConfirm: (duration: string | null) => void, username: string }) => {
+    if (!isOpen) return null;
+    return (
+        <div style={styles.modalOverlay} onClick={onClose}>
+            <div style={{...styles.modalContent, maxWidth: '300px', textAlign: 'center'}} onClick={e => e.stopPropagation()}>
+                <div style={{margin: '0 auto 16px', width: '50px', height: '50px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.danger}}>
+                    <Ban size={24} />
+                </div>
+                <h3 style={{fontSize: '1.2rem', fontWeight: 800, margin: '0 0 8px 0'}}>Suspend {username}?</h3>
+                <p style={{fontSize: '0.85rem', color: theme.textMuted, marginBottom: '20px'}}>Select suspension duration.</p>
+                
+                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '12px'}}>
+                    <button onClick={() => onConfirm('1d')} style={{padding: '8px', background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '0.8rem'}}>1 Day</button>
+                    <button onClick={() => onConfirm('3d')} style={{padding: '8px', background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '0.8rem'}}>3 Days</button>
+                    <button onClick={() => onConfirm('1w')} style={{padding: '8px', background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '0.8rem'}}>1 Week</button>
+                    <button onClick={() => onConfirm('1m')} style={{padding: '8px', background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '0.8rem'}}>1 Month</button>
+                </div>
+                <button onClick={() => onConfirm(null)} style={{width: '100%', padding: '10px', background: 'rgba(239, 68, 68, 0.2)', color: theme.danger, border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '8px', fontWeight: 700, marginBottom: '8px'}}>Permanent Ban</button>
+                <button onClick={onClose} style={{width: '100%', padding: '10px', background: 'transparent', color: theme.textMuted, border: 'none'}}>Cancel</button>
+            </div>
+        </div>
+    );
+};
+
 const Settings: React.FC<SettingsProps> = ({
   profiles,
   activeProfileId,
@@ -75,43 +182,25 @@ const Settings: React.FC<SettingsProps> = ({
   const [isColorsExpanded, setIsColorsExpanded] = useState(false);
   const [isBaseScheduleExpanded, setIsBaseScheduleExpanded] = useState(false);
   const [isAccountExpanded, setIsAccountExpanded] = useState(false);
-  const [isReferralExpanded, setIsReferralExpanded] = useState(false);
   const [isUserMgmtExpanded, setIsUserMgmtExpanded] = useState(false);
-  const [isAiMonitorExpanded, setIsAiMonitorExpanded] = useState(false);
-  const [isAnnouncementsExpanded, setIsAnnouncementsExpanded] = useState(false);
   const [isFeedbackInboxExpanded, setIsFeedbackInboxExpanded] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-  // Edit Account State
   const [isEditingAccount, setIsEditingAccount] = useState(false);
   const [editForm, setEditForm] = useState<any>({});
   
-  // Username Availability State
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
   const [isCheckingUsername, setIsCheckingUsername] = useState(false);
 
-  // Referral State
-  const [referralCodes, setReferralCodes] = useState<ReferralCode[]>([]);
-  const [newReferralCode, setNewReferralCode] = useState('');
-  const [isReferralLoading, setIsReferralLoading] = useState(false);
-
-  // User Management State (Admin)
   const [users, setUsers] = useState<any[]>([]);
   const [userSearch, setUserSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  const [banModalUser, setBanModalUser] = useState<{id: string, username: string} | null>(null);
 
-  // Announcements State (Admin)
-  const [announcementMsg, setAnnouncementMsg] = useState('');
-
-  // Feedback State
-  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
-  const [feedbackMsg, setFeedbackMsg] = useState('');
-  const [feedbackType, setFeedbackType] = useState<'bug' | 'feature' | 'general'>('general');
-  const [isSendingFeedback, setIsSendingFeedback] = useState(false);
-  const [feedbackList, setFeedbackList] = useState<FeedbackItem[]>([]);
-  const [isLoadingFeedback, setIsLoadingFeedback] = useState(false);
+  const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
 
   const handleCreateProfile = () => {
     if (newProfileName.trim()) {
@@ -132,7 +221,7 @@ const Settings: React.FC<SettingsProps> = ({
       e.stopPropagation();
       setEditForm({ ...accountInfo });
       setIsEditingAccount(true);
-      setIsAccountExpanded(true); // Force expand
+      setIsAccountExpanded(true); 
       setUsernameAvailable(null);
   };
 
@@ -149,93 +238,6 @@ const Settings: React.FC<SettingsProps> = ({
       setUsernameAvailable(null);
   };
 
-  // --- FEEDBACK LOGIC ---
-
-  const sendFeedback = async () => {
-      if (!feedbackMsg.trim()) return;
-      setIsSendingFeedback(true);
-      try {
-          await supabase.from('feedback').insert({
-              message: feedbackMsg,
-              type: feedbackType,
-              user_id: accountInfo?.id
-          });
-          setShowFeedbackModal(false);
-          setFeedbackMsg('');
-          setFeedbackType('general');
-          alert("Feedback sent! Thank you.");
-      } catch (e) {
-          console.error(e);
-          alert("Failed to send feedback.");
-      } finally {
-          setIsSendingFeedback(false);
-      }
-  };
-
-  const fetchFeedback = async () => {
-      setIsLoadingFeedback(true);
-      try {
-          const { data, error } = await supabase
-            .from('feedback')
-            .select('*')
-            .order('created_at', { ascending: false });
-          
-          if (data) {
-              setFeedbackList(data);
-          }
-      } catch (e) {
-          console.error(e);
-      } finally {
-          setIsLoadingFeedback(false);
-      }
-  };
-
-  useEffect(() => {
-      if (isFeedbackInboxExpanded) fetchFeedback();
-  }, [isFeedbackInboxExpanded]);
-
-  // --- REFERRAL SYSTEM LOGIC ---
-
-  const fetchReferralCodes = async () => {
-      setIsReferralLoading(true);
-      const { data, error } = await supabase.from('referral_codes').select('*').order('created_at', { ascending: false });
-      if (data) {
-          setReferralCodes(data);
-      }
-      setIsReferralLoading(false);
-  };
-
-  const createReferralCode = async () => {
-      if (!newReferralCode.trim()) return;
-      const code = newReferralCode.trim().toUpperCase();
-      
-      const { data, error } = await supabase
-        .from('referral_codes')
-        .insert([{ code }])
-        .select()
-        .single();
-        
-      if (data) {
-          setReferralCodes([data, ...referralCodes]);
-          setNewReferralCode('');
-      } else if (error) {
-          alert("Error creating code. It might already exist.");
-      }
-  };
-
-  const toggleReferralStatus = async (id: string, currentStatus: boolean) => {
-      const { error } = await supabase
-        .from('referral_codes')
-        .update({ is_active: !currentStatus })
-        .eq('id', id);
-        
-      if (!error) {
-          setReferralCodes(referralCodes.map(rc => rc.id === id ? { ...rc, is_active: !currentStatus } : rc));
-      }
-  };
-
-  // --- USER MANAGEMENT LOGIC (ADMIN) ---
-
   useEffect(() => {
       const timer = setTimeout(() => {
           setDebouncedSearch(userSearch);
@@ -243,10 +245,12 @@ const Settings: React.FC<SettingsProps> = ({
       return () => clearTimeout(timer);
   }, [userSearch]);
 
-  const fetchUsers = useCallback(async () => {
-      if (!isUserMgmtExpanded && !isAiMonitorExpanded) return;
+  const fetchUsers = useCallback(async (manualSearchTerm?: string) => {
+      if (!isUserMgmtExpanded) return;
       
       setIsLoadingUsers(true);
+      const term = manualSearchTerm !== undefined ? manualSearchTerm : debouncedSearch;
+      const cleanTerm = term.trim();
       
       try {
           let query = supabase
@@ -254,11 +258,17 @@ const Settings: React.FC<SettingsProps> = ({
             .select('id, username, created_at, updated_at, college, subscription_tier, is_banned, settings')
             .order('updated_at', { ascending: false });
 
-          if (debouncedSearch.trim()) {
-             query = query.ilike('username', `%${debouncedSearch.trim()}%`);
+          if (cleanTerm) {
+             const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanTerm);
+             if (isUUID) {
+                 query = query.eq('id', cleanTerm);
+             } else {
+                 query = query.ilike('username', `%${cleanTerm}%`);
+             }
+             query = query.limit(50); 
+          } else {
+             query = query.limit(20);
           }
-
-          query = query.limit(50);
 
           const { data, error } = await query;
 
@@ -269,30 +279,61 @@ const Settings: React.FC<SettingsProps> = ({
                   usage: u.settings?.usage || { total: 0, today: 0, features: {} }
               }));
               setUsers(mappedUsers);
+          } else if (error) {
+              if (error.message?.includes("Failed to fetch")) {
+                  console.warn("Failed to fetch users (offline or blocked)");
+              } else {
+                  console.error("Error loading users:", error);
+              }
           }
       } catch (err) {
           console.error("Failed to fetch users", err);
       } finally {
           setIsLoadingUsers(false);
       }
-  }, [debouncedSearch, isUserMgmtExpanded, isAiMonitorExpanded]);
+  }, [debouncedSearch, isUserMgmtExpanded]);
 
   useEffect(() => {
-      fetchUsers();
-  }, [fetchUsers]);
+      if (isUserMgmtExpanded) {
+          fetchUsers();
+      }
+  }, [fetchUsers, isUserMgmtExpanded]);
 
-  const toggleUserBan = async (id: string, currentStatus: boolean) => {
-      if (!confirm(`Are you sure you want to ${currentStatus ? 'unban' : 'BAN'} this user?`)) return;
+  const handleBanConfirm = async (duration: string | null) => {
+      if (!banModalUser) return;
       
+      let bannedUntil = null;
+      if (duration) {
+          const now = new Date();
+          if (duration === '1d') now.setDate(now.getDate() + 1);
+          if (duration === '3d') now.setDate(now.getDate() + 3);
+          if (duration === '1w') now.setDate(now.getDate() + 7);
+          if (duration === '1m') now.setMonth(now.getMonth() + 1);
+          bannedUntil = now.toISOString();
+      }
+
       const { error } = await supabase
           .from('profiles')
-          .update({ is_banned: !currentStatus })
-          .eq('id', id);
+          .update({ is_banned: true, banned_until: bannedUntil })
+          .eq('id', banModalUser.id);
 
       if (!error) {
-          setUsers(users.map(u => u.id === id ? { ...u, is_banned: !currentStatus } : u));
+          setUsers(users.map(u => u.id === banModalUser.id ? { ...u, is_banned: true } : u));
       } else {
-          alert("Failed to update ban status");
+          alert("Failed to ban user");
+      }
+      setBanModalUser(null);
+  };
+
+  const unbanUser = async (id: string) => {
+      if (!confirm("Unban this user?")) return;
+      const { error } = await supabase
+          .from('profiles')
+          .update({ is_banned: false, banned_until: null })
+          .eq('id', id);
+      
+      if (!error) {
+          setUsers(users.map(u => u.id === id ? { ...u, is_banned: false } : u));
       }
   };
 
@@ -320,79 +361,6 @@ const Settings: React.FC<SettingsProps> = ({
           alert("Failed to delete user. Check permissions.");
       }
   };
-
-  const postAnnouncement = async () => {
-      if (!announcementMsg.trim()) return;
-      await supabase.from('announcements').update({ is_active: false }).eq('is_active', true);
-      const { error } = await supabase.from('announcements').insert([{ 
-          message: announcementMsg, 
-          is_active: true
-      }]);
-
-      if (!error) {
-          setAnnouncementMsg('');
-          alert('Announcement posted successfully!');
-      } else {
-          alert('Failed to post announcement.');
-      }
-  };
-
-  const clearAnnouncement = async () => {
-      const { error } = await supabase.from('announcements').update({ is_active: false }).eq('is_active', true);
-      if (!error) {
-          alert('Announcement cleared.');
-      } else {
-          alert('Failed to clear announcement.');
-      }
-  };
-
-  const aiStats = useMemo(() => {
-      const todayStr = new Date().toISOString().split('T')[0];
-      let totalRequestsToday = 0;
-      let totalAllTime = 0;
-      const featureCounts: Record<string, number> = {};
-      const spamCandidates: any[] = [];
-
-      users.forEach(u => {
-          const usage = u.usage || {};
-          const uDate = usage.date === todayStr;
-          const uToday = uDate ? (usage.today || 0) : 0;
-          
-          totalRequestsToday += uToday;
-          totalAllTime += (usage.total || 0);
-
-          if (usage.features) {
-              Object.entries(usage.features).forEach(([feat, count]) => {
-                  featureCounts[feat] = (featureCounts[feat] || 0) + (count as number);
-              });
-          }
-
-          if (uToday > 0) {
-              spamCandidates.push({
-                  username: u.username,
-                  today: uToday,
-                  isSpam: uToday > 50,
-                  id: u.id
-              });
-          }
-      });
-
-      spamCandidates.sort((a, b) => b.today - a.today);
-      const topSpenders = spamCandidates.slice(0, 10);
-
-      const featureData = Object.keys(featureCounts).map(key => ({
-          name: key.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()),
-          value: featureCounts[key]
-      }));
-
-      const estimatedCost = (totalRequestsToday * 0.002).toFixed(3);
-
-      return { totalRequestsToday, totalAllTime, featureData, topSpenders, estimatedCost };
-  }, [users]);
-
-  useEffect(() => {
-      if (isReferralExpanded) fetchReferralCodes();
-  }, [isReferralExpanded]);
 
   useEffect(() => {
     if (!isEditingAccount || !editForm.username) return;
@@ -430,12 +398,9 @@ const Settings: React.FC<SettingsProps> = ({
   }, [editForm.username, isEditingAccount, accountInfo]);
 
   const canEditUsername = !accountInfo?.lastUsernameChange || (new Date().getTime() - new Date(accountInfo.lastUsernameChange).getTime()) > 14 * 24 * 60 * 60 * 1000;
-  const nextChangeDate = accountInfo?.lastUsernameChange ? new Date(new Date(accountInfo.lastUsernameChange).getTime() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString() : '';
   const isSaveDisabled = isCheckingUsername || (usernameAvailable === false && editForm.username !== accountInfo?.username) || (editForm.username && editForm.username.length < 4);
-  const CHART_COLORS = [theme.accent, '#10b981', '#f59e0b', '#ef4444', '#3b82f6'];
   const days = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
-  // Styles override for smaller UI
   const sectionHeaderStyle: React.CSSProperties = {
       marginTop: 0, display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.95rem', margin: 0, fontWeight: 700
   };
@@ -455,7 +420,7 @@ const Settings: React.FC<SettingsProps> = ({
           <p style={styles.subtitle}>Personalize your app</p>
           <div style={{display: "flex", flexDirection: "column", gap: "12px", marginTop: "16px"}}>
                 
-                {/* Account Info Accordion - Compacted */}
+                {/* Account Info Accordion */}
                 {accountInfo && (
                   <div style={compactCardStyle}>
                       <div 
@@ -528,7 +493,7 @@ const Settings: React.FC<SettingsProps> = ({
                               {/* Email Field */}
                               <div style={{backgroundColor: 'var(--input-bg)', padding: '6px 8px', borderRadius: '8px', border: '1px solid var(--glass-border)', display: 'flex', gap: '8px', alignItems: 'center'}}>
                                   <div style={{background: 'rgba(255,255,255,0.05)', padding: '5px', borderRadius: '6px', height: 'fit-content', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
-                                      <Mail size={12} color={theme.textMuted} />
+                                      <User size={12} color={theme.textMuted} />
                                   </div>
                                   <div style={{flex: 1, minWidth: 0}}>
                                       <div style={{fontSize: '0.55rem', fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', marginBottom: '0px', letterSpacing: '0.5px'}}>Email</div>
@@ -536,50 +501,58 @@ const Settings: React.FC<SettingsProps> = ({
                                   </div>
                               </div>
 
-                              {/* Gender & Year Row */}
+                              {/* Gender & Year Grid */}
                               <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px'}}>
-                                  <div style={{backgroundColor: 'var(--input-bg)', padding: '6px 8px', borderRadius: '8px', border: '1px solid var(--glass-border)'}}>
-                                      <div style={{display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px'}}>
-                                          <Users size={10} color={theme.textMuted} />
-                                          <span style={{fontSize: '0.55rem', fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase'}}>Gender</span>
+                                  <div style={{backgroundColor: 'var(--input-bg)', padding: '6px 8px', borderRadius: '8px', border: '1px solid var(--glass-border)', display: 'flex', gap: '8px', alignItems: 'center'}}>
+                                      <div style={{background: 'rgba(255,255,255,0.05)', padding: '5px', borderRadius: '6px', height: 'fit-content', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                                          <Users size={12} color={theme.textMuted} />
                                       </div>
-                                      {isEditingAccount ? (
-                                          <select 
-                                              value={editForm.gender} 
-                                              onChange={e => setEditForm({...editForm, gender: e.target.value})}
-                                              style={{...styles.select, width: '100%', padding: '2px', fontSize: '0.75rem', borderRadius: '6px', minHeight: 'auto'}}
-                                          >
-                                              <option value="">-</option>
-                                              <option value="male">Male</option>
-                                              <option value="female">Female</option>
-                                              <option value="other">Other</option>
-                                          </select>
-                                      ) : (
-                                          <div style={{fontSize: '0.8rem', fontWeight: 600, color: '#fff', textTransform: 'capitalize'}}>{accountInfo.gender || 'Not Set'}</div>
-                                      )}
+                                      <div style={{flex: 1}}>
+                                          <div style={{fontSize: '0.55rem', fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', marginBottom: '0px', letterSpacing: '0.5px'}}>Gender</div>
+                                          {isEditingAccount ? (
+                                              <select 
+                                                  value={editForm.gender || ''} 
+                                                  onChange={e => setEditForm({...editForm, gender: e.target.value})}
+                                                  style={{...styles.input, width: '100%', padding: '2px', fontSize: '0.8rem', minHeight: 'auto', borderRadius: '4px', background: 'transparent', border: 'none'}}
+                                              >
+                                                  <option value="" disabled>Select</option>
+                                                  <option value="male">Male</option>
+                                                  <option value="female">Female</option>
+                                                  <option value="other">Other</option>
+                                              </select>
+                                          ) : (
+                                              <div style={{fontSize: '0.8rem', fontWeight: 600, color: '#fff'}}>{accountInfo.gender || 'Not Set'}</div>
+                                          )}
+                                      </div>
                                   </div>
 
-                                  <div style={{backgroundColor: 'var(--input-bg)', padding: '6px 8px', borderRadius: '8px', border: '1px solid var(--glass-border)'}}>
-                                      <div style={{display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px'}}>
-                                          <Calendar size={10} color={theme.textMuted} />
-                                          <span style={{fontSize: '0.55rem', fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase'}}>Year</span>
+                                  <div style={{backgroundColor: 'var(--input-bg)', padding: '6px 8px', borderRadius: '8px', border: '1px solid var(--glass-border)', display: 'flex', gap: '8px', alignItems: 'center'}}>
+                                      <div style={{background: 'rgba(255,255,255,0.05)', padding: '5px', borderRadius: '6px', height: 'fit-content', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                                          <Calendar size={12} color={theme.textMuted} />
                                       </div>
-                                      {isEditingAccount ? (
-                                          <select 
-                                              value={editForm.year} 
-                                              onChange={e => setEditForm({...editForm, year: e.target.value})}
-                                              style={{...styles.select, width: '100%', padding: '2px', fontSize: '0.75rem', borderRadius: '6px', minHeight: 'auto'}}
-                                          >
-                                              <option value="">-</option>
-                                              {[1,2,3,4,5].map(y => <option key={y} value={y}>{y}</option>)}
-                                          </select>
-                                      ) : (
-                                          <div style={{fontSize: '0.8rem', fontWeight: 600, color: '#fff'}}>Year {accountInfo.year || '-'}</div>
-                                      )}
+                                      <div style={{flex: 1}}>
+                                          <div style={{fontSize: '0.55rem', fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', marginBottom: '0px', letterSpacing: '0.5px'}}>Year</div>
+                                          {isEditingAccount ? (
+                                              <select 
+                                                  value={editForm.year || ''} 
+                                                  onChange={e => setEditForm({...editForm, year: e.target.value})}
+                                                  style={{...styles.input, width: '100%', padding: '2px', fontSize: '0.8rem', minHeight: 'auto', borderRadius: '4px', background: 'transparent', border: 'none'}}
+                                              >
+                                                  <option value="" disabled>Select</option>
+                                                  <option value="1">Year 1</option>
+                                                  <option value="2">Year 2</option>
+                                                  <option value="3">Year 3</option>
+                                                  <option value="4">Year 4</option>
+                                                  <option value="5">Year 5+</option>
+                                              </select>
+                                          ) : (
+                                              <div style={{fontSize: '0.8rem', fontWeight: 600, color: '#fff'}}>Year {accountInfo.year || '-'}</div>
+                                          )}
+                                      </div>
                                   </div>
                               </div>
 
-                              {/* Major */}
+                              {/* Major Field */}
                               <div style={{backgroundColor: 'var(--input-bg)', padding: '6px 8px', borderRadius: '8px', border: '1px solid var(--glass-border)', display: 'flex', gap: '8px', alignItems: 'center'}}>
                                   <div style={{background: 'rgba(255,255,255,0.05)', padding: '5px', borderRadius: '6px', height: 'fit-content', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
                                       <GraduationCap size={12} color={theme.textMuted} />
@@ -588,10 +561,10 @@ const Settings: React.FC<SettingsProps> = ({
                                       <div style={{fontSize: '0.55rem', fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', marginBottom: '0px', letterSpacing: '0.5px'}}>Major</div>
                                       {isEditingAccount ? (
                                           <input 
-                                              value={editForm.major || ''}
+                                              value={editForm.major || ''} 
                                               onChange={e => setEditForm({...editForm, major: e.target.value})}
-                                              style={{...styles.input, width: '100%', boxSizing: 'border-box', padding: '4px', fontSize: '0.8rem', minHeight: 'auto', borderRadius: '6px'}}
-                                              placeholder="e.g. CS"
+                                              style={{...styles.input, width: '100%', padding: '2px', fontSize: '0.8rem', minHeight: 'auto', borderRadius: '4px', background: 'transparent', border: 'none'}}
+                                              placeholder="Major"
                                           />
                                       ) : (
                                           <div style={{fontSize: '0.8rem', fontWeight: 600, color: '#fff'}}>{accountInfo.major || 'Not Set'}</div>
@@ -599,23 +572,90 @@ const Settings: React.FC<SettingsProps> = ({
                                   </div>
                               </div>
 
-                              {/* College */}
+                              {/* College Field */}
                               <div style={{backgroundColor: 'var(--input-bg)', padding: '6px 8px', borderRadius: '8px', border: '1px solid var(--glass-border)', display: 'flex', gap: '8px', alignItems: 'center'}}>
                                   <div style={{background: 'rgba(255,255,255,0.05)', padding: '5px', borderRadius: '6px', height: 'fit-content', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
                                       <Building size={12} color={theme.textMuted} />
                                   </div>
                                   <div style={{flex: 1}}>
-                                      <div style={{fontSize: '0.55rem', fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', marginBottom: '0px', letterSpacing: '0.5px'}}>College</div>
+                                      <div style={{fontSize: '0.55rem', fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', marginBottom: '0px', letterSpacing: '0.5px'}}>College / University</div>
                                       {isEditingAccount ? (
                                           <input 
-                                              value={editForm.college || ''}
+                                              value={editForm.college || ''} 
                                               onChange={e => setEditForm({...editForm, college: e.target.value})}
-                                              style={{...styles.input, width: '100%', boxSizing: 'border-box', padding: '4px', fontSize: '0.8rem', minHeight: 'auto', borderRadius: '6px'}}
-                                              placeholder="University"
+                                              style={{...styles.input, width: '100%', padding: '2px', fontSize: '0.8rem', minHeight: 'auto', borderRadius: '4px', background: 'transparent', border: 'none'}}
+                                              placeholder="College Name"
                                           />
                                       ) : (
                                           <div style={{fontSize: '0.8rem', fontWeight: 600, color: '#fff'}}>{accountInfo.college || 'Not Set'}</div>
                                       )}
+                                  </div>
+                              </div>
+
+                              {/* Subscription Tier - Compact & Animated */}
+                              <div style={{
+                                  backgroundColor: accountInfo.subscription_tier === 1 ? 'rgba(234, 179, 8, 0.1)' : 'var(--input-bg)',
+                                  padding: '12px',
+                                  borderRadius: '14px',
+                                  border: accountInfo.subscription_tier === 1 ? '1px solid rgba(251, 191, 36, 0.3)' : '1px solid var(--glass-border)',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  gap: '2px',
+                                  marginTop: '8px',
+                                  position: 'relative',
+                                  overflow: 'hidden',
+                                  boxShadow: accountInfo.subscription_tier === 1 ? '0 4px 15px rgba(234, 179, 8, 0.15)' : 'none'
+                              }}>
+                                  {/* Background Shine */}
+                                  {accountInfo.subscription_tier === 1 && (
+                                      <div style={{
+                                          position: 'absolute',
+                                          top: -20, left: -20, right: -20, bottom: -20,
+                                          background: 'linear-gradient(120deg, transparent 40%, rgba(255,255,255,0.1) 50%, transparent 60%)',
+                                          animation: 'shine 4s infinite linear',
+                                          pointerEvents: 'none'
+                                      }} />
+                                  )}
+
+                                  <div style={{
+                                      background: accountInfo.subscription_tier === 1 ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' : 'rgba(255,255,255,0.05)',
+                                      padding: '6px',
+                                      borderRadius: '50%',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      marginBottom: '4px',
+                                      boxShadow: accountInfo.subscription_tier === 1 ? '0 4px 10px rgba(245, 158, 11, 0.3)' : 'none'
+                                  }}>
+                                      <Sparkles
+                                          size={12}
+                                          color={accountInfo.subscription_tier === 1 ? '#fff' : theme.textMuted}
+                                          fill={accountInfo.subscription_tier === 1 ? '#fff' : 'none'}
+                                      />
+                                  </div>
+                                  
+                                  <div style={{fontSize: '0.55rem', fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '1px'}}>Current Plan</div>
+                                  
+                                  <div style={{
+                                      fontSize: '1rem',
+                                      fontWeight: 900,
+                                      letterSpacing: '-0.5px',
+                                      color: '#fff'
+                                  }}>
+                                      {accountInfo.subscription_tier === 1 ? (
+                                          <span style={{
+                                              background: 'linear-gradient(to right, #fde047, #fbbf24, #fff, #fde047)',
+                                              backgroundSize: '200% auto',
+                                              WebkitBackgroundClip: 'text',
+                                              WebkitTextFillColor: 'transparent',
+                                              animation: 'textShine 3s linear infinite',
+                                              textShadow: '0 0 15px rgba(251, 191, 36, 0.4)'
+                                          }}>
+                                              PRO MEMBER
+                                          </span>
+                                      ) : 'Free Plan'}
                                   </div>
                               </div>
 
@@ -680,7 +720,7 @@ const Settings: React.FC<SettingsProps> = ({
                                     </button>
                                 </div>
                             </div>
-                            <div style={{display: "flex", gap: "8px"}}>
+                            <div style={{display: 'flex', gap: '8px'}}>
                                 <input style={{...styles.input, padding: "8px", fontSize: '0.8rem'}} placeholder="New Profile..." value={newProfileName} onChange={e => setNewProfileName(e.target.value)} />
                                 <button style={{...styles.button, padding: "8px"}} onClick={handleCreateProfile}><Plus size={16} /></button>
                             </div>
@@ -792,6 +832,7 @@ const Settings: React.FC<SettingsProps> = ({
                     )}
                 </div>
 
+                {/* AI Import */}
                 <div style={compactCardStyle}>
                     <h3 style={{...sectionHeaderStyle, marginBottom: '12px'}}>
                         <div style={{...sectionIconStyle, background: 'rgba(192, 132, 252, 0.15)', color: '#c084fc'}}>
@@ -824,7 +865,7 @@ const Settings: React.FC<SettingsProps> = ({
                     </div>
                 </div>
 
-                {/* Appearance Card - MOVED HERE */}
+                {/* Appearance Card - Compacted */}
                 <div style={compactCardStyle}>
                     <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '2px 0'}}>
                         <h3 style={sectionHeaderStyle}>
@@ -862,6 +903,39 @@ const Settings: React.FC<SettingsProps> = ({
                     </div>
                 </div>
 
+                {/* Support Tickets for Users */}
+                <div 
+                    style={{...compactCardStyle, cursor: 'pointer', background: 'rgba(139, 92, 246, 0.1)'}} 
+                    onClick={() => setIsHistoryModalOpen(true)}
+                >
+                    <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                        <div style={{background: 'rgba(139, 92, 246, 0.2)', padding: '6px', borderRadius: '50%'}}>
+                            <MessageSquare size={16} color={theme.accent} />
+                        </div>
+                        <div>
+                            <h3 style={{margin: 0, fontSize: '0.9rem', color: theme.accent, fontWeight: 800}}>Support Tickets</h3>
+                            <p style={{margin: 0, fontSize: '0.7rem', color: theme.textMuted}}>View history & replies</p>
+                        </div>
+                        <ChevronRight size={16} color={theme.textMuted} style={{marginLeft: 'auto'}} />
+                    </div>
+                </div>
+
+                {/* Feedback Button for Users */}
+                <div 
+                    style={{...compactCardStyle, cursor: 'pointer'}} 
+                    onClick={() => setIsFeedbackModalOpen(true)}
+                >
+                    <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                        <div style={{background: 'rgba(255,255,255,0.1)', padding: '6px', borderRadius: '50%'}}>
+                            <Pencil size={16} color="#fff" />
+                        </div>
+                        <div>
+                            <h3 style={{margin: 0, fontSize: '0.9rem', color: '#fff', fontWeight: 800}}>New Ticket</h3>
+                            <p style={{margin: 0, fontSize: '0.7rem', color: theme.textMuted}}>Report bugs or suggest features</p>
+                        </div>
+                    </div>
+                </div>
+
                 <div 
                     style={{...compactCardStyle, cursor: 'pointer', border: `1px solid ${theme.danger}`, background: 'rgba(239, 68, 68, 0.1)'}} 
                     onClick={() => setShowResetConfirm(true)}
@@ -876,9 +950,125 @@ const Settings: React.FC<SettingsProps> = ({
                         </div>
                     </div>
                 </div>
+
+                {/* --- ADMIN ONLY SECTIONS --- */}
+                {accountInfo?.is_admin && (
+                    <div style={{marginTop: '30px', borderTop: '1px dashed rgba(255,255,255,0.1)', paddingTop: '20px'}}>
+                        <h3 style={{fontSize: '0.8rem', fontWeight: 800, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px'}}>Admin Tools</h3>
+                        
+                        <div style={compactCardStyle}>
+                            <div 
+                                onClick={() => setIsUserMgmtExpanded(!isUserMgmtExpanded)}
+                                style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '2px 0'}}
+                            >
+                                <h3 style={sectionHeaderStyle}>
+                                    <div style={{...sectionIconStyle, background: 'rgba(255, 255, 255, 0.1)', color: '#fff'}}>
+                                        <Shield size={16} />
+                                    </div>
+                                    <span>User Management</span>
+                                </h3>
+                                {isUserMgmtExpanded ? <ChevronUp size={16} color={theme.textMuted} /> : <ChevronDown size={16} color={theme.textMuted} />}
+                            </div>
+
+                            {isUserMgmtExpanded && (
+                                <div style={{marginTop: '12px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '12px'}}>
+                                    <div style={{display: 'flex', gap: '8px', marginBottom: '10px'}}>
+                                        <input 
+                                            placeholder="Search username or exact ID..." 
+                                            value={userSearch} 
+                                            onChange={(e) => setUserSearch(e.target.value)} 
+                                            onKeyDown={(e) => e.key === 'Enter' && fetchUsers(userSearch)}
+                                            style={{...styles.input, width: '100%', fontSize: '0.8rem', padding: '8px', flex: 1}}
+                                        />
+                                        <button 
+                                            onClick={() => fetchUsers(userSearch)}
+                                            style={{...styles.button, padding: '0 12px', fontSize: '0.8rem', fontWeight: 700}}
+                                        >
+                                            <Search size={14} /> Search
+                                        </button>
+                                    </div>
+                                    
+                                    {isLoadingUsers ? (
+                                        <div style={{textAlign: 'center', padding: '10px'}}><Loader2 className="animate-spin" size={20} /></div>
+                                    ) : (
+                                        <div style={{display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '300px', overflowY: 'auto'}}>
+                                            {users.map(user => (
+                                                <div key={user.id} style={{background: 'rgba(0,0,0,0.2)', padding: '10px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)'}}>
+                                                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                                                        <div>
+                                                            <div style={{fontWeight: 700, fontSize: '0.8rem', color: '#fff'}}>{user.username}</div>
+                                                            <div style={{fontSize: '0.65rem', color: theme.textMuted}}>{user.email}</div>
+                                                        </div>
+                                                        <div style={{display: 'flex', gap: '4px'}}>
+                                                            <button 
+                                                                onClick={() => toggleUserPro(user.id, user.subscription_tier || 0)}
+                                                                style={{padding: '4px 8px', borderRadius: '4px', background: user.subscription_tier === 1 ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.1)', color: user.subscription_tier === 1 ? theme.success : theme.textMuted, border: 'none', fontSize: '0.65rem', fontWeight: 700, cursor: 'pointer'}}
+                                                            >
+                                                                {user.subscription_tier === 1 ? 'PRO' : 'FREE'}
+                                                            </button>
+                                                            {user.is_banned ? (
+                                                                <button 
+                                                                    onClick={() => unbanUser(user.id)}
+                                                                    style={{padding: '4px', borderRadius: '4px', background: theme.success, color: '#fff', border: 'none', cursor: 'pointer'}}
+                                                                    title="Unban"
+                                                                >
+                                                                    <Check size={12} />
+                                                                </button>
+                                                            ) : (
+                                                                <button 
+                                                                    onClick={() => setBanModalUser({id: user.id, username: user.username})}
+                                                                    style={{padding: '4px', borderRadius: '4px', background: 'rgba(255,255,255,0.1)', color: theme.textMuted, border: 'none', cursor: 'pointer'}}
+                                                                    title="Ban"
+                                                                >
+                                                                    <Ban size={12} />
+                                                                </button>
+                                                            )}
+                                                            <button 
+                                                                onClick={() => deleteUser(user.id)}
+                                                                style={{padding: '4px', borderRadius: '4px', background: 'rgba(239, 68, 68, 0.2)', color: theme.danger, border: 'none', cursor: 'pointer'}}
+                                                            >
+                                                                <Trash2 size={12} />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {users.length === 0 && !isLoadingUsers && (
+                                                <div style={{textAlign: 'center', padding: '20px', color: theme.textMuted, fontSize: '0.8rem'}}>No users found.</div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Admin Inbox for Feedback */}
+                        <div style={compactCardStyle}>
+                            <div 
+                                onClick={() => setIsFeedbackInboxExpanded(!isFeedbackInboxExpanded)}
+                                style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '2px 0'}}
+                            >
+                                <h3 style={sectionHeaderStyle}>
+                                    <div style={{...sectionIconStyle, background: 'rgba(139, 92, 246, 0.15)', color: theme.accent}}>
+                                        <MessageSquare size={16} />
+                                    </div>
+                                    <span>Feedback Inbox</span>
+                                </h3>
+                                {isFeedbackInboxExpanded ? <ChevronUp size={16} color={theme.textMuted} /> : <ChevronDown size={16} color={theme.textMuted} />}
+                            </div>
+                            
+                            {isFeedbackInboxExpanded && (
+                                <div style={{borderTop: '1px solid rgba(255,255,255,0.1)', marginTop: '10px'}}>
+                                    <AdminInbox />
+                                </div>
+                            )}
+                        </div>
+
+                    </div>
+                )}
+
           </div>
           
-          {/* Modals omitted for brevity, keeping existing logic */}
           {showResetConfirm && (
              <div style={styles.modalOverlay}>
                  <div style={{...styles.modalContent, maxWidth: '320px', padding: '0', overflow: 'hidden'}} onClick={e => e.stopPropagation()}>
@@ -909,8 +1099,34 @@ const Settings: React.FC<SettingsProps> = ({
              </div>
           )}
 
+          <FeedbackModal 
+            isOpen={isFeedbackModalOpen} 
+            onClose={() => setIsFeedbackModalOpen(false)} 
+            userId={accountInfo?.id}
+          />
+
+          <SupportHistoryModal 
+            isOpen={isHistoryModalOpen}
+            onClose={() => setIsHistoryModalOpen(false)}
+            userId={accountInfo?.id}
+          />
+
+          <BanModal 
+            isOpen={!!banModalUser}
+            username={banModalUser?.username || ''}
+            onClose={() => setBanModalUser(null)}
+            onConfirm={handleBanConfirm}
+          />
+
           <style>{`
             @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+            @keyframes shine { 
+                0% { transform: translateX(-100%) translateY(-100%) rotate(30deg); }
+                100% { transform: translateX(200%) translateY(200%) rotate(30deg); }
+            }
+            @keyframes textShine {
+                to { background-position: 200% center; }
+            }
           `}</style>
     </div>
   );
