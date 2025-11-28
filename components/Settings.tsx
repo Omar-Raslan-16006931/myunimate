@@ -1,96 +1,272 @@
+
 // ... (imports)
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase } from '../lib/supabase';
-import { Plus, Trash2, CalendarDays, Palette, Layers, Pencil, Upload, ImageIcon, Loader2, LogOut, ChevronDown, ChevronUp, Columns, AlertTriangle, User, GraduationCap, Calendar, Building, Users, Moon, Sun, Check, X, Shield, Search, Ban, MessageSquare, Sparkles, Clock, ChevronRight, Ticket } from 'lucide-react';
-import { ScheduleProfile, EventColorMap, EventType, ScheduleEvent, PeriodDefinition, ThemeMode, ReferralCode, AppFeedback } from '../types';
+import { Plus, Trash2, CalendarDays, Palette, Layers, Pencil, Upload, ImageIcon, Loader2, LogOut, ChevronDown, ChevronUp, Columns, AlertTriangle, User, GraduationCap, Calendar, Building, Users, Moon, Sun, Check, X, Shield, Search, Ban, MessageSquare, Sparkles, Clock, ChevronRight, Ticket, Send, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { ScheduleProfile, EventColorMap, EventType, ScheduleEvent, PeriodDefinition, ThemeMode, ReferralCode, AppFeedback, FeedbackReply } from '../types';
 import { theme, styles } from '../theme';
 import ScheduleSettings from './ScheduleSettings';
 import FeedbackModal from './FeedbackModal';
 import AdminInbox from './AdminInbox';
 
-// ... (SupportHistoryModal and BanModal definitions remain unchanged)
+// ... (SupportHistoryModal)
 const SupportHistoryModal = ({ isOpen, onClose, userId }: { isOpen: boolean, onClose: () => void, userId?: string }) => {
     const [tickets, setTickets] = useState<AppFeedback[]>([]);
     const [loading, setLoading] = useState(false);
-    const [expandedTicketId, setExpandedTicketId] = useState<string | null>(null);
+    const [activeTicket, setActiveTicket] = useState<AppFeedback | null>(null);
+    const [replies, setReplies] = useState<FeedbackReply[]>([]);
+    const [replyText, setReplyText] = useState('');
+    const [sendingReply, setSendingReply] = useState(false);
+    const replyEndRef = useRef<HTMLDivElement>(null);
 
+    // Fetch Tickets & Subscribe to updates
     useEffect(() => {
         if (isOpen && userId) {
             setLoading(true);
-            supabase.from('app_feedback')
-                .select('*')
-                .eq('user_id', userId)
-                .order('created_at', { ascending: false })
-                .then(({ data }) => {
-                    setTickets(data || []);
-                    setLoading(false);
-                });
+            const fetchTickets = async () => {
+                const { data } = await supabase.from('app_feedback')
+                    .select('*')
+                    .eq('user_id', userId)
+                    .order('created_at', { ascending: false });
+                setTickets(data || []);
+                setLoading(false);
+            };
+            fetchTickets();
+
+            // Subscribe to Ticket Changes (e.g. admin deletes a ticket or changes status)
+            const channel = supabase.channel(`user_feedback_list_${userId}`)
+                .on(
+                    'postgres_changes',
+                    { event: '*', schema: 'public', table: 'app_feedback', filter: `user_id=eq.${userId}` },
+                    (payload) => {
+                        if (payload.eventType === 'INSERT') {
+                            setTickets(prev => [payload.new as AppFeedback, ...prev]);
+                        } else if (payload.eventType === 'UPDATE') {
+                            setTickets(prev => prev.map(t => t.id === payload.new.id ? { ...t, ...payload.new } : t));
+                            // Also update active ticket if it's the one modified
+                            setActiveTicket(prev => prev?.id === payload.new.id ? { ...prev, ...payload.new } : prev);
+                        } else if (payload.eventType === 'DELETE') {
+                            setTickets(prev => prev.filter(t => t.id !== payload.old.id));
+                            // Close chat if active ticket was deleted
+                            setActiveTicket(prev => prev?.id === payload.old.id ? null : prev);
+                        }
+                    }
+                )
+                .subscribe();
+
+            return () => { supabase.removeChannel(channel); };
         }
     }, [isOpen, userId]);
 
+    // Fetch replies & Subscribe to chat
+    useEffect(() => {
+        if (activeTicket) {
+            setReplies([]);
+            supabase.from('feedback_replies')
+                .select('*')
+                .eq('feedback_id', activeTicket.id)
+                .order('created_at', { ascending: true })
+                .then(({ data }) => {
+                    if (data) setReplies(data);
+                });
+                
+            const channelId = `user_chat_${activeTicket.id}`;
+            const channel = supabase.channel(channelId)
+            .on(
+              'postgres_changes',
+              { event: 'INSERT', schema: 'public', table: 'feedback_replies', filter: `feedback_id=eq.${activeTicket.id}` },
+              (payload: any) => {
+                setReplies(prev => [...prev, payload.new as FeedbackReply]);
+              }
+            )
+            .subscribe();
+
+            return () => { supabase.removeChannel(channel); };
+        }
+    }, [activeTicket?.id]); // Depend on ID specifically to prevent stale closures
+
+    // Auto-scroll to bottom
+    useEffect(() => {
+        if (activeTicket) {
+            setTimeout(() => {
+                replyEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+            }, 100);
+        }
+    }, [replies, activeTicket]);
+
+    const handleSendReply = async () => {
+        if (!replyText.trim() || !activeTicket || !userId) return;
+        setSendingReply(true);
+        
+        try {
+            const { error: replyError } = await supabase.from('feedback_replies').insert({
+                feedback_id: activeTicket.id,
+                sender_id: userId,
+                message: replyText.trim(),
+                is_admin: false 
+            });
+            
+            if (replyError) throw replyError;
+            
+            // Mark as unread for admins
+            await supabase.from('app_feedback').update({ status: 'unread' }).eq('id', activeTicket.id);
+            setReplyText('');
+        } catch (error) {
+            console.error(error);
+            alert('Failed to send reply');
+        } finally {
+            setSendingReply(false);
+        }
+    };
+
     if (!isOpen) return null;
 
-    return (
-        <div style={styles.modalOverlay} onClick={onClose}>
-            <div style={{...styles.modalContent, width: '90%', maxWidth: '400px', maxHeight: '80vh', padding: '0', display: 'flex', flexDirection: 'column'}} onClick={e => e.stopPropagation()}>
-                <div style={{padding: '16px', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                    <h3 style={{margin: 0, fontSize: '1.1rem', fontWeight: 800}}>My Support Tickets</h3>
-                    <button onClick={onClose} style={{background: 'transparent', border: 'none', color: theme.textMuted, cursor: 'pointer'}}><X size={20} /></button>
+    // Use Portal to break out of any scroll containers or overflow:hidden parents
+    return createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200" onClick={onClose}>
+            <div 
+                className="w-full max-w-md h-[85vh] bg-[#0f172a] rounded-3xl border border-white/10 shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-300"
+                onClick={e => e.stopPropagation()}
+            >
+                {/* Header */}
+                <div className="flex items-center justify-between px-5 py-4 border-b border-white/5 bg-[#130f1c] shrink-0">
+                    <div className="flex items-center gap-3">
+                        {activeTicket ? (
+                            <button 
+                                onClick={() => setActiveTicket(null)}
+                                className="p-1.5 -ml-2 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition"
+                            >
+                                <ArrowLeft size={20} />
+                            </button>
+                        ) : (
+                            <div className="p-2 bg-indigo-500/10 rounded-xl text-indigo-400">
+                                <MessageSquare size={20} />
+                            </div>
+                        )}
+                        <div>
+                            <h3 className="text-lg font-bold text-white leading-none">
+                                {activeTicket ? 'Support Chat' : 'Support Inbox'}
+                            </h3>
+                        </div>
+                    </div>
+                    <button 
+                        onClick={onClose} 
+                        className="p-2 text-white/40 hover:text-white hover:bg-white/5 rounded-full transition-colors"
+                    >
+                        <X size={20} />
+                    </button>
                 </div>
                 
-                <div style={{padding: '16px', overflowY: 'auto', flex: 1}}>
-                    {loading ? (
-                        <div style={{textAlign: 'center', padding: '20px'}}><Loader2 className="animate-spin" /></div>
-                    ) : tickets.length === 0 ? (
-                        <div style={{textAlign: 'center', color: theme.textMuted, padding: '20px', fontSize: '0.9rem'}}>No tickets found.</div>
-                    ) : (
-                        <div style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
-                            {tickets.map(t => (
-                                <div key={t.id} style={{background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)', overflow: 'hidden'}}>
+                {/* Content Area */}
+                <div className="flex-1 overflow-hidden relative bg-[#0f172a]">
+                    
+                    {!activeTicket ? (
+                        /* TICKET LIST VIEW */
+                        <div className="absolute inset-0 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+                            {loading ? (
+                                <div className="flex justify-center py-10"><Loader2 className="animate-spin text-indigo-500" /></div>
+                            ) : tickets.length === 0 ? (
+                                <div className="text-center text-white/30 py-12 text-sm italic">No support tickets found.</div>
+                            ) : (
+                                tickets.map(t => (
                                     <div 
-                                        onClick={() => setExpandedTicketId(expandedTicketId === t.id ? null : t.id)}
-                                        style={{padding: '12px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}
+                                        key={t.id} 
+                                        onClick={() => setActiveTicket(t)}
+                                        className="group bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/10 rounded-2xl p-4 cursor-pointer transition-all active:scale-[0.98]"
                                     >
-                                        <div style={{flex: 1, minWidth: 0}}>
-                                            <div style={{display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px'}}>
-                                                <span style={{fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', color: theme.textMuted, background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px'}}>{t.category}</span>
-                                                <span style={{fontSize: '0.65rem', color: theme.textMuted}}>{new Date(t.created_at).toLocaleDateString()}</span>
+                                        <div className="flex justify-between items-start mb-2">
+                                            <div className="flex items-center gap-2">
+                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${
+                                                    t.category === 'Bug' ? 'text-red-400 bg-red-400/10' : 
+                                                    t.category === 'Feature Request' ? 'text-green-400 bg-green-400/10' : 
+                                                    'text-blue-400 bg-blue-400/10'
+                                                }`}>
+                                                    {t.category}
+                                                </span>
+                                                <span className="text-[10px] text-white/30">{new Date(t.created_at).toLocaleDateString()}</span>
                                             </div>
-                                            <p style={{margin: 0, fontSize: '0.85rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#fff'}}>{t.message}</p>
+                                            <ChevronRight size={16} className="text-white/20 group-hover:text-white/60 transition-colors" />
                                         </div>
-                                        <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
-                                            {t.admin_reply ? (
-                                                <span style={{fontSize: '0.65rem', fontWeight: 700, color: theme.accent, background: 'rgba(139, 92, 246, 0.1)', padding: '2px 6px', borderRadius: '4px'}}>Replied</span>
-                                            ) : (
-                                                <span style={{fontSize: '0.65rem', fontWeight: 700, color: theme.textMuted}}>Sent</span>
-                                            )}
-                                            {expandedTicketId === t.id ? <ChevronUp size={16} color={theme.textMuted}/> : <ChevronDown size={16} color={theme.textMuted}/>}
-                                        </div>
+                                        <p className="text-sm text-white/90 font-medium line-clamp-2 leading-relaxed">
+                                            {t.message}
+                                        </p>
                                     </div>
-                                    
-                                    {expandedTicketId === t.id && (
-                                        <div style={{background: 'rgba(0,0,0,0.2)', padding: '12px', borderTop: '1px solid rgba(255,255,255,0.05)'}}>
-                                            <p style={{fontSize: '0.85rem', color: theme.textMuted, whiteSpace: 'pre-wrap', marginBottom: '12px'}}>{t.message}</p>
-                                            {t.admin_reply ? (
-                                                <div style={{background: 'rgba(139, 92, 246, 0.1)', padding: '10px', borderRadius: '8px', borderLeft: `3px solid ${theme.accent}`}}>
-                                                    <div style={{fontSize: '0.7rem', fontWeight: 700, color: theme.accent, marginBottom: '4px'}}>Support Reply</div>
-                                                    <p style={{fontSize: '0.85rem', color: '#fff', whiteSpace: 'pre-wrap', margin: 0}}>{t.admin_reply}</p>
-                                                </div>
-                                            ) : (
-                                                <p style={{fontSize: '0.75rem', color: theme.textMuted, fontStyle: 'italic'}}>Waiting for reply...</p>
-                                            )}
-                                        </div>
-                                    )}
+                                ))
+                            )}
+                        </div>
+                    ) : (
+                        /* CHAT VIEW */
+                        <div className="flex flex-col h-full">
+                            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-[#0f172a] to-[#130f1c] custom-scrollbar">
+                                {/* Original Ticket - Shown as user message */}
+                                <div className="flex flex-col items-end animate-in slide-in-from-bottom-2">
+                                    <div className="bg-indigo-600 text-white px-4 py-3 rounded-2xl rounded-tr-none max-w-[85%] text-sm shadow-md leading-relaxed">
+                                        {activeTicket.message}
+                                    </div>
+                                    <span className="text-[10px] text-white/20 mt-1 mr-1">
+                                        {new Date(activeTicket.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                    </span>
                                 </div>
-                            ))}
+
+                                {/* Thread */}
+                                {replies.map(reply => {
+                                    const isMe = !reply.is_admin;
+                                    return (
+                                        <div 
+                                            key={reply.id} 
+                                            className={`flex flex-col animate-in slide-in-from-bottom-2 ${isMe ? 'items-end' : 'items-start'}`}
+                                        >
+                                            <div className={`px-4 py-3 rounded-2xl max-w-[85%] text-sm shadow-md leading-relaxed ${
+                                                isMe 
+                                                    ? 'bg-indigo-600 text-white rounded-tr-none' 
+                                                    : 'bg-white/10 text-white/90 rounded-tl-none border border-white/5'
+                                            }`}>
+                                                {reply.message}
+                                            </div>
+                                            <span className={`text-[10px] text-white/20 mt-1 ${isMe ? 'mr-1' : 'ml-1'}`}>
+                                                {isMe ? 'You' : 'Support'} • {new Date(reply.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
+                                <div ref={replyEndRef} />
+                            </div>
+
+                            {/* Input Bar */}
+                            <div className="p-3 bg-[#130f1c] border-t border-white/5 shrink-0">
+                                <div className="flex gap-2 items-end bg-white/5 rounded-3xl p-1 border border-white/10 focus-within:border-indigo-500/50 transition-colors">
+                                    <textarea 
+                                        value={replyText}
+                                        onChange={e => setReplyText(e.target.value)}
+                                        onKeyDown={e => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendReply(); } }}
+                                        placeholder="Type a message..."
+                                        className="flex-1 bg-transparent border-none text-white text-sm px-4 py-3 focus:outline-none resize-none max-h-[100px] min-h-[44px] placeholder-white/30"
+                                        rows={1}
+                                    />
+                                    <button 
+                                        onClick={handleSendReply}
+                                        disabled={!replyText.trim() || sendingReply}
+                                        className={`w-10 h-10 rounded-full flex items-center justify-center transition-all shrink-0 ${
+                                            (!replyText.trim() || sendingReply) 
+                                                ? 'bg-white/5 text-white/20' 
+                                                : 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-900/20'
+                                        }`}
+                                    >
+                                        {sendingReply ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} className={replyText.trim() ? 'ml-0.5' : ''} />}
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     )}
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 
+// ... (rest of the file remains the same, keep existing Settings implementation)
 const BanModal = ({ isOpen, onClose, onConfirm, username }: { isOpen: boolean, onClose: () => void, onConfirm: (duration: string | null) => void, username: string }) => {
     if (!isOpen) return null;
     return (
@@ -173,7 +349,6 @@ const Settings: React.FC<SettingsProps> = ({
   const [isUserMgmtExpanded, setIsUserMgmtExpanded] = useState(false);
   const [isFeedbackInboxExpanded, setIsFeedbackInboxExpanded] = useState(false);
   
-  // Referral State
   const [isReferralExpanded, setIsReferralExpanded] = useState(false);
   const [referralCodes, setReferralCodes] = useState<ReferralCode[]>([]);
   const [isCreatingReferral, setIsCreatingReferral] = useState(false);
@@ -407,7 +582,6 @@ const Settings: React.FC<SettingsProps> = ({
       }
   };
 
-  // ... (Rest of useEffects and render logic remain unchanged from previous implementation)
   useEffect(() => {
     if (!isEditingAccount || !editForm.username) return;
 
@@ -453,11 +627,19 @@ const Settings: React.FC<SettingsProps> = ({
   const sectionIconStyle = {
       padding: '6px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyItems: 'center'
   };
+  
+  // Use solid background for admin cards to prevent transparency artifacts
   const compactCardStyle = {
       ...styles.card,
       padding: '14px',
       borderRadius: '18px',
       marginBottom: '12px'
+  };
+
+  const adminCardStyle = {
+      ...compactCardStyle,
+      background: '#130f1c', // Solid background for admin tools
+      backdropFilter: 'none'
   };
 
   return (
@@ -494,8 +676,7 @@ const Settings: React.FC<SettingsProps> = ({
 
                       {isAccountExpanded && (
                           <div style={{marginTop: '10px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.1)', animation: 'fadeIn 0.2s', display: 'flex', flexDirection: 'column', gap: '6px'}}>
-                              
-                              {/* Edit Mode Actions */}
+                              {/* Account Fields (same as original) */}
                               {isEditingAccount && (
                                   <div style={{display: 'flex', gap: '6px', marginBottom: '4px'}}>
                                       <button 
@@ -638,7 +819,7 @@ const Settings: React.FC<SettingsProps> = ({
                                   </div>
                               </div>
 
-                              {/* Subscription Tier - Compact & Animated */}
+                              {/* Subscription Tier */}
                               <div style={{
                                   backgroundColor: accountInfo.subscription_tier === 1 ? 'rgba(234, 179, 8, 0.1)' : 'var(--input-bg)',
                                   padding: '12px',
@@ -911,7 +1092,7 @@ const Settings: React.FC<SettingsProps> = ({
                     </div>
                 </div>
 
-                {/* Appearance Card - Compacted */}
+                {/* Appearance Card */}
                 <div style={compactCardStyle}>
                     <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '2px 0'}}>
                         <h3 style={sectionHeaderStyle}>
@@ -1002,7 +1183,8 @@ const Settings: React.FC<SettingsProps> = ({
                     <div style={{marginTop: '30px', borderTop: '1px dashed rgba(255,255,255,0.1)', paddingTop: '20px'}}>
                         <h3 style={{fontSize: '0.8rem', fontWeight: 800, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px'}}>Admin Tools</h3>
                         
-                        <div style={compactCardStyle}>
+                        {/* User Management */}
+                        <div style={adminCardStyle}>
                             <div 
                                 onClick={() => setIsUserMgmtExpanded(!isUserMgmtExpanded)}
                                 style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '2px 0'}}
@@ -1089,7 +1271,7 @@ const Settings: React.FC<SettingsProps> = ({
                         </div>
 
                         {/* Referral Codes Management */}
-                        <div style={compactCardStyle}>
+                        <div style={adminCardStyle}>
                             <div 
                                 onClick={() => setIsReferralExpanded(!isReferralExpanded)}
                                 style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '2px 0'}}
@@ -1167,7 +1349,7 @@ const Settings: React.FC<SettingsProps> = ({
                         </div>
 
                         {/* Admin Inbox for Feedback */}
-                        <div style={compactCardStyle}>
+                        <div style={adminCardStyle}>
                             <div 
                                 onClick={() => setIsFeedbackInboxExpanded(!isFeedbackInboxExpanded)}
                                 style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '2px 0'}}

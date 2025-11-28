@@ -86,8 +86,19 @@ export interface AppFeedback {
   category: 'Bug' | 'Feature Request' | 'Other';
   status: 'read' | 'unread';
   created_at: string;
+  // Legacy fields kept for compatibility, but moving to feedback_replies
   admin_reply?: string;
   admin_reply_at?: string;
+  username?: string; // Fetched from profiles
+}
+
+export interface FeedbackReply {
+  id: string;
+  feedback_id: string;
+  sender_id: string;
+  message: string;
+  is_admin: boolean;
+  created_at: string;
 }
 
 // --- UNIVERSAL GRADE TYPES ---

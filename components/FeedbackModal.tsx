@@ -1,8 +1,7 @@
-
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { X, Send, Loader2, MessageSquare, CheckCircle2 } from 'lucide-react';
-import { styles, theme } from '../theme';
+import { X, Send, Loader2, MessageSquare, CheckCircle2, ChevronDown, Bug, Lightbulb, HelpCircle } from 'lucide-react';
+import { theme } from '../theme';
 
 interface FeedbackModalProps {
   isOpen: boolean;
@@ -50,76 +49,105 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose, userId }
       onClose();
   };
 
+  const getCategoryIcon = (cat: string) => {
+      switch(cat) {
+          case 'Bug': return <Bug size={16} className="text-red-400" />;
+          case 'Feature Request': return <Lightbulb size={16} className="text-yellow-400" />;
+          default: return <HelpCircle size={16} className="text-blue-400" />;
+      }
+  }
+
   return (
-    <div style={styles.modalOverlay} onClick={handleClose}>
-      <div style={{...styles.modalContent, width: '90%', maxWidth: '400px'}} onClick={e => e.stopPropagation()}>
-        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px'}}>
-          <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
-            <div style={{background: 'rgba(139, 92, 246, 0.1)', padding: '8px', borderRadius: '50%', color: theme.accent}}>
-              <MessageSquare size={18} />
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={handleClose}>
+      <div 
+        className="w-full max-w-md bg-[#0f172a] border border-white/10 rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-white/5 bg-[#130f1c]">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-indigo-500/10 rounded-xl text-indigo-400">
+              <MessageSquare size={20} />
             </div>
-            <h3 style={{margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#fff'}}>Send Feedback</h3>
+            <h3 className="text-lg font-bold text-white">Send Feedback</h3>
           </div>
-          <button onClick={handleClose} style={{background: 'transparent', border: 'none', color: theme.textMuted, cursor: 'pointer'}}>
+          <button 
+            onClick={handleClose} 
+            className="p-2 text-white/40 hover:text-white hover:bg-white/5 rounded-full transition-colors"
+          >
             <X size={20} />
           </button>
         </div>
 
-        {showSuccess ? (
-            <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px 0', animation: 'fadeIn 0.3s'}}>
-                <div style={{width: '60px', height: '60px', background: 'rgba(16, 185, 129, 0.15)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px', color: theme.success}}>
-                    <CheckCircle2 size={32} className="animate-in zoom-in duration-300" />
+        <div className="p-6">
+            {showSuccess ? (
+                <div className="flex flex-col items-center py-8 text-center animate-in fade-in zoom-in duration-300">
+                    <div className="w-16 h-16 bg-green-500/10 rounded-full flex items-center justify-center mb-4 text-green-400 shadow-[0_0_20px_rgba(74,222,128,0.2)]">
+                        <CheckCircle2 size={32} />
+                    </div>
+                    <h3 className="text-xl font-bold text-white mb-2">Feedback Sent!</h3>
+                    <p className="text-white/60 text-sm mb-8 px-4">
+                        Thanks for helping us improve. We'll review your report shortly.
+                    </p>
+                    <button 
+                        onClick={handleClose}
+                        className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-green-900/20 active:scale-[0.98]"
+                    >
+                        Done
+                    </button>
                 </div>
-                <h3 style={{margin: '0 0 8px 0', fontSize: '1.2rem', fontWeight: 800, color: '#fff'}}>Report sent successfully</h3>
-                <p style={{margin: '0 0 20px 0', fontSize: '0.9rem', color: theme.textMuted, textAlign: 'center'}}>
-                    Thanks for your feedback. We'll look into it shortly.
-                </p>
-                <button 
-                    onClick={handleClose}
-                    style={{...styles.button, width: '100%', justifyContent: 'center', background: theme.success}}
-                >
-                    Close
-                </button>
-            </div>
-        ) : (
-            <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
-            <div>
-                <label style={{...styles.label, marginBottom: '6px'}}>Category</label>
-                <select 
-                value={category}
-                onChange={(e) => setCategory(e.target.value as any)}
-                style={styles.select}
-                >
-                <option value="Bug">Bug Report</option>
-                <option value="Feature Request">Feature Request</option>
-                <option value="Other">Other</option>
-                </select>
-            </div>
+            ) : (
+                <div className="flex flex-col gap-5">
+                    
+                    {/* Category Selector */}
+                    <div>
+                        <label className="block text-xs font-bold text-white/60 uppercase tracking-wider mb-2">Category</label>
+                        <div className="relative">
+                            <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                                {getCategoryIcon(category)}
+                            </div>
+                            <select 
+                                value={category}
+                                onChange={(e) => setCategory(e.target.value as any)}
+                                className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-10 pr-10 text-sm text-white appearance-none focus:outline-none focus:border-indigo-500/50 transition-colors cursor-pointer hover:bg-white/10"
+                            >
+                                <option value="Bug">Bug Report</option>
+                                <option value="Feature Request">Feature Request</option>
+                                <option value="Other">Other</option>
+                            </select>
+                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" size={16} />
+                        </div>
+                    </div>
 
-            <div>
-                <label style={{...styles.label, marginBottom: '6px'}}>Message</label>
-                <textarea
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                placeholder="Tell us what's on your mind..."
-                style={{...styles.input, width: '100%', minHeight: '120px', resize: 'vertical', fontFamily: 'inherit'}}
-                />
-            </div>
+                    {/* Message Input */}
+                    <div>
+                        <label className="block text-xs font-bold text-white/60 uppercase tracking-wider mb-2">Message</label>
+                        <textarea
+                            value={message}
+                            onChange={(e) => setMessage(e.target.value)}
+                            placeholder={category === 'Bug' ? "Describe what happened..." : "Tell us your idea..."}
+                            className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-sm text-white placeholder-white/20 focus:outline-none focus:border-indigo-500/50 transition-colors min-h-[140px] resize-none"
+                        />
+                    </div>
 
-            <button 
-                onClick={handleSubmit}
-                disabled={isSubmitting || !message.trim()}
-                style={{...styles.button, width: '100%', justifyContent: 'center', marginTop: '8px', opacity: (isSubmitting || !message.trim()) ? 0.6 : 1}}
-            >
-                {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
-                <span>Send Feedback</span>
-            </button>
-            </div>
-        )}
+                    {/* Submit Button */}
+                    <button 
+                        onClick={handleSubmit}
+                        disabled={isSubmitting || !message.trim()}
+                        className={`
+                            w-full py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-lg
+                            ${(isSubmitting || !message.trim()) 
+                                ? 'bg-white/5 text-white/30 cursor-not-allowed' 
+                                : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-900/20 active:scale-[0.98]'}
+                        `}
+                    >
+                        {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+                        <span>{isSubmitting ? 'Sending...' : 'Send Feedback'}</span>
+                    </button>
+                </div>
+            )}
+        </div>
       </div>
-      <style>{`
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-      `}</style>
     </div>
   );
 };
