@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
     Plus, Trash2, ArrowLeft, RotateCcw, TrendingUp, 
@@ -82,9 +81,9 @@ const CategoryCard = ({
                 onClick={(e) => { e.stopPropagation(); deleteCategory(cat.id); }}
                 style={{ 
                     position: 'absolute',
-                    top: '10px',
-                    right: '10px',
-                    width: '28px', height: '28px', 
+                    top: '8px',
+                    right: '8px',
+                    width: '24px', height: '24px', 
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     color: theme.danger, 
                     background: 'rgba(239, 68, 68, 0.1)', 
@@ -95,22 +94,22 @@ const CategoryCard = ({
                     opacity: 0.7
                 }}
             >
-                <Trash2 size={14} />
+                <Trash2 size={12} />
             </button>
 
             {/* Card Header */}
-            <div style={{ padding: '16px 20px', background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingRight: '40px' }}>
+            <div style={{ padding: '12px 14px', background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingRight: '40px' }}>
                 
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center', justifyContent: 'space-between' }}>
                     {/* Left: Name & Weight */}
                     <div style={{ flex: 1, minWidth: '150px' }}>
                         <input 
                             value={cat.name}
                             onChange={(e) => updateCategory(cat.id, { name: e.target.value })}
-                            style={{ background: 'transparent', border: 'none', color: '#fff', fontWeight: 700, fontSize: '1.1rem', width: '100%', outline: 'none', marginBottom: '4px' }}
+                            style={{ background: 'transparent', border: 'none', color: '#fff', fontWeight: 700, fontSize: '1rem', width: '100%', outline: 'none', marginBottom: '2px' }}
                             placeholder="Category Name"
                         />
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <div style={{position: 'relative', display: 'flex', alignItems: 'center'}}>
                                 <input 
                                     value={cat.weight}
@@ -120,18 +119,18 @@ const CategoryCard = ({
                                     style={{ 
                                         background: 'rgba(0,0,0,0.3)', 
                                         border: '1px solid rgba(255,255,255,0.1)', 
-                                        borderRadius: '8px', 
+                                        borderRadius: '6px', 
                                         color: theme.accent, 
-                                        fontSize: '0.9rem', 
+                                        fontSize: '0.8rem', 
                                         fontWeight: 700, 
-                                        width: '60px', 
-                                        padding: '4px 8px', 
+                                        width: '50px', 
+                                        padding: '2px 4px', 
                                         textAlign: 'center' 
                                     }}
                                 />
-                                <span style={{ position: 'absolute', right: '8px', fontSize: '0.7rem', color: theme.textMuted, pointerEvents: 'none' }}>%</span>
+                                <span style={{ position: 'absolute', right: '4px', fontSize: '0.65rem', color: theme.textMuted, pointerEvents: 'none' }}>%</span>
                             </div>
-                            <span style={{ fontSize: '0.75rem', color: theme.textMuted }}>Weight</span>
+                            <span style={{ fontSize: '0.7rem', color: theme.textMuted }}>Weight</span>
                         </div>
                     </div>
 
@@ -142,19 +141,19 @@ const CategoryCard = ({
                             style={{ 
                                 background: showDropSettings ? 'rgba(139, 92, 246, 0.15)' : 'transparent', 
                                 border: '1px solid rgba(255,255,255,0.1)', 
-                                borderRadius: '8px', 
-                                padding: '6px 10px', 
+                                borderRadius: '6px', 
+                                padding: '4px 8px', 
                                 color: showDropSettings ? theme.accent : theme.textMuted, 
-                                fontSize: '0.75rem', 
+                                fontSize: '0.7rem', 
                                 fontWeight: 600, 
                                 cursor: 'pointer', 
                                 display: 'flex', 
                                 alignItems: 'center', 
-                                gap: '6px',
+                                gap: '4px',
                                 transition: 'all 0.2s'
                             }}
                         >
-                            <ArrowDownNarrowWide size={14} />
+                            <ArrowDownNarrowWide size={12} />
                             {dropCount > 0 ? `${dropCount} Dropped` : 'Drop Lowest'}
                         </button>
                     </div>
@@ -162,31 +161,31 @@ const CategoryCard = ({
 
                 {/* Drop Settings Panel */}
                 {showDropSettings && (
-                    <div style={{ marginTop: '12px', padding: '12px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)', animation: 'fadeIn 0.2s' }}>
-                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                            <div style={{ background: 'rgba(139, 92, 246, 0.1)', padding: '6px', borderRadius: '50%', color: theme.accent }}>
-                                <HelpCircle size={16} />
+                    <div style={{ marginTop: '10px', padding: '10px', background: 'rgba(0,0,0,0.2)', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)', animation: 'fadeIn 0.2s' }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                            <div style={{ background: 'rgba(139, 92, 246, 0.1)', padding: '4px', borderRadius: '50%', color: theme.accent }}>
+                                <HelpCircle size={14} />
                             </div>
                             <div style={{ flex: 1 }}>
-                                <h4 style={{ margin: '0 0 4px 0', fontSize: '0.85rem', fontWeight: 700, color: '#fff' }}>Drop Lowest Grades</h4>
-                                <p style={{ margin: '0 0 8px 0', fontSize: '0.75rem', color: theme.textMuted, lineHeight: '1.4' }}>
+                                <h4 style={{ margin: '0 0 2px 0', fontSize: '0.8rem', fontWeight: 700, color: '#fff' }}>Drop Lowest Grades</h4>
+                                <p style={{ margin: '0 0 6px 0', fontSize: '0.7rem', color: theme.textMuted, lineHeight: '1.4' }}>
                                     Automatically remove the lowest scoring items from this category.
                                 </p>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                    <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#fff' }}>Drop count:</span>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#fff' }}>Drop count:</span>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                         <button 
                                             onClick={() => updateCategory(cat.id, { dropLowest: Math.max(0, dropCount - 1).toString() })}
-                                            style={{ width: '24px', height: '24px', borderRadius: '6px', background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                            style={{ width: '20px', height: '20px', borderRadius: '4px', background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                                         >
-                                            <Minus size={12} />
+                                            <Minus size={10} />
                                         </button>
-                                        <span style={{ minWidth: '20px', textAlign: 'center', fontWeight: 700, fontSize: '1rem' }}>{dropCount}</span>
+                                        <span style={{ minWidth: '16px', textAlign: 'center', fontWeight: 700, fontSize: '0.9rem' }}>{dropCount}</span>
                                         <button 
                                             onClick={() => updateCategory(cat.id, { dropLowest: (dropCount + 1).toString() })}
-                                            style={{ width: '24px', height: '24px', borderRadius: '6px', background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                            style={{ width: '20px', height: '20px', borderRadius: '4px', background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                                         >
-                                            <Plus size={12} />
+                                            <Plus size={10} />
                                         </button>
                                     </div>
                                 </div>
@@ -198,27 +197,27 @@ const CategoryCard = ({
 
             {/* Average Badge */}
             {stats.average !== null && (
-                <div style={{ background: theme.accent, padding: '2px 8px', position: 'absolute', top: '50px', right: '0', borderRadius: '8px 0 0 8px', fontSize: '0.75rem', fontWeight: 800, color: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.3)', zIndex: 5 }}>
+                <div style={{ background: theme.accent, padding: '2px 6px', position: 'absolute', top: '40px', right: '0', borderRadius: '6px 0 0 6px', fontSize: '0.7rem', fontWeight: 800, color: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.3)', zIndex: 5 }}>
                     Avg: {stats.average.toFixed(1)}%
                 </div>
             )}
 
             {/* Items List */}
-            <div style={{ padding: '12px' }}>
+            <div style={{ padding: '10px' }}>
                 {cat.items.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '16px', color: theme.textMuted, fontSize: '0.8rem', fontStyle: 'italic' }}>
+                    <div style={{ textAlign: 'center', padding: '12px', color: theme.textMuted, fontSize: '0.75rem', fontStyle: 'italic' }}>
                         No items yet.
                     </div>
                 ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         {cat.items.map((item: any) => (
                             <div key={item.id} style={{ 
                                 display: 'flex', 
                                 alignItems: 'center', 
-                                gap: '10px', 
+                                gap: '8px', 
                                 background: item.active !== false ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.01)', 
-                                padding: '8px 12px', 
-                                borderRadius: '8px', 
+                                padding: '6px 10px', 
+                                borderRadius: '6px', 
                                 border: '1px solid rgba(255,255,255,0.05)',
                                 opacity: item.active !== false ? 1 : 0.5,
                                 transition: 'opacity 0.2s'
@@ -229,43 +228,43 @@ const CategoryCard = ({
                                     style={{ background: 'transparent', border: 'none', color: item.active !== false ? theme.textMuted : theme.textMuted, cursor: 'pointer', padding: '0', display: 'flex' }}
                                     title={item.active !== false ? "Exclude" : "Include"}
                                 >
-                                    {item.active !== false ? <Eye size={14} /> : <EyeOff size={14} />}
+                                    {item.active !== false ? <Eye size={12} /> : <EyeOff size={12} />}
                                 </button>
 
                                 {/* Name Input */}
                                 <input 
                                     value={item.name}
                                     onChange={(e) => updateItem(cat.id, item.id, 'name', e.target.value)}
-                                    style={{ flex: 1, background: 'transparent', border: 'none', color: '#fff', fontSize: '0.85rem', fontWeight: 500, minWidth: '0', outline: 'none', padding: '4px 0' }}
+                                    style={{ flex: 1, background: 'transparent', border: 'none', color: '#fff', fontSize: '0.8rem', fontWeight: 500, minWidth: '0', outline: 'none', padding: '2px 0' }}
                                     placeholder="Item Name"
                                 />
                                 
                                 {/* Scores Group */}
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(0,0,0,0.25)', padding: '4px 8px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '2px', background: 'rgba(0,0,0,0.25)', padding: '2px 6px', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.05)' }}>
                                         <input 
                                             value={item.score}
                                             onChange={(e) => updateItem(cat.id, item.id, 'score', e.target.value)}
                                             type="number"
                                             placeholder="-"
-                                            style={{ width: '32px', background: 'transparent', border: 'none', color: item.score ? theme.accent : theme.textMuted, textAlign: 'right', fontWeight: 700, fontSize: '0.9rem', outline: 'none', padding: 0 }}
+                                            style={{ width: '28px', background: 'transparent', border: 'none', color: item.score ? theme.accent : theme.textMuted, textAlign: 'right', fontWeight: 700, fontSize: '0.85rem', outline: 'none', padding: 0 }}
                                         />
-                                        <span style={{ color: theme.textMuted, fontWeight: 400, fontSize: '0.8rem', opacity: 0.7 }}>/</span>
+                                        <span style={{ color: theme.textMuted, fontWeight: 400, fontSize: '0.75rem', opacity: 0.7 }}>/</span>
                                         <input 
                                             value={item.total}
                                             onChange={(e) => updateItem(cat.id, item.id, 'total', e.target.value)}
                                             type="number"
                                             placeholder="100"
-                                            style={{ width: '32px', background: 'transparent', border: 'none', color: theme.textMuted, fontWeight: 600, fontSize: '0.8rem', outline: 'none', padding: 0 }}
+                                            style={{ width: '28px', background: 'transparent', border: 'none', color: theme.textMuted, fontWeight: 600, fontSize: '0.75rem', outline: 'none', padding: 0 }}
                                         />
                                     </div>
                                     
                                     {/* Delete */}
                                     <button 
                                         onClick={() => deleteItem(cat.id, item.id)}
-                                        style={{ background: 'transparent', border: 'none', color: theme.danger, cursor: 'pointer', padding: '4px', opacity: 0.6, marginLeft: '4px' }}
+                                        style={{ background: 'transparent', border: 'none', color: theme.danger, cursor: 'pointer', padding: '2px', opacity: 0.6, marginLeft: '2px' }}
                                     >
-                                        <X size={14} />
+                                        <X size={12} />
                                     </button>
                                 </div>
                             </div>
@@ -274,9 +273,9 @@ const CategoryCard = ({
                 )}
                 <button 
                     onClick={() => addItem(cat.id)}
-                    style={{ width: '100%', marginTop: '8px', padding: '10px', background: 'rgba(255,255,255,0.05)', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: '8px', color: theme.textMuted, fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', transition: 'background 0.2s' }}
+                    style={{ width: '100%', marginTop: '6px', padding: '8px', background: 'rgba(255,255,255,0.05)', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: '6px', color: theme.textMuted, fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', transition: 'background 0.2s' }}
                 >
-                    <Plus size={14} /> Add {singularize(cat.name) || "Item"}
+                    <Plus size={12} /> Add {singularize(cat.name) || "Item"}
                 </button>
             </div>
         </div>
@@ -480,28 +479,28 @@ const UniversalGradeCalculator: React.FC<UniversalGradeCalculatorProps> = ({ cou
     return (
         <div style={{ paddingBottom: '100px' }}>
             {/* --- TOP BAR --- */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
-                <button onClick={onBack} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '12px', padding: '10px', color: '#fff', cursor: 'pointer' }}>
-                    <ArrowLeft size={20} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+                <button onClick={onBack} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '10px', padding: '8px', color: '#fff', cursor: 'pointer' }}>
+                    <ArrowLeft size={16} />
                 </button>
                 <div style={{ flex: 1 }}>
                     <input 
                         value={localTitle}
                         onChange={(e) => handleTitleChange(e.target.value)}
-                        style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '1.3rem', fontWeight: 800, width: '100%', outline: 'none' }}
+                        style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '1.1rem', fontWeight: 800, width: '100%', outline: 'none' }}
                         placeholder="Course Name"
                     />
                 </div>
             </div>
 
             {/* --- DASHBOARD CARD --- */}
-            <div style={{ ...styles.card, background: 'linear-gradient(145deg, rgba(30,30,40,0.8), rgba(20,20,30,0.9))', padding: '20px', marginBottom: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ ...styles.card, background: 'linear-gradient(145deg, rgba(30,30,40,0.8), rgba(20,20,30,0.9))', padding: '14px', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 
                 {/* LEFT: Target + Stats */}
                 <div style={{ flex: 1 }}>
                     {/* Target Input (Small) */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-                        <span style={{ fontSize: '0.65rem', color: theme.textMuted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Target</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}>
+                        <span style={{ fontSize: '0.6rem', color: theme.textMuted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Target</span>
                         <div style={{ position: 'relative', display: 'inline-block' }}>
                             <input 
                                 value={localTarget}
@@ -510,28 +509,28 @@ const UniversalGradeCalculator: React.FC<UniversalGradeCalculatorProps> = ({ cou
                                 style={{ 
                                     background: 'rgba(255,255,255,0.1)', 
                                     border: 'none', 
-                                    borderRadius: '16px', 
+                                    borderRadius: '12px', 
                                     color: '#fff', 
-                                    fontSize: '0.8rem', 
+                                    fontSize: '0.75rem', 
                                     fontWeight: 700, 
-                                    width: '45px', 
-                                    padding: '4px 8px', 
+                                    width: '40px', 
+                                    padding: '2px 6px', 
                                     textAlign: 'center' 
                                 }}
                             />
-                            <span style={{ position: 'absolute', right: '-10px', top: '50%', transform: 'translateY(-50%)', fontSize: '0.7rem', color: theme.textMuted }}>%</span>
+                            <span style={{ position: 'absolute', right: '-8px', top: '50%', transform: 'translateY(-50%)', fontSize: '0.65rem', color: theme.textMuted }}>%</span>
                         </div>
                     </div>
 
                     {/* Detailed Stats */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                         
                         {/* Performance (Average) */}
                         <div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', color: theme.textMuted, marginBottom: '2px', fontWeight: 600 }}>
-                                <Award size={12} /> Average Performance
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.65rem', color: theme.textMuted, marginBottom: '2px', fontWeight: 600 }}>
+                                <Award size={10} /> Average Performance
                             </div>
-                            <div style={{ fontSize: '1.1rem', fontWeight: 700, color: getGradeColor(currentAverage) }}>
+                            <div style={{ fontSize: '1rem', fontWeight: 700, color: getGradeColor(currentAverage) }}>
                                 {currentAverage.toFixed(1)}%
                             </div>
                         </div>
@@ -540,8 +539,8 @@ const UniversalGradeCalculator: React.FC<UniversalGradeCalculatorProps> = ({ cou
                 </div>
 
                 {/* RIGHT: Big Circle (ACCUMULATED GRADE) */}
-                <div style={{ position: 'relative', width: '100px', height: '100px' }}>
-                    <svg width="100" height="100" viewBox="0 0 120 120" style={{ transform: 'rotate(-90deg)' }}>
+                <div style={{ position: 'relative', width: '80px', height: '80px' }}>
+                    <svg width="80" height="80" viewBox="0 0 120 120" style={{ transform: 'rotate(-90deg)' }}>
                         <circle cx="60" cy="60" r="52" stroke="rgba(255,255,255,0.05)" strokeWidth="8" fill="none" />
                         <circle 
                             cx="60" cy="60" r="52" 
@@ -556,11 +555,11 @@ const UniversalGradeCalculator: React.FC<UniversalGradeCalculatorProps> = ({ cou
                         />
                     </svg>
                     <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                        <span style={{ fontSize: '0.6rem', color: theme.textMuted, fontWeight: 700, textTransform: 'uppercase' }}>Course Grade</span>
-                        <span style={{ fontSize: '1.5rem', color: '#fff', fontWeight: 800, lineHeight: 1, letterSpacing: '-1px' }}>
+                        <span style={{ fontSize: '0.55rem', color: theme.textMuted, fontWeight: 700, textTransform: 'uppercase' }}>Course Grade</span>
+                        <span style={{ fontSize: '1.2rem', color: '#fff', fontWeight: 800, lineHeight: 1, letterSpacing: '-1px' }}>
                             {totalWeightedScore.toFixed(1)}%
                         </span>
-                        <span style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.4)', marginTop: '2px', fontWeight: 500 }}>
+                        <span style={{ fontSize: '0.5rem', color: 'rgba(255,255,255,0.4)', marginTop: '2px', fontWeight: 500 }}>
                             Score
                         </span>
                     </div>
@@ -568,26 +567,26 @@ const UniversalGradeCalculator: React.FC<UniversalGradeCalculatorProps> = ({ cou
             </div>
 
             {/* --- PREDICTOR BANNER --- */}
-            <div style={{ marginBottom: '20px', padding: '14px', borderRadius: '14px', background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)', display: 'flex', gap: '12px' }}>
-                <TrendingUp size={20} className="text-blue-400 shrink-0" />
+            <div style={{ marginBottom: '16px', padding: '12px', borderRadius: '12px', background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)', display: 'flex', gap: '10px' }}>
+                <TrendingUp size={16} className="text-blue-400 shrink-0" />
                 <div>
-                    <h4 style={{ margin: 0, fontSize: '0.85rem', fontWeight: 700, color: '#93c5fd' }}>Path to Victory</h4>
-                    <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: 'rgba(255,255,255,0.8)', lineHeight: 1.4 }}>
+                    <h4 style={{ margin: 0, fontSize: '0.8rem', fontWeight: 700, color: '#93c5fd' }}>Path to Victory</h4>
+                    <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', color: 'rgba(255,255,255,0.8)', lineHeight: 1.4 }}>
                         {remainingWeight <= 0 ? (
                              pointsNeeded <= 0 ? "You've reached your target! Great job." : "No weight remaining. Extra credit needed!"
                         ) : neededAverage > 100 ? (
-                             `You need >100% on remaining work. Target may be out of reach.`
+                             `You need >100% on remaining work.`
                         ) : neededAverage <= 0 ? (
                              `You've already secured a ${target}%.`
                         ) : (
-                             <>To get <b>{target}%</b>, you need to average <b>{neededAverage.toFixed(1)}%</b> on the remaining <b>{remainingWeight}%</b> weight.</>
+                             <>To get <b>{target}%</b>, you need <b>{neededAverage.toFixed(1)}%</b> on remaining.</>
                         )}
                     </p>
                 </div>
             </div>
 
             {/* --- CATEGORY LIST --- */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {course.categories.map((cat) => (
                     <CategoryCard 
                         key={cat.id}
@@ -604,17 +603,17 @@ const UniversalGradeCalculator: React.FC<UniversalGradeCalculatorProps> = ({ cou
 
                 <button 
                     onClick={addCategory}
-                    style={{ ...styles.button, width: '100%', justifyContent: 'center', padding: '14px', fontSize: '0.95rem', marginTop: '8px' }}
+                    style={{ ...styles.button, width: '100%', justifyContent: 'center', padding: '12px', fontSize: '0.85rem', marginTop: '4px' }}
                 >
-                    <Plus size={18} /> Add Category
+                    <Plus size={16} /> Add Category
                 </button>
 
                 {course.categories.length > 0 && (
                      <button 
                         onClick={handleReset}
-                        style={{ background: 'transparent', border: 'none', color: theme.danger, fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '16px', opacity: 0.8 }}
+                        style={{ background: 'transparent', border: 'none', color: theme.danger, fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '12px', opacity: 0.8 }}
                     >
-                        <RotateCcw size={14} /> Reset All Grades
+                        <RotateCcw size={12} /> Reset All Grades
                     </button>
                 )}
             </div>

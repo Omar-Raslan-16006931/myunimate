@@ -1,5 +1,6 @@
 import { GoogleGenAI, Type, Schema, FunctionDeclaration } from "@google/genai";
 import { ScheduleEvent, EventType, Macros, PeriodDefinition } from "../types";
+import { supabase } from "../lib/supabase";
 
 const MODEL_NAME = 'gemini-2.5-flash';
 
@@ -9,6 +10,50 @@ const getAiClient = () => {
     throw new Error("API Key is missing. Please provide a valid API key.");
   }
   return new GoogleGenAI({ apiKey });
+};
+
+// --- Usage Tracking Helper ---
+const trackUsage = async (feature: string) => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user?.id) return;
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    
+    // Fetch only settings to minimize data transfer
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('settings')
+      .eq('id', session.user.id)
+      .single();
+
+    if (profile) {
+      const settings = profile.settings || {};
+      const usage = settings.usage || { total: 0, today: 0, date: todayStr, features: {} };
+
+      // Reset daily counter if date changed
+      if (usage.date !== todayStr) {
+          usage.today = 0;
+          usage.date = todayStr;
+      }
+
+      // Increment counters
+      usage.total = (usage.total || 0) + 1;
+      usage.today = (usage.today || 0) + 1;
+      
+      if (!usage.features) usage.features = {};
+      usage.features[feature] = (usage.features[feature] || 0) + 1;
+
+      // Fire and forget update
+      await supabase
+        .from('profiles')
+        .update({ settings: { ...settings, usage }, updated_at: new Date().toISOString() })
+        .eq('id', session.user.id);
+    }
+  } catch (err) {
+    // Silent fail to not disrupt user experience
+    console.warn("Failed to track AI usage", err);
+  }
 };
 
 // --- Nutrition Schema ---
@@ -47,6 +92,7 @@ const addEventTool: FunctionDeclaration = {
 
 // --- Nutrition Analysis ---
 export const analyzeFoodText = async (description: string): Promise<Macros & { name: string }> => {
+  trackUsage('nutrition_text');
   try {
     const ai = getAiClient();
     const response = await ai.models.generateContent({
@@ -77,6 +123,7 @@ export const analyzeFoodText = async (description: string): Promise<Macros & { n
 };
 
 export const analyzeFoodImage = async (base64Image: string): Promise<Macros & { name: string }> => {
+  trackUsage('nutrition_image');
   try {
     const ai = getAiClient();
     // Remove header if present (e.g., "data:image/jpeg;base64,")
@@ -124,6 +171,7 @@ export const analyzeFoodImage = async (base64Image: string): Promise<Macros & { 
 // --- Magic Autofill (Schedule) ---
 export const parseNaturalLanguageEvent = async (input: string, periods: PeriodDefinition[] = []): Promise<Partial<ScheduleEvent> | null> => {
   if (!input) return null;
+  trackUsage('autofill');
   const now = new Date();
   
   // Format period info for the model
@@ -166,6 +214,7 @@ export const parseNaturalLanguageEvent = async (input: string, periods: PeriodDe
 
 // --- Image to Schedule ---
 export const parseScheduleImage = async (base64Data: string): Promise<any[]> => {
+  trackUsage('schedule_import');
   try {
     const ai = getAiClient();
     const prompt = `
@@ -244,6 +293,7 @@ export const getChatResponse = async (
     periods: PeriodDefinition[] = [],
     context?: string
 ): Promise<{ text: string, eventData?: Partial<ScheduleEvent> }> => {
+    trackUsage('chat');
     // Allow errors to propagate to the caller for proper UI handling
     try {
         const ai = getAiClient();
@@ -273,6 +323,7 @@ export const getChatResponse = async (
             Behavior:
             - No cringe. No emojis. Be brief and direct.
             - If user asks to add an event, call 'addEvent'.
+            - If user asks to organize, check their schedule (provided in context if any) and suggest improvements.
             - If user asks about "next Thursday", assume the closest upcoming Thursday.
             `,
             tools: [{ functionDeclarations: [addEventTool] }]

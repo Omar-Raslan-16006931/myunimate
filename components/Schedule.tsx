@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, MapPin, Plus, Brain, ChevronDown, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, MapPin, Plus, Brain, ChevronDown, X, RotateCcw } from 'lucide-react';
 import { ScheduleEvent, EventColorMap, ScheduleProfile, PeriodDefinition } from '../types';
 import { getLocalISOString } from '../constants';
 import { theme, styles } from '../theme';
@@ -34,6 +34,7 @@ const Schedule: React.FC<ScheduleProps> = ({
   // Helper to get the Saturday of the current week (Start of academic week)
   const getSaturdayOfWeek = (d: Date) => {
     const date = new Date(d);
+    date.setHours(0, 0, 0, 0); // Normalize time to midnight for accurate comparison
     const day = date.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
     
     // We want Sat (6) to be our "0 index" or start of week logic for the grid.
@@ -50,6 +51,9 @@ const Schedule: React.FC<ScheduleProps> = ({
     return getSaturdayOfWeek(new Date());
   });
 
+  const actualCurrentWeekStart = getSaturdayOfWeek(new Date());
+  const isCurrentWeek = currentWeekStart.getTime() === actualCurrentWeekStart.getTime();
+
   const addDays = (date: Date, days: number) => {
     const result = new Date(date);
     result.setDate(result.getDate() + days);
@@ -58,6 +62,11 @@ const Schedule: React.FC<ScheduleProps> = ({
 
   const handleNavWeek = (direction: 'prev' | 'next') => {
     setCurrentWeekStart(prev => addDays(prev, direction === 'next' ? 7 : -7));
+  };
+
+  const handleReturnToCurrentWeek = () => {
+    if (navigator.vibrate) navigator.vibrate(10);
+    setCurrentWeekStart(actualCurrentWeekStart);
   };
 
   const to12h = (time24: string) => {
@@ -251,6 +260,29 @@ const Schedule: React.FC<ScheduleProps> = ({
                    {formatDate(currentWeekStart)} - {formatDate(weekEnd)}
                  </span>
                  <button onClick={() => handleNavWeek('next')} style={{background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '4px', border: 'none', color: theme.text, cursor: 'pointer'}}><ChevronRight size={18}/></button>
+                 
+                 {!isCurrentWeek && (
+                    <button 
+                        onClick={handleReturnToCurrentWeek}
+                        style={{
+                            background: 'rgba(139, 92, 246, 0.2)', 
+                            border: '1px solid rgba(139, 92, 246, 0.4)', 
+                            borderRadius: '8px', 
+                            padding: '4px 8px', 
+                            color: theme.accent, 
+                            cursor: 'pointer',
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            marginLeft: '8px',
+                            animation: 'fadeIn 0.2s'
+                        }}
+                    >
+                        <RotateCcw size={12} /> Current Week
+                    </button>
+                 )}
              </div>
           </div>
            <button style={{...styles.button, borderRadius: '50%', width: '44px', height: '44px', padding: 0, justifyContent: 'center', boxShadow: '0 5px 15px rgba(0,0,0,0.3)'}} onClick={onAddEventClick}>

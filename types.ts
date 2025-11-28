@@ -1,4 +1,5 @@
 
+
 export type EventType = "lecture" | "tutorial" | "lab" | "quiz" | "assignment" | "exam" | "study" | "other";
 
 export interface ScheduleEvent {
@@ -51,6 +52,31 @@ export interface ExtractedScheduleItem {
     course_code: string;
     room: string;
     type: string;
+}
+
+export interface ReferralCode {
+  id: string;
+  code: string;
+  is_active: boolean;
+  usage_count: number;
+  created_at: string;
+  subscription_tier?: number;
+}
+
+export interface Announcement {
+  id: string;
+  message: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface FeedbackItem {
+  id: string;
+  user_id: string;
+  message: string;
+  type: 'bug' | 'feature' | 'general';
+  created_at: string;
+  username?: string; // For display after join
 }
 
 // --- UNIVERSAL GRADE TYPES ---

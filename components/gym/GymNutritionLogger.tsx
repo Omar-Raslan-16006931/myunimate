@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { FoodItem, GymSettings, WaterLog } from '../../types';
 import { analyzeFoodImage, analyzeFoodText } from '../../services/geminiService';
@@ -159,15 +158,15 @@ export const GymNutritionLogger: React.FC<NutritionLoggerProps> = ({ logs, water
   const leftF = settings.targets.fat - totalMacros.fat;
 
   return (
-    <div className="pb-24 space-y-6 relative">
+    <div className="pb-24 space-y-4 relative">
       {showManualEntry && (
           <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-slate-900/90 backdrop-blur-sm animate-in fade-in duration-200">
               <div className="bg-slate-800 w-full max-w-sm rounded-2xl p-6 border border-slate-700 shadow-2xl animate-in slide-in-from-bottom-10">
                   <div className="flex justify-between items-center mb-4">
-                      <h3 className="text-xl font-bold text-white">{editingId ? 'Edit Food' : 'Manual Food Entry'}</h3>
-                      <button onClick={() => setShowManualEntry(false)} className="text-slate-400 hover:text-white"><X size={20} /></button>
+                      <h3 className="text-lg font-bold text-white">{editingId ? 'Edit Food' : 'Manual Food Entry'}</h3>
+                      <button onClick={() => setShowManualEntry(false)} className="text-slate-400 hover:text-white"><X size={18} /></button>
                   </div>
-                  <form onSubmit={handleManualSubmit} className="space-y-4">
+                  <form onSubmit={handleManualSubmit} className="space-y-3">
                       <div>
                           <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Food Name</label>
                           <input 
@@ -176,11 +175,11 @@ export const GymNutritionLogger: React.FC<NutritionLoggerProps> = ({ logs, water
                             placeholder="e.g. Chicken Rice Bowl"
                             value={manualFood.name}
                             onChange={e => setManualFood({...manualFood, name: e.target.value})}
-                            className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white focus:border-indigo-500 outline-none"
+                            className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white focus:border-indigo-500 outline-none text-sm"
                             required
                           />
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-2 gap-3">
                            <div>
                               <label className="block text-xs font-bold text-orange-400 uppercase mb-1">Calories</label>
                               <input 
@@ -188,7 +187,7 @@ export const GymNutritionLogger: React.FC<NutritionLoggerProps> = ({ logs, water
                                 placeholder="0"
                                 value={manualFood.calories}
                                 onChange={e => setManualFood({...manualFood, calories: e.target.value})}
-                                className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white focus:border-orange-500 outline-none"
+                                className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white focus:border-orange-500 outline-none text-sm"
                                 required
                               />
                            </div>
@@ -199,7 +198,7 @@ export const GymNutritionLogger: React.FC<NutritionLoggerProps> = ({ logs, water
                                 placeholder="0"
                                 value={manualFood.protein}
                                 onChange={e => setManualFood({...manualFood, protein: e.target.value})}
-                                className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white focus:border-indigo-500 outline-none"
+                                className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white focus:border-indigo-500 outline-none text-sm"
                               />
                            </div>
                            <div>
@@ -209,7 +208,7 @@ export const GymNutritionLogger: React.FC<NutritionLoggerProps> = ({ logs, water
                                 placeholder="0"
                                 value={manualFood.carbs}
                                 onChange={e => setManualFood({...manualFood, carbs: e.target.value})}
-                                className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white focus:border-emerald-500 outline-none"
+                                className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white focus:border-emerald-500 outline-none text-sm"
                               />
                            </div>
                            <div>
@@ -219,11 +218,11 @@ export const GymNutritionLogger: React.FC<NutritionLoggerProps> = ({ logs, water
                                 placeholder="0"
                                 value={manualFood.fat}
                                 onChange={e => setManualFood({...manualFood, fat: e.target.value})}
-                                className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white focus:border-pink-500 outline-none"
+                                className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white focus:border-pink-500 outline-none text-sm"
                               />
                            </div>
                       </div>
-                      <button type="submit" className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl mt-2 transition">
+                      <button type="submit" className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl mt-2 transition text-sm">
                           {editingId ? 'Update Food' : 'Add Food'}
                       </button>
                   </form>
@@ -231,62 +230,62 @@ export const GymNutritionLogger: React.FC<NutritionLoggerProps> = ({ logs, water
           </div>
       )}
 
-      <header className="mb-6">
+      <header className="mb-4">
         <div className="flex justify-between items-start mb-2">
             <div>
-              <h2 className="text-2xl font-bold text-white">Nutrition</h2>
-              <p className="text-slate-400 text-sm">Track your fuel</p>
+              <h2 className="text-xl font-bold text-white">Nutrition</h2>
+              <p className="text-slate-400 text-xs">Track your fuel</p>
             </div>
             <div className="text-right">
-              <span className={`text-3xl font-bold ${remainingCalories < 0 ? 'text-red-500' : 'text-indigo-400'}`}>{totalMacros.calories}</span>
-              <span className="text-xs text-slate-500 block"> / {settings.targets.calories} kcal</span>
-              <span className={`text-xs font-bold block mt-1 ${remainingCalories >= 0 ? 'text-emerald-400' : 'text-red-400 flex items-center justify-end gap-1'}`}>
+              <span className={`text-2xl font-bold ${remainingCalories < 0 ? 'text-red-500' : 'text-indigo-400'}`}>{totalMacros.calories}</span>
+              <span className="text-[10px] text-slate-500 block"> / {settings.targets.calories} kcal</span>
+              <span className={`text-[10px] font-bold block mt-0.5 ${remainingCalories >= 0 ? 'text-emerald-400' : 'text-red-400 flex items-center justify-end gap-1'}`}>
                   {remainingCalories >= 0 ? (
                       `${remainingCalories} Remaining` 
                   ) : (
-                      <><AlertCircle size={12} /> {Math.abs(remainingCalories)} Over</>
+                      <><AlertCircle size={10} /> {Math.abs(remainingCalories)} Over</>
                   )}
               </span>
             </div>
         </div>
         
-        <div className="flex gap-2 mt-4">
-            <div className={`flex-1 bg-slate-800 rounded-lg p-2 text-center border ${leftP < 0 ? 'border-red-500/50' : 'border-slate-700/50'}`}>
-                <div className="text-[10px] text-slate-400 uppercase font-bold">Protein</div>
-                <div className={`${leftP < 0 ? 'text-red-400' : 'text-indigo-300'} font-bold text-sm`}>
+        <div className="flex gap-2 mt-3">
+            <div className={`flex-1 bg-slate-800 rounded-lg p-1.5 text-center border ${leftP < 0 ? 'border-red-500/50' : 'border-slate-700/50'}`}>
+                <div className="text-[9px] text-slate-400 uppercase font-bold">Protein</div>
+                <div className={`${leftP < 0 ? 'text-red-400' : 'text-indigo-300'} font-bold text-xs`}>
                     {leftP < 0 ? `${Math.abs(leftP)}g over` : `${leftP}g left`}
                 </div>
             </div>
-            <div className={`flex-1 bg-slate-800 rounded-lg p-2 text-center border ${leftC < 0 ? 'border-red-500/50' : 'border-slate-700/50'}`}>
-                <div className="text-[10px] text-slate-400 uppercase font-bold">Carbs</div>
-                <div className={`${leftC < 0 ? 'text-red-400' : 'text-emerald-300'} font-bold text-sm`}>
+            <div className={`flex-1 bg-slate-800 rounded-lg p-1.5 text-center border ${leftC < 0 ? 'border-red-500/50' : 'border-slate-700/50'}`}>
+                <div className="text-[9px] text-slate-400 uppercase font-bold">Carbs</div>
+                <div className={`${leftC < 0 ? 'text-red-400' : 'text-emerald-300'} font-bold text-xs`}>
                     {leftC < 0 ? `${Math.abs(leftC)}g over` : `${leftC}g left`}
                 </div>
             </div>
-            <div className={`flex-1 bg-slate-800 rounded-lg p-2 text-center border ${leftF < 0 ? 'border-red-500/50' : 'border-slate-700/50'}`}>
-                <div className="text-[10px] text-slate-400 uppercase font-bold">Fat</div>
-                <div className={`${leftF < 0 ? 'text-red-400' : 'text-pink-300'} font-bold text-sm`}>
+            <div className={`flex-1 bg-slate-800 rounded-lg p-1.5 text-center border ${leftF < 0 ? 'border-red-500/50' : 'border-slate-700/50'}`}>
+                <div className="text-[9px] text-slate-400 uppercase font-bold">Fat</div>
+                <div className={`${leftF < 0 ? 'text-red-400' : 'text-pink-300'} font-bold text-xs`}>
                     {leftF < 0 ? `${Math.abs(leftF)}g over` : `${leftF}g left`}
                 </div>
             </div>
         </div>
       </header>
 
-      <div className="bg-sky-900/20 rounded-xl p-5 border border-sky-800/50 relative overflow-hidden">
-        <div className="flex justify-between items-center mb-4 relative z-10">
+      <div className="bg-sky-900/20 rounded-xl p-4 border border-sky-800/50 relative overflow-hidden">
+        <div className="flex justify-between items-center mb-3 relative z-10">
            <div className="flex items-center gap-2">
-             <div className="p-2 bg-sky-500/20 rounded-lg">
-               <Droplets className="text-sky-400" size={20} />
+             <div className="p-1.5 bg-sky-500/20 rounded-lg">
+               <Droplets className="text-sky-400" size={16} />
              </div>
              <div>
-               <h3 className="text-sky-100 font-bold">Water Intake</h3>
-               <p className="text-sky-300/70 text-xs">{currentWater}ml / {settings.waterTarget}ml</p>
+               <h3 className="text-sky-100 font-bold text-sm">Water Intake</h3>
+               <p className="text-sky-300/70 text-[10px]">{currentWater}ml / {settings.waterTarget}ml</p>
              </div>
            </div>
-           <span className="text-xl font-bold text-sky-400">{Math.round(waterPercentage)}%</span>
+           <span className="text-lg font-bold text-sky-400">{Math.round(waterPercentage)}%</span>
         </div>
         
-        <div className="w-full bg-slate-800 h-3 rounded-full overflow-hidden mb-4 relative z-10">
+        <div className="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden mb-3 relative z-10">
           <div 
              className="h-full bg-sky-500 transition-all duration-500" 
              style={{ width: `${waterPercentage}%` }}
@@ -294,14 +293,14 @@ export const GymNutritionLogger: React.FC<NutritionLoggerProps> = ({ logs, water
         </div>
 
         {!showCustomWater ? (
-          <div className="flex gap-3 relative z-10">
-            <button onClick={() => addWater(250)} className="flex-1 py-2 bg-sky-800/40 hover:bg-sky-700/50 text-sky-200 text-sm font-medium rounded-lg border border-sky-700/50 transition active:scale-95">
+          <div className="flex gap-2 relative z-10">
+            <button onClick={() => addWater(250)} className="flex-1 py-1.5 bg-sky-800/40 hover:bg-sky-700/50 text-sky-200 text-xs font-medium rounded-lg border border-sky-700/50 transition active:scale-95">
               + 250ml
             </button>
-            <button onClick={() => addWater(500)} className="flex-1 py-2 bg-sky-800/40 hover:bg-sky-700/50 text-sky-200 text-sm font-medium rounded-lg border border-sky-700/50 transition active:scale-95">
+            <button onClick={() => addWater(500)} className="flex-1 py-1.5 bg-sky-800/40 hover:bg-sky-700/50 text-sky-200 text-xs font-medium rounded-lg border border-sky-700/50 transition active:scale-95">
               + 500ml
             </button>
-            <button onClick={() => setShowCustomWater(true)} className="px-4 py-2 bg-sky-900/40 hover:bg-sky-800/50 text-sky-300 text-sm font-medium rounded-lg border border-sky-800/50 transition active:scale-95">
+            <button onClick={() => setShowCustomWater(true)} className="px-3 py-1.5 bg-sky-900/40 hover:bg-sky-800/50 text-sky-300 text-xs font-medium rounded-lg border border-sky-800/50 transition active:scale-95">
               Other...
             </button>
           </div>
@@ -313,51 +312,51 @@ export const GymNutritionLogger: React.FC<NutritionLoggerProps> = ({ logs, water
                placeholder="Amount (ml)"
                value={customAmount}
                onChange={(e) => setCustomAmount(e.target.value)}
-               className="flex-1 bg-slate-900/80 border border-sky-700/50 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+               className="flex-1 bg-slate-900/80 border border-sky-700/50 rounded-lg px-3 py-1.5 text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-sky-500 text-sm"
              />
-             <button type="submit" className="p-2 bg-sky-600 hover:bg-sky-500 text-white rounded-lg transition">
-               <Check size={20} />
+             <button type="submit" className="p-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded-lg transition">
+               <Check size={16} />
              </button>
-             <button type="button" onClick={() => setShowCustomWater(false)} className="p-2 bg-slate-700/50 hover:bg-slate-700 text-slate-300 rounded-lg transition">
-               <X size={20} />
+             <button type="button" onClick={() => setShowCustomWater(false)} className="p-1.5 bg-slate-700/50 hover:bg-slate-700 text-slate-300 rounded-lg transition">
+               <X size={16} />
              </button>
           </form>
         )}
       </div>
 
-      <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-lg">
-        <form onSubmit={handleTextSubmit} className="space-y-4">
+      <div className="bg-slate-800 p-3 rounded-xl border border-slate-700 shadow-lg">
+        <form onSubmit={handleTextSubmit} className="space-y-3">
           <div className="relative">
             <input
               type="text"
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               placeholder="e.g., 2 eggs and toast..."
-              className="w-full bg-slate-900 text-white rounded-lg pl-4 pr-12 py-3 focus:ring-2 focus:ring-indigo-500 focus:outline-none placeholder-slate-500"
+              className="w-full bg-slate-900 text-white rounded-lg pl-3 pr-10 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none placeholder-slate-500 text-sm"
               disabled={isAnalyzing}
             />
             <button
               type="submit"
               disabled={!inputText || isAnalyzing}
-              className="absolute right-2 top-2 p-1.5 bg-indigo-600 rounded-md text-white disabled:opacity-50 hover:bg-indigo-500 transition"
+              className="absolute right-1.5 top-1.5 p-1 bg-indigo-600 rounded-md text-white disabled:opacity-50 hover:bg-indigo-500 transition"
             >
-              {isAnalyzing ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />}
+              {isAnalyzing ? <Loader2 className="animate-spin" size={16} /> : <Send size={16} />}
             </button>
           </div>
           
           <div className="flex items-center gap-2">
-            <span className="text-slate-400 text-xs uppercase tracking-wide font-semibold">Or use AI Camera</span>
+            <span className="text-slate-400 text-[10px] uppercase tracking-wide font-semibold">Or use AI Camera</span>
             <div className="h-px bg-slate-700 flex-1"></div>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-2">
              <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={isAnalyzing}
-              className="col-span-1 flex flex-col items-center justify-center gap-1 py-3 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs font-medium transition disabled:opacity-50"
+              className="col-span-1 flex flex-col items-center justify-center gap-1 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-[10px] font-medium transition disabled:opacity-50"
             >
-              <Camera size={20} className="text-indigo-400" />
+              <Camera size={16} className="text-indigo-400" />
               <span>Snap</span>
             </button>
              <input
@@ -369,64 +368,64 @@ export const GymNutritionLogger: React.FC<NutritionLoggerProps> = ({ logs, water
             />
              <button
               type="button"
-              className="col-span-1 flex flex-col items-center justify-center gap-1 py-3 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs font-medium transition opacity-50 cursor-not-allowed"
+              className="col-span-1 flex flex-col items-center justify-center gap-1 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-[10px] font-medium transition opacity-50 cursor-not-allowed"
             >
-              <ImageIcon size={20} className="text-emerald-400" />
+              <ImageIcon size={16} className="text-emerald-400" />
               <span>Gallery</span>
             </button>
              <button
               type="button"
               onClick={openAddModal}
               disabled={isAnalyzing}
-              className="col-span-1 flex flex-col items-center justify-center gap-1 py-3 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs font-medium transition disabled:opacity-50"
+              className="col-span-1 flex flex-col items-center justify-center gap-1 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-[10px] font-medium transition disabled:opacity-50"
             >
-              <PenTool size={20} className="text-pink-400" />
+              <PenTool size={16} className="text-pink-400" />
               <span>Manual</span>
             </button>
           </div>
         </form>
-        {error && <p className="text-red-400 text-sm mt-3 text-center">{error}</p>}
+        {error && <p className="text-red-400 text-xs mt-2 text-center">{error}</p>}
       </div>
 
-      <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-slate-200">Today's Meals</h3>
+      <div className="space-y-3">
+        <h3 className="text-base font-semibold text-slate-200">Today's Meals</h3>
         {logs.length === 0 ? (
-          <div className="text-center py-10 text-slate-500 bg-slate-800/50 rounded-xl border border-dashed border-slate-700">
-            <Apple size={48} className="mx-auto text-slate-600 mb-2" />
-            <p className="mt-2">No meals logged yet today.</p>
+          <div className="text-center py-8 text-slate-500 bg-slate-800/50 rounded-xl border border-dashed border-slate-700 text-sm">
+            <Apple size={32} className="mx-auto text-slate-600 mb-2" />
+            <p className="mt-1">No meals logged yet today.</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {logs.slice().reverse().map((item) => (
-              <div key={item.id} className="bg-slate-800 rounded-xl p-4 flex gap-4 items-center border border-slate-700 group">
+              <div key={item.id} className="bg-slate-800 rounded-xl p-3 flex gap-3 items-center border border-slate-700 group">
                 {item.imageUri ? (
-                  <img src={item.imageUri} alt={item.name} className="w-16 h-16 rounded-lg object-cover bg-slate-900" />
+                  <img src={item.imageUri} alt={item.name} className="w-12 h-12 rounded-lg object-cover bg-slate-900" />
                 ) : (
-                  <div className="w-16 h-16 rounded-lg bg-indigo-500/20 flex items-center justify-center text-indigo-400 flex-shrink-0">
-                    <UtensilsCrossed size={24} />
+                  <div className="w-12 h-12 rounded-lg bg-indigo-500/20 flex items-center justify-center text-indigo-400 flex-shrink-0">
+                    <UtensilsCrossed size={20} />
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <h4 className="font-medium text-white truncate">{item.name}</h4>
-                  <div className="flex gap-3 mt-1 text-xs text-slate-400">
+                  <h4 className="font-medium text-white truncate text-sm">{item.name}</h4>
+                  <div className="flex gap-2 mt-0.5 text-[10px] text-slate-400">
                     <span className="text-indigo-300 font-bold">{item.calories} kcal</span>
                     <span>P: {item.protein}g</span>
                     <span>C: {item.carbs}g</span>
                     <span>F: {item.fat}g</span>
                   </div>
                 </div>
-                <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button 
                         onClick={() => openEditModal(item)}
-                        className="p-2 bg-slate-700 rounded-lg text-slate-300 hover:text-white hover:bg-slate-600"
+                        className="p-1.5 bg-slate-700 rounded-lg text-slate-300 hover:text-white hover:bg-slate-600"
                     >
-                        <Pencil size={16} />
+                        <Pencil size={14} />
                     </button>
                     <button 
                         onClick={() => deleteLog(item.id)}
-                        className="p-2 bg-slate-700 rounded-lg text-slate-300 hover:text-red-400 hover:bg-slate-600"
+                        className="p-1.5 bg-slate-700 rounded-lg text-slate-300 hover:text-red-400 hover:bg-slate-600"
                     >
-                        <Trash2 size={16} />
+                        <Trash2 size={14} />
                     </button>
                 </div>
               </div>
