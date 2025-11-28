@@ -1,10 +1,11 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import { Plus, Trash2, CalendarDays, Palette, Layers, Pencil, Upload, ImageIcon, Loader2, LogOut, ChevronDown, ChevronUp, Columns, AlertTriangle, User, GraduationCap, Calendar, Building, Users, Moon, Sun, CreditCard, Lock, Check, X, AlertCircle } from 'lucide-react';
-import { ScheduleProfile, EventColorMap, EventType, ScheduleEvent, PeriodDefinition, ThemeMode } from '../types';
+import { Plus, Trash2, CalendarDays, Palette, Layers, Pencil, Upload, ImageIcon, Loader2, LogOut, ChevronDown, ChevronUp, Columns, AlertTriangle, User, GraduationCap, Calendar, Building, Users, Moon, Sun, CreditCard, Lock, Check, X, AlertCircle, Ticket, Copy, Shield, Search, Zap, Ban, RotateCcw, Activity, BarChart3, Coins, PieChart as PieIcon, Megaphone, Eye, Mail, MessageSquare, Bug, Lightbulb } from 'lucide-react';
+import { ScheduleProfile, EventColorMap, EventType, ScheduleEvent, PeriodDefinition, ThemeMode, ReferralCode, FeedbackItem } from '../types';
 import { theme, styles } from '../theme';
 import ScheduleSettings from './ScheduleSettings';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from 'recharts';
 
 interface SettingsProps {
   profiles: ScheduleProfile[];
@@ -32,13 +33,16 @@ interface SettingsProps {
       major?: string, 
       year?: string, 
       college?: string, 
-      subscription_tier?: number,
-      lastUsernameChange?: string,
-      genderChangeCount?: number
+      subscription_tier?: number, 
+      lastUsernameChange?: string, 
+      genderChangeCount?: number,
+      is_admin?: boolean,
+      is_banned?: boolean
   } | null;
   onUpdateAccount: (data: any) => void;
   themeMode: ThemeMode;
   setThemeMode: (mode: ThemeMode) => void;
+  onImpersonate?: (userId: string) => void;
 }
 
 const Settings: React.FC<SettingsProps> = ({
@@ -62,7 +66,8 @@ const Settings: React.FC<SettingsProps> = ({
   accountInfo,
   onUpdateAccount,
   themeMode,
-  setThemeMode
+  setThemeMode,
+  onImpersonate
 }) => {
   const [newProfileName, setNewProfileName] = useState('');
   const [isScheduleSettingsExpanded, setIsScheduleSettingsExpanded] = useState(false);
@@ -70,6 +75,11 @@ const Settings: React.FC<SettingsProps> = ({
   const [isColorsExpanded, setIsColorsExpanded] = useState(false);
   const [isBaseScheduleExpanded, setIsBaseScheduleExpanded] = useState(false);
   const [isAccountExpanded, setIsAccountExpanded] = useState(false);
+  const [isReferralExpanded, setIsReferralExpanded] = useState(false);
+  const [isUserMgmtExpanded, setIsUserMgmtExpanded] = useState(false);
+  const [isAiMonitorExpanded, setIsAiMonitorExpanded] = useState(false);
+  const [isAnnouncementsExpanded, setIsAnnouncementsExpanded] = useState(false);
+  const [isFeedbackInboxExpanded, setIsFeedbackInboxExpanded] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -80,6 +90,28 @@ const Settings: React.FC<SettingsProps> = ({
   // Username Availability State
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
   const [isCheckingUsername, setIsCheckingUsername] = useState(false);
+
+  // Referral State
+  const [referralCodes, setReferralCodes] = useState<ReferralCode[]>([]);
+  const [newReferralCode, setNewReferralCode] = useState('');
+  const [isReferralLoading, setIsReferralLoading] = useState(false);
+
+  // User Management State (Admin)
+  const [users, setUsers] = useState<any[]>([]);
+  const [userSearch, setUserSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+
+  // Announcements State (Admin)
+  const [announcementMsg, setAnnouncementMsg] = useState('');
+
+  // Feedback State
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [feedbackMsg, setFeedbackMsg] = useState('');
+  const [feedbackType, setFeedbackType] = useState<'bug' | 'feature' | 'general'>('general');
+  const [isSendingFeedback, setIsSendingFeedback] = useState(false);
+  const [feedbackList, setFeedbackList] = useState<FeedbackItem[]>([]);
+  const [isLoadingFeedback, setIsLoadingFeedback] = useState(false);
 
   const handleCreateProfile = () => {
     if (newProfileName.trim()) {
@@ -94,14 +126,6 @@ const Settings: React.FC<SettingsProps> = ({
     const period = h >= 12 ? "PM" : "AM";
     const h12 = h % 12 || 12;
     return `${h12}:${m.toString().padStart(2, "0")} ${period}`;
-  };
-
-  const getTierName = (tier: number) => {
-      switch(tier) {
-          case 0: return "Free Tier";
-          case 1: return "Pro Tier";
-          default: return "Free Tier";
-      }
   };
 
   const startEditingAccount = (e: React.MouseEvent) => {
@@ -125,38 +149,276 @@ const Settings: React.FC<SettingsProps> = ({
       setUsernameAvailable(null);
   };
 
-  // Real-time Username Check
+  // --- FEEDBACK LOGIC ---
+
+  const sendFeedback = async () => {
+      if (!feedbackMsg.trim()) return;
+      setIsSendingFeedback(true);
+      try {
+          await supabase.from('feedback').insert({
+              message: feedbackMsg,
+              type: feedbackType,
+              user_id: accountInfo?.id
+          });
+          setShowFeedbackModal(false);
+          setFeedbackMsg('');
+          setFeedbackType('general');
+          alert("Feedback sent! Thank you.");
+      } catch (e) {
+          console.error(e);
+          alert("Failed to send feedback.");
+      } finally {
+          setIsSendingFeedback(false);
+      }
+  };
+
+  const fetchFeedback = async () => {
+      setIsLoadingFeedback(true);
+      try {
+          const { data, error } = await supabase
+            .from('feedback')
+            .select('*')
+            .order('created_at', { ascending: false });
+          
+          if (data) {
+              setFeedbackList(data);
+          }
+      } catch (e) {
+          console.error(e);
+      } finally {
+          setIsLoadingFeedback(false);
+      }
+  };
+
+  useEffect(() => {
+      if (isFeedbackInboxExpanded) fetchFeedback();
+  }, [isFeedbackInboxExpanded]);
+
+  // --- REFERRAL SYSTEM LOGIC ---
+
+  const fetchReferralCodes = async () => {
+      setIsReferralLoading(true);
+      const { data, error } = await supabase.from('referral_codes').select('*').order('created_at', { ascending: false });
+      if (data) {
+          setReferralCodes(data);
+      }
+      setIsReferralLoading(false);
+  };
+
+  const createReferralCode = async () => {
+      if (!newReferralCode.trim()) return;
+      const code = newReferralCode.trim().toUpperCase();
+      
+      const { data, error } = await supabase
+        .from('referral_codes')
+        .insert([{ code }])
+        .select()
+        .single();
+        
+      if (data) {
+          setReferralCodes([data, ...referralCodes]);
+          setNewReferralCode('');
+      } else if (error) {
+          alert("Error creating code. It might already exist.");
+      }
+  };
+
+  const toggleReferralStatus = async (id: string, currentStatus: boolean) => {
+      const { error } = await supabase
+        .from('referral_codes')
+        .update({ is_active: !currentStatus })
+        .eq('id', id);
+        
+      if (!error) {
+          setReferralCodes(referralCodes.map(rc => rc.id === id ? { ...rc, is_active: !currentStatus } : rc));
+      }
+  };
+
+  // --- USER MANAGEMENT LOGIC (ADMIN) ---
+
+  useEffect(() => {
+      const timer = setTimeout(() => {
+          setDebouncedSearch(userSearch);
+      }, 500);
+      return () => clearTimeout(timer);
+  }, [userSearch]);
+
+  const fetchUsers = useCallback(async () => {
+      if (!isUserMgmtExpanded && !isAiMonitorExpanded) return;
+      
+      setIsLoadingUsers(true);
+      
+      try {
+          let query = supabase
+            .from('profiles')
+            .select('id, username, created_at, updated_at, college, subscription_tier, is_banned, settings')
+            .order('updated_at', { ascending: false });
+
+          if (debouncedSearch.trim()) {
+             query = query.ilike('username', `%${debouncedSearch.trim()}%`);
+          }
+
+          query = query.limit(50);
+
+          const { data, error } = await query;
+
+          if (data) {
+              const mappedUsers = data.map((u: any) => ({
+                  ...u,
+                  email: u.settings?.account?.email || 'No Email',
+                  usage: u.settings?.usage || { total: 0, today: 0, features: {} }
+              }));
+              setUsers(mappedUsers);
+          }
+      } catch (err) {
+          console.error("Failed to fetch users", err);
+      } finally {
+          setIsLoadingUsers(false);
+      }
+  }, [debouncedSearch, isUserMgmtExpanded, isAiMonitorExpanded]);
+
+  useEffect(() => {
+      fetchUsers();
+  }, [fetchUsers]);
+
+  const toggleUserBan = async (id: string, currentStatus: boolean) => {
+      if (!confirm(`Are you sure you want to ${currentStatus ? 'unban' : 'BAN'} this user?`)) return;
+      
+      const { error } = await supabase
+          .from('profiles')
+          .update({ is_banned: !currentStatus })
+          .eq('id', id);
+
+      if (!error) {
+          setUsers(users.map(u => u.id === id ? { ...u, is_banned: !currentStatus } : u));
+      } else {
+          alert("Failed to update ban status");
+      }
+  };
+
+  const toggleUserPro = async (id: string, currentTier: number) => {
+      const newTier = currentTier === 1 ? 0 : 1;
+      const { error } = await supabase
+          .from('profiles')
+          .update({ subscription_tier: newTier })
+          .eq('id', id);
+
+      if (!error) {
+          setUsers(users.map(u => u.id === id ? { ...u, subscription_tier: newTier } : u));
+      } else {
+          alert("Failed to update subscription");
+      }
+  };
+
+  const deleteUser = async (id: string) => {
+      if (!confirm("DANGER: This will permanently delete the user profile. This action cannot be undone. Are you absolutely sure?")) return;
+      
+      const { error } = await supabase.from('profiles').delete().eq('id', id);
+      if (!error) {
+          setUsers(users.filter(u => u.id !== id));
+      } else {
+          alert("Failed to delete user. Check permissions.");
+      }
+  };
+
+  const postAnnouncement = async () => {
+      if (!announcementMsg.trim()) return;
+      await supabase.from('announcements').update({ is_active: false }).eq('is_active', true);
+      const { error } = await supabase.from('announcements').insert([{ 
+          message: announcementMsg, 
+          is_active: true
+      }]);
+
+      if (!error) {
+          setAnnouncementMsg('');
+          alert('Announcement posted successfully!');
+      } else {
+          alert('Failed to post announcement.');
+      }
+  };
+
+  const clearAnnouncement = async () => {
+      const { error } = await supabase.from('announcements').update({ is_active: false }).eq('is_active', true);
+      if (!error) {
+          alert('Announcement cleared.');
+      } else {
+          alert('Failed to clear announcement.');
+      }
+  };
+
+  const aiStats = useMemo(() => {
+      const todayStr = new Date().toISOString().split('T')[0];
+      let totalRequestsToday = 0;
+      let totalAllTime = 0;
+      const featureCounts: Record<string, number> = {};
+      const spamCandidates: any[] = [];
+
+      users.forEach(u => {
+          const usage = u.usage || {};
+          const uDate = usage.date === todayStr;
+          const uToday = uDate ? (usage.today || 0) : 0;
+          
+          totalRequestsToday += uToday;
+          totalAllTime += (usage.total || 0);
+
+          if (usage.features) {
+              Object.entries(usage.features).forEach(([feat, count]) => {
+                  featureCounts[feat] = (featureCounts[feat] || 0) + (count as number);
+              });
+          }
+
+          if (uToday > 0) {
+              spamCandidates.push({
+                  username: u.username,
+                  today: uToday,
+                  isSpam: uToday > 50,
+                  id: u.id
+              });
+          }
+      });
+
+      spamCandidates.sort((a, b) => b.today - a.today);
+      const topSpenders = spamCandidates.slice(0, 10);
+
+      const featureData = Object.keys(featureCounts).map(key => ({
+          name: key.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()),
+          value: featureCounts[key]
+      }));
+
+      const estimatedCost = (totalRequestsToday * 0.002).toFixed(3);
+
+      return { totalRequestsToday, totalAllTime, featureData, topSpenders, estimatedCost };
+  }, [users]);
+
+  useEffect(() => {
+      if (isReferralExpanded) fetchReferralCodes();
+  }, [isReferralExpanded]);
+
   useEffect(() => {
     if (!isEditingAccount || !editForm.username) return;
 
-    // If username hasn't changed from original, clear check status
     if (editForm.username === accountInfo?.username) {
         setUsernameAvailable(null);
         setIsCheckingUsername(false);
         return;
     }
 
-    // Basic validation length check
     if (editForm.username.length < 4) {
-        setUsernameAvailable(null); // Just invalid length, not taken check
+        setUsernameAvailable(null);
         return;
     }
 
     setIsCheckingUsername(true);
     const timer = setTimeout(async () => {
         try {
-            const { data, error } = await supabase
+            const { data } = await supabase
                 .from('profiles')
                 .select('username')
                 .ilike('username', editForm.username.trim())
-                .neq('id', accountInfo?.id || '') // Ensure we don't count ourselves if logic gets weird
+                .neq('id', accountInfo?.id || '')
                 .maybeSingle();
             
-            if (data) {
-                setUsernameAvailable(false);
-            } else {
-                setUsernameAvailable(true);
-            }
+            setUsernameAvailable(!data);
         } catch (err) {
             console.error(err);
         } finally {
@@ -167,364 +429,311 @@ const Settings: React.FC<SettingsProps> = ({
     return () => clearTimeout(timer);
   }, [editForm.username, isEditingAccount, accountInfo]);
 
-  // Constraint Logic
   const canEditUsername = !accountInfo?.lastUsernameChange || (new Date().getTime() - new Date(accountInfo.lastUsernameChange).getTime()) > 14 * 24 * 60 * 60 * 1000;
-  
-  const nextUsernameEditDate = accountInfo?.lastUsernameChange 
-        ? new Date(new Date(accountInfo.lastUsernameChange).getTime() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString() 
-        : null;
-
-  // Gender Constraint: 1 change allowed (starts at 0 count)
-  const genderChangesLeft = 1 - (accountInfo?.genderChangeCount || 0);
-  const canEditGender = genderChangesLeft > 0;
-
-  const days = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-  
+  const nextChangeDate = accountInfo?.lastUsernameChange ? new Date(new Date(accountInfo.lastUsernameChange).getTime() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString() : '';
   const isSaveDisabled = isCheckingUsername || (usernameAvailable === false && editForm.username !== accountInfo?.username) || (editForm.username && editForm.username.length < 4);
+  const CHART_COLORS = [theme.accent, '#10b981', '#f59e0b', '#ef4444', '#3b82f6'];
+  const days = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+
+  // Styles override for smaller UI
+  const sectionHeaderStyle: React.CSSProperties = {
+      marginTop: 0, display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.95rem', margin: 0, fontWeight: 700
+  };
+  const sectionIconStyle = {
+      padding: '6px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyItems: 'center'
+  };
+  const compactCardStyle = {
+      ...styles.card,
+      padding: '14px',
+      borderRadius: '18px',
+      marginBottom: '12px'
+  };
 
   return (
     <div style={styles.scrollableContent}>
-          <h1 style={styles.title}>Settings</h1>
+          <h1 style={{...styles.title, fontSize: '1.5rem'}}>Settings</h1>
           <p style={styles.subtitle}>Personalize your app</p>
-          <div style={{display: "flex", flexDirection: "column", gap: "20px", marginTop: "24px"}}>
+          <div style={{display: "flex", flexDirection: "column", gap: "12px", marginTop: "16px"}}>
                 
-                {/* Account Info Accordion */}
+                {/* Account Info Accordion - Compacted */}
                 {accountInfo && (
-                  <div style={styles.card}>
+                  <div style={compactCardStyle}>
                       <div 
                         onClick={() => setIsAccountExpanded(!isAccountExpanded)}
-                        style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '4px 0'}}
+                        style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '2px 0'}}
                       >
-                          <h3 style={{marginTop: 0, display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.1rem', margin: 0}}>
-                              <div style={{background: 'rgba(59, 130, 246, 0.15)', padding: '8px', borderRadius: '50%', color: '#60a5fa', display: 'flex', alignItems: 'center', justifyItems: 'center'}}>
-                                  <User size={20} />
+                          <h3 style={sectionHeaderStyle}>
+                              <div style={{...sectionIconStyle, background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa'}}>
+                                  <User size={16} />
                               </div>
                               <span>Account Info</span>
                           </h3>
-                          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
+                          <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
                               {!isEditingAccount && (
                                   <button 
                                     onClick={startEditingAccount}
-                                    style={{background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '8px', padding: '6px 12px', fontSize: '0.75rem', fontWeight: 600, color: theme.text, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px'}}
+                                    style={{background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '6px', padding: '4px 8px', fontSize: '0.65rem', fontWeight: 600, color: theme.text, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px'}}
                                   >
-                                      <Pencil size={12} /> Edit
+                                      <Pencil size={10} /> Edit
                                   </button>
                               )}
-                              {isAccountExpanded ? <ChevronUp size={20} color={theme.textMuted} /> : <ChevronDown size={20} color={theme.textMuted} />}
+                              {isAccountExpanded ? <ChevronUp size={16} color={theme.textMuted} /> : <ChevronDown size={16} color={theme.textMuted} />}
                           </div>
                       </div>
 
                       {isAccountExpanded && (
-                          <div style={{marginTop: '20px', paddingTop: '20px', borderTop: '1px solid rgba(255,255,255,0.1)', animation: 'fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)', display: 'flex', flexDirection: 'column', gap: '12px'}}>
+                          <div style={{marginTop: '10px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.1)', animation: 'fadeIn 0.2s', display: 'flex', flexDirection: 'column', gap: '6px'}}>
                               
-                              {/* Edit Mode: Action Buttons */}
+                              {/* Edit Mode Actions */}
                               {isEditingAccount && (
-                                  <div style={{display: 'flex', gap: '8px', marginBottom: '8px'}}>
+                                  <div style={{display: 'flex', gap: '6px', marginBottom: '4px'}}>
                                       <button 
                                         onClick={saveEditingAccount} 
                                         disabled={isSaveDisabled}
-                                        style={{
-                                            ...styles.button, 
-                                            flex: 1, 
-                                            justifyContent: 'center', 
-                                            fontSize: '0.85rem',
-                                            opacity: isSaveDisabled ? 0.5 : 1,
-                                            cursor: isSaveDisabled ? 'not-allowed' : 'pointer'
-                                        }}
+                                        style={{...styles.button, flex: 1, justifyContent: 'center', opacity: isSaveDisabled ? 0.5 : 1, padding: '6px', fontSize: '0.75rem', borderRadius: '8px'}}
                                       >
-                                          <Check size={16} /> Save Changes
+                                          <Check size={14} /> Save
                                       </button>
-                                      <button onClick={cancelEditingAccount} style={{...styles.secondaryButton, flex: 1, justifyContent: 'center', fontSize: '0.85rem'}}>
-                                          <X size={16} /> Cancel
+                                      <button onClick={cancelEditingAccount} style={{...styles.secondaryButton, flex: 1, justifyContent: 'center', padding: '6px', fontSize: '0.75rem', borderRadius: '8px'}}>
+                                          <X size={14} /> Cancel
                                       </button>
                                   </div>
                               )}
 
-                              <div style={{backgroundColor: 'var(--input-bg)', padding: '12px', borderRadius: '12px', border: '1px solid var(--glass-border)'}}>
-                                  <div style={styles.label}>Username</div>
-                                  {isEditingAccount ? (
-                                      <div>
+                              {/* Username Field */}
+                              <div style={{backgroundColor: 'var(--input-bg)', padding: '6px 8px', borderRadius: '8px', border: '1px solid var(--glass-border)', display: 'flex', gap: '8px', alignItems: 'center'}}>
+                                  <div style={{background: 'rgba(255,255,255,0.05)', padding: '5px', borderRadius: '6px', height: 'fit-content', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                                      <User size={12} color={theme.textMuted} />
+                                  </div>
+                                  <div style={{flex: 1}}>
+                                      <div style={{fontSize: '0.55rem', fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', marginBottom: '0px', letterSpacing: '0.5px'}}>Username</div>
+                                      {isEditingAccount ? (
                                           <div style={{position: 'relative'}}>
                                               <input 
                                                 value={editForm.username}
                                                 onChange={e => setEditForm({...editForm, username: e.target.value})}
                                                 disabled={!canEditUsername}
-                                                style={{...styles.input, width: '100%', boxSizing: 'border-box', opacity: canEditUsername ? 1 : 0.5, paddingRight: canEditUsername ? '36px' : '40px'}}
+                                                style={{...styles.input, width: '100%', boxSizing: 'border-box', opacity: canEditUsername ? 1 : 0.5, paddingRight: '24px', padding: '4px', fontSize: '0.8rem', minHeight: 'auto', borderRadius: '6px'}}
                                               />
-                                              
-                                              {/* Status Icons for Username */}
-                                              <div style={{position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center'}}>
-                                                  {isCheckingUsername ? (
-                                                      <Loader2 size={16} className="animate-spin text-white/50" />
-                                                  ) : !canEditUsername ? (
-                                                      <Lock size={16} style={{color: theme.textMuted}} />
-                                                  ) : editForm.username !== accountInfo?.username && editForm.username.length >= 4 ? (
-                                                      usernameAvailable === true ? (
-                                                          <Check size={16} className="text-emerald-500" />
-                                                      ) : usernameAvailable === false ? (
-                                                          <AlertCircle size={16} className="text-red-500" />
-                                                      ) : null
-                                                  ) : null}
+                                              <div style={{position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)'}}>
+                                                  {isCheckingUsername ? <Loader2 size={12} className="animate-spin text-white/50" /> : null}
                                               </div>
                                           </div>
-                                          
-                                          {/* Feedback Messages */}
-                                          {!canEditUsername && (
-                                              <div style={{fontSize: '0.7rem', color: theme.textMuted, marginTop: '4px', fontStyle: 'italic'}}>
-                                                  Next change available: {nextUsernameEditDate}
-                                              </div>
-                                          )}
-                                          {canEditUsername && usernameAvailable === false && !isCheckingUsername && editForm.username.length >= 4 && (
-                                              <div style={{fontSize: '0.7rem', color: theme.danger, marginTop: '4px', fontWeight: 600}}>
-                                                  Username already taken
-                                              </div>
-                                          )}
-                                          {canEditUsername && editForm.username.length > 0 && editForm.username.length < 4 && (
-                                              <div style={{fontSize: '0.7rem', color: theme.danger, marginTop: '4px', fontWeight: 600}}>
-                                                  Must be at least 4 characters
-                                              </div>
-                                          )}
-                                      </div>
-                                  ) : (
-                                      <div style={{color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.9rem'}}>{accountInfo.username || 'N/A'}</div>
-                                  )}
-                              </div>
-
-                              <div style={{backgroundColor: 'var(--input-bg)', padding: '12px', borderRadius: '12px', border: '1px solid var(--glass-border)'}}>
-                                  <div style={styles.label}>Email <Lock size={10} style={{display: 'inline', marginLeft: '4px', opacity: 0.5}}/></div>
-                                  <div style={{color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.9rem', opacity: isEditingAccount ? 0.7 : 1}}>{accountInfo.email}</div>
-                              </div>
-
-                              {/* Subscription Tier */}
-                              <div style={{backgroundColor: 'rgba(16, 185, 129, 0.1)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(16, 185, 129, 0.2)'}}>
-                                  <div style={{...styles.label, display: 'flex', alignItems: 'center', gap: '4px', color: '#34d399'}}><CreditCard size={12}/> Subscription</div>
-                                  <div style={{color: '#fff', fontWeight: 800, fontSize: '0.9rem'}}>{getTierName(accountInfo.subscription_tier || 0)}</div>
-                              </div>
-                              
-                              <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px'}}>
-                                  <div style={{backgroundColor: 'var(--input-bg)', padding: '12px', borderRadius: '12px', border: '1px solid var(--glass-border)'}}>
-                                      <div style={{...styles.label, display: 'flex', alignItems: 'center', gap: '4px'}}><GraduationCap size={12}/> Major</div>
-                                      {isEditingAccount ? (
-                                          <input 
-                                            value={editForm.major || ''}
-                                            onChange={e => setEditForm({...editForm, major: e.target.value})}
-                                            style={{...styles.input, width: '100%', boxSizing: 'border-box', padding: '8px', fontSize: '0.85rem'}}
-                                            placeholder="Major"
-                                          />
                                       ) : (
-                                          <div style={{color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.85rem'}}>{accountInfo.major || 'Not set'}</div>
+                                          <div style={{fontSize: '0.8rem', fontWeight: 600, color: '#fff', lineHeight: 1.2}}>{accountInfo.username}</div>
                                       )}
                                   </div>
-                                  
-                                  <div style={{backgroundColor: 'var(--input-bg)', padding: '12px', borderRadius: '12px', border: '1px solid var(--glass-border)'}}>
-                                      <div style={{...styles.label, display: 'flex', alignItems: 'center', gap: '4px'}}><Calendar size={12}/> Year</div>
+                              </div>
+
+                              {/* Email Field */}
+                              <div style={{backgroundColor: 'var(--input-bg)', padding: '6px 8px', borderRadius: '8px', border: '1px solid var(--glass-border)', display: 'flex', gap: '8px', alignItems: 'center'}}>
+                                  <div style={{background: 'rgba(255,255,255,0.05)', padding: '5px', borderRadius: '6px', height: 'fit-content', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                                      <Mail size={12} color={theme.textMuted} />
+                                  </div>
+                                  <div style={{flex: 1, minWidth: 0}}>
+                                      <div style={{fontSize: '0.55rem', fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', marginBottom: '0px', letterSpacing: '0.5px'}}>Email</div>
+                                      <div style={{fontSize: '0.8rem', fontWeight: 600, color: theme.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.2}}>{accountInfo.email}</div>
+                                  </div>
+                              </div>
+
+                              {/* Gender & Year Row */}
+                              <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px'}}>
+                                  <div style={{backgroundColor: 'var(--input-bg)', padding: '6px 8px', borderRadius: '8px', border: '1px solid var(--glass-border)'}}>
+                                      <div style={{display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px'}}>
+                                          <Users size={10} color={theme.textMuted} />
+                                          <span style={{fontSize: '0.55rem', fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase'}}>Gender</span>
+                                      </div>
                                       {isEditingAccount ? (
-                                          <select
-                                            value={editForm.year || ''}
-                                            onChange={(e) => setEditForm({...editForm, year: e.target.value})}
-                                            style={{...styles.select, padding: '8px', fontSize: '0.85rem'}}
+                                          <select 
+                                              value={editForm.gender} 
+                                              onChange={e => setEditForm({...editForm, gender: e.target.value})}
+                                              style={{...styles.select, width: '100%', padding: '2px', fontSize: '0.75rem', borderRadius: '6px', minHeight: 'auto'}}
                                           >
-                                            <option value="">Select...</option>
-                                            <option value="1">Year 1</option>
-                                            <option value="2">Year 2</option>
-                                            <option value="3">Year 3</option>
-                                            <option value="4">Year 4</option>
-                                            <option value="5">Year 5+</option>
+                                              <option value="">-</option>
+                                              <option value="male">Male</option>
+                                              <option value="female">Female</option>
+                                              <option value="other">Other</option>
                                           </select>
                                       ) : (
-                                          <div style={{color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.85rem', textTransform: 'capitalize'}}>{accountInfo.year ? `Year ${accountInfo.year}` : 'Not set'}</div>
+                                          <div style={{fontSize: '0.8rem', fontWeight: 600, color: '#fff', textTransform: 'capitalize'}}>{accountInfo.gender || 'Not Set'}</div>
                                       )}
                                   </div>
-                              </div>
-                              
-                              <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px'}}>
-                                  <div style={{backgroundColor: 'var(--input-bg)', padding: '12px', borderRadius: '12px', border: '1px solid var(--glass-border)'}}>
-                                      <div style={{...styles.label, display: 'flex', alignItems: 'center', gap: '4px'}}><Building size={12}/> College</div>
+
+                                  <div style={{backgroundColor: 'var(--input-bg)', padding: '6px 8px', borderRadius: '8px', border: '1px solid var(--glass-border)'}}>
+                                      <div style={{display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px'}}>
+                                          <Calendar size={10} color={theme.textMuted} />
+                                          <span style={{fontSize: '0.55rem', fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase'}}>Year</span>
+                                      </div>
                                       {isEditingAccount ? (
-                                          <input 
-                                            value={editForm.college || ''}
-                                            onChange={e => setEditForm({...editForm, college: e.target.value})}
-                                            style={{...styles.input, width: '100%', boxSizing: 'border-box', padding: '8px', fontSize: '0.85rem'}}
-                                            placeholder="College"
-                                          />
+                                          <select 
+                                              value={editForm.year} 
+                                              onChange={e => setEditForm({...editForm, year: e.target.value})}
+                                              style={{...styles.select, width: '100%', padding: '2px', fontSize: '0.75rem', borderRadius: '6px', minHeight: 'auto'}}
+                                          >
+                                              <option value="">-</option>
+                                              {[1,2,3,4,5].map(y => <option key={y} value={y}>{y}</option>)}
+                                          </select>
                                       ) : (
-                                          <div style={{color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.85rem'}}>{accountInfo.college || 'Not set'}</div>
-                                      )}
-                                  </div>
-                                  
-                                  <div style={{backgroundColor: 'var(--input-bg)', padding: '12px', borderRadius: '12px', border: '1px solid var(--glass-border)'}}>
-                                      <div style={{...styles.label, display: 'flex', alignItems: 'center', gap: '4px'}}><Users size={12}/> Gender</div>
-                                      {isEditingAccount ? (
-                                          <div>
-                                              <select
-                                                value={editForm.gender || ''}
-                                                onChange={(e) => setEditForm({...editForm, gender: e.target.value})}
-                                                disabled={!canEditGender}
-                                                style={{...styles.select, padding: '8px', fontSize: '0.85rem', opacity: canEditGender ? 1 : 0.5}}
-                                              >
-                                                <option value="">Select...</option>
-                                                <option value="male">Male</option>
-                                                <option value="female">Female</option>
-                                                <option value="other">Other</option>
-                                              </select>
-                                              <div style={{fontSize: '0.7rem', color: canEditGender ? theme.textMuted : theme.danger, marginTop: '4px', fontStyle: 'italic'}}>
-                                                  {genderChangesLeft} change{genderChangesLeft !== 1 ? 's' : ''} remaining
-                                              </div>
-                                          </div>
-                                      ) : (
-                                          <div style={{color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.85rem', textTransform: 'capitalize'}}>{accountInfo.gender || 'Not set'}</div>
+                                          <div style={{fontSize: '0.8rem', fontWeight: 600, color: '#fff'}}>Year {accountInfo.year || '-'}</div>
                                       )}
                                   </div>
                               </div>
 
-                              <div style={{backgroundColor: 'var(--input-bg)', padding: '12px', borderRadius: '12px', border: '1px solid var(--glass-border)'}}>
-                                  <div style={styles.label}>User ID</div>
-                                  <div style={{color: theme.textMuted, fontFamily: 'monospace', fontSize: '0.8rem', wordBreak: 'break-all'}}>{accountInfo.id}</div>
+                              {/* Major */}
+                              <div style={{backgroundColor: 'var(--input-bg)', padding: '6px 8px', borderRadius: '8px', border: '1px solid var(--glass-border)', display: 'flex', gap: '8px', alignItems: 'center'}}>
+                                  <div style={{background: 'rgba(255,255,255,0.05)', padding: '5px', borderRadius: '6px', height: 'fit-content', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                                      <GraduationCap size={12} color={theme.textMuted} />
+                                  </div>
+                                  <div style={{flex: 1}}>
+                                      <div style={{fontSize: '0.55rem', fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', marginBottom: '0px', letterSpacing: '0.5px'}}>Major</div>
+                                      {isEditingAccount ? (
+                                          <input 
+                                              value={editForm.major || ''}
+                                              onChange={e => setEditForm({...editForm, major: e.target.value})}
+                                              style={{...styles.input, width: '100%', boxSizing: 'border-box', padding: '4px', fontSize: '0.8rem', minHeight: 'auto', borderRadius: '6px'}}
+                                              placeholder="e.g. CS"
+                                          />
+                                      ) : (
+                                          <div style={{fontSize: '0.8rem', fontWeight: 600, color: '#fff'}}>{accountInfo.major || 'Not Set'}</div>
+                                      )}
+                                  </div>
                               </div>
+
+                              {/* College */}
+                              <div style={{backgroundColor: 'var(--input-bg)', padding: '6px 8px', borderRadius: '8px', border: '1px solid var(--glass-border)', display: 'flex', gap: '8px', alignItems: 'center'}}>
+                                  <div style={{background: 'rgba(255,255,255,0.05)', padding: '5px', borderRadius: '6px', height: 'fit-content', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                                      <Building size={12} color={theme.textMuted} />
+                                  </div>
+                                  <div style={{flex: 1}}>
+                                      <div style={{fontSize: '0.55rem', fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', marginBottom: '0px', letterSpacing: '0.5px'}}>College</div>
+                                      {isEditingAccount ? (
+                                          <input 
+                                              value={editForm.college || ''}
+                                              onChange={e => setEditForm({...editForm, college: e.target.value})}
+                                              style={{...styles.input, width: '100%', boxSizing: 'border-box', padding: '4px', fontSize: '0.8rem', minHeight: 'auto', borderRadius: '6px'}}
+                                              placeholder="University"
+                                          />
+                                      ) : (
+                                          <div style={{fontSize: '0.8rem', fontWeight: 600, color: '#fff'}}>{accountInfo.college || 'Not Set'}</div>
+                                      )}
+                                  </div>
+                              </div>
+
+                              {/* Log Out Button */}
+                              <button 
+                                  onClick={onSignOut}
+                                  style={{
+                                      marginTop: '6px',
+                                      background: 'rgba(239, 68, 68, 0.1)', 
+                                      border: '1px solid rgba(239, 68, 68, 0.2)', 
+                                      borderRadius: '8px', 
+                                      padding: '8px', 
+                                      color: theme.danger, 
+                                      fontWeight: 700, 
+                                      fontSize: '0.75rem',
+                                      cursor: 'pointer',
+                                      display: 'flex', 
+                                      alignItems: 'center', 
+                                      justifyContent: 'center', 
+                                      gap: '4px',
+                                      width: '100%'
+                                  }}
+                              >
+                                  <LogOut size={14} /> Log Out
+                              </button>
+
                           </div>
                       )}
                   </div>
                 )}
-
-                {/* Appearance Card */}
-                <div style={styles.card}>
-                     <h3 style={{marginTop: 0, display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', fontSize: '1.1rem'}}>
-                          <div style={{background: 'rgba(255, 255, 255, 0.1)', padding: '8px', borderRadius: '50%', color: theme.text, display: 'flex', alignItems: 'center', justifyItems: 'center'}}>
-                              {themeMode === 'dark' ? <Moon size={20} /> : <Sun size={20} />}
-                          </div>
-                          <span>Appearance</span>
-                      </h3>
-                      <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
-                          <span style={{fontSize: '0.9rem', color: theme.textMuted}}>App Theme</span>
-                          <div style={{display: 'flex', gap: '4px', background: 'var(--input-bg)', padding: '4px', borderRadius: '12px', border: '1px solid var(--glass-border)'}}>
-                              <button 
-                                onClick={() => setThemeMode('light')}
-                                style={{
-                                    padding: '6px 12px',
-                                    borderRadius: '8px',
-                                    border: 'none',
-                                    background: themeMode === 'light' ? theme.accent : 'transparent',
-                                    color: themeMode === 'light' ? '#fff' : theme.textMuted,
-                                    fontSize: '0.8rem',
-                                    fontWeight: 600,
-                                    cursor: 'pointer',
-                                    display: 'flex', alignItems: 'center', gap: '4px'
-                                }}
-                              >
-                                  <Sun size={14} /> Light
-                              </button>
-                              <button 
-                                onClick={() => setThemeMode('dark')}
-                                style={{
-                                    padding: '6px 12px',
-                                    borderRadius: '8px',
-                                    border: 'none',
-                                    background: themeMode === 'dark' ? theme.accent : 'transparent',
-                                    color: themeMode === 'dark' ? '#fff' : theme.textMuted,
-                                    fontSize: '0.8rem',
-                                    fontWeight: 600,
-                                    cursor: 'pointer',
-                                    display: 'flex', alignItems: 'center', gap: '4px'
-                                }}
-                              >
-                                  <Moon size={14} /> Dark
-                              </button>
-                          </div>
-                      </div>
-                </div>
-
+                
                 {/* Profiles Accordion */}
-                <div style={styles.card}>
+                <div style={compactCardStyle}>
                     <div 
                         onClick={() => setIsProfilesExpanded(!isProfilesExpanded)}
-                        style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '4px 0'}}
+                        style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '2px 0'}}
                     >
-                         <h3 style={{marginTop: 0, display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.1rem', margin: 0}}>
-                            <div style={{background: 'rgba(139, 92, 246, 0.15)', padding: '8px', borderRadius: '50%', color: theme.accent, display: 'flex', alignItems: 'center', justifyItems: 'center'}}>
-                                <Layers size={20} />
+                         <h3 style={sectionHeaderStyle}>
+                            <div style={{...sectionIconStyle, background: 'rgba(139, 92, 246, 0.15)', color: theme.accent}}>
+                                <Layers size={16} />
                             </div>
                             <span>Profiles</span>
                         </h3>
-                        {isProfilesExpanded ? <ChevronUp size={20} color={theme.textMuted} /> : <ChevronDown size={20} color={theme.textMuted} />}
+                        {isProfilesExpanded ? <ChevronUp size={16} color={theme.textMuted} /> : <ChevronDown size={16} color={theme.textMuted} />}
                     </div>
 
                     {isProfilesExpanded && (
-                        <div style={{marginTop: '20px', paddingTop: '20px', borderTop: '1px solid rgba(255,255,255,0.1)', animation: 'fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)'}}>
-                            <div style={{marginBottom: "16px"}}>
-                                <label style={styles.label}>Active Profile</label>
-                                <div style={{display: 'flex', gap: '10px'}}>
-                                    <select style={{...styles.select, flex: 1}} value={activeProfileId} onChange={(e) => onSwitchProfile(e.target.value)}>
+                        <div style={{marginTop: '12px', paddingTop: '12px', borderTop: '1px solid rgba(255,255,255,0.1)', animation: 'fadeIn 0.2s'}}>
+                            <div style={{marginBottom: "10px"}}>
+                                <label style={{...styles.label, fontSize: '0.65rem'}}>Active Profile</label>
+                                <div style={{display: 'flex', gap: '8px'}}>
+                                    <select style={{...styles.select, flex: 1, padding: '8px', fontSize: '0.8rem'}} value={activeProfileId} onChange={(e) => onSwitchProfile(e.target.value)}>
                                         {profiles.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                                     </select>
                                     <button 
                                         onClick={() => onDeleteProfile(activeProfileId)}
                                         style={{
-                                            backgroundColor: 'rgba(239, 68, 68, 0.15)', 
-                                            color: theme.danger, 
-                                            border: '1px solid rgba(239, 68, 68, 0.3)', 
-                                            borderRadius: '16px', 
-                                            padding: '0 14px',
-                                            cursor: 'pointer'
+                                            backgroundColor: 'rgba(239, 68, 68, 0.15)', color: theme.danger, border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '12px', padding: '0 10px', cursor: 'pointer'
                                         }}
                                     >
-                                        <Trash2 size={20} />
+                                        <Trash2 size={16} />
                                     </button>
                                 </div>
                             </div>
-                            <div style={{display: "flex", gap: "10px"}}>
-                                <input style={{...styles.input, padding: "12px"}} placeholder="New Profile..." value={newProfileName} onChange={e => setNewProfileName(e.target.value)} />
-                                <button style={{...styles.button, padding: "12px"}} onClick={handleCreateProfile}><Plus size={20} /></button>
+                            <div style={{display: "flex", gap: "8px"}}>
+                                <input style={{...styles.input, padding: "8px", fontSize: '0.8rem'}} placeholder="New Profile..." value={newProfileName} onChange={e => setNewProfileName(e.target.value)} />
+                                <button style={{...styles.button, padding: "8px"}} onClick={handleCreateProfile}><Plus size={16} /></button>
                             </div>
                         </div>
                     )}
                 </div>
 
                 {/* Grid Structure Accordion */}
-                <div style={styles.card}>
+                <div style={compactCardStyle}>
                     <div 
                         onClick={() => setIsScheduleSettingsExpanded(!isScheduleSettingsExpanded)}
-                        style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '4px 0'}}
+                        style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '2px 0'}}
                     >
-                        <h3 style={{marginTop: 0, display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.1rem', margin: 0}}>
-                            <div style={{background: 'rgba(139, 92, 246, 0.15)', padding: '8px', borderRadius: '50%', color: theme.accent, display: 'flex', alignItems: 'center', justifyItems: 'center'}}>
-                                <Columns size={20} />
+                        <h3 style={sectionHeaderStyle}>
+                            <div style={{...sectionIconStyle, background: 'rgba(139, 92, 246, 0.15)', color: theme.accent}}>
+                                <Columns size={16} />
                             </div>
                             <span>Grid Structure</span>
                         </h3>
-                        {isScheduleSettingsExpanded ? <ChevronUp size={20} color={theme.textMuted} /> : <ChevronDown size={20} color={theme.textMuted} />}
+                        {isScheduleSettingsExpanded ? <ChevronUp size={16} color={theme.textMuted} /> : <ChevronDown size={16} color={theme.textMuted} />}
                     </div>
                     
                     {isScheduleSettingsExpanded && (
-                        <div style={{marginTop: '20px', paddingTop: '20px', borderTop: '1px solid rgba(255,255,255,0.1)', animation: 'fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)'}}>
+                        <div style={{marginTop: '12px', paddingTop: '12px', borderTop: '1px solid rgba(255,255,255,0.1)', animation: 'fadeIn 0.2s'}}>
                              <ScheduleSettings periods={periods} setPeriods={setPeriods} />
                         </div>
                     )}
                 </div>
 
                 {/* Colors Accordion */}
-                <div style={styles.card}>
+                <div style={compactCardStyle}>
                     <div 
                         onClick={() => setIsColorsExpanded(!isColorsExpanded)}
-                        style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '4px 0'}}
+                        style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '2px 0'}}
                     >
-                        <h3 style={{marginTop: 0, display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.1rem', margin: 0}}>
-                            <div style={{background: 'rgba(139, 92, 246, 0.15)', padding: '8px', borderRadius: '50%', color: theme.accent, display: 'flex', alignItems: 'center', justifyItems: 'center'}}>
-                                <Palette size={20} />
+                        <h3 style={sectionHeaderStyle}>
+                            <div style={{...sectionIconStyle, background: 'rgba(139, 92, 246, 0.15)', color: theme.accent}}>
+                                <Palette size={16} />
                             </div>
                             <span>Colors</span>
                         </h3>
-                        {isColorsExpanded ? <ChevronUp size={20} color={theme.textMuted} /> : <ChevronDown size={20} color={theme.textMuted} />}
+                        {isColorsExpanded ? <ChevronUp size={16} color={theme.textMuted} /> : <ChevronDown size={16} color={theme.textMuted} />}
                     </div>
 
                     {isColorsExpanded && (
-                        <div style={{marginTop: '20px', paddingTop: '20px', borderTop: '1px solid rgba(255,255,255,0.1)', animation: 'fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)'}}>
-                            <div style={{display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px"}}>
+                        <div style={{marginTop: '12px', paddingTop: '12px', borderTop: '1px solid rgba(255,255,255,0.1)', animation: 'fadeIn 0.2s'}}>
+                            <div style={{display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px"}}>
                                 {Object.keys(eventColors).map(key => (
-                                    <div key={key} style={styles.colorPickerContainer}>
-                                        <div style={{width: '32px', height: '32px', borderRadius: '8px', overflow: 'hidden', position: 'relative'}}>
+                                    <div key={key} style={{...styles.colorPickerContainer, padding: '6px'}}>
+                                        <div style={{width: '24px', height: '24px', borderRadius: '6px', overflow: 'hidden', position: 'relative'}}>
                                             <input type="color" value={eventColors[key as EventType]} onChange={(e) => onUpdateColor(key as EventType, e.target.value)} style={{border: 'none', padding: 0, width: '200%', height: '200%', margin: '-50%', cursor: 'pointer'}} />
                                         </div>
-                                        <span style={{fontSize: '0.8rem', textTransform: 'capitalize', color: theme.textMuted, fontWeight: 600}}>{key}</span>
+                                        <span style={{fontSize: '0.7rem', textTransform: 'capitalize', color: theme.textMuted, fontWeight: 600}}>{key}</span>
                                     </div>
                                 ))}
                             </div>
@@ -533,44 +742,44 @@ const Settings: React.FC<SettingsProps> = ({
                 </div>
 
                 {/* Base Schedule Accordion */}
-                <div style={styles.card}>
+                <div style={compactCardStyle}>
                     <div 
                         onClick={() => setIsBaseScheduleExpanded(!isBaseScheduleExpanded)}
-                        style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '4px 0'}}
+                        style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '2px 0'}}
                     >
-                        <h3 style={{marginTop: 0, display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.1rem', margin: 0}}>
-                            <div style={{background: 'rgba(139, 92, 246, 0.15)', padding: '8px', borderRadius: '50%', color: theme.accent, display: 'flex', alignItems: 'center', justifyItems: 'center'}}>
-                                <CalendarDays size={20} />
+                        <h3 style={sectionHeaderStyle}>
+                            <div style={{...sectionIconStyle, background: 'rgba(139, 92, 246, 0.15)', color: theme.accent}}>
+                                <CalendarDays size={16} />
                             </div>
                             <span>Base Schedule</span>
                         </h3>
-                        {isBaseScheduleExpanded ? <ChevronUp size={20} color={theme.textMuted} /> : <ChevronDown size={20} color={theme.textMuted} />}
+                        {isBaseScheduleExpanded ? <ChevronUp size={16} color={theme.textMuted} /> : <ChevronDown size={16} color={theme.textMuted} />}
                     </div>
 
                     {isBaseScheduleExpanded && (
-                        <div style={{marginTop: '20px', paddingTop: '20px', borderTop: '1px solid rgba(255,255,255,0.1)', animation: 'fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)'}}>
-                            <div style={{display: 'flex', justifyContent: 'flex-end', marginBottom: '16px'}}>
-                                <button onClick={onAddBaseEventClick} style={{...styles.secondaryButton, padding: '8px 16px', fontSize: '0.8rem'}}>
-                                    <Plus size={16} /> Add Class
+                        <div style={{marginTop: '12px', paddingTop: '12px', borderTop: '1px solid rgba(255,255,255,0.1)', animation: 'fadeIn 0.2s'}}>
+                            <div style={{display: 'flex', justifyContent: 'flex-end', marginBottom: '12px'}}>
+                                <button onClick={onAddBaseEventClick} style={{...styles.secondaryButton, padding: '6px 12px', fontSize: '0.75rem', borderRadius: '8px'}}>
+                                    <Plus size={14} /> Add Class
                                 </button>
                             </div>
-                            <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
+                            <div style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
                                 {days.map(day => {
                                     const dayEvents = baseEvents.filter(e => e.dayOfWeek === day).sort((a,b) => a.startTime.localeCompare(b.startTime));
                                     if (dayEvents.length === 0) return null;
                                     return (
                                         <div key={day}>
-                                            <div style={{fontSize: '0.8rem', fontWeight: 700, color: theme.textMuted, marginBottom: '8px', textTransform: 'uppercase'}}>{day}</div>
-                                            <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
+                                            <div style={{fontSize: '0.7rem', fontWeight: 700, color: theme.textMuted, marginBottom: '6px', textTransform: 'uppercase'}}>{day}</div>
+                                            <div style={{display: 'flex', flexDirection: 'column', gap: '6px'}}>
                                                 {dayEvents.map(e => (
-                                                    <div key={e.id} style={{backgroundColor: 'var(--input-bg)', padding: '10px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                                                    <div key={e.id} style={{backgroundColor: 'var(--input-bg)', padding: '8px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
                                                         <div>
-                                                            <div style={{fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)'}}>{e.title}</div>
-                                                            <div style={{fontSize: '0.75rem', color: theme.textMuted}}>{to12h(e.startTime)} • {e.type}</div>
+                                                            <div style={{fontWeight: 600, fontSize: '0.8rem', color: 'var(--text-primary)'}}>{e.title}</div>
+                                                            <div style={{fontSize: '0.65rem', color: theme.textMuted}}>{to12h(e.startTime)} • {e.type}</div>
                                                         </div>
-                                                        <div style={{display: 'flex', gap: '8px'}}>
-                                                            <button onClick={() => onEditEvent(e)} style={{background: 'rgba(255,255,255,0.05)', border: 'none', padding: '6px', borderRadius: '8px', cursor: 'pointer', color: theme.text}}><Pencil size={16} /></button>
-                                                            <button onClick={() => onDeleteEvent(e.id)} style={{background: 'rgba(255,255,255,0.05)', border: 'none', padding: '6px', borderRadius: '8px', cursor: 'pointer', color: theme.danger}}><Trash2 size={16} /></button>
+                                                        <div style={{display: 'flex', gap: '6px'}}>
+                                                            <button onClick={() => onEditEvent(e)} style={{background: 'rgba(255,255,255,0.05)', border: 'none', padding: '4px', borderRadius: '6px', cursor: 'pointer', color: theme.text}}><Pencil size={14} /></button>
+                                                            <button onClick={() => onDeleteEvent(e.id)} style={{background: 'rgba(255,255,255,0.05)', border: 'none', padding: '4px', borderRadius: '6px', cursor: 'pointer', color: theme.danger}}><Trash2 size={14} /></button>
                                                         </div>
                                                     </div>
                                                 ))}
@@ -578,31 +787,28 @@ const Settings: React.FC<SettingsProps> = ({
                                         </div>
                                     )
                                 })}
-                                {baseEvents.length === 0 && (
-                                    <div style={{color: theme.textMuted, textAlign: 'center', fontSize: '0.9rem', fontStyle: 'italic'}}>No recurring classes found. Import schedule below or add events manually.</div>
-                                )}
                             </div>
                         </div>
                     )}
                 </div>
 
-                <div style={styles.card}>
-                    <h3 style={{marginTop: 0, display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px', fontSize: '1.1rem'}}>
-                        <div style={{background: 'rgba(192, 132, 252, 0.15)', padding: '8px', borderRadius: '50%', color: '#c084fc', display: 'flex', alignItems: 'center', justifyItems: 'center'}}>
-                            <ImageIcon size={20} />
+                <div style={compactCardStyle}>
+                    <h3 style={{...sectionHeaderStyle, marginBottom: '12px'}}>
+                        <div style={{...sectionIconStyle, background: 'rgba(192, 132, 252, 0.15)', color: '#c084fc'}}>
+                            <ImageIcon size={16} />
                         </div>
                         <span>AI Import</span>
                     </h3>
-                    <div style={styles.dropZone} onClick={() => fileInputRef.current?.click()}>
+                    <div style={{...styles.dropZone, padding: '16px', borderRadius: '12px'}} onClick={() => fileInputRef.current?.click()}>
                         {isAnalyzing ? (
-                            <div style={{color: theme.accent, display: "flex", alignItems: "center", justifyContent: "center", gap: "10px"}}>
-                                <Loader2 size={20} className="spin" style={{animation: "spin 1s linear infinite"}} />
-                                <span style={{fontSize: '0.95rem'}}>Analyzing Schedule...</span>
+                            <div style={{color: theme.accent, display: "flex", alignItems: "center", justifyContent: "center", gap: "8px"}}>
+                                <Loader2 size={16} className="spin" style={{animation: "spin 1s linear infinite"}} />
+                                <span style={{fontSize: '0.8rem'}}>Analyzing Schedule...</span>
                             </div>
                         ) : (
-                            <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px'}}>
-                                <Upload size={20} color={theme.textMuted} />
-                                <span style={{color: theme.textMuted, fontSize: '0.95rem'}}>Upload Schedule Image</span>
+                            <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'}}>
+                                <Upload size={16} color={theme.textMuted} />
+                                <span style={{color: theme.textMuted, fontSize: '0.8rem'}}>Upload Schedule Image</span>
                             </div>
                         )}
                         <input 
@@ -618,48 +824,61 @@ const Settings: React.FC<SettingsProps> = ({
                     </div>
                 </div>
 
-                <div 
-                    style={{
-                        ...styles.card, 
-                        cursor: 'pointer',
-                        border: `1px solid ${theme.danger}`,
-                        background: 'rgba(239, 68, 68, 0.1)'
-                    }} 
-                    onClick={() => setShowResetConfirm(true)}
-                >
-                    <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
-                        <div style={{background: 'rgba(239, 68, 68, 0.2)', padding: '10px', borderRadius: '50%'}}>
-                            <AlertTriangle size={20} color={theme.danger} />
-                        </div>
-                        <div>
-                            <h3 style={{margin: 0, fontSize: '1rem', color: theme.danger, fontWeight: 800}}>Factory Reset</h3>
-                            <p style={{margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)'}}>Wipe all data & restore defaults</p>
+                {/* Appearance Card - MOVED HERE */}
+                <div style={compactCardStyle}>
+                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '2px 0'}}>
+                        <h3 style={sectionHeaderStyle}>
+                            <div style={{...sectionIconStyle, background: 'rgba(255, 255, 255, 0.1)', color: theme.text}}>
+                                {themeMode === 'dark' ? <Moon size={16} /> : <Sun size={16} />}
+                            </div>
+                            <span>Appearance</span>
+                        </h3>
+                        <div style={{display: 'flex', gap: '4px', background: 'var(--input-bg)', padding: '3px', borderRadius: '8px', border: '1px solid var(--glass-border)'}}>
+                            <button 
+                            onClick={() => setThemeMode('light')}
+                            style={{
+                                padding: '4px 8px', borderRadius: '6px', border: 'none',
+                                background: themeMode === 'light' ? theme.accent : 'transparent',
+                                color: themeMode === 'light' ? '#fff' : theme.textMuted,
+                                fontSize: '0.7rem', fontWeight: 600, cursor: 'pointer',
+                                display: 'flex', alignItems: 'center', gap: '3px'
+                            }}
+                            >
+                                <Sun size={12} /> Light
+                            </button>
+                            <button 
+                            onClick={() => setThemeMode('dark')}
+                            style={{
+                                padding: '4px 8px', borderRadius: '6px', border: 'none',
+                                background: themeMode === 'dark' ? theme.accent : 'transparent',
+                                color: themeMode === 'dark' ? '#fff' : theme.textMuted,
+                                fontSize: '0.7rem', fontWeight: 600, cursor: 'pointer',
+                                display: 'flex', alignItems: 'center', gap: '3px'
+                            }}
+                            >
+                                <Moon size={12} /> Dark
+                            </button>
                         </div>
                     </div>
                 </div>
 
                 <div 
-                    style={{
-                        ...styles.card, 
-                        cursor: 'pointer',
-                        border: `1px solid ${theme.danger}`,
-                        background: 'rgba(239, 68, 68, 0.1)'
-                    }} 
-                    onClick={onSignOut}
+                    style={{...compactCardStyle, cursor: 'pointer', border: `1px solid ${theme.danger}`, background: 'rgba(239, 68, 68, 0.1)'}} 
+                    onClick={() => setShowResetConfirm(true)}
                 >
-                    <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
-                        <div style={{background: 'rgba(239, 68, 68, 0.2)', padding: '10px', borderRadius: '50%'}}>
-                            <LogOut size={20} color={theme.danger} />
+                    <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                        <div style={{background: 'rgba(239, 68, 68, 0.2)', padding: '6px', borderRadius: '50%'}}>
+                            <AlertTriangle size={16} color={theme.danger} />
                         </div>
                         <div>
-                            <h3 style={{margin: 0, fontSize: '1rem', color: theme.danger, fontWeight: 800}}>Log Out</h3>
-                            <p style={{margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)'}}>Sign out of your account</p>
+                            <h3 style={{margin: 0, fontSize: '0.9rem', color: theme.danger, fontWeight: 800}}>Factory Reset</h3>
+                            <p style={{margin: 0, fontSize: '0.7rem', color: 'var(--text-muted)'}}>Wipe all data & restore defaults</p>
                         </div>
                     </div>
                 </div>
           </div>
           
-          {/* Reset Confirmation Modal */}
+          {/* Modals omitted for brevity, keeping existing logic */}
           {showResetConfirm && (
              <div style={styles.modalOverlay}>
                  <div style={{...styles.modalContent, maxWidth: '320px', padding: '0', overflow: 'hidden'}} onClick={e => e.stopPropagation()}>
@@ -669,7 +888,7 @@ const Settings: React.FC<SettingsProps> = ({
                          </div>
                          <h3 style={{margin: '0 0 8px 0', fontSize: '1.2rem', fontWeight: 800}}>Factory Reset?</h3>
                          <p style={{margin: 0, fontSize: '0.9rem', color: theme.textMuted, lineHeight: '1.5'}}>
-                             This will wipe <b>ALL</b> your data including schedules, grades, and gym history. This cannot be undone.
+                             This will wipe <b>ALL</b> your data.
                          </p>
                      </div>
                      <div style={{display: 'flex', borderTop: '1px solid rgba(255,255,255,0.1)'}}>
@@ -691,7 +910,7 @@ const Settings: React.FC<SettingsProps> = ({
           )}
 
           <style>{`
-            @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+            @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
           `}</style>
     </div>
   );

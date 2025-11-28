@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState, useEffect } from 'react';
 import { FoodItem, WorkoutSession, GymSettings, WaterLog, GymViewType, MuscleGroup } from '../../types';
 import { 
@@ -137,36 +136,36 @@ export const GymDashboard: React.FC<GymDashboardProps> = ({ foodLogs, waterLogs,
   const isOverCalories = remainingCalories < 0;
 
   return (
-    <div className="pb-24 space-y-6">
+    <div className="pb-24 space-y-4">
       
-      <header className="flex justify-between items-center mb-6">
+      <header className="flex justify-between items-center mb-4">
         <div>
-           <h1 className="text-2xl font-bold text-white">Hi, {settings.name}</h1>
-           <p className="text-slate-400 text-sm">Today is {new Date().toLocaleDateString(undefined, {weekday: 'long', month: 'long', day: 'numeric'})}</p>
+           <h1 className="text-xl font-bold text-white">Hi, {settings.name}</h1>
+           <p className="text-slate-400 text-xs">{new Date().toLocaleDateString(undefined, {weekday: 'short', month: 'short', day: 'numeric'})}</p>
         </div>
-        <div className="h-10 w-10 bg-indigo-600 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-indigo-900/50">
+        <div className="h-8 w-8 bg-indigo-600 rounded-full flex items-center justify-center text-white font-bold text-xs shadow-lg shadow-indigo-900/50">
            {settings.name.charAt(0)}
         </div>
       </header>
 
       <div className="grid grid-cols-2 gap-3">
          {/* Calories Card */}
-         <div className="bg-slate-800/50 backdrop-blur-md rounded-2xl p-4 border border-white/10 relative overflow-hidden group">
+         <div className="bg-slate-800/50 backdrop-blur-md rounded-2xl p-3 border border-white/10 relative overflow-hidden group">
             <button 
                 onClick={() => setView(GymViewType.NUTRITION)}
                 className="absolute top-2 right-2 p-1 bg-white/10 hover:bg-white/20 rounded-full text-slate-300 z-20 transition"
             >
-                <Plus size={14} />
+                <Plus size={12} />
             </button>
             <div className="flex justify-between items-start mb-2 relative z-10">
-               <div className={`p-2 rounded-lg ${isOverCalories ? 'bg-red-500/10 text-red-500' : 'bg-orange-500/10 text-orange-500'}`}>
-                   {isOverCalories ? <AlertCircle size={18} /> : <Flame size={18} />}
+               <div className={`p-1.5 rounded-lg ${isOverCalories ? 'bg-red-500/10 text-red-500' : 'bg-orange-500/10 text-orange-500'}`}>
+                   {isOverCalories ? <AlertCircle size={16} /> : <Flame size={16} />}
                </div>
-               <span className={`text-xs font-bold ${isOverCalories ? 'text-red-400' : 'text-slate-500'} mr-4`}>{Math.round(caloriePercentage)}%</span>
+               <span className={`text-[10px] font-bold ${isOverCalories ? 'text-red-400' : 'text-slate-500'} mr-4`}>{Math.round(caloriePercentage)}%</span>
             </div>
             <div className="relative z-10">
-               <span className="text-2xl font-bold text-white block">{totalMacros.calories}</span>
-               <div className="flex items-center gap-1 text-[10px] text-slate-400 font-medium">
+               <span className="text-lg font-bold text-white block">{totalMacros.calories}</span>
+               <div className="flex items-center gap-1 text-[9px] text-slate-400 font-medium">
                   <span>Target: {settings.targets.calories}</span>
                   {isOverCalories ? (
                       <span className="text-red-400 font-bold">({Math.abs(remainingCalories)} over)</span>
@@ -184,20 +183,20 @@ export const GymDashboard: React.FC<GymDashboardProps> = ({ foodLogs, waterLogs,
          </div>
 
          {/* Water Card */}
-         <div className="bg-slate-800/50 backdrop-blur-md rounded-2xl p-4 border border-white/10 relative overflow-hidden group">
+         <div className="bg-slate-800/50 backdrop-blur-md rounded-2xl p-3 border border-white/10 relative overflow-hidden group">
             <button 
                 onClick={() => setView(GymViewType.NUTRITION)}
                 className="absolute top-2 right-2 p-1 bg-white/10 hover:bg-white/20 rounded-full text-slate-300 z-20 transition"
             >
-                <Plus size={14} />
+                <Plus size={12} />
             </button>
             <div className="flex justify-between items-start mb-2 relative z-10">
-               <div className="p-2 bg-sky-500/10 rounded-lg text-sky-400"><Droplets size={18} /></div>
-               <span className="text-xs font-bold text-slate-500 mr-4">{Math.round(waterPercentage)}%</span>
+               <div className="p-1.5 bg-sky-500/10 rounded-lg text-sky-400"><Droplets size={16} /></div>
+               <span className="text-[10px] font-bold text-slate-500 mr-4">{Math.round(waterPercentage)}%</span>
             </div>
             <div className="relative z-10">
-               <span className="text-2xl font-bold text-white block">{Math.round(totalWater / 100) / 10}L</span>
-               <div className="flex items-center gap-1 text-[10px] text-slate-400 font-medium">
+               <span className="text-lg font-bold text-white block">{Math.round(totalWater / 100) / 10}L</span>
+               <div className="flex items-center gap-1 text-[9px] text-slate-400 font-medium">
                   <span>Target: {settings.waterTarget / 1000}L</span>
                </div>
             </div>
@@ -208,35 +207,35 @@ export const GymDashboard: React.FC<GymDashboardProps> = ({ foodLogs, waterLogs,
       </div>
       
       {/* Detailed Macro Breakdown */}
-      <div className="bg-slate-800/50 backdrop-blur-md rounded-2xl p-5 border border-white/10 relative">
+      <div className="bg-slate-800/50 backdrop-blur-md rounded-2xl p-4 border border-white/10 relative">
         <button 
             onClick={() => setView(GymViewType.NUTRITION)}
-            className="absolute top-4 right-4 p-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-slate-300 transition"
+            className="absolute top-3 right-3 p-1 bg-white/10 hover:bg-white/20 rounded-lg text-slate-300 transition"
         >
-            <Plus size={16} />
+            <Plus size={14} />
         </button>
-        <div className="flex items-center gap-2 mb-4">
-             <Utensils className="text-slate-400" size={18} />
-             <h3 className="font-bold text-white text-sm">Macro Targets</h3>
+        <div className="flex items-center gap-2 mb-3">
+             <Utensils className="text-slate-400" size={16} />
+             <h3 className="font-bold text-white text-xs">Macro Targets</h3>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-3">
             {/* Protein */}
             <div>
-                <div className="flex justify-between text-xs mb-1.5">
+                <div className="flex justify-between text-[10px] mb-1">
                     <span className="font-bold text-indigo-300">Protein</span>
                     <span className="text-slate-400">
                         {totalMacros.protein} / {settings.targets.protein}g 
                         {remainingProtein < 0 ? (
                             <span className="text-red-400 ml-1 font-bold flex items-center inline-flex gap-1">
-                                <AlertCircle size={10} /> {Math.abs(remainingProtein)}g over
+                                <AlertCircle size={8} /> {Math.abs(remainingProtein)}g over
                             </span>
                         ) : (
                             <span className="text-slate-500 ml-1 font-medium">({remainingProtein}g left)</span>
                         )}
                     </span>
                 </div>
-                <div className="h-2.5 w-full bg-slate-900/50 rounded-full overflow-hidden border border-white/5">
+                <div className="h-2 w-full bg-slate-900/50 rounded-full overflow-hidden border border-white/5">
                     <div 
                         className={`h-full rounded-full transition-all duration-1000 ${remainingProtein < 0 ? 'bg-red-500' : 'bg-indigo-500'}`} 
                         style={{ width: `${Math.min(proteinPct, 100)}%` }}
@@ -246,20 +245,20 @@ export const GymDashboard: React.FC<GymDashboardProps> = ({ foodLogs, waterLogs,
 
             {/* Carbs */}
             <div>
-                <div className="flex justify-between text-xs mb-1.5">
+                <div className="flex justify-between text-[10px] mb-1">
                     <span className="font-bold text-emerald-300">Carbs</span>
                     <span className="text-slate-400">
                         {totalMacros.carbs} / {settings.targets.carbs}g 
                         {remainingCarbs < 0 ? (
                             <span className="text-red-400 ml-1 font-bold flex items-center inline-flex gap-1">
-                                <AlertCircle size={10} /> {Math.abs(remainingCarbs)}g over
+                                <AlertCircle size={8} /> {Math.abs(remainingCarbs)}g over
                             </span>
                         ) : (
                             <span className="text-slate-500 ml-1 font-medium">({remainingCarbs}g left)</span>
                         )}
                     </span>
                 </div>
-                <div className="h-2.5 w-full bg-slate-900/50 rounded-full overflow-hidden border border-white/5">
+                <div className="h-2 w-full bg-slate-900/50 rounded-full overflow-hidden border border-white/5">
                     <div 
                         className={`h-full rounded-full transition-all duration-1000 ${remainingCarbs < 0 ? 'bg-red-500' : 'bg-emerald-500'}`} 
                         style={{ width: `${Math.min(carbsPct, 100)}%` }}
@@ -269,20 +268,20 @@ export const GymDashboard: React.FC<GymDashboardProps> = ({ foodLogs, waterLogs,
 
             {/* Fat */}
             <div>
-                <div className="flex justify-between text-xs mb-1.5">
+                <div className="flex justify-between text-[10px] mb-1">
                     <span className="font-bold text-pink-300">Fat</span>
                     <span className="text-slate-400">
                         {totalMacros.fat} / {settings.targets.fat}g 
                         {remainingFat < 0 ? (
                             <span className="text-red-400 ml-1 font-bold flex items-center inline-flex gap-1">
-                                <AlertCircle size={10} /> {Math.abs(remainingFat)}g over
+                                <AlertCircle size={8} /> {Math.abs(remainingFat)}g over
                             </span>
                         ) : (
                             <span className="text-slate-500 ml-1 font-medium">({remainingFat}g left)</span>
                         )}
                     </span>
                 </div>
-                <div className="h-2.5 w-full bg-slate-900/50 rounded-full overflow-hidden border border-white/5">
+                <div className="h-2 w-full bg-slate-900/50 rounded-full overflow-hidden border border-white/5">
                     <div 
                         className={`h-full rounded-full transition-all duration-1000 ${remainingFat < 0 ? 'bg-red-500' : 'bg-pink-500'}`} 
                         style={{ width: `${Math.min(fatPct, 100)}%` }}
@@ -296,15 +295,15 @@ export const GymDashboard: React.FC<GymDashboardProps> = ({ foodLogs, waterLogs,
       <div className="space-y-4">
          {/* Muscle Breakdown Radar Chart */}
          <div className="bg-slate-800/50 backdrop-blur-md rounded-2xl p-4 border border-white/10">
-             <div className="flex items-center gap-2 mb-4">
-                 <RadarIcon className="text-indigo-400" size={20} />
-                 <h3 className="text-sm font-bold text-white">Muscle Breakdown</h3>
+             <div className="flex items-center gap-2 mb-2">
+                 <RadarIcon className="text-indigo-400" size={16} />
+                 <h3 className="text-xs font-bold text-white">Muscle Breakdown</h3>
              </div>
-             <div className="h-48 w-full">
+             <div className="h-36 w-full">
                  <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                      <RadarChart cx="50%" cy="50%" outerRadius="70%" data={muscleSplitData}>
                          <PolarGrid stroke="#334155" />
-                         <PolarAngleAxis dataKey="subject" tick={{ fill: '#94a3b8', fontSize: 10 }} />
+                         <PolarAngleAxis dataKey="subject" tick={{ fill: '#94a3b8', fontSize: 9 }} />
                          <Radar
                              name="Sets"
                              dataKey="A"
@@ -320,18 +319,18 @@ export const GymDashboard: React.FC<GymDashboardProps> = ({ foodLogs, waterLogs,
 
          {/* Weekly Consistency */}
          <div className="bg-slate-800/50 backdrop-blur-md rounded-2xl p-4 border border-white/10">
-                <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-xs font-bold text-slate-400 uppercase">Workout Consistency</h3>
-                    <div className="flex items-center gap-1 text-emerald-400 text-xs font-bold">
-                        <TrendingUp size={12} /> 
+                <div className="flex justify-between items-center mb-2">
+                    <h3 className="text-[10px] font-bold text-slate-400 uppercase">Workout Consistency</h3>
+                    <div className="flex items-center gap-1 text-emerald-400 text-[10px] font-bold">
+                        <TrendingUp size={10} /> 
                         {weeklyData[0]?.workouts || 0} Sessions
                     </div>
                 </div>
-                <div className="h-32 w-full">
+                <div className="h-24 w-full">
                     <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                         <BarChart data={weeklyData}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
-                            <XAxis dataKey="short" stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} />
+                            <XAxis dataKey="short" stroke="#64748b" fontSize={9} tickLine={false} axisLine={false} />
                             <Tooltip content={<CustomTooltip />} cursor={{fill: 'transparent'}} />
                             <Bar dataKey="workouts" fill="#6366f1" radius={[4, 4, 4, 4]} />
                         </BarChart>
@@ -341,10 +340,10 @@ export const GymDashboard: React.FC<GymDashboardProps> = ({ foodLogs, waterLogs,
 
          {/* Volume Progress Chart */}
          <div className="bg-slate-800/50 backdrop-blur-md rounded-2xl p-4 border border-white/10">
-            <div className="flex justify-between items-center mb-4">
+            <div className="flex justify-between items-center mb-2">
                 <div className="flex items-center gap-2">
-                    <Activity className="text-pink-400" size={20} />
-                    <h3 className="text-sm font-bold text-white">Volume Progress</h3>
+                    <Activity className="text-pink-400" size={16} />
+                    <h3 className="text-xs font-bold text-white">Volume Progress</h3>
                 </div>
                 
                 {uniqueExercises.length > 0 && (
@@ -352,18 +351,18 @@ export const GymDashboard: React.FC<GymDashboardProps> = ({ foodLogs, waterLogs,
                         <select 
                             value={selectedExercise}
                             onChange={(e) => setSelectedExercise(e.target.value)}
-                            className="bg-slate-900 border border-slate-700 text-white text-xs rounded-lg pl-2 pr-6 py-1 appearance-none focus:outline-none focus:border-indigo-500"
+                            className="bg-slate-900 border border-slate-700 text-white text-[10px] rounded-lg pl-2 pr-6 py-1 appearance-none focus:outline-none focus:border-indigo-500"
                         >
                             {uniqueExercises.map(ex => (
                                 <option key={ex} value={ex}>{ex}</option>
                             ))}
                         </select>
-                        <ChevronDown className="absolute right-2 top-1.5 text-slate-500 pointer-events-none" size={12} />
+                        <ChevronDown className="absolute right-2 top-1.5 text-slate-500 pointer-events-none" size={10} />
                     </div>
                 )}
             </div>
             
-            <div className="h-48 w-full">
+            <div className="h-36 w-full">
                 {exerciseProgressData.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                         <AreaChart data={exerciseProgressData}>
@@ -374,14 +373,14 @@ export const GymDashboard: React.FC<GymDashboardProps> = ({ foodLogs, waterLogs,
                                 </linearGradient>
                             </defs>
                             <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
-                            <XAxis dataKey="date" stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} />
+                            <XAxis dataKey="date" stroke="#64748b" fontSize={9} tickLine={false} axisLine={false} />
                             <Tooltip content={<CustomTooltip />} cursor={{stroke: '#ec4899', strokeWidth: 1, strokeDasharray: '4 4'}} />
                             <Area type="monotone" dataKey="volume" stroke="#ec4899" strokeWidth={2} fillOpacity={1} fill="url(#colorVolume)" />
                         </AreaChart>
                     </ResponsiveContainer>
                 ) : (
                     <div className="h-full flex flex-col items-center justify-center text-slate-500 text-xs">
-                        <BarChart3 size={24} className="mb-2 opacity-50" />
+                        <BarChart3 size={20} className="mb-2 opacity-50" />
                         <p>No data for this exercise yet</p>
                     </div>
                 )}

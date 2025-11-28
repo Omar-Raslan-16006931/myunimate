@@ -11,10 +11,10 @@ import AddEventModal from './components/AddEventModal';
 import GymView from './components/GymView';
 import UniversalGradeCalculator from './components/UniversalGradeCalculator';
 import CompleteProfile from './components/CompleteProfile';
-import { ScheduleEvent, ViewState, MaterialFile, ScheduleProfile, EventColorMap, ExtractedScheduleItem, EventType, CourseGrade, GradeCategory, PeriodDefinition, FoodItem, WaterLog, WorkoutSession, WorkoutRoutine, ExerciseDefinition, GymSettings, ThemeMode } from './types';
+import { ScheduleEvent, ViewState, MaterialFile, ScheduleProfile, EventColorMap, ExtractedScheduleItem, EventType, CourseGrade, GradeCategory, PeriodDefinition, FoodItem, WaterLog, WorkoutSession, WorkoutRoutine, ExerciseDefinition, GymSettings, ThemeMode, Announcement } from './types';
 import { INITIAL_EVENTS, INITIAL_FILES, INITIAL_PROFILES, INITIAL_COLORS, INITIAL_PERIODS, DEFAULT_GYM_SETTINGS, DEFAULT_ROUTINES } from './constants';
 import { theme, styles } from './theme';
-import { GraduationCap, Folder, BookOpen, Trash2, FileText, File, Upload, Check, X, Brain, Calendar, Clock, MapPin, AlignLeft, Pencil, Send, Plus, ChevronDown, ChevronUp, Sparkles, Loader2, LogOut, RotateCcw, Calculator, ArrowRight, PieChart, AlertTriangle, Cloud, CloudOff, FileImage, Sheet, Link as LinkIcon, RefreshCcw } from 'lucide-react';
+import { GraduationCap, Folder, BookOpen, Trash2, FileText, File, Upload, Check, X, Brain, Calendar, Clock, MapPin, AlignLeft, Pencil, Send, Plus, ChevronDown, ChevronUp, Sparkles, Loader2, LogOut, RotateCcw, Calculator, ArrowRight, PieChart, AlertTriangle, Cloud, CloudOff, FileImage, Sheet, Link as LinkIcon, RefreshCcw, Ban, Eye } from 'lucide-react';
 import { parseScheduleImage, getChatResponse } from './services/geminiService';
 
 // --- HELPER: Default Grade Structure ---
@@ -134,18 +134,18 @@ const CoursesView = ({
         <div style={styles.scrollableContent}>
             <div style={styles.header}>
                 <div>
-                    <h1 style={styles.title}>Classes</h1>
+                    <h1 style={{...styles.title, fontSize: '1.5rem'}}>Classes</h1>
                     <p style={styles.subtitle}>Your academic courses</p>
                 </div>
                 <button 
                     onClick={onAddCourse}
-                    style={{...styles.button, borderRadius: '50%', width: '48px', height: '48px', padding: 0, justifyContent: 'center', boxShadow: '0 5px 15px rgba(0,0,0,0.1)'}}
+                    style={{...styles.button, borderRadius: '50%', width: '40px', height: '40px', padding: 0, justifyContent: 'center', boxShadow: '0 5px 15px rgba(0,0,0,0.1)'}}
                 >
-                    <Plus size={24} />
+                    <Plus size={20} />
                 </button>
             </div>
             
-            <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
+            <div style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
                 {uniqueCourses.map((courseName: any) => {
                     const courseEvents = events.filter((e: any) => e.title === courseName);
                     const mainEvent = courseEvents.find((e: any) => e.type === 'lecture') || courseEvents[0];
@@ -155,9 +155,9 @@ const CoursesView = ({
 
                     if (isEditing) {
                         return (
-                            <div key={courseName} style={{...styles.card, padding: '20px', borderLeft: `5px solid ${theme.accent}`, marginBottom: 0}}>
-                                <h3 style={{marginTop: 0, marginBottom: '16px', fontSize: '1.1rem'}}>Edit Course Details</h3>
-                                <div style={{display: 'grid', gap: '12px'}}>
+                            <div key={courseName} style={{...styles.card, padding: '16px', borderLeft: `5px solid ${theme.accent}`, marginBottom: 0}}>
+                                <h3 style={{marginTop: 0, marginBottom: '12px', fontSize: '1rem'}}>Edit Course Details</h3>
+                                <div style={{display: 'grid', gap: '10px'}}>
                                     <div>
                                         <label style={styles.label}>Course Name</label>
                                         <input 
@@ -167,7 +167,7 @@ const CoursesView = ({
                                             placeholder="Course Name"
                                         />
                                     </div>
-                                    <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px'}}>
+                                    <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px'}}>
                                         <div>
                                             <label style={styles.label}>Code</label>
                                             <input 
@@ -196,11 +196,11 @@ const CoursesView = ({
                                             placeholder="Location"
                                         />
                                     </div>
-                                    <div style={{display: 'flex', gap: '10px', marginTop: '8px'}}>
-                                        <button onClick={saveEdit} style={{...styles.button, flex: 1, justifyContent: 'center'}}>
-                                            <Check size={18} /> Save Changes
+                                    <div style={{display: 'flex', gap: '8px', marginTop: '6px'}}>
+                                        <button onClick={saveEdit} style={{...styles.button, flex: 1, justifyContent: 'center', padding: '8px'}}>
+                                            <Check size={16} /> Save
                                         </button>
-                                        <button onClick={() => setEditingCourse(null)} style={{...styles.secondaryButton, flex: 1, justifyContent: 'center'}}>
+                                        <button onClick={() => setEditingCourse(null)} style={{...styles.secondaryButton, flex: 1, justifyContent: 'center', padding: '8px'}}>
                                             Cancel
                                         </button>
                                     </div>
@@ -210,40 +210,40 @@ const CoursesView = ({
                     }
 
                     return (
-                        <div key={courseName} style={{...styles.card, padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 0, borderLeft: `5px solid ${typeColor}`}}>
+                        <div key={courseName} style={{...styles.card, padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 0, borderLeft: `4px solid ${typeColor}`}}>
                             <div>
-                                <h2 style={{margin: 0, fontSize: '1.1rem', fontWeight: 700, marginBottom: '6px'}}>{courseName}</h2>
+                                <h2 style={{margin: 0, fontSize: '0.95rem', fontWeight: 700, marginBottom: '4px'}}>{courseName}</h2>
                                 <div style={{display: 'flex', gap: '6px', flexWrap: 'wrap'}}>
                                      {mainEvent.code && (
-                                         <div style={{backgroundColor: 'var(--input-bg)', padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', color: theme.textMuted, fontWeight: 600}}>
+                                         <div style={{backgroundColor: 'var(--input-bg)', padding: '2px 6px', borderRadius: '4px', fontSize: '0.7rem', color: theme.textMuted, fontWeight: 600}}>
                                             {mainEvent.code}
                                          </div>
                                      )}
                                      {mainEvent.group && (
-                                         <div style={{backgroundColor: 'var(--input-bg)', padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', color: theme.textMuted, fontWeight: 600}}>
+                                         <div style={{backgroundColor: 'var(--input-bg)', padding: '2px 6px', borderRadius: '4px', fontSize: '0.7rem', color: theme.textMuted, fontWeight: 600}}>
                                             Grp {mainEvent.group}
                                          </div>
                                      )}
                                      {mainEvent.location && (
-                                         <div style={{backgroundColor: 'var(--input-bg)', padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', color: theme.textMuted, fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px'}}>
+                                         <div style={{backgroundColor: 'var(--input-bg)', padding: '2px 6px', borderRadius: '4px', fontSize: '0.7rem', color: theme.textMuted, fontWeight: 600, display: 'flex', alignItems: 'center', gap: '3px'}}>
                                             <MapPin size={10} /> {mainEvent.location}
                                          </div>
                                      )}
                                 </div>
                             </div>
                             
-                            <div style={{display: 'flex', gap: '8px'}}>
+                            <div style={{display: 'flex', gap: '6px'}}>
                                 <button 
                                     onClick={() => startEdit(courseName, mainEvent)}
-                                    style={{background: 'var(--input-bg)', border: 'none', borderRadius: '8px', padding: '10px', cursor: 'pointer', color: theme.text}}
+                                    style={{background: 'var(--input-bg)', border: 'none', borderRadius: '8px', padding: '8px', cursor: 'pointer', color: theme.text}}
                                 >
-                                    <Pencil size={18} />
+                                    <Pencil size={16} />
                                 </button>
                                 <button 
                                     onClick={() => setCourseToDelete(courseName)}
-                                    style={{background: 'rgba(239, 68, 68, 0.1)', border: 'none', borderRadius: '8px', padding: '10px', cursor: 'pointer', color: theme.danger}}
+                                    style={{background: 'rgba(239, 68, 68, 0.1)', border: 'none', borderRadius: '8px', padding: '8px', cursor: 'pointer', color: theme.danger}}
                                 >
-                                    <Trash2 size={18} />
+                                    <Trash2 size={16} />
                                 </button>
                             </div>
                         </div>
@@ -251,8 +251,8 @@ const CoursesView = ({
                 })}
                 {uniqueCourses.length === 0 && (
                      <div style={{textAlign: 'center', padding: '40px', color: theme.textMuted}}>
-                         <BookOpen size={40} className="mx-auto mb-4 opacity-30" />
-                         <p>No courses found in schedule.</p>
+                         <BookOpen size={32} className="mx-auto mb-4 opacity-30" />
+                         <p className="text-sm">No courses found in schedule.</p>
                      </div>
                 )}
             </div>
@@ -296,23 +296,23 @@ const FilesView = ({ materials, setMaterials, onConnectDrive, driveFiles, isDriv
     };
 
     const FileList = ({ items, canDelete }: { items: MaterialFile[], canDelete: boolean }) => (
-        <div style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
-              {items.length === 0 ? <div style={{padding: "40px", textAlign: "center", color: theme.textMuted, fontSize: '0.95rem', fontStyle: 'italic'}}>No files found.</div> : 
+        <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
+              {items.length === 0 ? <div style={{padding: "30px", textAlign: "center", color: theme.textMuted, fontSize: '0.85rem', fontStyle: 'italic'}}>No files found.</div> : 
                 items.map(file => (
                   <div key={file.id} style={styles.fileItem} className="hover:bg-white/5 transition-colors cursor-pointer" onClick={() => file.webViewLink && window.open(file.webViewLink, '_blank')}>
-                    {file.type === 'pdf' && <FileText color={theme.danger} size={22} />}
-                    {file.type === 'folder' && <Folder color={theme.accent} fill={theme.accent} fillOpacity={0.2} size={22} />}
-                    {file.type === 'image' && <FileImage color={theme.success} size={22} />}
-                    {(file.type === 'google-doc' || file.type === 'google-sheet' || file.type === 'google-slide') && <LinkIcon color="#3b82f6" size={22} />}
-                    {file.type === 'other' && <File color={theme.textMuted} size={22} />}
+                    {file.type === 'pdf' && <FileText color={theme.danger} size={18} />}
+                    {file.type === 'folder' && <Folder color={theme.accent} fill={theme.accent} fillOpacity={0.2} size={18} />}
+                    {file.type === 'image' && <FileImage color={theme.success} size={18} />}
+                    {(file.type === 'google-doc' || file.type === 'google-sheet' || file.type === 'google-slide') && <LinkIcon color="#3b82f6" size={18} />}
+                    {file.type === 'other' && <File color={theme.textMuted} size={18} />}
                     <div style={{flex: 1, minWidth: 0}}>
-                      <div style={{fontWeight: 600, fontSize: "0.95rem", color: "var(--text-primary)", whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{file.name}</div>
-                      <div style={{fontSize: "0.75rem", color: theme.textMuted, marginTop: "2px"}}>
+                      <div style={{fontWeight: 600, fontSize: "0.85rem", color: "var(--text-primary)", whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{file.name}</div>
+                      <div style={{fontSize: "0.7rem", color: theme.textMuted, marginTop: "1px"}}>
                           {file.source === 'drive' ? 'Google Drive' : `${file.size} • ${file.dateAdded}`}
                       </div>
                     </div>
                     {canDelete && (
-                        <button onClick={(e) => { e.stopPropagation(); setMaterials(prev => prev.filter(m => m.id !== file.id)); }} style={{padding: "8px", background: "none", border: "none", cursor: "pointer", color: theme.textMuted, opacity: 0.7}}><Trash2 size={18} /></button>
+                        <button onClick={(e) => { e.stopPropagation(); setMaterials(prev => prev.filter(m => m.id !== file.id)); }} style={{padding: "6px", background: "none", border: "none", cursor: "pointer", color: theme.textMuted, opacity: 0.7}}><Trash2 size={16} /></button>
                     )}
                   </div>
                 ))
@@ -323,27 +323,27 @@ const FilesView = ({ materials, setMaterials, onConnectDrive, driveFiles, isDriv
     return (
         <div style={styles.scrollableContent}>
            <div style={styles.header}>
-              <div><h1 style={styles.title}>Files</h1><p style={styles.subtitle}>Course materials</p></div>
-              <div style={{display: 'flex', gap: '10px'}}>
-                <label style={{...styles.button, borderRadius: '50%', width: '44px', height: '44px', padding: 0, justifyContent: 'center'}} htmlFor="file-upload"><Upload size={20} /></label>
+              <div><h1 style={{...styles.title, fontSize: '1.5rem'}}>Files</h1><p style={styles.subtitle}>Course materials</p></div>
+              <div style={{display: 'flex', gap: '8px'}}>
+                <label style={{...styles.button, borderRadius: '50%', width: '40px', height: '40px', padding: 0, justifyContent: 'center'}} htmlFor="file-upload"><Upload size={18} /></label>
                 <input id="file-upload" type="file" style={{display: "none"}} onChange={handleFileUpload} />
               </div>
             </div>
             
             {/* Tabs */}
-            <div style={{display: 'flex', gap: '10px', marginBottom: '16px'}}>
+            <div style={{display: 'flex', gap: '8px', marginBottom: '16px'}}>
                 <button 
                     onClick={() => setActiveTab('local')}
                     style={{
                         flex: 1, 
-                        padding: '12px', 
-                        borderRadius: '16px', 
+                        padding: '10px', 
+                        borderRadius: '12px', 
                         border: 'none', 
                         // EXPLICIT COLORS
                         backgroundColor: activeTab === 'local' ? theme.accent : 'rgba(255,255,255,0.05)', 
                         color: '#fff', 
                         fontWeight: 700, 
-                        fontSize: '0.9rem',
+                        fontSize: '0.8rem',
                         cursor: 'pointer',
                         transition: 'all 0.2s',
                         boxShadow: activeTab === 'local' ? '0 4px 12px rgba(139, 92, 246, 0.3)' : 'none'
@@ -355,14 +355,14 @@ const FilesView = ({ materials, setMaterials, onConnectDrive, driveFiles, isDriv
                     onClick={() => setActiveTab('drive')}
                     style={{
                         flex: 1, 
-                        padding: '12px', 
-                        borderRadius: '16px', 
+                        padding: '10px', 
+                        borderRadius: '12px', 
                         border: 'none', 
                         // EXPLICIT COLORS
                         backgroundColor: activeTab === 'drive' ? theme.accent : 'rgba(255,255,255,0.05)', 
                         color: '#fff', 
                         fontWeight: 700, 
-                        fontSize: '0.9rem',
+                        fontSize: '0.8rem',
                         cursor: 'pointer',
                         transition: 'all 0.2s',
                         boxShadow: activeTab === 'drive' ? '0 4px 12px rgba(139, 92, 246, 0.3)' : 'none'
@@ -372,25 +372,25 @@ const FilesView = ({ materials, setMaterials, onConnectDrive, driveFiles, isDriv
                 </button>
             </div>
 
-            <div style={styles.card}>
+            <div style={{...styles.card, padding: '12px'}}>
               {activeTab === 'local' ? (
                   <FileList items={materials} canDelete={true} />
               ) : (
                   <div>
-                      <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px'}}>
-                           <h3 style={{margin: 0, fontSize: '1rem', fontWeight: 700}}>Recent Drive Files</h3>
+                      <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px'}}>
+                           <h3 style={{margin: 0, fontSize: '0.9rem', fontWeight: 700}}>Recent Drive Files</h3>
                            <div style={{display: 'flex', gap: '8px'}}>
                                <button onClick={onFetchDrive} disabled={isDriveLoading} style={{background: 'rgba(255,255,255,0.1)', border: 'none', padding: '6px', borderRadius: '50%', cursor: 'pointer', color: theme.text}}>
-                                   <RefreshCcw size={16} className={isDriveLoading ? 'animate-spin' : ''} />
+                                   <RefreshCcw size={14} className={isDriveLoading ? 'animate-spin' : ''} />
                                </button>
                            </div>
                       </div>
                       
                       {!isConnectedToDrive && driveFiles.length === 0 ? (
-                          <div style={{textAlign: 'center', padding: '30px 20px'}}>
-                               <p style={{marginBottom: '16px', color: theme.textMuted}}>Connect to access your study materials directly from Google Drive.</p>
-                               <button onClick={onConnectDrive} style={{...styles.button, width: '100%', justifyContent: 'center', background: '#fff', color: '#000'}}>
-                                   <img src="https://upload.wikimedia.org/wikipedia/commons/1/12/Google_Drive_icon_%282020%29.svg" width="20" height="20" alt="Drive" />
+                          <div style={{textAlign: 'center', padding: '20px 10px'}}>
+                               <p style={{marginBottom: '12px', color: theme.textMuted, fontSize: '0.85rem'}}>Connect to access your study materials directly from Google Drive.</p>
+                               <button onClick={onConnectDrive} style={{...styles.button, width: '100%', justifyContent: 'center', background: '#fff', color: '#000', padding: '10px'}}>
+                                   <img src="https://upload.wikimedia.org/wikipedia/commons/1/12/Google_Drive_icon_%282020%29.svg" width="18" height="18" alt="Drive" />
                                    Connect Google Drive
                                </button>
                           </div>
@@ -427,12 +427,12 @@ const GradesView = ({ grades, setGrades }: { grades: CourseGrade[], setGrades: R
         <div style={styles.scrollableContent}>
             <div style={styles.header}>
                 <div>
-                    <h1 style={styles.title}>Grades</h1>
+                    <h1 style={{...styles.title, fontSize: '1.5rem'}}>Grades</h1>
                     <p style={styles.subtitle}>Track your performance</p>
                 </div>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {grades.map(course => {
                     let totalWeightedScore = 0;
                     let totalWeightUsed = 0;
@@ -468,25 +468,25 @@ const GradesView = ({ grades, setGrades }: { grades: CourseGrade[], setGrades: R
                         <div 
                             key={course.id} 
                             onClick={() => setSelectedCourseId(course.id)}
-                            style={{ ...styles.card, cursor: 'pointer', marginBottom: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                            style={{ ...styles.card, cursor: 'pointer', marginBottom: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px' }}
                         >
                             <div>
-                                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#fff' }}>{course.title}</h3>
-                                <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: theme.textMuted }}>Target: {course.targetGrade}%</p>
+                                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#fff' }}>{course.title}</h3>
+                                <p style={{ margin: '4px 0 0 0', fontSize: '0.75rem', color: theme.textMuted }}>Target: {course.targetGrade}%</p>
                             </div>
                             <div style={{ textAlign: 'right' }}>
-                                <div style={{ fontSize: '1.5rem', fontWeight: 800, color: gradeColor }}>
+                                <div style={{ fontSize: '1.2rem', fontWeight: 800, color: gradeColor }}>
                                     {currentAverage.toFixed(1)}%
                                 </div>
-                                <div style={{ fontSize: '0.7rem', color: theme.textMuted }}>Current Avg</div>
+                                <div style={{ fontSize: '0.65rem', color: theme.textMuted }}>Current Avg</div>
                             </div>
                         </div>
                     );
                 })}
 
                 {grades.length === 0 && (
-                     <div style={{ textAlign: 'center', padding: '40px', color: theme.textMuted }}>
-                         <p>No courses found. Add courses in the Classes tab or Schedule to start tracking grades.</p>
+                     <div style={{ textAlign: 'center', padding: '30px', color: theme.textMuted }}>
+                         <p className="text-sm">No courses found. Add courses in the Classes tab or Schedule to start tracking grades.</p>
                      </div>
                 )}
             </div>
@@ -501,6 +501,9 @@ const App: React.FC = () => {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardingLoading, setOnboardingLoading] = useState(false);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // --- IMPERSONATION STATE ---
+  const [impersonatedUserId, setImpersonatedUserId] = useState<string | null>(null);
 
   // --- STATE DEFINITIONS ---
   const [currentView, setCurrentView] = useState<ViewState>('dashboard');
@@ -529,13 +532,18 @@ const App: React.FC = () => {
       username: string, 
       id: string,
       gender?: string,
-      major?: string,
-      year?: string,
-      college?: string,
-      subscription_tier?: number,
+      major?: string, 
+      year?: string, 
+      college?: string, 
+      subscription_tier?: number, 
       lastUsernameChange?: string,
-      genderChangeCount?: number
+      genderChangeCount?: number,
+      is_admin?: boolean,
+      is_banned?: boolean
   } | null>(null);
+
+  // Global Announcement
+  const [globalAnnouncement, setGlobalAnnouncement] = useState<Announcement | null>(null);
 
   // Drive Data
   const [driveFiles, setDriveFiles] = useState<MaterialFile[]>([]);
@@ -558,6 +566,28 @@ const App: React.FC = () => {
           document.body.classList.remove('light-mode');
       }
   }, [themeMode]);
+
+  // --- ANNOUNCEMENT FETCH EFFECT ---
+  useEffect(() => {
+    const loadAnnouncement = async () => {
+        try {
+            const { data } = await supabase
+                .from('announcements')
+                .select('*')
+                .eq('is_active', true)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+            
+            if (data) setGlobalAnnouncement(data);
+        } catch (e) {
+            console.error("Failed to load announcements", e);
+        }
+    };
+    if (session) {
+        loadAnnouncement();
+    }
+  }, [session]);
 
   // --- HELPER FUNCTIONS ---
 
@@ -586,6 +616,7 @@ const App: React.FC = () => {
       setSession(null); 
       setAccountInfo(null); 
       setShowOnboarding(false);
+      setImpersonatedUserId(null); // Clear impersonation
       handleResetApp(true); 
 
       if (isTestMode) {
@@ -613,6 +644,18 @@ const App: React.FC = () => {
     });
   };
 
+  // --- IMPERSONATION HANDLERS ---
+  const handleImpersonate = (userId: string) => {
+      if (userId === session?.user?.id) return;
+      setImpersonatedUserId(userId);
+      // Data will reload due to useEffect dependency on impersonatedUserId
+  };
+
+  const handleExitImpersonation = () => {
+      setImpersonatedUserId(null);
+      // Data will reload automatically
+  };
+
   // --- AUTH & LOAD LOGIC ---
 
   useEffect(() => {
@@ -633,30 +676,37 @@ const App: React.FC = () => {
     return () => subscription.unsubscribe();
   }, [isTestMode]);
 
-  // Fetch data from Supabase Profiles Table on Login
+  // Fetch data from Supabase Profiles Table on Login OR Impersonation Change
   useEffect(() => {
     const loadUserData = async () => {
         if (!session?.user?.id) return;
         
         setIsDataLoaded(false);
 
-        // Check for Missing Username (e.g. Google Login first time)
+        // Determine target user ID (Impersonated or Self)
+        const targetUserId = impersonatedUserId || session.user.id;
+        const isImpersonating = !!impersonatedUserId;
+
+        // Check for Missing Username (e.g. Google Login first time) - Only relevant for SELF
         const meta = session.user.user_metadata || {};
         
-        // Basic account info from metadata (initial truth)
+        // Basic account info from metadata (initial truth) - only valid for self initially
         let mergedAccountInfo = {
             email: session.user.email,
             username: meta.username,
-            id: session.user.id,
+            id: targetUserId,
             gender: meta.gender,
             major: meta.major,
             year: meta.year,
             college: meta.college,
-            subscription_tier: meta.subscription_tier || 0 // Default to 0 if not present
+            subscription_tier: meta.subscription_tier || 0, // Default to 0 if not present
+            is_admin: false,
+            is_banned: false
         };
 
         // Critical: If no username is present in metadata, we MUST show onboarding.
-        if (!meta.username) {
+        // Skip this check if impersonating (we assume target user exists)
+        if (!isImpersonating && !meta.username) {
             setShowOnboarding(true);
             setIsDataLoaded(true); // Stop loading spinner so modal can show
             return;
@@ -665,8 +715,8 @@ const App: React.FC = () => {
         try {
             const { data, error } = await supabase
                 .from('profiles')
-                .select('settings, username, gender, major, year, college') // Select settings AND top-level columns
-                .eq('id', session.user.id)
+                .select('settings, username, gender, major, year, college, is_admin, is_banned') // Select settings AND top-level columns AND is_admin/banned
+                .eq('id', targetUserId)
                 .single();
             
             if (error && error.code !== 'PGRST116') { // PGRST116 is "not found", which is fine for new users
@@ -691,8 +741,11 @@ const App: React.FC = () => {
                 // 2. JSONB Account (Previous App State)
                 // 3. Top-level Columns (Database Truth - Highest Priority for specific fields)
                 
+                // If impersonating, we don't have metadata fallback, so be careful
+                const baseInfo = isImpersonating ? { email: d.account?.email || 'User' } : mergedAccountInfo;
+
                 mergedAccountInfo = {
-                    ...mergedAccountInfo,
+                    ...baseInfo,
                     ...(d.account || {}),
                     // Database Columns override JSONB state if they exist
                     username: data.username || d.account?.username || mergedAccountInfo.username,
@@ -700,7 +753,10 @@ const App: React.FC = () => {
                     major: data.major || d.account?.major || mergedAccountInfo.major,
                     college: data.college || d.account?.college || mergedAccountInfo.college,
                     // Convert DB int to string for app state
-                    year: data.year ? String(data.year) : (d.account?.year || mergedAccountInfo.year)
+                    year: data.year ? String(data.year) : (d.account?.year || mergedAccountInfo.year),
+                    is_admin: data.is_admin || false, // Should be accurate for the impersonated user
+                    is_banned: data.is_banned || false,
+                    id: targetUserId
                 };
                 
                 // Hydrate Gym
@@ -725,8 +781,8 @@ const App: React.FC = () => {
             
             setAccountInfo(mergedAccountInfo);
 
-            // Attempt to load Drive files if provider token is present
-            if (session.provider_token) {
+            // Attempt to load Drive files if provider token is present (Only for SELF)
+            if (!isImpersonating && session.provider_token) {
                 fetchDriveFiles(session.provider_token);
             }
 
@@ -741,12 +797,12 @@ const App: React.FC = () => {
         loadUserData();
     } else if (isTestMode) {
         setIsDataLoaded(true); 
-        // Load Sample Data for Admin Mode
+        // Load Sample Data for Demo Mode (Non-Admin)
         setEvents(INITIAL_EVENTS);
         setMaterials(INITIAL_FILES);
-        setAccountInfo({email: 'admin@unimate.app', username: 'Admin', id: 'admin', subscription_tier: 1}); // Pro for admin
+        setAccountInfo({email: 'demo@unimate.app', username: 'Demo User', id: 'demo', subscription_tier: 1, is_admin: false, is_banned: false}); 
     }
-  }, [session, isTestMode]);
+  }, [session, isTestMode, impersonatedUserId]); // Re-run when impersonatedUserId changes
 
   // --- DRIVE LOGIC ---
 
@@ -836,6 +892,8 @@ const App: React.FC = () => {
               email: session.user.email,
               id: session.user.id,
               subscription_tier: 0,
+              is_admin: false,
+              is_banned: false,
               ...data
           };
           setAccountInfo(newAccountInfo);
@@ -878,12 +936,20 @@ const App: React.FC = () => {
 
   const debouncedSave = useCallback(() => {
       if (!session?.user?.id || !isDataLoaded || showOnboarding) return;
+      // Do NOT save if impersonating
+      if (impersonatedUserId) return;
       
       setSyncStatus('saving');
       
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
 
       saveTimeoutRef.current = setTimeout(async () => {
+          // If offline, don't attempt save to avoid errors
+          if (!navigator.onLine) {
+              setSyncStatus('offline');
+              return;
+          }
+
           // Ensure we have the latest account info to sync
           // If accountInfo is null (rare), use session defaults
           const currentAccount = accountInfo || {
@@ -894,7 +960,9 @@ const App: React.FC = () => {
               gender: '',
               major: '',
               year: '',
-              college: ''
+              college: '',
+              is_admin: false,
+              is_banned: false
           };
 
           const payload = {
@@ -939,6 +1007,13 @@ const App: React.FC = () => {
               if (error) throw error;
               setSyncStatus('synced');
           } catch (e: any) {
+              // Swallow "Failed to fetch" (likely network hiccup or offline)
+              if (e.message && e.message.includes("Failed to fetch")) {
+                  console.warn("Save skipped due to network issue");
+                  setSyncStatus('offline');
+                  return;
+              }
+
               console.error("Save error:", JSON.stringify(e));
               // Handle RLS error gracefully
               if (e.code === '42501') {
@@ -949,7 +1024,7 @@ const App: React.FC = () => {
               }
           }
       }, 2000); // Save after 2 seconds of inactivity
-  }, [events, materials, profiles, activeProfileId, grades, periods, eventColors, themeMode, foodLogs, waterLogs, workoutSessions, routines, customExercises, gymSettings, session, isDataLoaded, accountInfo, showOnboarding]);
+  }, [events, materials, profiles, activeProfileId, grades, periods, eventColors, themeMode, foodLogs, waterLogs, workoutSessions, routines, customExercises, gymSettings, session, isDataLoaded, accountInfo, showOnboarding, impersonatedUserId]);
 
   // Trigger save whenever relevant state changes
   useEffect(() => {
@@ -1145,6 +1220,27 @@ const App: React.FC = () => {
     return <Auth onEnterTestMode={handleEnterTestMode} />;
   }
 
+  // BANNED USER CHECK
+  if (accountInfo?.is_banned) {
+      return (
+          <div style={{...styles.container, alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '20px'}}>
+              <div style={{width: '80px', height: '80px', background: 'rgba(239, 68, 68, 0.2)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px'}}>
+                  <Ban size={40} className="text-red-500" />
+              </div>
+              <h1 style={{fontSize: '2rem', fontWeight: 800, color: '#fff', marginBottom: '10px'}}>Account Suspended</h1>
+              <p style={{color: theme.textMuted, maxWidth: '300px', marginBottom: '30px', lineHeight: '1.5'}}>
+                  Your account has been suspended due to a violation of our terms. Please contact support if you believe this is an error.
+              </p>
+              <button 
+                  onClick={handleSignOut}
+                  style={{background: 'rgba(255,255,255,0.1)', border: 'none', padding: '12px 24px', borderRadius: '12px', color: '#fff', fontWeight: 600, cursor: 'pointer'}}
+              >
+                  Sign Out
+              </button>
+          </div>
+      )
+  }
+
   // Safeguard: If we are loaded, have a session, but NO username in accountInfo, blocking onboarding MUST be active.
   // This acts as a double check against bypassing the modal.
   const isMissingUsername = session && isDataLoaded && (!accountInfo?.username || accountInfo.username.trim() === '');
@@ -1181,6 +1277,8 @@ const App: React.FC = () => {
             onEventClick={(e) => setSelectedTask(e)}
             onAddEventClick={() => { setEditingEvent(null); setIsEventModalOpen(true); }}
             periods={periods}
+            announcement={globalAnnouncement}
+            username={accountInfo?.username || 'Student'}
           />
         );
       case 'schedule':
@@ -1267,6 +1365,7 @@ const App: React.FC = () => {
              onUpdateAccount={handleUpdateAccount}
              themeMode={themeMode}
              setThemeMode={setThemeMode}
+             onImpersonate={handleImpersonate}
           />
         );
       default:
@@ -1280,11 +1379,27 @@ const App: React.FC = () => {
       <div style={{position: 'absolute', top: '10px', left: '10px', zIndex: 50}}>
           {syncStatus === 'saving' && <Cloud className="text-white/50 animate-pulse" size={16} />}
           {syncStatus === 'synced' && <Cloud className="text-emerald-500/50" size={16} />}
-          {syncStatus === 'error' && <CloudOff className="text-red-500" size={16} />}
+          {(syncStatus === 'error' || syncStatus === 'offline') && <CloudOff className="text-red-500" size={16} />}
       </div>
 
+      {/* Impersonation Banner */}
+      {impersonatedUserId && (
+          <div className="fixed top-0 left-0 right-0 h-8 bg-red-600 z-[9999] flex items-center justify-center gap-4 text-white text-xs font-bold uppercase shadow-xl animate-in slide-in-from-top">
+              <div className="flex items-center gap-2">
+                  <Eye size={14} className="animate-pulse" />
+                  <span>Viewing as {accountInfo?.username || 'User'}</span>
+              </div>
+              <button 
+                  onClick={handleExitImpersonation}
+                  className="bg-white text-red-600 px-2 py-0.5 rounded text-[10px] hover:bg-gray-100 transition"
+              >
+                  Exit View
+              </button>
+          </div>
+      )}
+
       <main style={styles.main}>
-        <div key={currentView} className="animate-fade-in-up w-full h-full flex flex-col">
+        <div key={currentView} className={`animate-fade-in-up w-full h-full flex flex-col ${impersonatedUserId ? 'pt-8' : ''}`}>
            {renderContent()}
         </div>
       </main>
