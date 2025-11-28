@@ -79,6 +79,17 @@ export interface FeedbackItem {
   username?: string; // For display after join
 }
 
+export interface AppFeedback {
+  id: string;
+  user_id: string;
+  message: string;
+  category: 'Bug' | 'Feature Request' | 'Other';
+  status: 'read' | 'unread';
+  created_at: string;
+  admin_reply?: string;
+  admin_reply_at?: string;
+}
+
 // --- UNIVERSAL GRADE TYPES ---
 
 export interface GradeItem {

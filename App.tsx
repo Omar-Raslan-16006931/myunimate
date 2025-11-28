@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from './lib/supabase';
 import Auth from './components/Auth';
@@ -14,7 +15,7 @@ import CompleteProfile from './components/CompleteProfile';
 import { ScheduleEvent, ViewState, MaterialFile, ScheduleProfile, EventColorMap, ExtractedScheduleItem, EventType, CourseGrade, GradeCategory, PeriodDefinition, FoodItem, WaterLog, WorkoutSession, WorkoutRoutine, ExerciseDefinition, GymSettings, ThemeMode, Announcement } from './types';
 import { INITIAL_EVENTS, INITIAL_FILES, INITIAL_PROFILES, INITIAL_COLORS, INITIAL_PERIODS, DEFAULT_GYM_SETTINGS, DEFAULT_ROUTINES } from './constants';
 import { theme, styles } from './theme';
-import { GraduationCap, Folder, BookOpen, Trash2, FileText, File, Upload, Check, X, Brain, Calendar, Clock, MapPin, AlignLeft, Pencil, Send, Plus, ChevronDown, ChevronUp, Sparkles, Loader2, LogOut, RotateCcw, Calculator, ArrowRight, PieChart, AlertTriangle, Cloud, CloudOff, FileImage, Sheet, Link as LinkIcon, RefreshCcw, Ban, Eye } from 'lucide-react';
+import { GraduationCap, Folder, BookOpen, Trash2, FileText, File, Upload, Check, X, Brain, Calendar, Clock, MapPin, AlignLeft, Pencil, Send, Plus, ChevronDown, ChevronUp, Sparkles, Loader2, LogOut, RotateCcw, Calculator, ArrowRight, PieChart, AlertTriangle, Cloud, CloudOff, FileImage, Sheet, Link as LinkIcon, RefreshCcw, Ban, Eye, Database, Terminal, Copy } from 'lucide-react';
 import { parseScheduleImage, getChatResponse } from './services/geminiService';
 
 // --- HELPER: Default Grade Structure ---
@@ -96,6 +97,32 @@ const ConfirmModal = ({
                         Confirm
                     </button>
                 </div>
+            </div>
+        </div>
+    );
+};
+
+const DatabaseErrorScreen = ({ onRetry }: { onRetry: () => void }) => {
+    return (
+        <div style={{...styles.container, alignItems: 'center', justifyContent: 'center', padding: '20px', overflowY: 'auto'}}>
+            <div style={{maxWidth: '400px', width: '100%', background: '#0f172a', borderRadius: '16px', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '24px', boxShadow: '0 20px 50px rgba(0,0,0,0.5)', textAlign: 'center'}}>
+                <div style={{background: 'rgba(239, 68, 68, 0.2)', padding: '16px', borderRadius: '50%', color: theme.danger, width: 'fit-content', margin: '0 auto 20px'}}>
+                    <Database size={40} />
+                </div>
+                
+                <h1 style={{fontSize: '1.5rem', fontWeight: 800, color: '#fff', margin: '0 0 10px 0'}}>Database Error</h1>
+                <p style={{color: theme.textMuted, lineHeight: '1.6', fontSize: '0.9rem', marginBottom: '24px'}}>
+                    A configuration error (infinite recursion or permission issue) is preventing the app from loading.
+                    <br/><br/>
+                    <b>Please contact the administrator.</b>
+                </p>
+
+                <button 
+                    onClick={onRetry}
+                    style={{...styles.button, width: '100%', justifyContent: 'center', padding: '14px', fontSize: '1rem'}}
+                >
+                    <RefreshCcw size={18} /> Retry Connection
+                </button>
             </div>
         </div>
     );
@@ -272,11 +299,12 @@ const CoursesView = ({
 };
 
 const FilesView = ({ materials, setMaterials, onConnectDrive, driveFiles, isDriveLoading, onFetchDrive }: { materials: MaterialFile[], setMaterials: React.Dispatch<React.SetStateAction<MaterialFile[]>>, onConnectDrive: () => void, driveFiles: MaterialFile[], isDriveLoading: boolean, onFetchDrive: () => void }) => {
+    // ... (No changes to FilesView logic, keeping existing)
+    // For brevity in XML response, I will include the full existing code of FilesView
     const [activeTab, setActiveTab] = useState<'local' | 'drive'>('local');
     const [isConnectedToDrive, setIsConnectedToDrive] = useState(false);
 
     useEffect(() => {
-        // Simple check if we have drive files populated or just switch tab logic
         if (driveFiles.length > 0) setIsConnectedToDrive(true);
     }, [driveFiles]);
 
@@ -330,7 +358,6 @@ const FilesView = ({ materials, setMaterials, onConnectDrive, driveFiles, isDriv
               </div>
             </div>
             
-            {/* Tabs */}
             <div style={{display: 'flex', gap: '8px', marginBottom: '16px'}}>
                 <button 
                     onClick={() => setActiveTab('local')}
@@ -339,7 +366,6 @@ const FilesView = ({ materials, setMaterials, onConnectDrive, driveFiles, isDriv
                         padding: '10px', 
                         borderRadius: '12px', 
                         border: 'none', 
-                        // EXPLICIT COLORS
                         backgroundColor: activeTab === 'local' ? theme.accent : 'rgba(255,255,255,0.05)', 
                         color: '#fff', 
                         fontWeight: 700, 
@@ -358,7 +384,6 @@ const FilesView = ({ materials, setMaterials, onConnectDrive, driveFiles, isDriv
                         padding: '10px', 
                         borderRadius: '12px', 
                         border: 'none', 
-                        // EXPLICIT COLORS
                         backgroundColor: activeTab === 'drive' ? theme.accent : 'rgba(255,255,255,0.05)', 
                         color: '#fff', 
                         fontWeight: 700, 
@@ -501,15 +526,10 @@ const App: React.FC = () => {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardingLoading, setOnboardingLoading] = useState(false);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // --- IMPERSONATION STATE ---
+  const [dbError, setDbError] = useState(false);
   const [impersonatedUserId, setImpersonatedUserId] = useState<string | null>(null);
-
-  // --- STATE DEFINITIONS ---
   const [currentView, setCurrentView] = useState<ViewState>('dashboard');
   const [themeMode, setThemeMode] = useState<ThemeMode>('dark');
-  
-  // App Data - START WITH DEFAULTS to avoid empty flash, will sync with DB
   const [events, setEvents] = useState<ScheduleEvent[]>(INITIAL_EVENTS);
   const [materials, setMaterials] = useState<MaterialFile[]>(INITIAL_FILES);
   const [profiles, setProfiles] = useState<ScheduleProfile[]>(INITIAL_PROFILES);
@@ -517,15 +537,12 @@ const App: React.FC = () => {
   const [grades, setGrades] = useState<CourseGrade[]>([]);
   const [periods, setPeriods] = useState<PeriodDefinition[]>(INITIAL_PERIODS);
   const [eventColors, setEventColors] = useState<EventColorMap>(INITIAL_COLORS);
-
-  // Gym Data
   const [foodLogs, setFoodLogs] = useState<FoodItem[]>([]);
   const [waterLogs, setWaterLogs] = useState<WaterLog[]>([]);
   const [workoutSessions, setWorkoutSessions] = useState<WorkoutSession[]>([]);
   const [routines, setRoutines] = useState<WorkoutRoutine[]>(DEFAULT_ROUTINES);
   const [customExercises, setCustomExercises] = useState<ExerciseDefinition[]>([]);
   const [gymSettings, setGymSettings] = useState<GymSettings>(DEFAULT_GYM_SETTINGS);
-
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [accountInfo, setAccountInfo] = useState<{
       email: string, 
@@ -536,29 +553,23 @@ const App: React.FC = () => {
       year?: string, 
       college?: string, 
       subscription_tier?: number, 
-      lastUsernameChange?: string,
+      lastUsernameChange?: string, 
       genderChangeCount?: number,
       is_admin?: boolean,
-      is_banned?: boolean
+      is_banned?: boolean,
+      banned_until?: string | null
   } | null>(null);
-
-  // Global Announcement
   const [globalAnnouncement, setGlobalAnnouncement] = useState<Announcement | null>(null);
-
-  // Drive Data
   const [driveFiles, setDriveFiles] = useState<MaterialFile[]>([]);
   const [isDriveLoading, setIsDriveLoading] = useState(false);
-
-  // --- UI STATE & HANDLERS DEFINITIONS ---
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<ScheduleEvent | null>(null);
   const [editingEvent, setEditingEvent] = useState<Partial<ScheduleEvent> | null>(null);
-
   const [extractedEvents, setExtractedEvents] = useState<ExtractedScheduleItem[]>([]);
   const [isVerifyModalOpen, setIsVerifyModalOpen] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [remainingBanTime, setRemainingBanTime] = useState('');
 
-  // --- THEME EFFECT ---
   useEffect(() => {
       if (themeMode === 'light') {
           document.body.classList.add('light-mode');
@@ -567,7 +578,6 @@ const App: React.FC = () => {
       }
   }, [themeMode]);
 
-  // --- ANNOUNCEMENT FETCH EFFECT ---
   useEffect(() => {
     const loadAnnouncement = async () => {
         try {
@@ -584,12 +594,10 @@ const App: React.FC = () => {
             console.error("Failed to load announcements", e);
         }
     };
-    if (session) {
+    if (session && !dbError) {
         loadAnnouncement();
     }
-  }, [session]);
-
-  // --- HELPER FUNCTIONS ---
+  }, [session, dbError]);
 
   const handleResetApp = (fullClear = false) => {
     setEvents(fullClear ? [] : INITIAL_EVENTS);
@@ -599,7 +607,6 @@ const App: React.FC = () => {
     setGrades([]);
     setPeriods(INITIAL_PERIODS);
     setEventColors(INITIAL_COLORS);
-    // Gym Resets
     setFoodLogs([]);
     setWaterLogs([]);
     setWorkoutSessions([]);
@@ -607,16 +614,15 @@ const App: React.FC = () => {
     setCustomExercises([]);
     setGymSettings(DEFAULT_GYM_SETTINGS);
     setDriveFiles([]);
-    // Reset View
     setCurrentView('dashboard');
+    setDbError(false);
   };
 
   const handleSignOut = async () => {
-      // 1. Immediate UI update to avoid flash of protected routes/onboarding
       setSession(null); 
       setAccountInfo(null); 
       setShowOnboarding(false);
-      setImpersonatedUserId(null); // Clear impersonation
+      setImpersonatedUserId(null);
       handleResetApp(true); 
 
       if (isTestMode) {
@@ -631,32 +637,24 @@ const App: React.FC = () => {
         if (!prev) return null;
         const updates: any = { ...newData };
         const now = new Date().toISOString();
-
-        // Metadata updates for constraints
         if (newData.username !== prev.username) {
             updates.lastUsernameChange = now;
         }
         if (newData.gender !== prev.gender) {
             updates.genderChangeCount = (prev.genderChangeCount || 0) + 1;
         }
-
         return { ...prev, ...updates };
     });
   };
 
-  // --- IMPERSONATION HANDLERS ---
   const handleImpersonate = (userId: string) => {
       if (userId === session?.user?.id) return;
       setImpersonatedUserId(userId);
-      // Data will reload due to useEffect dependency on impersonatedUserId
   };
 
   const handleExitImpersonation = () => {
       setImpersonatedUserId(null);
-      // Data will reload automatically
   };
-
-  // --- AUTH & LOAD LOGIC ---
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -667,7 +665,6 @@ const App: React.FC = () => {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      // Force reset if session is lost (Logged out)
       if (!session && !isTestMode) {
           handleResetApp(true);
       }
@@ -676,21 +673,16 @@ const App: React.FC = () => {
     return () => subscription.unsubscribe();
   }, [isTestMode]);
 
-  // Fetch data from Supabase Profiles Table on Login OR Impersonation Change
-  useEffect(() => {
-    const loadUserData = async () => {
+  const loadUserData = useCallback(async () => {
         if (!session?.user?.id) return;
         
         setIsDataLoaded(false);
+        setDbError(false);
 
-        // Determine target user ID (Impersonated or Self)
         const targetUserId = impersonatedUserId || session.user.id;
         const isImpersonating = !!impersonatedUserId;
-
-        // Check for Missing Username (e.g. Google Login first time) - Only relevant for SELF
         const meta = session.user.user_metadata || {};
         
-        // Basic account info from metadata (initial truth) - only valid for self initially
         let mergedAccountInfo = {
             email: session.user.email,
             username: meta.username,
@@ -699,34 +691,42 @@ const App: React.FC = () => {
             major: meta.major,
             year: meta.year,
             college: meta.college,
-            subscription_tier: meta.subscription_tier || 0, // Default to 0 if not present
+            subscription_tier: meta.subscription_tier || 0,
             is_admin: false,
-            is_banned: false
+            is_banned: false,
+            banned_until: null
         };
 
-        // Critical: If no username is present in metadata, we MUST show onboarding.
-        // Skip this check if impersonating (we assume target user exists)
         if (!isImpersonating && !meta.username) {
             setShowOnboarding(true);
-            setIsDataLoaded(true); // Stop loading spinner so modal can show
+            setIsDataLoaded(true);
             return;
         }
 
         try {
             const { data, error } = await supabase
                 .from('profiles')
-                .select('settings, username, gender, major, year, college, is_admin, is_banned') // Select settings AND top-level columns AND is_admin/banned
+                .select('settings, username, gender, major, year, college, is_admin, is_banned, subscription_tier, banned_until')
                 .eq('id', targetUserId)
                 .single();
             
-            if (error && error.code !== 'PGRST116') { // PGRST116 is "not found", which is fine for new users
-                console.error("Error loading profile:", JSON.stringify(error));
+            if (error) {
+                if (error.code === '42P17') {
+                    setDbError(true);
+                    return;
+                }
+                
+                if (error.message && (error.message.includes("Failed to fetch") || error.message.includes("Network request failed"))) {
+                    console.warn("Offline or blocked: Failed to load profile. Using local defaults.");
+                    setSyncStatus('offline');
+                } else if (error.code !== 'PGRST116') {
+                    console.error("Error loading profile:", JSON.stringify(error));
+                }
             }
 
             if (data) {
-                const d = data.settings || {}; // Handle null settings
+                const d = data.settings || {};
                 
-                // Hydrate State from settings JSONB
                 if (d.events) setEvents(d.events);
                 if (d.materials) setMaterials(d.materials);
                 if (d.profiles) setProfiles(d.profiles);
@@ -736,30 +736,23 @@ const App: React.FC = () => {
                 if (d.eventColors) setEventColors(d.eventColors);
                 if (d.themeMode) setThemeMode(d.themeMode);
                 
-                // Account Sync Logic:
-                // 1. Metadata (Base)
-                // 2. JSONB Account (Previous App State)
-                // 3. Top-level Columns (Database Truth - Highest Priority for specific fields)
-                
-                // If impersonating, we don't have metadata fallback, so be careful
                 const baseInfo = isImpersonating ? { email: d.account?.email || 'User' } : mergedAccountInfo;
 
                 mergedAccountInfo = {
                     ...baseInfo,
                     ...(d.account || {}),
-                    // Database Columns override JSONB state if they exist
                     username: data.username || d.account?.username || mergedAccountInfo.username,
                     gender: data.gender || d.account?.gender || mergedAccountInfo.gender,
                     major: data.major || d.account?.major || mergedAccountInfo.major,
                     college: data.college || d.account?.college || mergedAccountInfo.college,
-                    // Convert DB int to string for app state
                     year: data.year ? String(data.year) : (d.account?.year || mergedAccountInfo.year),
-                    is_admin: data.is_admin || false, // Should be accurate for the impersonated user
+                    is_admin: data.is_admin || false,
                     is_banned: data.is_banned || false,
+                    subscription_tier: data.subscription_tier ?? (d.account?.subscription_tier ?? mergedAccountInfo.subscription_tier),
+                    banned_until: data.banned_until,
                     id: targetUserId
                 };
                 
-                // Hydrate Gym
                 if (d.gym) {
                     if (d.gym.foodLogs) setFoodLogs(d.gym.foodLogs);
                     if (d.gym.waterLogs) setWaterLogs(d.gym.waterLogs);
@@ -769,7 +762,6 @@ const App: React.FC = () => {
                     if (d.gym.settings) setGymSettings(d.gym.settings);
                 }
             } else {
-                // NO DATA in DB? Load Defaults explicitly to be safe
                 setEvents(INITIAL_EVENTS);
                 setMaterials(INITIAL_FILES);
                 setProfiles(INITIAL_PROFILES);
@@ -781,7 +773,6 @@ const App: React.FC = () => {
             
             setAccountInfo(mergedAccountInfo);
 
-            // Attempt to load Drive files if provider token is present (Only for SELF)
             if (!isImpersonating && session.provider_token) {
                 fetchDriveFiles(session.provider_token);
             }
@@ -791,20 +782,18 @@ const App: React.FC = () => {
         } finally {
             setIsDataLoaded(true);
         }
-    };
+  }, [session, impersonatedUserId]);
 
+  useEffect(() => {
     if (session) {
         loadUserData();
     } else if (isTestMode) {
         setIsDataLoaded(true); 
-        // Load Sample Data for Demo Mode (Non-Admin)
         setEvents(INITIAL_EVENTS);
         setMaterials(INITIAL_FILES);
-        setAccountInfo({email: 'demo@unimate.app', username: 'Demo User', id: 'demo', subscription_tier: 1, is_admin: false, is_banned: false}); 
+        setAccountInfo({email: 'demo@unimate.app', username: 'Demo User', id: 'demo', subscription_tier: 1, is_admin: false, is_banned: false, banned_until: null}); 
     }
-  }, [session, isTestMode, impersonatedUserId]); // Re-run when impersonatedUserId changes
-
-  // --- DRIVE LOGIC ---
+  }, [session, isTestMode, impersonatedUserId, loadUserData]);
 
   const fetchDriveFiles = async (token: string) => {
       setIsDriveLoading(true);
@@ -817,7 +806,6 @@ const App: React.FC = () => {
           );
           
           if (!response.ok) {
-              // If unauthorized, token might be expired or scope missing
               throw new Error("Failed to fetch Drive files");
           }
 
@@ -854,7 +842,6 @@ const App: React.FC = () => {
 
   const handleConnectDrive = async () => {
       if (!session) return;
-      // Trigger OAuth re-auth to get the token/scope
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -872,11 +859,10 @@ const App: React.FC = () => {
       if (!session) return;
       setOnboardingLoading(true);
       try {
-          // 1. Update Auth Metadata (For Display Name)
           const { error } = await supabase.auth.updateUser({
               data: {
                   username: data.username,
-                  full_name: data.username, // Correct Display Name
+                  full_name: data.username,
                   display_name: data.username,
                   gender: data.gender,
                   major: data.major,
@@ -887,20 +873,18 @@ const App: React.FC = () => {
           });
           if (error) throw error;
 
-          // 2. Set Local State immediately to unblock UI
           const newAccountInfo = {
               email: session.user.email,
               id: session.user.id,
               subscription_tier: 0,
               is_admin: false,
               is_banned: false,
+              banned_until: null,
               ...data
           };
           setAccountInfo(newAccountInfo);
           setShowOnboarding(false);
 
-          // 3. Immediately sync this new profile to the DB
-          // SYNC TO TOP-LEVEL COLUMNS + SETTINGS JSONB
           await supabase
             .from('profiles')
             .upsert({
@@ -908,12 +892,11 @@ const App: React.FC = () => {
                 username: data.username,
                 gender: data.gender,
                 major: data.major,
-                year: parseInt(data.year) || null, // Convert string to int for DB
+                year: parseInt(data.year) || null,
                 college: data.college,
                 settings: { 
-                    // We save just the account part initially to ensure it exists
                     account: newAccountInfo,
-                    events: INITIAL_EVENTS, // Use Defaults
+                    events: INITIAL_EVENTS,
                     materials: INITIAL_FILES,
                     profiles: INITIAL_PROFILES,
                     activeProfileId: 'main', grades: [], periods: INITIAL_PERIODS,
@@ -931,12 +914,8 @@ const App: React.FC = () => {
       }
   };
 
-
-  // --- AUTO SAVE LOGIC ---
-
   const debouncedSave = useCallback(() => {
-      if (!session?.user?.id || !isDataLoaded || showOnboarding) return;
-      // Do NOT save if impersonating
+      if (!session?.user?.id || !isDataLoaded || showOnboarding || dbError) return;
       if (impersonatedUserId) return;
       
       setSyncStatus('saving');
@@ -944,14 +923,11 @@ const App: React.FC = () => {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
 
       saveTimeoutRef.current = setTimeout(async () => {
-          // If offline, don't attempt save to avoid errors
           if (!navigator.onLine) {
               setSyncStatus('offline');
               return;
           }
 
-          // Ensure we have the latest account info to sync
-          // If accountInfo is null (rare), use session defaults
           const currentAccount = accountInfo || {
               id: session.user.id,
               email: session.user.email,
@@ -962,7 +938,8 @@ const App: React.FC = () => {
               year: '',
               college: '',
               is_admin: false,
-              is_banned: false
+              is_banned: false,
+              banned_until: null
           };
 
           const payload = {
@@ -982,15 +959,12 @@ const App: React.FC = () => {
                   customExercises,
                   settings: gymSettings
               },
-              // SYNC ACCOUNT INFO TO DB FOR VISIBILITY
               account: currentAccount
           };
 
           try {
-              // Ensure we don't save an empty username if one exists in metadata
               const usernameToSave = currentAccount.username || session.user.user_metadata?.username || '';
               
-              // Upsert to both columns and JSONB settings
               const { error } = await supabase
                   .from('profiles')
                   .upsert({
@@ -998,7 +972,7 @@ const App: React.FC = () => {
                       username: usernameToSave, 
                       gender: currentAccount.gender || null,
                       major: currentAccount.major || null,
-                      year: parseInt(currentAccount.year || '') || null, // Convert to Int or Null
+                      year: parseInt(currentAccount.year || '') || null,
                       college: currentAccount.college || null,
                       settings: payload, 
                       updated_at: new Date().toISOString()
@@ -1007,7 +981,6 @@ const App: React.FC = () => {
               if (error) throw error;
               setSyncStatus('synced');
           } catch (e: any) {
-              // Swallow "Failed to fetch" (likely network hiccup or offline)
               if (e.message && e.message.includes("Failed to fetch")) {
                   console.warn("Save skipped due to network issue");
                   setSyncStatus('offline');
@@ -1015,27 +988,25 @@ const App: React.FC = () => {
               }
 
               console.error("Save error:", JSON.stringify(e));
-              // Handle RLS error gracefully
               if (e.code === '42501') {
                    console.warn("RLS blocking save - ignoring UI error.");
                    setSyncStatus('synced'); 
+              } else if (e.code === '42P17') {
+                   setDbError(true);
+                   setSyncStatus('error');
               } else {
                    setSyncStatus('error');
               }
           }
-      }, 2000); // Save after 2 seconds of inactivity
-  }, [events, materials, profiles, activeProfileId, grades, periods, eventColors, themeMode, foodLogs, waterLogs, workoutSessions, routines, customExercises, gymSettings, session, isDataLoaded, accountInfo, showOnboarding, impersonatedUserId]);
+      }, 2000);
+  }, [events, materials, profiles, activeProfileId, grades, periods, eventColors, themeMode, foodLogs, waterLogs, workoutSessions, routines, customExercises, gymSettings, session, isDataLoaded, accountInfo, showOnboarding, impersonatedUserId, dbError]);
 
-  // Trigger save whenever relevant state changes
   useEffect(() => {
       debouncedSave();
   }, [debouncedSave]);
 
   const handleEnterTestMode = useCallback(() => setIsTestMode(true), []);
 
-  // --- HANDLER FUNCTIONS FOR UI ACTIONS ---
-
-  // File to Base64 helper
   const fileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -1046,11 +1017,9 @@ const App: React.FC = () => {
   };
 
   const handleAddEvent = (eventData: Partial<ScheduleEvent>) => {
-    // 1. Handle Updates (Edit or Drag & Drop)
     if (eventData.id) {
         setEvents(prev => prev.map(e => e.id === eventData.id ? { ...e, ...eventData } as ScheduleEvent : e));
         
-        // Only close modal if it was the source of the edit
         if (isEventModalOpen) {
              setIsEventModalOpen(false);
              setEditingEvent(null);
@@ -1058,7 +1027,6 @@ const App: React.FC = () => {
         return;
     }
 
-    // 2. Handle New Creations (Requires Title & StartTime)
     if (eventData.title && eventData.startTime) {
            const newEvent: ScheduleEvent = {
              id: Math.random().toString(36).slice(2, 11),
@@ -1169,7 +1137,6 @@ const App: React.FC = () => {
 
     setEvents(prev => [...prev, ...newEvents]);
     
-    // Sync with Grades
     const newCourseTitles = new Set(newEvents.map(e => e.title));
     const existingGradeTitles = new Set(grades.map(g => g.title));
     
@@ -1188,7 +1155,6 @@ const App: React.FC = () => {
     setExtractedEvents([]);
   };
 
-  // Gym Helpers
   const addFoodLog = (item: FoodItem) => setFoodLogs(prev => [...prev, item]);
   const updateFoodLog = (updatedItem: FoodItem) => setFoodLogs(prev => prev.map(item => item.id === updatedItem.id ? updatedItem : item));
   const deleteFoodLog = (id: string) => setFoodLogs(prev => prev.filter(item => item.id !== id));
@@ -1216,11 +1182,43 @@ const App: React.FC = () => {
             return { title, code: ev?.code || '', type: ev?.type || 'lecture' as EventType };
         });
 
+  useEffect(() => {
+      if (accountInfo?.banned_until) {
+          const interval = setInterval(() => {
+              const now = new Date();
+              const banEnd = new Date(accountInfo.banned_until!);
+              const diff = banEnd.getTime() - now.getTime();
+
+              if (diff <= 0) {
+                  // Ban expired
+                  setRemainingBanTime('');
+                  setAccountInfo(prev => prev ? { ...prev, is_banned: false, banned_until: null } : null);
+              } else {
+                  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                  
+                  if (days > 0) {
+                      setRemainingBanTime(`${days}d ${hours}h`);
+                  } else if (hours > 0) {
+                      setRemainingBanTime(`${hours}h ${minutes}m`);
+                  } else {
+                      setRemainingBanTime(`${minutes}m`);
+                  }
+              }
+          }, 1000);
+          return () => clearInterval(interval);
+      }
+  }, [accountInfo?.banned_until]);
+
   if (!session && !isTestMode) {
     return <Auth onEnterTestMode={handleEnterTestMode} />;
   }
 
-  // BANNED USER CHECK
+  if (dbError) {
+      return <DatabaseErrorScreen onRetry={() => loadUserData()} />;
+  }
+
   if (accountInfo?.is_banned) {
       return (
           <div style={{...styles.container, alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '20px'}}>
@@ -1231,6 +1229,14 @@ const App: React.FC = () => {
               <p style={{color: theme.textMuted, maxWidth: '300px', marginBottom: '30px', lineHeight: '1.5'}}>
                   Your account has been suspended due to a violation of our terms. Please contact support if you believe this is an error.
               </p>
+              {remainingBanTime ? (
+                  <div style={{background: 'rgba(255,255,255,0.1)', padding: '10px 20px', borderRadius: '10px', marginBottom: '30px'}}>
+                      <p style={{margin: 0, fontSize: '0.8rem', color: theme.textMuted, textTransform: 'uppercase', fontWeight: 700}}>Suspension Lifts In</p>
+                      <p style={{margin: '4px 0 0 0', fontSize: '1.5rem', fontWeight: 800, color: '#fff'}}>{remainingBanTime}</p>
+                  </div>
+              ) : (
+                  <div style={{marginBottom: '30px', color: theme.danger, fontWeight: 700}}>PERMANENT BAN</div>
+              )}
               <button 
                   onClick={handleSignOut}
                   style={{background: 'rgba(255,255,255,0.1)', border: 'none', padding: '12px 24px', borderRadius: '12px', color: '#fff', fontWeight: 600, cursor: 'pointer'}}
@@ -1241,11 +1247,8 @@ const App: React.FC = () => {
       )
   }
 
-  // Safeguard: If we are loaded, have a session, but NO username in accountInfo, blocking onboarding MUST be active.
-  // This acts as a double check against bypassing the modal.
   const isMissingUsername = session && isDataLoaded && (!accountInfo?.username || accountInfo.username.trim() === '');
 
-  // BLOCKING ONBOARDING VIEW
   if (session && (showOnboarding || isMissingUsername)) {
       return (
           <CompleteProfile 
@@ -1256,7 +1259,6 @@ const App: React.FC = () => {
       );
   }
 
-  // Show Loading Spinner while initial data fetch happens
   if (session && !isDataLoaded) {
       return (
           <div style={{...styles.container, alignItems: 'center', justifyContent: 'center'}}>
@@ -1301,14 +1303,12 @@ const App: React.FC = () => {
         return (
             <GymView 
                 onBack={() => setCurrentView('dashboard')} 
-                // Props
                 foodLogs={foodLogs}
                 waterLogs={waterLogs}
                 workoutSessions={workoutSessions}
                 routines={routines}
                 customExercises={customExercises}
                 settings={gymSettings}
-                // Handlers
                 addFoodLog={addFoodLog}
                 updateFoodLog={updateFoodLog}
                 deleteFoodLog={deleteFoodLog}
@@ -1375,14 +1375,12 @@ const App: React.FC = () => {
 
   return (
     <div style={styles.container}>
-      {/* Cloud Sync Status Indicator */}
       <div style={{position: 'absolute', top: '10px', left: '10px', zIndex: 50}}>
           {syncStatus === 'saving' && <Cloud className="text-white/50 animate-pulse" size={16} />}
           {syncStatus === 'synced' && <Cloud className="text-emerald-500/50" size={16} />}
           {(syncStatus === 'error' || syncStatus === 'offline') && <CloudOff className="text-red-500" size={16} />}
       </div>
 
-      {/* Impersonation Banner */}
       {impersonatedUserId && (
           <div className="fixed top-0 left-0 right-0 h-8 bg-red-600 z-[9999] flex items-center justify-center gap-4 text-white text-xs font-bold uppercase shadow-xl animate-in slide-in-from-top">
               <div className="flex items-center gap-2">
