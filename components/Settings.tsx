@@ -1,51 +1,14 @@
-
+// ... (imports)
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import { Plus, Trash2, CalendarDays, Palette, Layers, Pencil, Upload, ImageIcon, Loader2, LogOut, ChevronDown, ChevronUp, Columns, AlertTriangle, User, GraduationCap, Calendar, Building, Users, Moon, Sun, Check, X, Shield, Search, Ban, MessageSquare, Sparkles, Clock, ChevronRight } from 'lucide-react';
+import { Plus, Trash2, CalendarDays, Palette, Layers, Pencil, Upload, ImageIcon, Loader2, LogOut, ChevronDown, ChevronUp, Columns, AlertTriangle, User, GraduationCap, Calendar, Building, Users, Moon, Sun, Check, X, Shield, Search, Ban, MessageSquare, Sparkles, Clock, ChevronRight, Ticket } from 'lucide-react';
 import { ScheduleProfile, EventColorMap, EventType, ScheduleEvent, PeriodDefinition, ThemeMode, ReferralCode, AppFeedback } from '../types';
 import { theme, styles } from '../theme';
 import ScheduleSettings from './ScheduleSettings';
 import FeedbackModal from './FeedbackModal';
 import AdminInbox from './AdminInbox';
 
-interface SettingsProps {
-  profiles: ScheduleProfile[];
-  activeProfileId: string;
-  eventColors: EventColorMap;
-  baseEvents: ScheduleEvent[];
-  onAddProfile: (name: string) => void;
-  onSwitchProfile: (id: string) => void;
-  onDeleteProfile: (id: string) => void;
-  onUpdateColor: (type: EventType, color: string) => void;
-  onDeleteEvent: (id: string) => void;
-  onEditEvent: (event: ScheduleEvent) => void;
-  onAddBaseEventClick: () => void;
-  onImageUpload: (file: File) => void;
-  isAnalyzing: boolean;
-  onResetApp: () => void;
-  onSignOut: () => void;
-  periods: PeriodDefinition[];
-  setPeriods: (periods: PeriodDefinition[]) => void;
-  accountInfo?: { 
-      email: string, 
-      username: string, 
-      id: string, 
-      gender?: string, 
-      major?: string, 
-      year?: string, 
-      college?: string, 
-      subscription_tier?: number, 
-      lastUsernameChange?: string, 
-      genderChangeCount?: number,
-      is_admin?: boolean,
-      is_banned?: boolean
-  } | null;
-  onUpdateAccount: (data: any) => void;
-  themeMode: ThemeMode;
-  setThemeMode: (mode: ThemeMode) => void;
-  onImpersonate?: (userId: string) => void;
-}
-
+// ... (SupportHistoryModal and BanModal definitions remain unchanged)
 const SupportHistoryModal = ({ isOpen, onClose, userId }: { isOpen: boolean, onClose: () => void, userId?: string }) => {
     const [tickets, setTickets] = useState<AppFeedback[]>([]);
     const [loading, setLoading] = useState(false);
@@ -152,6 +115,31 @@ const BanModal = ({ isOpen, onClose, onConfirm, username }: { isOpen: boolean, o
     );
 };
 
+interface SettingsProps {
+  profiles: ScheduleProfile[];
+  activeProfileId: string;
+  eventColors: EventColorMap;
+  baseEvents: ScheduleEvent[];
+  onAddProfile: (name: string) => void;
+  onSwitchProfile: (id: string) => void;
+  onDeleteProfile: (id: string) => void;
+  onUpdateColor: (type: EventType, color: string) => void;
+  onDeleteEvent: (id: string) => void;
+  onEditEvent: (event: ScheduleEvent) => void;
+  onAddBaseEventClick: () => void;
+  onImageUpload: (file: File) => void;
+  isAnalyzing: boolean;
+  onResetApp: () => void;
+  onSignOut: () => void;
+  periods: PeriodDefinition[];
+  setPeriods: (periods: PeriodDefinition[]) => void;
+  accountInfo: any;
+  onUpdateAccount: (data: any) => void;
+  themeMode: ThemeMode;
+  setThemeMode: (mode: ThemeMode) => void;
+  onImpersonate: (userId: string) => void;
+}
+
 const Settings: React.FC<SettingsProps> = ({
   profiles,
   activeProfileId,
@@ -184,6 +172,14 @@ const Settings: React.FC<SettingsProps> = ({
   const [isAccountExpanded, setIsAccountExpanded] = useState(false);
   const [isUserMgmtExpanded, setIsUserMgmtExpanded] = useState(false);
   const [isFeedbackInboxExpanded, setIsFeedbackInboxExpanded] = useState(false);
+  
+  // Referral State
+  const [isReferralExpanded, setIsReferralExpanded] = useState(false);
+  const [referralCodes, setReferralCodes] = useState<ReferralCode[]>([]);
+  const [isCreatingReferral, setIsCreatingReferral] = useState(false);
+  const [newReferralCode, setNewReferralCode] = useState('');
+  const [newReferralTier, setNewReferralTier] = useState(0);
+
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -362,6 +358,56 @@ const Settings: React.FC<SettingsProps> = ({
       }
   };
 
+  // Referral Management
+  const fetchReferralCodes = useCallback(async () => {
+      const { data, error } = await supabase.from('referral_codes').select('*').order('created_at', { ascending: false });
+      if (data) {
+          setReferralCodes(data);
+      } else if (error) {
+          console.error("Error fetching referral codes:", error);
+      }
+  }, []);
+
+  useEffect(() => {
+      if (isReferralExpanded) fetchReferralCodes();
+  }, [isReferralExpanded, fetchReferralCodes]);
+
+  const createReferralCode = async () => {
+      if (!newReferralCode.trim()) return;
+      const code = newReferralCode.trim().toUpperCase();
+      
+      try {
+          const { data, error } = await supabase.from('referral_codes').insert({
+              code,
+              is_active: true,
+              usage_count: 0,
+              subscription_tier: newReferralTier
+          }).select().single();
+
+          if (error) throw error;
+
+          if (data) {
+              setReferralCodes([data, ...referralCodes]);
+              setIsCreatingReferral(false);
+              setNewReferralCode('');
+          }
+      } catch (err: any) {
+          console.error("Error creating code:", err);
+          alert(`Failed to create code: ${err.message || 'Unknown error'}`);
+      }
+  };
+
+  const toggleReferralCode = async (id: string, currentState: boolean) => {
+      const { error } = await supabase.from('referral_codes').update({ is_active: !currentState }).eq('id', id);
+      if (!error) {
+          setReferralCodes(referralCodes.map(c => c.id === id ? { ...c, is_active: !currentState } : c));
+      } else {
+          console.error("Error toggling code:", error);
+          alert("Failed to update code status.");
+      }
+  };
+
+  // ... (Rest of useEffects and render logic remain unchanged from previous implementation)
   useEffect(() => {
     if (!isEditingAccount || !editForm.username) return;
 
@@ -1038,6 +1084,84 @@ const Settings: React.FC<SettingsProps> = ({
                                             )}
                                         </div>
                                     )}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Referral Codes Management */}
+                        <div style={compactCardStyle}>
+                            <div 
+                                onClick={() => setIsReferralExpanded(!isReferralExpanded)}
+                                style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '2px 0'}}
+                            >
+                                <h3 style={sectionHeaderStyle}>
+                                    <div style={{...sectionIconStyle, background: 'rgba(16, 185, 129, 0.15)', color: theme.success}}>
+                                        <Ticket size={16} /> 
+                                    </div>
+                                    <span>Referral Codes</span>
+                                </h3>
+                                {isReferralExpanded ? <ChevronUp size={16} color={theme.textMuted} /> : <ChevronDown size={16} color={theme.textMuted} />}
+                            </div>
+
+                            {isReferralExpanded && (
+                                <div style={{marginTop: '12px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '12px'}}>
+                                    
+                                    {!isCreatingReferral ? (
+                                        <button 
+                                            onClick={() => setIsCreatingReferral(true)}
+                                            style={{...styles.button, width: '100%', justifyContent: 'center', fontSize: '0.8rem', padding: '8px', marginBottom: '12px'}}
+                                        >
+                                            <Plus size={14} /> Create New Code
+                                        </button>
+                                    ) : (
+                                        <div style={{background: 'rgba(0,0,0,0.2)', padding: '10px', borderRadius: '8px', marginBottom: '12px'}}>
+                                            <input 
+                                                value={newReferralCode}
+                                                onChange={(e) => setNewReferralCode(e.target.value.toUpperCase())}
+                                                placeholder="CODE (e.g. VIP2024)"
+                                                style={{...styles.input, width: '100%', marginBottom: '8px', fontSize: '0.9rem', textTransform: 'uppercase'}}
+                                            />
+                                            <div style={{display: 'flex', gap: '8px', marginBottom: '8px'}}>
+                                                <button 
+                                                    onClick={() => setNewReferralTier(0)}
+                                                    style={{flex: 1, padding: '6px', borderRadius: '6px', border: 'none', background: newReferralTier === 0 ? theme.accent : 'rgba(255,255,255,0.1)', color: newReferralTier === 0 ? '#fff' : theme.textMuted, fontSize: '0.7rem', fontWeight: 600, cursor: 'pointer'}}
+                                                >
+                                                    Free Tier
+                                                </button>
+                                                <button 
+                                                    onClick={() => setNewReferralTier(1)}
+                                                    style={{flex: 1, padding: '6px', borderRadius: '6px', border: 'none', background: newReferralTier === 1 ? '#eab308' : 'rgba(255,255,255,0.1)', color: newReferralTier === 1 ? '#fff' : theme.textMuted, fontSize: '0.7rem', fontWeight: 600, cursor: 'pointer'}}
+                                                >
+                                                    Pro Tier
+                                                </button>
+                                            </div>
+                                            <div style={{display: 'flex', gap: '8px'}}>
+                                                <button onClick={createReferralCode} style={{...styles.button, flex: 1, justifyContent: 'center', padding: '6px', fontSize: '0.75rem'}}>Save</button>
+                                                <button onClick={() => setIsCreatingReferral(false)} style={{...styles.secondaryButton, flex: 1, justifyContent: 'center', padding: '6px', fontSize: '0.75rem'}}>Cancel</button>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div style={{display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '250px', overflowY: 'auto'}}>
+                                        {referralCodes.map(code => (
+                                            <div key={code.id} style={{background: 'rgba(255,255,255,0.02)', padding: '8px 10px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                                                <div>
+                                                    <div style={{fontWeight: 700, fontSize: '0.85rem', color: code.is_active ? '#fff' : theme.textMuted, textDecoration: code.is_active ? 'none' : 'line-through'}}>{code.code}</div>
+                                                    <div style={{fontSize: '0.65rem', color: theme.textMuted, display: 'flex', gap: '6px'}}>
+                                                        <span>Used: {code.usage_count}</span>
+                                                        <span style={{color: code.subscription_tier === 1 ? '#eab308' : theme.textMuted}}>{code.subscription_tier === 1 ? 'PRO' : 'FREE'}</span>
+                                                    </div>
+                                                </div>
+                                                <button 
+                                                    onClick={() => toggleReferralCode(code.id, code.is_active)}
+                                                    style={{background: code.is_active ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)', color: code.is_active ? theme.success : theme.danger, border: 'none', padding: '4px 8px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 700, cursor: 'pointer'}}
+                                                >
+                                                    {code.is_active ? 'Active' : 'Inactive'}
+                                                </button>
+                                            </div>
+                                        ))}
+                                        {referralCodes.length === 0 && <div style={{textAlign: 'center', color: theme.textMuted, fontSize: '0.8rem', fontStyle: 'italic'}}>No codes yet.</div>}
+                                    </div>
                                 </div>
                             )}
                         </div>
