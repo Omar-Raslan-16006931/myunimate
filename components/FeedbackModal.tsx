@@ -1,6 +1,7 @@
+
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { X, Send, Loader2, MessageSquare, CheckCircle2, ChevronDown, Bug, Lightbulb, HelpCircle } from 'lucide-react';
+import { X, Send, Loader2, MessageSquare, CheckCircle2, ChevronDown, Bug, Lightbulb, HelpCircle, AlertTriangle } from 'lucide-react';
 import { theme } from '../theme';
 
 interface FeedbackModalProps {
@@ -128,6 +129,13 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose, userId }
                             placeholder={category === 'Bug' ? "Describe what happened..." : "Tell us your idea..."}
                             className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-sm text-white placeholder-white/20 focus:outline-none focus:border-indigo-500/50 transition-colors min-h-[140px] resize-none"
                         />
+                    </div>
+
+                    <div className="flex items-start gap-2 bg-orange-500/10 border border-orange-500/20 p-3 rounded-xl">
+                        <AlertTriangle size={14} className="text-orange-400 shrink-0 mt-0.5" />
+                        <p className="text-[10px] text-orange-200/70 leading-relaxed font-medium">
+                            Please avoid submitting duplicate or spam messages. Misuse of the feedback system will result in an account suspension.
+                        </p>
                     </div>
 
                     {/* Submit Button */}

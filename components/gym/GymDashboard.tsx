@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState, useEffect } from 'react';
 import { FoodItem, WorkoutSession, GymSettings, WaterLog, GymViewType, MuscleGroup } from '../../types';
 import { 
@@ -67,23 +68,63 @@ export const GymDashboard: React.FC<GymDashboardProps> = ({ foodLogs, waterLogs,
       return data;
   }, [workoutSessions]);
 
-  // Muscle Breakdown Logic (Radar Chart)
+  // Muscle Breakdown Logic (Radar Chart) - SUMMARIZED GROUPS
   const muscleSplitData = useMemo(() => {
-      const counts: Record<string, number> = {};
-      Object.values(MuscleGroup).forEach(m => counts[m] = 0);
+      // Initialize groups with 0
+      const groups: Record<string, number> = {
+          'Chest': 0,
+          'Back': 0,
+          'Shoulders': 0,
+          'Arms': 0, // Biceps, Triceps, Forearms
+          'Legs': 0, // Quads, Hams, Glutes, Calves, Adductors
+          'Core': 0, // Abs, Core
+          'Cardio': 0
+      };
 
       workoutSessions.forEach(session => {
           session.exercises.forEach(ex => {
-               if (counts[ex.muscleGroup] !== undefined) {
-                   counts[ex.muscleGroup] += ex.sets.length; 
+               // Only count sets that were completed? Or all planned? 
+               // Usually for breakdown we check volume or set count. Let's use completed sets for accuracy.
+               const count = ex.sets.filter(s => s.completed).length;
+               
+               if (count === 0) return;
+
+               // Check muscle group and assign to summarized category
+               if (ex.muscleGroup === MuscleGroup.CHEST) {
+                   groups['Chest'] += count;
+               } else if (ex.muscleGroup === MuscleGroup.BACK) {
+                   groups['Back'] += count;
+               } else if (ex.muscleGroup === MuscleGroup.SHOULDERS) {
+                   groups['Shoulders'] += count;
+               } else if (
+                   ex.muscleGroup === MuscleGroup.BICEPS || 
+                   ex.muscleGroup === MuscleGroup.TRICEPS || 
+                   ex.muscleGroup === MuscleGroup.FOREARMS
+               ) {
+                   groups['Arms'] += count;
+               } else if (
+                   ex.muscleGroup === MuscleGroup.QUADRICEPS || 
+                   ex.muscleGroup === MuscleGroup.HAMSTRINGS || 
+                   ex.muscleGroup === MuscleGroup.GLUTES || 
+                   ex.muscleGroup === MuscleGroup.CALVES || 
+                   ex.muscleGroup === MuscleGroup.ADDUCTORS
+               ) {
+                   groups['Legs'] += count;
+               } else if (
+                   ex.muscleGroup === MuscleGroup.ABS || 
+                   ex.muscleGroup === MuscleGroup.CORE
+               ) {
+                   groups['Core'] += count;
+               } else if (ex.muscleGroup === MuscleGroup.CARDIO) {
+                   groups['Cardio'] += count;
                }
           });
       });
 
-      return Object.keys(counts).map(key => ({
+      return Object.keys(groups).map(key => ({
           subject: key,
-          A: counts[key],
-          fullMark: 100 
+          A: groups[key],
+          fullMark: 150 
       }));
   }, [workoutSessions]);
 
@@ -111,7 +152,12 @@ export const GymDashboard: React.FC<GymDashboardProps> = ({ foodLogs, waterLogs,
 
       return relevantSessions.map(s => {
           const ex = s.exercises.find(e => e.name === selectedExercise);
-          const volume = ex ? ex.sets.reduce((acc, set) => acc + (set.weight * set.reps), 0) : 0;
+          // Only sum COMPLETED sets
+          const volume = ex ? ex.sets.reduce((acc, set) => {
+              if (!set.completed) return acc;
+              return acc + (set.weight * set.reps);
+          }, 0) : 0;
+          
           return {
               date: new Date(s.startTime).toLocaleDateString(undefined, {month:'short', day:'numeric'}),
               volume
@@ -125,7 +171,7 @@ export const GymDashboard: React.FC<GymDashboardProps> = ({ foodLogs, waterLogs,
         <div className="bg-slate-900 border border-slate-700 p-2 rounded-lg shadow-xl text-xs">
           <p className="text-slate-300 mb-1">{label}</p>
           <p className="text-white font-bold">
-            {payload[0].value} {payload[0].dataKey === 'volume' ? 'lbs/kg' : 'Workouts'}
+            {payload[0].value} {payload[0].dataKey === 'volume' ? 'kg' : 'Workouts'}
           </p>
         </div>
       );

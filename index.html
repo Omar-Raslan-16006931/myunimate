@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -19,9 +20,9 @@
             animation: {
               'pulse-slow': 'pulse 8s cubic-bezier(0.4, 0, 0.6, 1) infinite',
               'blob': 'blob 10s infinite',
-              'fade-in-up': 'fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards',
-              'pop-in': 'popIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards',
-              'scale-in': 'scaleIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+              'fade-in-up': 'fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) both',
+              'pop-in': 'popIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) both',
+              'scale-in': 'scaleIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) both',
               'float': 'float 8s ease-in-out infinite',
               'gradient-x': 'gradientX 15s ease infinite',
             },
@@ -60,7 +61,7 @@
     <style>
       :root {
         /* Default (Dark Mode) */
-        --bg-gradient: radial-gradient(circle at 50% -20%, #1e0a45 0%, #000000 60%, #000000 100%);
+        --bg-gradient: radial-gradient(circle at 50% -20%, #1e0a45 0%, #0f0f16 60%, #101016 100%);
         --card-bg: rgba(30, 30, 40, 0.6);
         --card-border: 1px solid rgba(255, 255, 255, 0.1);
         --glass-border: 1px solid rgba(255, 255, 255, 0.1);
@@ -93,7 +94,7 @@
       }
 
       body {
-        background-color: #000;
+        background-color: #101016;
         background-image: var(--bg-gradient);
         color: var(--text-primary);
         overflow-x: hidden;

@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { 
-    Plus, Trash2, ArrowLeft, RotateCcw, TrendingUp, 
-    AlertCircle, CheckCircle2, Target, Calculator, ChevronDown, ChevronUp, X, Eye, EyeOff,
-    ArrowDownNarrowWide, HelpCircle, Minus, PieChart, Award, Percent, AlertTriangle
+    Plus, Trash2, ArrowLeft, Target, 
+    TrendingUp, Info, X
 } from 'lucide-react';
 import { CourseGrade, GradeCategory, GradeItem } from '../types';
 import { theme, styles } from '../theme';
@@ -13,269 +12,116 @@ interface UniversalGradeCalculatorProps {
     onBack: () => void;
 }
 
-// --- Helper Component for Confirmation Modal ---
-const ConfirmModal = ({ 
-    isOpen, 
-    title, 
-    message, 
-    onConfirm, 
-    onCancel 
-}: { 
-    isOpen: boolean, 
-    title: string, 
-    message: string, 
-    onConfirm: () => void, 
-    onCancel: () => void 
-}) => {
-    if (!isOpen) return null;
+// --- Modern Radial Progress ---
+const RadialProgress = ({ percentage, color, size = 100, strokeWidth = 8, label, subLabel }: { percentage: number, color: string, size?: number, strokeWidth?: number, label?: string, subLabel?: string }) => {
+    const radius = (size - strokeWidth) / 2;
+    const circumference = radius * 2 * Math.PI;
+    const offset = circumference - (Math.min(percentage, 100) / 100) * circumference;
+
     return (
-        <div style={styles.modalOverlay} onClick={onCancel}>
-            <div style={{...styles.modalContent, maxWidth: '320px', padding: '0', overflow: 'hidden'}} onClick={e => e.stopPropagation()}>
-                <div style={{padding: '24px', textAlign: 'center'}}>
-                    <div style={{width: '60px', height: '60px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px'}}>
-                        <AlertTriangle size={32} color={theme.danger} />
-                    </div>
-                    <h3 style={{margin: '0 0 8px 0', fontSize: '1.2rem', fontWeight: 800}}>{title}</h3>
-                    <p style={{margin: 0, fontSize: '0.9rem', color: theme.textMuted, lineHeight: '1.5'}}>
-                        {message}
-                    </p>
-                </div>
-                <div style={{display: 'flex', borderTop: '1px solid rgba(255,255,255,0.1)'}}>
-                    <button 
-                        onClick={onCancel}
-                        style={{flex: 1, padding: '16px', background: 'transparent', border: 'none', color: theme.text, fontSize: '1rem', fontWeight: 600, cursor: 'pointer', borderRight: '1px solid rgba(255,255,255,0.1)'}}
-                    >
-                        Cancel
-                    </button>
-                    <button 
-                        onClick={onConfirm}
-                        style={{flex: 1, padding: '16px', background: 'rgba(239, 68, 68, 0.1)', border: 'none', color: theme.danger, fontSize: '1rem', fontWeight: 800, cursor: 'pointer'}}
-                    >
-                        Confirm
-                    </button>
-                </div>
+        <div style={{ position: 'relative', width: size, height: size, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ transform: 'rotate(-90deg)' }}>
+                <circle cx={size / 2} cy={size / 2} r={radius} stroke="rgba(255,255,255,0.05)" strokeWidth={strokeWidth} fill="none" />
+                <circle 
+                    cx={size / 2} cy={size / 2} r={radius} 
+                    stroke={color} strokeWidth={strokeWidth} fill="none" 
+                    strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round"
+                    style={{ transition: 'stroke-dashoffset 1s cubic-bezier(0.4, 0, 0.2, 1)' }}
+                />
+            </svg>
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
+                {label && <span style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fff', lineHeight: 1 }}>{label}</span>}
+                {subLabel && <span style={{ fontSize: '0.6rem', color: theme.textMuted, fontWeight: 700, textTransform: 'uppercase', marginTop: '2px' }}>{subLabel}</span>}
             </div>
         </div>
     );
 };
 
-// --- Helper Component for Category UI ---
-const CategoryCard = ({ 
-    cat, 
-    updateCategory, 
-    deleteCategory, 
-    addItem, 
-    updateItem, 
-    deleteItem, 
-    singularize, 
-    getCategoryStats 
-}: any) => {
-    const [showDropSettings, setShowDropSettings] = useState(false);
-    const stats = getCategoryStats(cat);
-    const dropCount = parseInt(cat.dropLowest) || 0;
-
+// --- Clean Category Card ---
+const CategoryCard = ({ cat, updateCategory, deleteCategory, addItem, updateItem, deleteItem }: any) => {
     return (
-        <div style={{ ...styles.card, padding: '0', overflow: 'visible', marginBottom: 0, position: 'relative' }}>
-            {/* Delete Button - Absolute Top Right */}
-            <button 
-                onClick={(e) => { e.stopPropagation(); deleteCategory(cat.id); }}
-                style={{ 
-                    position: 'absolute',
-                    top: '8px',
-                    right: '8px',
-                    width: '24px', height: '24px', 
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: theme.danger, 
-                    background: 'rgba(239, 68, 68, 0.1)', 
-                    border: 'none', 
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    zIndex: 10,
-                    opacity: 0.7
-                }}
-            >
-                <Trash2 size={12} />
-            </button>
-
-            {/* Card Header */}
-            <div style={{ padding: '12px 14px', background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingRight: '40px' }}>
-                
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center', justifyContent: 'space-between' }}>
-                    {/* Left: Name & Weight */}
-                    <div style={{ flex: 1, minWidth: '150px' }}>
+        <div className="group mb-6">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-3 px-1">
+                <div className="flex-1 flex items-center gap-3">
+                    <input 
+                        value={cat.name}
+                        onChange={(e) => updateCategory(cat.id, { name: e.target.value })}
+                        className="bg-transparent border-none text-white text-lg font-bold w-full outline-none placeholder-white/30"
+                        placeholder="Category Name"
+                    />
+                    <div className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-1.5 border border-white/5">
+                        <span className="text-[10px] font-bold text-white/40 uppercase tracking-wider">Weight</span>
                         <input 
-                            value={cat.name}
-                            onChange={(e) => updateCategory(cat.id, { name: e.target.value })}
-                            style={{ background: 'transparent', border: 'none', color: '#fff', fontWeight: 700, fontSize: '1rem', width: '100%', outline: 'none', marginBottom: '2px' }}
-                            placeholder="Category Name"
+                            value={cat.weight}
+                            onChange={(e) => updateCategory(cat.id, { weight: e.target.value })}
+                            type="number"
+                            placeholder="0"
+                            className="bg-transparent border-none text-white font-bold text-sm w-8 text-center outline-none"
                         />
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <div style={{position: 'relative', display: 'flex', alignItems: 'center'}}>
-                                <input 
-                                    value={cat.weight}
-                                    onChange={(e) => updateCategory(cat.id, { weight: e.target.value })}
-                                    type="number"
-                                    placeholder="0"
-                                    style={{ 
-                                        background: 'rgba(0,0,0,0.3)', 
-                                        border: '1px solid rgba(255,255,255,0.1)', 
-                                        borderRadius: '6px', 
-                                        color: theme.accent, 
-                                        fontSize: '0.8rem', 
-                                        fontWeight: 700, 
-                                        width: '50px', 
-                                        padding: '2px 4px', 
-                                        textAlign: 'center' 
-                                    }}
-                                />
-                                <span style={{ position: 'absolute', right: '4px', fontSize: '0.65rem', color: theme.textMuted, pointerEvents: 'none' }}>%</span>
-                            </div>
-                            <span style={{ fontSize: '0.7rem', color: theme.textMuted }}>Weight</span>
-                        </div>
-                    </div>
-
-                    {/* Right: Actions */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <button 
-                            onClick={() => setShowDropSettings(!showDropSettings)}
-                            style={{ 
-                                background: showDropSettings ? 'rgba(139, 92, 246, 0.15)' : 'transparent', 
-                                border: '1px solid rgba(255,255,255,0.1)', 
-                                borderRadius: '6px', 
-                                padding: '4px 8px', 
-                                color: showDropSettings ? theme.accent : theme.textMuted, 
-                                fontSize: '0.7rem', 
-                                fontWeight: 600, 
-                                cursor: 'pointer', 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                gap: '4px',
-                                transition: 'all 0.2s'
-                            }}
-                        >
-                            <ArrowDownNarrowWide size={12} />
-                            {dropCount > 0 ? `${dropCount} Dropped` : 'Drop Lowest'}
-                        </button>
+                        <span className="text-xs text-white/40 font-bold">%</span>
                     </div>
                 </div>
-
-                {/* Drop Settings Panel */}
-                {showDropSettings && (
-                    <div style={{ marginTop: '10px', padding: '10px', background: 'rgba(0,0,0,0.2)', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)', animation: 'fadeIn 0.2s' }}>
-                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-                            <div style={{ background: 'rgba(139, 92, 246, 0.1)', padding: '4px', borderRadius: '50%', color: theme.accent }}>
-                                <HelpCircle size={14} />
-                            </div>
-                            <div style={{ flex: 1 }}>
-                                <h4 style={{ margin: '0 0 2px 0', fontSize: '0.8rem', fontWeight: 700, color: '#fff' }}>Drop Lowest Grades</h4>
-                                <p style={{ margin: '0 0 6px 0', fontSize: '0.7rem', color: theme.textMuted, lineHeight: '1.4' }}>
-                                    Automatically remove the lowest scoring items from this category.
-                                </p>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#fff' }}>Drop count:</span>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                        <button 
-                                            onClick={() => updateCategory(cat.id, { dropLowest: Math.max(0, dropCount - 1).toString() })}
-                                            style={{ width: '20px', height: '20px', borderRadius: '4px', background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                                        >
-                                            <Minus size={10} />
-                                        </button>
-                                        <span style={{ minWidth: '16px', textAlign: 'center', fontWeight: 700, fontSize: '0.9rem' }}>{dropCount}</span>
-                                        <button 
-                                            onClick={() => updateCategory(cat.id, { dropLowest: (dropCount + 1).toString() })}
-                                            style={{ width: '20px', height: '20px', borderRadius: '4px', background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                                        >
-                                            <Plus size={10} />
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
+                <button onClick={() => deleteCategory(cat.id)} className="text-white/20 hover:text-red-400 transition-colors p-2">
+                    <Trash2 size={16} />
+                </button>
             </div>
 
-            {/* Average Badge */}
-            {stats.average !== null && (
-                <div style={{ background: theme.accent, padding: '2px 6px', position: 'absolute', top: '40px', right: '0', borderRadius: '6px 0 0 6px', fontSize: '0.7rem', fontWeight: 800, color: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.3)', zIndex: 5 }}>
-                    Avg: {stats.average.toFixed(1)}%
+            {/* Drop Lowest Option (Only show if items exist) */}
+            {cat.items.length > 2 && (
+                <div className="flex items-center gap-2 mb-3 ml-1">
+                    <span className="text-xs text-white/40 font-medium">Drop Lowest:</span>
+                    <input 
+                        value={cat.dropLowest}
+                        onChange={(e) => updateCategory(cat.id, { dropLowest: e.target.value })}
+                        type="number"
+                        className="bg-white/5 border border-white/5 rounded-md text-white text-xs w-10 py-1 text-center outline-none focus:border-indigo-500/50"
+                    />
                 </div>
             )}
 
             {/* Items List */}
-            <div style={{ padding: '10px' }}>
-                {cat.items.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '12px', color: theme.textMuted, fontSize: '0.75rem', fontStyle: 'italic' }}>
-                        No items yet.
-                    </div>
-                ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        {cat.items.map((item: any) => (
-                            <div key={item.id} style={{ 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                gap: '8px', 
-                                background: item.active !== false ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.01)', 
-                                padding: '6px 10px', 
-                                borderRadius: '6px', 
-                                border: '1px solid rgba(255,255,255,0.05)',
-                                opacity: item.active !== false ? 1 : 0.5,
-                                transition: 'opacity 0.2s'
-                            }}>
-                                {/* Action: Visibility */}
-                                <button
-                                    onClick={() => updateItem(cat.id, item.id, 'active', !(item.active !== false))}
-                                    style={{ background: 'transparent', border: 'none', color: item.active !== false ? theme.textMuted : theme.textMuted, cursor: 'pointer', padding: '0', display: 'flex' }}
-                                    title={item.active !== false ? "Exclude" : "Include"}
-                                >
-                                    {item.active !== false ? <Eye size={12} /> : <EyeOff size={12} />}
-                                </button>
+            <div className="flex flex-col gap-2">
+                {cat.items.map((item: any) => (
+                    <div key={item.id} className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${item.active !== false ? 'bg-white/5 border-white/5' : 'bg-black/20 border-transparent opacity-50'}`}>
+                        <div className={`w-1.5 h-1.5 rounded-full ${item.score ? 'bg-green-400' : 'bg-white/20'}`} />
+                        
+                        <input 
+                            value={item.name}
+                            onChange={(e) => updateItem(cat.id, item.id, 'name', e.target.value)}
+                            className="flex-1 bg-transparent border-none text-white text-sm font-medium outline-none placeholder-white/20"
+                            placeholder="Item Name (e.g. Quiz 1)"
+                        />
 
-                                {/* Name Input */}
-                                <input 
-                                    value={item.name}
-                                    onChange={(e) => updateItem(cat.id, item.id, 'name', e.target.value)}
-                                    style={{ flex: 1, background: 'transparent', border: 'none', color: '#fff', fontSize: '0.8rem', fontWeight: 500, minWidth: '0', outline: 'none', padding: '2px 0' }}
-                                    placeholder="Item Name"
-                                />
-                                
-                                {/* Scores Group */}
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '2px', background: 'rgba(0,0,0,0.25)', padding: '2px 6px', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                        <input 
-                                            value={item.score}
-                                            onChange={(e) => updateItem(cat.id, item.id, 'score', e.target.value)}
-                                            type="number"
-                                            placeholder="-"
-                                            style={{ width: '28px', background: 'transparent', border: 'none', color: item.score ? theme.accent : theme.textMuted, textAlign: 'right', fontWeight: 700, fontSize: '0.85rem', outline: 'none', padding: 0 }}
-                                        />
-                                        <span style={{ color: theme.textMuted, fontWeight: 400, fontSize: '0.75rem', opacity: 0.7 }}>/</span>
-                                        <input 
-                                            value={item.total}
-                                            onChange={(e) => updateItem(cat.id, item.id, 'total', e.target.value)}
-                                            type="number"
-                                            placeholder="100"
-                                            style={{ width: '28px', background: 'transparent', border: 'none', color: theme.textMuted, fontWeight: 600, fontSize: '0.75rem', outline: 'none', padding: 0 }}
-                                        />
-                                    </div>
-                                    
-                                    {/* Delete */}
-                                    <button 
-                                        onClick={() => deleteItem(cat.id, item.id)}
-                                        style={{ background: 'transparent', border: 'none', color: theme.danger, cursor: 'pointer', padding: '2px', opacity: 0.6, marginLeft: '2px' }}
-                                    >
-                                        <X size={12} />
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
+                        <div className="flex items-center gap-2 bg-black/20 rounded-lg px-2 py-1 border border-white/5">
+                            <input 
+                                value={item.score}
+                                onChange={(e) => updateItem(cat.id, item.id, 'score', e.target.value)}
+                                type="number"
+                                placeholder="-"
+                                className="w-8 bg-transparent border-none text-right text-white font-bold text-sm outline-none placeholder-white/20"
+                            />
+                            <span className="text-white/20 text-xs">/</span>
+                            <input 
+                                value={item.total}
+                                onChange={(e) => updateItem(cat.id, item.id, 'total', e.target.value)}
+                                type="number"
+                                placeholder="100"
+                                className="w-8 bg-transparent border-none text-white/50 font-medium text-sm outline-none"
+                            />
+                        </div>
+
+                        <button onClick={() => deleteItem(cat.id, item.id)} className="text-white/10 hover:text-white transition-colors">
+                            <X size={14} />
+                        </button>
                     </div>
-                )}
+                ))}
+                
                 <button 
                     onClick={() => addItem(cat.id)}
-                    style={{ width: '100%', marginTop: '6px', padding: '8px', background: 'rgba(255,255,255,0.05)', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: '6px', color: theme.textMuted, fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', transition: 'background 0.2s' }}
+                    className="flex items-center justify-center gap-2 w-full py-3 rounded-xl border border-dashed border-white/10 text-white/30 hover:text-white hover:border-white/20 hover:bg-white/5 transition-all text-xs font-bold uppercase tracking-wider mt-2"
                 >
-                    <Plus size={12} /> Add {singularize(cat.name) || "Item"}
+                    <Plus size={14} /> Add Item
                 </button>
             </div>
         </div>
@@ -283,348 +129,168 @@ const CategoryCard = ({
 };
 
 const UniversalGradeCalculator: React.FC<UniversalGradeCalculatorProps> = ({ course, onUpdate, onBack }) => {
-    // --- LOCAL STATE (Syncs with props) ---
-    const [localTitle, setLocalTitle] = useState(course.title);
-    const [localTarget, setLocalTarget] = useState(course.targetGrade);
-    const [confirmAction, setConfirmAction] = useState<{ type: 'deleteCategory' | 'reset', id?: string } | null>(null);
-
-    useEffect(() => {
-        setLocalTitle(course.title);
-        setLocalTarget(course.targetGrade);
-    }, [course.id]);
-
-    const handleTitleChange = (val: string) => {
-        setLocalTitle(val);
-        onUpdate({ ...course, title: val });
-    };
-
-    const handleTargetChange = (val: string) => {
-        setLocalTarget(val);
-        onUpdate({ ...course, targetGrade: val });
-    };
-
-    // --- CALCULATOR LOGIC ENGINE ---
-
+    // --- LOGIC ---
     const getCategoryStats = (category: GradeCategory) => {
-        // Filter valid items: Must have a score AND be active
         const usableItems = category.items.filter(i => i.active !== false && i.score !== ''); 
-        
-        if (usableItems.length === 0) return { average: null, droppedCount: 0, usedItems: 0 };
+        if (usableItems.length === 0) return { average: null };
 
-        // Normalize to percentages
         const percentages = usableItems.map(i => {
             const s = parseFloat(i.score);
             const t = parseFloat(i.total);
-            const totalVal = (isNaN(t) || t === 0) ? 100 : t; 
-            return {
-                id: i.id,
-                percent: (s / totalVal) * 100,
-                original: i
-            };
-        }).sort((a, b) => a.percent - b.percent); // Ascending sort for dropping lowest
+            return { percent: (s / ((isNaN(t) || t === 0) ? 100 : t)) * 100 };
+        }).sort((a, b) => a.percent - b.percent);
 
         const dropCount = parseInt(category.dropLowest) || 0;
         const kept = percentages.slice(dropCount);
-        
-        if (kept.length === 0) return { average: 0, droppedCount: percentages.length, usedItems: 0 };
+        if (kept.length === 0) return { average: 0 };
 
         const sum = kept.reduce((acc, curr) => acc + curr.percent, 0);
-        return {
-            average: sum / kept.length,
-            droppedCount: dropCount,
-            usedItems: kept.length
-        };
+        return { average: sum / kept.length };
     };
 
-    // Global Stats
-    const calculateOverall = () => {
-        let totalWeightedScore = 0;
-        let totalWeightUsed = 0;
-        let totalDefinedWeight = 0;
+    let totalWeightedScore = 0;
+    let totalWeightUsed = 0;
 
-        course.categories.forEach(cat => {
-            const weight = parseFloat(cat.weight) || 0;
-            totalDefinedWeight += weight;
+    course.categories.forEach(cat => {
+        const weight = parseFloat(cat.weight) || 0;
+        const { average } = getCategoryStats(cat);
+        if (average !== null) {
+            totalWeightedScore += average * (weight / 100);
+            totalWeightUsed += weight;
+        }
+    });
 
-            const { average } = getCategoryStats(cat);
-            if (average !== null) {
-                // STRICT MATH: Average * (Weight / 100)
-                // e.g., Avg 100% * (50 / 100) = 50 points
-                const points = average * (weight / 100);
-                if (!isNaN(points)) {
-                    totalWeightedScore += points;
-                    totalWeightUsed += weight;
-                }
-            }
-        });
-
-        // Current Average = Performance on submitted work
-        // e.g. 50 points earned / 50 weight used = 100% average
-        const currentAverage = totalWeightUsed > 0 ? (totalWeightedScore / (totalWeightUsed / 100)) : 0;
-
-        return {
-            currentAverage, // The "100%" (Performance)
-            totalWeightedScore, // The "50%" (Accumulated Course Grade)
-            totalWeightUsed,
-            totalDefinedWeight
-        };
-    };
-
-    const { currentAverage, totalWeightedScore, totalWeightUsed, totalDefinedWeight } = calculateOverall();
-
-    // Predictor Logic
-    const target = parseFloat(localTarget) || 90;
+    const currentAverage = totalWeightUsed > 0 ? (totalWeightedScore / (totalWeightUsed / 100)) : 0.0;
+    const target = parseFloat(course.targetGrade) || 90;
     const remainingWeight = 100 - totalWeightUsed; 
     const pointsNeeded = target - totalWeightedScore;
     const neededAverage = remainingWeight > 0 ? (pointsNeeded / (remainingWeight / 100)) : 0;
-    
-    // --- ACTIONS ---
 
+    // --- ACTIONS ---
+    const updateCourse = (updates: Partial<CourseGrade>) => onUpdate({ ...course, ...updates });
+    
     const addCategory = () => {
-        const newCat: GradeCategory = {
-            id: crypto.randomUUID(),
-            name: "New Category",
-            weight: "0",
-            dropLowest: "0",
-            items: []
-        };
-        onUpdate({ ...course, categories: [...course.categories, newCat] });
+        const newCat: GradeCategory = { id: crypto.randomUUID(), name: "New Category", weight: "0", dropLowest: "0", items: [] };
+        updateCourse({ categories: [...course.categories, newCat] });
     };
 
     const updateCategory = (catId: string, updates: Partial<GradeCategory>) => {
         const newCats = course.categories.map(c => c.id === catId ? { ...c, ...updates } : c);
-        onUpdate({ ...course, categories: newCats });
+        updateCourse({ categories: newCats });
     };
 
     const deleteCategory = (catId: string) => {
-        setConfirmAction({ type: 'deleteCategory', id: catId });
-    };
-
-    const executeConfirm = () => {
-        if (confirmAction?.type === 'deleteCategory' && confirmAction.id) {
-            const newCats = course.categories.filter(c => c.id !== confirmAction.id);
-            onUpdate({ ...course, categories: newCats });
-        } else if (confirmAction?.type === 'reset') {
-            const newCats = course.categories.map(c => ({ ...c, items: [] }));
-            onUpdate({ ...course, categories: newCats });
-        }
-        setConfirmAction(null);
-    };
-
-    const singularize = (word: string) => {
-        const w = word.trim();
-        if (!w) return "Item";
-        // Basic heuristic for singularization
-        if (w.toLowerCase().endsWith('quizzes')) return w.slice(0, -3); // Quizzes -> Quiz
-        if (w.toLowerCase().endsWith('ies')) return w.slice(0, -3) + 'y'; // Activities -> Activity
-        if (w.endsWith('s') && !w.endsWith('ss')) return w.slice(0, -1); // Exams -> Exam
-        return w;
+        if(confirm("Delete category?")) updateCourse({ categories: course.categories.filter(c => c.id !== catId) });
     };
 
     const addItem = (catId: string) => {
-        const category = course.categories.find(c => c.id === catId);
-        const baseName = category ? singularize(category.name) : "Item";
-        const nextNum = category ? category.items.length + 1 : 1;
-
-        const newItem: GradeItem = {
-            id: crypto.randomUUID(),
-            name: `${baseName} ${nextNum}`,
-            score: "",
-            total: "",
-            active: true
-        };
-        const newCats = course.categories.map(c => {
-            if (c.id === catId) return { ...c, items: [...c.items, newItem] };
-            return c;
-        });
-        onUpdate({ ...course, categories: newCats });
+        const newCats = course.categories.map(c => c.id === catId ? { ...c, items: [...c.items, { id: crypto.randomUUID(), name: "", score: "", total: "100", active: true }] } : c);
+        updateCourse({ categories: newCats });
     };
 
     const updateItem = (catId: string, itemId: string, field: keyof GradeItem, value: any) => {
         const newCats = course.categories.map(c => {
-            if (c.id === catId) {
-                const newItems = c.items.map(i => i.id === itemId ? { ...i, [field]: value } : i);
-                return { ...c, items: newItems };
-            }
+            if (c.id === catId) return { ...c, items: c.items.map(i => i.id === itemId ? { ...i, [field]: value } : i) };
             return c;
         });
-        onUpdate({ ...course, categories: newCats });
+        updateCourse({ categories: newCats });
     };
 
     const deleteItem = (catId: string, itemId: string) => {
-        const newCats = course.categories.map(c => {
-            if (c.id === catId) {
-                return { ...c, items: c.items.filter(i => i.id !== itemId) };
-            }
-            return c;
-        });
-        onUpdate({ ...course, categories: newCats });
+        const newCats = course.categories.map(c => c.id === catId ? { ...c, items: c.items.filter(i => i.id !== itemId) } : c);
+        updateCourse({ categories: newCats });
     };
-
-    const handleReset = () => {
-        setConfirmAction({ type: 'reset' });
-    };
-
-    // --- VISUAL HELPERS ---
-
-    const getGradeColor = (grade: number) => {
-        if (grade >= 90) return theme.accent;
-        if (grade >= 80) return theme.success;
-        if (grade >= 70) return theme.warning;
-        return theme.danger;
-    };
-
-    const circularColor = getGradeColor(currentAverage);
 
     return (
-        <div style={{ paddingBottom: '100px' }}>
-            {/* --- TOP BAR --- */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-                <button onClick={onBack} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '10px', padding: '8px', color: '#fff', cursor: 'pointer' }}>
-                    <ArrowLeft size={16} />
+        <div style={styles.scrollableContent}>
+            {/* Top Nav */}
+            <div className="flex items-center gap-4 mb-8">
+                <button onClick={onBack} className="bg-white/5 hover:bg-white/10 rounded-full p-2 text-white transition-colors">
+                    <ArrowLeft size={20} />
                 </button>
-                <div style={{ flex: 1 }}>
+                <div className="flex-1">
                     <input 
-                        value={localTitle}
-                        onChange={(e) => handleTitleChange(e.target.value)}
-                        style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '1.1rem', fontWeight: 800, width: '100%', outline: 'none' }}
+                        value={course.title}
+                        onChange={(e) => updateCourse({ title: e.target.value })}
+                        className="bg-transparent border-none text-2xl font-black text-white w-full outline-none placeholder-white/30"
                         placeholder="Course Name"
                     />
                 </div>
             </div>
 
-            {/* --- DASHBOARD CARD --- */}
-            <div style={{ ...styles.card, background: 'linear-gradient(145deg, rgba(30,30,40,0.8), rgba(20,20,30,0.9))', padding: '14px', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            {/* Score Dashboard */}
+            <div className="bg-gradient-to-br from-indigo-900/40 to-violet-900/40 border border-white/10 rounded-3xl p-6 mb-8 flex items-center justify-between relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/20 blur-[50px] rounded-full pointer-events-none" />
                 
-                {/* LEFT: Target + Stats */}
-                <div style={{ flex: 1 }}>
-                    {/* Target Input (Small) */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}>
-                        <span style={{ fontSize: '0.6rem', color: theme.textMuted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Target</span>
-                        <div style={{ position: 'relative', display: 'inline-block' }}>
+                <div className="z-10">
+                    <div className="flex items-center gap-2 mb-2">
+                        <Target size={14} className="text-indigo-300" />
+                        <span className="text-xs font-bold text-indigo-300 uppercase tracking-wider">Target</span>
+                        <div className="flex items-center gap-1 bg-white/10 rounded px-2 py-0.5">
                             <input 
-                                value={localTarget}
-                                onChange={(e) => handleTargetChange(e.target.value)}
+                                value={course.targetGrade}
+                                onChange={(e) => updateCourse({ targetGrade: e.target.value })}
                                 type="number"
-                                style={{ 
-                                    background: 'rgba(255,255,255,0.1)', 
-                                    border: 'none', 
-                                    borderRadius: '12px', 
-                                    color: '#fff', 
-                                    fontSize: '0.75rem', 
-                                    fontWeight: 700, 
-                                    width: '40px', 
-                                    padding: '2px 6px', 
-                                    textAlign: 'center' 
-                                }}
+                                className="bg-transparent border-none text-white font-bold text-sm w-6 text-center outline-none"
                             />
-                            <span style={{ position: 'absolute', right: '-8px', top: '50%', transform: 'translateY(-50%)', fontSize: '0.65rem', color: theme.textMuted }}>%</span>
+                            <span className="text-xs text-white/50">%</span>
                         </div>
                     </div>
-
-                    {/* Detailed Stats */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                        
-                        {/* Performance (Average) */}
-                        <div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.65rem', color: theme.textMuted, marginBottom: '2px', fontWeight: 600 }}>
-                                <Award size={10} /> Average Performance
-                            </div>
-                            <div style={{ fontSize: '1rem', fontWeight: 700, color: getGradeColor(currentAverage) }}>
-                                {currentAverage.toFixed(1)}%
-                            </div>
+                    <div>
+                        <div className="text-5xl font-black text-white tracking-tighter">
+                            {currentAverage.toFixed(1)}<span className="text-2xl text-white/40">%</span>
                         </div>
-
+                        <div className="text-xs font-medium text-white/40 mt-1">Current Grade</div>
                     </div>
                 </div>
 
-                {/* RIGHT: Big Circle (ACCUMULATED GRADE) */}
-                <div style={{ position: 'relative', width: '80px', height: '80px' }}>
-                    <svg width="80" height="80" viewBox="0 0 120 120" style={{ transform: 'rotate(-90deg)' }}>
-                        <circle cx="60" cy="60" r="52" stroke="rgba(255,255,255,0.05)" strokeWidth="8" fill="none" />
-                        <circle 
-                            cx="60" cy="60" r="52" 
-                            stroke={circularColor} 
-                            strokeWidth="8" 
-                            fill="none" 
-                            strokeDasharray={326}
-                            // Fill based on totalWeightedScore (0-100)
-                            strokeDashoffset={326 - ((Math.min(totalWeightedScore, 100) / 100) * 326)}
-                            strokeLinecap="round"
-                            style={{ transition: 'stroke-dashoffset 0.8s ease' }}
-                        />
-                    </svg>
-                    <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                        <span style={{ fontSize: '0.55rem', color: theme.textMuted, fontWeight: 700, textTransform: 'uppercase' }}>Course Grade</span>
-                        <span style={{ fontSize: '1.2rem', color: '#fff', fontWeight: 800, lineHeight: 1, letterSpacing: '-1px' }}>
-                            {totalWeightedScore.toFixed(1)}%
-                        </span>
-                        <span style={{ fontSize: '0.5rem', color: 'rgba(255,255,255,0.4)', marginTop: '2px', fontWeight: 500 }}>
-                            Score
-                        </span>
-                    </div>
+                <div className="z-10">
+                    <RadialProgress 
+                        percentage={totalWeightedScore} 
+                        color={theme.accent}
+                        size={90} 
+                        strokeWidth={8} 
+                        label={`${totalWeightedScore.toFixed(0)}%`}
+                    />
                 </div>
             </div>
 
-            {/* --- PREDICTOR BANNER --- */}
-            <div style={{ marginBottom: '16px', padding: '12px', borderRadius: '12px', background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)', display: 'flex', gap: '10px' }}>
-                <TrendingUp size={16} className="text-blue-400 shrink-0" />
+            {/* Path to Victory */}
+            <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-4 mb-8 flex gap-4 items-start">
+                <div className="bg-blue-500/20 p-2 rounded-lg text-blue-400 mt-0.5">
+                    <TrendingUp size={18} />
+                </div>
                 <div>
-                    <h4 style={{ margin: 0, fontSize: '0.8rem', fontWeight: 700, color: '#93c5fd' }}>Path to Victory</h4>
-                    <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', color: 'rgba(255,255,255,0.8)', lineHeight: 1.4 }}>
+                    <h4 className="text-sm font-bold text-blue-100 mb-1">Path to Victory</h4>
+                    <p className="text-sm text-blue-200/80 leading-relaxed">
                         {remainingWeight <= 0 ? (
-                             pointsNeeded <= 0 ? "You've reached your target! Great job." : "No weight remaining. Extra credit needed!"
-                        ) : neededAverage > 100 ? (
-                             `You need >100% on remaining work.`
-                        ) : neededAverage <= 0 ? (
-                             `You've already secured a ${target}%.`
+                             pointsNeeded <= 0 ? "You've already hit your target! Great work." : "Target unreachable with remaining weights."
                         ) : (
-                             <>To get <b>{target}%</b>, you need <b>{neededAverage.toFixed(1)}%</b> on remaining.</>
+                             <>To get <b>{target}%</b>, you need to average <span className="bg-blue-500 text-white px-1.5 py-0.5 rounded font-bold">{neededAverage.toFixed(1)}%</span> on the remaining <b>{remainingWeight}%</b>.</>
                         )}
                     </p>
                 </div>
             </div>
 
-            {/* --- CATEGORY LIST --- */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {/* Content */}
+            <div className="space-y-2">
                 {course.categories.map((cat) => (
                     <CategoryCard 
-                        key={cat.id}
-                        cat={cat}
-                        updateCategory={updateCategory}
-                        deleteCategory={deleteCategory}
-                        addItem={addItem}
-                        updateItem={updateItem}
-                        deleteItem={deleteItem}
-                        singularize={singularize}
-                        getCategoryStats={getCategoryStats}
+                        key={cat.id} cat={cat}
+                        updateCategory={updateCategory} deleteCategory={deleteCategory}
+                        addItem={addItem} updateItem={updateItem} deleteItem={deleteItem}
                     />
                 ))}
-
-                <button 
-                    onClick={addCategory}
-                    style={{ ...styles.button, width: '100%', justifyContent: 'center', padding: '12px', fontSize: '0.85rem', marginTop: '4px' }}
-                >
-                    <Plus size={16} /> Add Category
-                </button>
-
-                {course.categories.length > 0 && (
-                     <button 
-                        onClick={handleReset}
-                        style={{ background: 'transparent', border: 'none', color: theme.danger, fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '12px', opacity: 0.8 }}
-                    >
-                        <RotateCcw size={12} /> Reset All Grades
-                    </button>
-                )}
             </div>
 
-            <ConfirmModal 
-                isOpen={!!confirmAction}
-                title={confirmAction?.type === 'deleteCategory' ? "Delete Category?" : "Reset All?"}
-                message={confirmAction?.type === 'deleteCategory' ? "This category and its grades will be removed." : "This will wipe all grades for this course. Are you sure?"}
-                onConfirm={executeConfirm}
-                onCancel={() => setConfirmAction(null)}
-            />
+            {/* Add Button */}
+            <button 
+                onClick={addCategory}
+                className="w-full py-4 mt-4 rounded-2xl border-2 border-dashed border-white/10 text-white/40 font-bold hover:bg-white/5 hover:text-white hover:border-white/20 transition-all flex items-center justify-center gap-2"
+            >
+                <Plus size={20} /> Add Category
+            </button>
+            <div className="h-10" />
         </div>
     );
 };
