@@ -1,4 +1,5 @@
 
+
 import { ScheduleEvent, MaterialFile, ScheduleProfile, EventType, MuscleGroup, GymSettings, ExerciseDefinition, WorkoutRoutine, PeriodDefinition } from './types';
 
 // Helper to get local ISO string (YYYY-MM-DD) to fix timezone issues
@@ -103,11 +104,10 @@ export const DEFAULT_GYM_SETTINGS: GymSettings = {
 };
 
 export const DEFAULT_EXERCISES: ExerciseDefinition[] = [
-  // Chest
+  // --- CHEST ---
   { 
     id: 'c1', name: 'Bench Press', muscleGroup: MuscleGroup.CHEST, equipment: 'Barbell',
-    imageUrl: EXERCISE_ICONS['Bench Press'],
-    restTime: 120
+    imageUrl: EXERCISE_ICONS['Bench Press'], restTime: 120
   },
   { 
     id: 'c2', name: 'Incline Dumbbell Press', muscleGroup: MuscleGroup.CHEST, equipment: 'Dumbbell',
@@ -119,18 +119,13 @@ export const DEFAULT_EXERCISES: ExerciseDefinition[] = [
   },
   { 
     id: 'c4', name: 'Push-ups', muscleGroup: MuscleGroup.CHEST, equipment: 'Bodyweight',
-    imageUrl: EXERCISE_ICONS['Push-ups'],
-    restTime: 60
+    imageUrl: EXERCISE_ICONS['Push-ups'], restTime: 60
   },
-  { 
-    id: 'c5', name: 'Dips', muscleGroup: MuscleGroup.CHEST, equipment: 'Bodyweight',
-    imageUrl: EXERCISE_ICONS['Dips']
-  },
-  // Back
+
+  // --- BACK ---
   { 
     id: 'b1', name: 'Deadlift', muscleGroup: MuscleGroup.BACK, equipment: 'Barbell',
-    imageUrl: EXERCISE_ICONS['Deadlift'],
-    restTime: 180
+    imageUrl: EXERCISE_ICONS['Deadlift'], restTime: 180
   },
   { 
     id: 'b2', name: 'Pull-ups', muscleGroup: MuscleGroup.BACK, equipment: 'Bodyweight',
@@ -144,53 +139,106 @@ export const DEFAULT_EXERCISES: ExerciseDefinition[] = [
     id: 'b4', name: 'Bent Over Row', muscleGroup: MuscleGroup.BACK, equipment: 'Barbell',
     imageUrl: EXERCISE_ICONS['Bent Over Row']
   },
-  // Legs
-  { 
-    id: 'l1', name: 'Squat', muscleGroup: MuscleGroup.LEGS, equipment: 'Barbell',
-    imageUrl: EXERCISE_ICONS['Squat'],
-    restTime: 180
-  },
-  { 
-    id: 'l2', name: 'Leg Press', muscleGroup: MuscleGroup.LEGS, equipment: 'Machine',
-    imageUrl: EXERCISE_ICONS['Leg Press']
-  },
-  { 
-    id: 'l3', name: 'Lunges', muscleGroup: MuscleGroup.LEGS, equipment: 'Dumbbell',
-    imageUrl: EXERCISE_ICONS['Lunges']
-  },
-  // Shoulders
+
+  // --- SHOULDERS ---
   { 
     id: 's1', name: 'Overhead Press', muscleGroup: MuscleGroup.SHOULDERS, equipment: 'Barbell',
-    imageUrl: EXERCISE_ICONS['Overhead Press'],
-    restTime: 120
+    imageUrl: EXERCISE_ICONS['Overhead Press'], restTime: 120
   },
   { 
     id: 's2', name: 'Lateral Raises', muscleGroup: MuscleGroup.SHOULDERS, equipment: 'Dumbbell',
-    imageUrl: EXERCISE_ICONS['Lateral Raises'],
-    restTime: 60
+    imageUrl: EXERCISE_ICONS['Lateral Raises'], restTime: 60
   },
-  // Arms
+
+  // --- BICEPS ---
   { 
-    id: 'a1', name: 'Barbell Curl', muscleGroup: MuscleGroup.ARMS, equipment: 'Barbell',
-    imageUrl: EXERCISE_ICONS['Barbell Curl'],
-    restTime: 60
+    id: 'a1', name: 'Barbell Curl', muscleGroup: MuscleGroup.BICEPS, equipment: 'Barbell',
+    imageUrl: EXERCISE_ICONS['Barbell Curl'], restTime: 60
+  },
+  {
+    id: 'a3', name: 'Hammer Curl', muscleGroup: MuscleGroup.BICEPS, equipment: 'Dumbbell', restTime: 60
+  },
+
+  // --- TRICEPS ---
+  { 
+    id: 'a2', name: 'Tricep Pushdown', muscleGroup: MuscleGroup.TRICEPS, equipment: 'Cable',
+    imageUrl: EXERCISE_ICONS['Tricep Pushdown'], restTime: 60
   },
   { 
-    id: 'a2', name: 'Tricep Pushdown', muscleGroup: MuscleGroup.ARMS, equipment: 'Cable',
-    imageUrl: EXERCISE_ICONS['Tricep Pushdown'],
-    restTime: 60
+    id: 'c5', name: 'Dips', muscleGroup: MuscleGroup.TRICEPS, equipment: 'Bodyweight',
+    imageUrl: EXERCISE_ICONS['Dips']
   },
-  // Core
+
+  // --- FOREARMS ---
+  {
+    id: 'fa1', name: 'Wrist Curl', muscleGroup: MuscleGroup.FOREARMS, equipment: 'Dumbbell', restTime: 45
+  },
+
+  // --- QUADRICEPS ---
   { 
-    id: 'co1', name: 'Plank', muscleGroup: MuscleGroup.CORE, equipment: 'Bodyweight',
-    imageUrl: EXERCISE_ICONS['Plank'],
-    restTime: 45
+    id: 'l1', name: 'Squat', muscleGroup: MuscleGroup.QUADRICEPS, equipment: 'Barbell',
+    imageUrl: EXERCISE_ICONS['Squat'], restTime: 180
   },
-  // Cardio
+  { 
+    id: 'l2', name: 'Leg Press', muscleGroup: MuscleGroup.QUADRICEPS, equipment: 'Machine',
+    imageUrl: EXERCISE_ICONS['Leg Press']
+  },
+  
+  // --- HAMSTRINGS ---
+  {
+    id: 'l4', name: 'Leg Curl', muscleGroup: MuscleGroup.HAMSTRINGS, equipment: 'Machine', restTime: 90
+  },
+  {
+    id: 'l5', name: 'Romanian Deadlift', muscleGroup: MuscleGroup.HAMSTRINGS, equipment: 'Barbell', restTime: 120
+  },
+
+  // --- GLUTES ---
+  { 
+    id: 'l3', name: 'Lunges', muscleGroup: MuscleGroup.GLUTES, equipment: 'Dumbbell',
+    imageUrl: EXERCISE_ICONS['Lunges']
+  },
+  {
+    id: 'l6', name: 'Hip Thrust', muscleGroup: MuscleGroup.GLUTES, equipment: 'Barbell', restTime: 120
+  },
+
+  // --- CALVES ---
+  {
+    id: 'ca2', name: 'Calf Raises', muscleGroup: MuscleGroup.CALVES, equipment: 'Machine', restTime: 60
+  },
+
+  // --- ADDUCTORS ---
+  {
+    id: 'ad1', name: 'Hip Adduction', muscleGroup: MuscleGroup.ADDUCTORS, equipment: 'Machine', restTime: 60
+  },
+
+  // --- ABS ---
+  { 
+    id: 'co1', name: 'Plank', muscleGroup: MuscleGroup.ABS, equipment: 'Bodyweight',
+    imageUrl: EXERCISE_ICONS['Plank'], restTime: 45
+  },
+  {
+    id: 'co2', name: 'Crunches', muscleGroup: MuscleGroup.ABS, equipment: 'Bodyweight', restTime: 60
+  },
+
+  // --- CORE ---
+  {
+    id: 'co3', name: 'Russian Twist', muscleGroup: MuscleGroup.CORE, equipment: 'Bodyweight', restTime: 60
+  },
+
+  // --- CARDIO ---
   { 
     id: 'ca1', name: 'Running', muscleGroup: MuscleGroup.CARDIO, equipment: 'Other',
     imageUrl: EXERCISE_ICONS['Running']
   },
+  {
+    id: 'ca3', name: 'Cycling', muscleGroup: MuscleGroup.CARDIO, equipment: 'Machine', restTime: 0
+  },
+  {
+    id: 'ca4', name: 'Jump Rope', muscleGroup: MuscleGroup.CARDIO, equipment: 'Other', restTime: 60
+  },
+  {
+    id: 'ca5', name: 'Stair Master', muscleGroup: MuscleGroup.CARDIO, equipment: 'Machine', restTime: 0
+  }
 ];
 
 export const DEFAULT_ROUTINES: WorkoutRoutine[] = [
@@ -207,8 +255,8 @@ export const DEFAULT_ROUTINES: WorkoutRoutine[] = [
     id: 'r2',
     name: 'Leg Day',
     exercises: [
-      { id: 'l1', name: 'Squat', muscleGroup: MuscleGroup.LEGS, equipment: 'Barbell', imageUrl: EXERCISE_ICONS['Squat'], restTime: 180 },
-      { id: 'l3', name: 'Lunges', muscleGroup: MuscleGroup.LEGS, equipment: 'Dumbbell', imageUrl: EXERCISE_ICONS['Lunges'] },
+      { id: 'l1', name: 'Squat', muscleGroup: MuscleGroup.QUADRICEPS, equipment: 'Barbell', imageUrl: EXERCISE_ICONS['Squat'], restTime: 180 },
+      { id: 'l3', name: 'Lunges', muscleGroup: MuscleGroup.GLUTES, equipment: 'Dumbbell', imageUrl: EXERCISE_ICONS['Lunges'] },
     ]
   }
 ];

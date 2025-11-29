@@ -1,6 +1,7 @@
 
+
 import React, { useState } from 'react';
-import { GymViewType, FoodItem, WorkoutSession, WaterLog, GymSettings, WorkoutRoutine, ExerciseDefinition } from '../types';
+import { GymViewType, FoodItem, WorkoutSession, WaterLog, GymSettings, WorkoutRoutine, ExerciseDefinition, ActiveGymState } from '../types';
 import { GymDashboard } from './gym/GymDashboard';
 import { GymWorkoutLogger } from './gym/GymWorkoutLogger';
 import { GymNutritionLogger } from './gym/GymNutritionLogger';
@@ -18,12 +19,15 @@ interface GymViewProps {
   routines: WorkoutRoutine[];
   customExercises: ExerciseDefinition[];
   settings: GymSettings;
+  activeGymState: ActiveGymState;
+  onUpdateActiveGymState: (state: ActiveGymState) => void;
   // Handlers
   addFoodLog: (item: FoodItem) => void;
   updateFoodLog: (item: FoodItem) => void;
   deleteFoodLog: (id: string) => void;
   addWaterLog: (amount: number) => void;
   addWorkoutSession: (session: WorkoutSession) => void;
+  deleteWorkoutSession: (id: string) => void;
   saveRoutine: (routine: WorkoutRoutine) => void;
   deleteRoutine: (id: string) => void;
   addCustomExercise: (ex: ExerciseDefinition) => void;
@@ -38,11 +42,14 @@ const GymView: React.FC<GymViewProps> = ({
     routines, 
     customExercises, 
     settings,
+    activeGymState,
+    onUpdateActiveGymState,
     addFoodLog,
     updateFoodLog,
     deleteFoodLog,
     addWaterLog,
     addWorkoutSession,
+    deleteWorkoutSession,
     saveRoutine,
     deleteRoutine,
     addCustomExercise,
@@ -60,7 +67,21 @@ const GymView: React.FC<GymViewProps> = ({
       case GymViewType.DASHBOARD:
         return <GymDashboard foodLogs={todaysFood} waterLogs={todaysWater} workoutSessions={workoutSessions} settings={settings} setView={setCurrentView} />;
       case GymViewType.WORKOUT:
-        return <GymWorkoutLogger history={workoutSessions} routines={routines} exercises={allExercises} saveWorkout={addWorkoutSession} saveRoutine={saveRoutine} deleteRoutine={deleteRoutine} addCustomExercise={addCustomExercise} settings={settings} />;
+        return (
+            <GymWorkoutLogger 
+                history={workoutSessions} 
+                routines={routines} 
+                exercises={allExercises} 
+                saveWorkout={addWorkoutSession} 
+                deleteWorkoutSession={deleteWorkoutSession} 
+                saveRoutine={saveRoutine} 
+                deleteRoutine={deleteRoutine} 
+                addCustomExercise={addCustomExercise} 
+                settings={settings}
+                activeGymState={activeGymState}
+                onUpdateActiveGymState={onUpdateActiveGymState}
+            />
+        );
       case GymViewType.NUTRITION:
         return <GymNutritionLogger logs={todaysFood} waterLogs={todaysWater} addLog={addFoodLog} updateLog={updateFoodLog} deleteLog={deleteFoodLog} addWater={addWaterLog} settings={settings} />;
       case GymViewType.SETTINGS:

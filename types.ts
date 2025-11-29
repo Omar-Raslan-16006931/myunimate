@@ -206,12 +206,26 @@ export interface GymSettings {
 }
 
 export enum MuscleGroup {
+  // Upper Body
   CHEST = 'Chest',
   BACK = 'Back',
-  LEGS = 'Legs',
   SHOULDERS = 'Shoulders',
-  ARMS = 'Arms',
-  CORE = 'Core',
+  BICEPS = 'Biceps',
+  TRICEPS = 'Triceps',
+  FOREARMS = 'Forearms',
+  
+  // Lower Body
+  QUADRICEPS = 'Quadriceps',
+  HAMSTRINGS = 'Hamstrings',
+  GLUTES = 'Glutes',
+  CALVES = 'Calves',
+  ADDUCTORS = 'Adductors / Inner Thighs',
+  
+  // Core
+  ABS = 'Abs',
+  CORE = 'Core', 
+  
+  // Other
   CARDIO = 'Cardio'
 }
 
@@ -242,3 +256,10 @@ export enum GymViewType {
 }
 
 export type ThemeMode = 'dark' | 'light';
+
+export interface ActiveGymState {
+  session: WorkoutSession | null;
+  activeTimers: Record<string, number>; // setId -> startTime
+  restExpiry: number | null; // Timestamp when rest ends
+  lastValues: Record<string, ExerciseSet[]>; // Exercise Name -> Previous Sets
+}
