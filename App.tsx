@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from './lib/supabase';
 import { 
@@ -22,6 +21,7 @@ import { styles, theme } from './theme';
 import { parseScheduleImage } from './services/geminiService';
 
 import Auth from './components/Auth';
+import LandingPage from './components/LandingPage';
 import CompleteProfile from './components/CompleteProfile';
 import Dashboard from './components/Dashboard';
 import Schedule from './components/Schedule';
@@ -277,9 +277,9 @@ const GradesView = ({ grades, setGrades }: { grades: CourseGrade[], setGrades: R
 };
 
 const App: React.FC = () => {
-  // ... (State definitions)
   const [session, setSession] = useState<any | null>(null);
   const [isTestMode, setIsTestMode] = useState(false);
+  const [showAuth, setShowAuth] = useState(false);
   const [syncStatus, setSyncStatus] = useState<'synced' | 'saving' | 'error' | 'offline'>('synced');
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardingLoading, setOnboardingLoading] = useState(false);
@@ -333,7 +333,6 @@ const App: React.FC = () => {
   // ... (useEffect hooks)
 
   const handleResetApp = (fullClear = false) => {
-    // ... (rest of reset logic)
     setEvents(fullClear ? [] : INITIAL_EVENTS);
     setMaterials(fullClear ? [] : INITIAL_FILES);
     setProfiles(INITIAL_PROFILES);
@@ -351,6 +350,11 @@ const App: React.FC = () => {
     setDriveFiles([]);
     setCurrentView('dashboard');
     setDbError(false);
+    
+    // Reset Auth state if full clear
+    if (fullClear) {
+        setShowAuth(false);
+    }
   };
 
   // ... (Other handlers like handleSignOut, handleUpdateAccount, etc.)
@@ -403,7 +407,9 @@ const App: React.FC = () => {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       if (!session && !isTestMode) {
-          handleResetApp(true);
+          // If session is lost, we don't automatically full clear, 
+          // we just go back to landing/auth state which handles view reset.
+          // handleResetApp(true) called on SignOut explicit action.
       }
     });
 
@@ -958,7 +964,10 @@ const App: React.FC = () => {
 
   // ... (Render logic)
   if (!session && !isTestMode) {
-    return <Auth onEnterTestMode={handleEnterTestMode} />;
+    if (showAuth) {
+      return <Auth onEnterTestMode={handleEnterTestMode} />;
+    }
+    return <LandingPage onGetStarted={() => setShowAuth(true)} />;
   }
 
   if (dbError) {
