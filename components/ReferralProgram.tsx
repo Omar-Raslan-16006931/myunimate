@@ -94,14 +94,15 @@ const ReferralProgram: React.FC<ReferralProgramProps> = ({
   };
 
   const handleRedeemMembership = async () => {
-      if (!userId || balance < 3.99) return;
-      if (!confirm("Redeem $3.99 for 1 Month of Pro Membership?")) return;
+      // Updated Price: $5.99
+      if (!userId || balance < 5.99) return;
+      if (!confirm("Redeem $5.99 for 1 Month of Pro Membership?")) return;
       
       setIsProcessing(true);
       setErrorMessage(null);
 
       try {
-          const newBalance = balance - 3.99;
+          const newBalance = balance - 5.99;
 
           // 1. Update Profile (Optimistic)
           const { error: profileError } = await supabase
@@ -119,7 +120,7 @@ const ReferralProgram: React.FC<ReferralProgramProps> = ({
               .from('wallet_ledger')
               .insert({
                   user_id: userId,
-                  amount: -3.99,
+                  amount: -5.99,
                   balance_after: newBalance,
                   transaction_type: 'membership_purchase',
                   status: 'completed',
@@ -240,10 +241,10 @@ const ReferralProgram: React.FC<ReferralProgramProps> = ({
                         <div className="grid grid-cols-2 gap-4 w-full">
                             <button 
                                 onClick={handleRedeemMembership}
-                                disabled={balance < 3.99 || isProcessing}
+                                disabled={balance < 5.99 || isProcessing}
                                 className={`
                                     flex flex-col items-center justify-center p-4 rounded-2xl border transition-all active:scale-[0.98] relative overflow-hidden group/btn
-                                    ${balance >= 3.99 
+                                    ${balance >= 5.99 
                                         ? 'bg-gradient-to-br from-indigo-600/20 to-violet-600/20 hover:from-indigo-600/30 hover:to-violet-600/30 border-indigo-500/30 cursor-pointer' 
                                         : 'bg-white/[0.02] border-white/5 opacity-50 cursor-not-allowed'}
                                 `}
@@ -252,7 +253,7 @@ const ReferralProgram: React.FC<ReferralProgramProps> = ({
                                     <Sparkles size={18} />
                                 </div>
                                 <div className="text-sm font-bold text-white">Redeem Pro</div>
-                                <div className="text-[10px] text-white/40 mt-0.5">$3.99 / Month</div>
+                                <div className="text-[10px] text-white/40 mt-0.5">$5.99 / Month</div>
                             </button>
 
                             <button 
@@ -500,4 +501,3 @@ const ReferralProgram: React.FC<ReferralProgramProps> = ({
 };
 
 export default ReferralProgram;
-    

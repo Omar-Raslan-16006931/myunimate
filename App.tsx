@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from './lib/supabase';
-import { ViewState, ScheduleEvent, ScheduleProfile, EventColorMap, EventType, PeriodDefinition, Announcement, ThemeMode, FoodItem, WaterLog, WorkoutSession, WorkoutRoutine, ExerciseDefinition, GymSettings, ActiveGymState, CourseGrade, ToDoItem } from './types';
-import { INITIAL_EVENTS, INITIAL_PROFILES, INITIAL_COLORS, INITIAL_PERIODS, DEFAULT_GYM_SETTINGS, DEFAULT_ROUTINES, DEFAULT_EXERCISES } from './constants';
+import { ViewState, ScheduleEvent, ScheduleProfile, EventColorMap, EventType, PeriodDefinition, Announcement, ThemeMode, FoodItem, WaterLog, WorkoutSession, WorkoutRoutine, ExerciseDefinition, GymSettings, ActiveGymState, CourseGrade, ToDoItem, MaterialFile } from './types';
+import { INITIAL_EVENTS, INITIAL_PROFILES, INITIAL_COLORS, INITIAL_PERIODS, DEFAULT_GYM_SETTINGS, DEFAULT_ROUTINES, DEFAULT_EXERCISES, INITIAL_FILES } from './constants';
 import { styles, theme } from './theme';
 
 import Auth from './components/Auth';
@@ -21,6 +21,7 @@ import EventDetailsModal from './components/EventDetailsModal';
 import ImageImportModal from './components/ImageImportModal';
 import SubscriptionPage from './components/SubscriptionPage';
 import UniversalGradeCalculator from './components/UniversalGradeCalculator';
+import PaymentPage from './components/PaymentPage';
 
 export const App: React.FC = () => {
   const [session, setSession] = useState<any>(null);
@@ -29,6 +30,11 @@ export const App: React.FC = () => {
   const [profile, setProfile] = useState<any>(null);
   const [view, setView] = useState<ViewState>('dashboard');
   const [themeMode, setThemeMode] = useState<ThemeMode>('dark');
+
+  // Onboarding State
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showPayment, setShowPayment] = useState(false);
+  const [selectedPlanPrice, setSelectedPlanPrice] = useState(0);
 
   // Schedule Data
   const [events, setEvents] = useState<ScheduleEvent[]>(INITIAL_EVENTS);
@@ -55,10 +61,11 @@ export const App: React.FC = () => {
     session: null, activeTimers: {}, restExpiry: null, lastValues: {}
   });
 
-  // Grades & ToDo
+  // Grades, Courses & ToDo
   const [courses, setCourses] = useState<CourseGrade[]>([]);
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [toDoItems, setToDoItems] = useState<ToDoItem[]>([]);
+  const [files, setFiles] = useState<MaterialFile[]>(INITIAL_FILES);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -96,10 +103,8 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleUpgrade = async () => {
+  const handleUpgrade = async (price: number) => {
       if (!session?.user?.id || !profile) return;
-      
-      const price = 3.99; // Monthly Pro Price
       
       try {
           // Upgrade User
@@ -142,7 +147,7 @@ export const App: React.FC = () => {
               }
           }
           
-          alert("Upgrade Successful! Welcome to Pro.");
+          if (!showOnboarding) alert("Upgrade Successful! Welcome to Pro.");
       } catch (err) {
           console.error("Upgrade failed", err);
           alert("Upgrade failed. Please try again.");
@@ -193,7 +198,6 @@ export const App: React.FC = () => {
 
   if (!session) {
     if (showAuth) return <Auth />;
-    // Pass setShowAuth(true) to allow user to open auth from banner
     return <LandingPage onGetStarted={() => setShowAuth(true)} onShowReferral={() => setShowAuth(true)} />;
   }
 
@@ -202,9 +206,48 @@ export const App: React.FC = () => {
         loading={false} 
         onComplete={async (data) => {
             await handleUpdateProfile(data);
+            setShowOnboarding(true);
         }} 
         onSignOut={() => supabase.auth.signOut()}
     />;
+  }
+
+  // --- Onboarding Flow ---
+  if (showPayment) {
+      return (
+          <div style={styles.container} className={themeMode}>
+              <PaymentPage 
+                  price={selectedPlanPrice} 
+                  onSuccess={async () => {
+                      await handleUpgrade(selectedPlanPrice);
+                      setShowPayment(false);
+                      setShowOnboarding(false);
+                  }}
+                  onCancel={() => setShowPayment(false)}
+              />
+          </div>
+      )
+  }
+
+  if (showOnboarding) {
+      return (
+          <div style={styles.container} className={themeMode}>
+              <SubscriptionPage 
+                  subscriptionTier={0} 
+                  nextRenewalDate={new Date().toISOString()} 
+                  pendingDowngrade={false}
+                  isOnboarding={true}
+                  onUpgrade={async (price) => {
+                      setSelectedPlanPrice(price);
+                      setShowPayment(true);
+                  }}
+                  onDowngrade={async () => {
+                      setShowOnboarding(false);
+                  }}
+                  onBack={() => setShowOnboarding(false)}
+              />
+          </div>
+      )
   }
 
   const renderContent = () => {
@@ -265,6 +308,15 @@ export const App: React.FC = () => {
             addCustomExercise={(ex) => setCustomExercises([...customExercises, ex])}
             updateSettings={setGymSettings}
         />;
+      case 'courses':
+      case 'materials':
+        return (
+            <div style={{...styles.scrollableContent, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column'}}>
+                <h2 style={styles.title}>Coming Soon</h2>
+                <p style={styles.subtitle}>This module is under construction.</p>
+                <button onClick={() => setView('dashboard')} style={{...styles.button, marginTop: '20px'}}>Back Home</button>
+            </div>
+        );
       case 'grades':
         if (selectedCourseId) {
             const course = courses.find(c => c.id === selectedCourseId);
@@ -275,29 +327,12 @@ export const App: React.FC = () => {
                 onBack={() => setSelectedCourseId(null)}
             />;
         }
+        // Fallback
         return (
-            <div style={styles.scrollableContent}>
-                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
-                    <h1 style={styles.title}>Grades</h1>
-                    <button 
-                        onClick={() => {
-                            const newCourse: CourseGrade = { id: crypto.randomUUID(), title: 'New Course', targetGrade: '90', categories: [] };
-                            setCourses([...courses, newCourse]);
-                        }}
-                        style={styles.button}
-                    >
-                        New Course
-                    </button>
-                </div>
-                <div style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
-                    {courses.map(c => (
-                        <div key={c.id} onClick={() => setSelectedCourseId(c.id)} style={{...styles.card, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                            <span style={{fontWeight: 'bold'}}>{c.title}</span>
-                            <span style={{color: theme.textMuted}}>Target: {c.targetGrade}%</span>
-                        </div>
-                    ))}
-                    {courses.length === 0 && <p style={{color: theme.textMuted, textAlign: 'center'}}>No courses yet.</p>}
-                </div>
+            <div style={{...styles.scrollableContent, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column'}}>
+                <h2 style={styles.title}>Grades</h2>
+                <p style={styles.subtitle}>Select a course to view grades</p>
+                <button onClick={() => setView('dashboard')} style={{...styles.button, marginTop: '20px'}}>Back Home</button>
             </div>
         );
       case 'todo':
@@ -363,11 +398,10 @@ export const App: React.FC = () => {
             onNavigate={setView}
         />;
       default:
-        // Placeholder for courses/materials
+        // Fallback
         return (
             <div style={{...styles.scrollableContent, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column'}}>
-                <h2 style={styles.title}>Coming Soon</h2>
-                <p style={styles.subtitle}>This module is under construction.</p>
+                <h2 style={styles.title}>404</h2>
                 <button onClick={() => setView('dashboard')} style={{...styles.button, marginTop: '20px'}}>Back Home</button>
             </div>
         );
@@ -416,4 +450,3 @@ export const App: React.FC = () => {
     </div>
   );
 };
-    
