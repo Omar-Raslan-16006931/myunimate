@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Check, ArrowRight, Sparkles, GraduationCap, 
   Calendar, Calculator, Dumbbell, Brain, Link,
-  Layout, Shield, Smartphone, Users, Star, CheckSquare
+  Layout, Shield, Smartphone, Users, Star, CheckSquare, Crown
 } from 'lucide-react';
 import { RainbowButton } from './ui/rainbow-button';
 import { GlowingCard } from './ui/glowing-card';
@@ -57,6 +57,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onShowReferral 
   const [showBanner, setShowBanner] = useState(false);
   const [hasDismissedBanner, setHasDismissedBanner] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
+  
+  // Pricing Toggle State
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('yearly');
 
   // Scroll to top on mount and center pricing
   useEffect(() => {
@@ -285,37 +288,53 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onShowReferral 
 
             {/* Mobile: Horizontal Scroll with Padding for Pop Effect */}
             <div ref={pricingRef} className="flex md:grid md:grid-cols-3 gap-3 md:gap-8 items-stretch overflow-x-auto md:overflow-visible snap-x snap-mandatory no-scrollbar py-10 px-5 md:px-6 -mx-0 md:mx-auto">
-                <Reveal delay={0} className="min-w-[280px] md:min-w-0 snap-center h-full">
+                
+                {/* 1. Free Plan */}
+                <Reveal delay={0} className="min-w-[280px] md:min-w-0 snap-center h-full flex flex-col">
                     <PricingCard 
                         title="Freshman"
                         price="$0"
-                        period="/mo"
-                        features={['Course Scheduling', 'Basic Task Management', 'Grade Calculator', 'File Storage (500MB)']}
-                        cta="Start Free"
+                        period="Forever"
+                        features={['Basic Schedule', 'Task Manager', 'Grade Calculator']}
+                        cta="Get Started"
                         onAction={onGetStarted}
+                        variant="freshman"
+                        className="h-full"
                     />
                 </Reveal>
 
-                <Reveal delay={0.2} className="min-w-[280px] md:min-w-0 snap-center h-full">
+                {/* 2. Scholar Pro (Toggle) */}
+                <Reveal delay={0.2} className="min-w-[280px] md:min-w-0 snap-center h-full flex flex-col">
                     <PricingCard 
-                        title="Scholar"
-                        price="$3.99"
-                        period="/mo"
-                        features={['Everything in Free', 'Gemini AI Assistant', 'Gym & Macro Tracker', 'Unlimited Storage', 'Priority Support']}
-                        cta="Go Pro"
-                        highlighted
+                        title="Scholar Pro"
+                        price={billingCycle === 'yearly' ? "$49" : "$5.99"}
+                        period={billingCycle === 'yearly' ? "/year" : "/mo"}
+                        features={['Everything in Free', 'Gemini AI Tutor', 'Gym & Macro Tracker', 'Cloud Storage', 'Priority Support']}
+                        cta={billingCycle === 'yearly' ? "Get Yearly" : "Get Monthly"}
+                        variant="pro"
                         onAction={onGetStarted}
+                        toggle={true}
+                        billingCycle={billingCycle}
+                        setBillingCycle={setBillingCycle}
+                        savingsText={billingCycle === 'yearly' ? "SAVE 32% YEARLY" : undefined}
+                        trialText="Includes 14-day free trial"
+                        className="h-full"
                     />
                 </Reveal>
 
-                <Reveal delay={0.4} className="min-w-[280px] md:min-w-0 snap-center h-full">
+                {/* 3. Lifetime Plan */}
+                <Reveal delay={0.4} className="min-w-[280px] md:min-w-0 snap-center h-full flex flex-col">
                     <PricingCard 
                         title="Lifetime"
-                        price="$49"
-                        period="/once"
-                        features={['All Pro Features', 'Lifetime Updates', 'Early Access Features', 'Exclusive Themes', 'No Monthly Fees']}
+                        price="$79"
+                        period="one-time"
+                        features={['All Pro Features', 'Lifetime Updates', 'No Recurring Fees', 'Founders Badge']}
                         cta="Buy Once"
                         onAction={onGetStarted}
+                        savingsText="SAVE 75% FOREVER"
+                        shinyButton={true}
+                        variant="lifetime"
+                        className="h-full"
                     />
                 </Reveal>
                 <div className="w-2 md:hidden shrink-0"></div> 
@@ -440,42 +459,151 @@ const FeatureCard = ({ icon, title, desc, className = "" }: { icon: React.ReactN
     </GlowingCard>
 );
 
-const PricingCard = ({ title, price, period, features, cta, highlighted = false, onAction, className = "" }: any) => (
-    <GlowingCard className={`h-full rounded-[40px] ${highlighted ? 'z-10 scale-100 md:scale-105 shadow-2xl' : ''} ${className}`}>
-        <div className={`h-full p-5 md:p-8 flex flex-col relative rounded-[inherit] bg-[#130f1c]/90 backdrop-blur-xl border border-white/10 shadow-[0_0_20px_rgba(255,255,255,0.03)] ${highlighted ? 'bg-gradient-to-b from-violet-900/20 to-[#130f1c]/90' : ''}`}>
-            {highlighted && (
-                <div className="absolute -top-3 md:-top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-[9px] md:text-xs font-bold px-3 py-1 md:px-4 md:py-1.5 rounded-full uppercase tracking-wider shadow-lg whitespace-nowrap z-20">
-                    Most Popular
+interface PricingCardProps {
+    title: string;
+    price: string;
+    period: string;
+    features: string[];
+    cta: string;
+    variant?: 'freshman' | 'pro' | 'lifetime';
+    highlighted?: boolean;
+    onAction: () => void;
+    className?: string;
+    toggle?: boolean;
+    billingCycle?: 'monthly' | 'yearly';
+    setBillingCycle?: (val: 'monthly' | 'yearly') => void;
+    savingsText?: string;
+    trialText?: string;
+    shinyButton?: boolean;
+}
+
+const PricingCard = ({ 
+    title, price, period, features, cta, variant = 'freshman', highlighted = false, onAction, className = "",
+    toggle = false, billingCycle, setBillingCycle, savingsText, trialText, shinyButton = false 
+}: PricingCardProps) => {
+    
+    // Variant Styles
+    const isPro = variant === 'pro';
+    const isLifetime = variant === 'lifetime';
+    
+    let bgClass = "bg-[#130f1c]/90";
+    let borderClass = "border border-white/10";
+    let titleColor = "text-slate-300";
+    let checkColor = "bg-slate-700 text-slate-400";
+    let btnClass = "bg-white/10 hover:bg-white/20 text-white";
+
+    if (isPro) {
+        bgClass = "bg-gradient-to-b from-violet-900/20 to-[#130f1c]/90";
+        borderClass = "border border-violet-500/30";
+        titleColor = "text-violet-300";
+        checkColor = "bg-violet-500/20 text-violet-400";
+        btnClass = "bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white shadow-lg shadow-violet-900/20";
+    }
+
+    if (isLifetime) {
+        bgClass = "bg-gradient-to-b from-amber-950/40 via-[#1a1500] to-[#0a0a0f]";
+        borderClass = "border border-amber-500/30";
+        titleColor = "text-amber-200";
+        checkColor = "bg-amber-500/20 text-amber-400 border border-amber-500/20";
+        btnClass = "bg-gradient-to-r from-amber-200 via-yellow-400 to-amber-200 text-black shadow-lg shadow-amber-400/20 bg-[length:200%_100%] animate-rainbow";
+    }
+
+    return (
+    <GlowingCard className={`h-full rounded-[40px] ${isPro ? 'z-10 scale-100 md:scale-105 shadow-2xl' : ''} ${className}`}>
+        {/* Floating Badges (Outside clipped content) */}
+        {isPro && (
+            <div className="absolute -top-3 md:-top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-[9px] md:text-xs font-bold px-3 py-1 md:px-4 md:py-1.5 rounded-full uppercase tracking-wider shadow-lg whitespace-nowrap z-20">
+                Most Popular
+            </div>
+        )}
+
+        {isLifetime && (
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-amber-400 to-yellow-600 text-black text-[9px] md:text-xs font-bold px-3 py-1 md:px-4 md:py-1.5 rounded-full uppercase tracking-wider shadow-lg shadow-amber-500/20 whitespace-nowrap z-20 flex items-center gap-1.5 border border-white/20">
+                <Crown size={12} fill="currentColor" /> Founders Edition
+            </div>
+        )}
+
+        {/* Main Content with Overflow Hidden to Fix Glitch */}
+        <div className={`h-full p-6 md:p-8 flex flex-col relative rounded-[inherit] backdrop-blur-xl shadow-[0_0_20px_rgba(255,255,255,0.03)] overflow-hidden ${bgClass} ${borderClass}`}>
+            
+            {/* Visual Flair for Lifetime */}
+            {isLifetime && (
+                <div className="absolute inset-0 pointer-events-none">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 blur-[50px] rounded-full"></div>
+                    <div className="absolute bottom-0 left-0 w-24 h-24 bg-yellow-500/10 blur-[40px] rounded-full"></div>
+                    <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 mix-blend-overlay"></div>
                 </div>
             )}
-            <h3 className={`text-base md:text-xl font-bold mb-2 ${highlighted ? 'text-violet-300' : 'text-slate-300'}`}>{title}</h3>
-            <div className="mb-4 md:mb-8 flex items-baseline gap-1">
-                <span className="text-3xl md:text-5xl font-black tracking-tight text-white">{price}</span>
-                <span className="text-xs md:text-base text-slate-500 font-medium">{period}</span>
+
+            {toggle && setBillingCycle && (
+                <div className="flex justify-center mb-6">
+                    <div className="bg-white/5 p-1 rounded-xl flex items-center border border-white/5 relative">
+                        <div 
+                            className={`absolute top-1 bottom-1 w-[50%] bg-indigo-600 rounded-lg transition-all duration-300 ${billingCycle === 'yearly' ? 'left-[48%]' : 'left-1'}`}
+                        ></div>
+                        <button 
+                            onClick={() => setBillingCycle('monthly')}
+                            className={`relative z-10 px-3 py-1 text-[10px] md:text-xs font-bold rounded-lg transition-colors ${billingCycle === 'monthly' ? 'text-white' : 'text-white/40 hover:text-white'}`}
+                        >
+                            Monthly
+                        </button>
+                        <button 
+                            onClick={() => setBillingCycle('yearly')}
+                            className={`relative z-10 px-3 py-1 text-[10px] md:text-xs font-bold rounded-lg transition-colors flex items-center gap-1 ${billingCycle === 'yearly' ? 'text-white' : 'text-white/40 hover:text-white'}`}
+                        >
+                            Yearly
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            <h3 className={`text-base md:text-xl font-bold mb-2 ${titleColor}`}>{title}</h3>
+            
+            <div className="mb-1 flex items-baseline gap-1 relative z-10">
+                <span className={`text-3xl md:text-5xl font-black tracking-tight ${isLifetime ? 'text-amber-100' : 'text-white'}`}>{price}</span>
+                <span className={`text-xs md:text-base font-medium ${isLifetime ? 'text-amber-200/50' : 'text-slate-500'}`}>{period}</span>
             </div>
-            <ul className="space-y-2 md:space-y-4 mb-6 md:mb-8 flex-1">
+
+            {/* Savings Text */}
+            <div className="min-h-[24px] mb-4 md:mb-6 relative z-10">
+                {savingsText && (
+                    <span className={`inline-block text-[10px] md:text-xs font-bold px-2 py-0.5 rounded border ${
+                        isLifetime 
+                            ? 'text-amber-400 bg-amber-400/10 border-amber-400/20' 
+                            : 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20'
+                    }`}>
+                        {savingsText}
+                    </span>
+                )}
+            </div>
+
+            <ul className="space-y-2 md:space-y-4 mb-6 md:mb-8 flex-1 relative z-10">
                 {features.map((feat: string, i: number) => (
-                    <li key={i} className="flex items-start gap-2 md:gap-3 text-xs md:text-sm text-slate-300">
-                        <div className={`mt-0.5 rounded-full p-0.5 ${highlighted ? 'bg-violet-500/20 text-violet-400' : 'bg-slate-700 text-slate-400'}`}>
+                    <li key={i} className={`flex items-start gap-2 md:gap-3 text-xs md:text-sm ${isLifetime ? 'text-amber-100/80' : 'text-slate-300'}`}>
+                        <div className={`mt-0.5 rounded-full p-0.5 shrink-0 ${checkColor}`}>
                             <Check size={10} className="md:w-3 md:h-3" strokeWidth={3} />
                         </div>
                         {feat}
                     </li>
                 ))}
             </ul>
+            
+            <div className="min-h-[20px] mb-3">
+                {trialText && (
+                    <div className="text-center text-[10px] md:text-xs text-emerald-400 font-bold animate-pulse">
+                        {trialText}
+                    </div>
+                )}
+            </div>
+
             <button 
                 onClick={onAction}
-                className={`w-full py-3 md:py-4 rounded-xl font-bold transition-all duration-300 hover:scale-[1.02] active:scale-95 text-xs md:text-sm ${
-                    highlighted 
-                    ? 'bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white shadow-lg shadow-violet-900/20' 
-                    : 'bg-white/10 hover:bg-white/20 text-white'
-                }`}
+                className={`w-full py-3.5 md:py-4 rounded-xl font-bold transition-all duration-300 hover:scale-[1.02] active:scale-95 text-xs md:text-sm relative z-10 ${btnClass}`}
             >
                 {cta}
             </button>
         </div>
     </GlowingCard>
-);
+)};
 
 export default LandingPage;
-    
