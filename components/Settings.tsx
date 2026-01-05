@@ -1,11 +1,13 @@
 
 
 
+
+
 // ... (imports)
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../lib/supabase';
-import { Plus, Trash2, CalendarDays, Palette, Layers, Pencil, Upload, ImageIcon, Loader2, LogOut, ChevronDown, ChevronUp, Columns, AlertTriangle, User, GraduationCap, Calendar, Building, Users, Moon, Sun, Check, X, Shield, Search, Ban, MessageSquare, Sparkles, Clock, ChevronRight, Ticket, Send, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { Plus, Trash2, CalendarDays, Palette, Layers, Pencil, Upload, ImageIcon, Loader2, LogOut, ChevronDown, ChevronUp, Columns, AlertTriangle, User, GraduationCap, Calendar, Building, Users, Moon, Sun, Check, X, Shield, Search, Ban, MessageSquare, Sparkles, Clock, ChevronRight, Ticket, Send, ArrowLeft, CheckCircle2, DollarSign } from 'lucide-react';
 import { ScheduleProfile, EventColorMap, EventType, ScheduleEvent, PeriodDefinition, ThemeMode, ReferralCode, AppFeedback, FeedbackReply, ViewState } from '../types';
 import { theme, styles } from '../theme';
 import ScheduleSettings from './ScheduleSettings';
@@ -893,6 +895,33 @@ const Settings: React.FC<SettingsProps> = ({
                                   </div>
                                   <div className="text-[10px] text-white/40 mt-1 font-medium bg-white/5 px-2 py-0.5 rounded-full">
                                       Click to Manage
+                                  </div>
+                              </div>
+
+                              {/* Refer & Earn Button */}
+                              <div 
+                                onClick={() => onNavigate('referral')}
+                                style={{
+                                  backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                                  padding: '10px',
+                                  borderRadius: '12px',
+                                  border: '1px solid rgba(16, 185, 129, 0.2)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  gap: '8px',
+                                  marginTop: '4px',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s',
+                                }}
+                                className="hover:bg-emerald-500/20 active:scale-[0.98]"
+                              >
+                                  <div className="bg-emerald-500/20 p-1.5 rounded-full">
+                                      <DollarSign size={14} className="text-emerald-400" />
+                                  </div>
+                                  <div className="text-center">
+                                      <div className="text-xs font-bold text-emerald-400">Refer & Earn</div>
+                                      <div className="text-[9px] text-emerald-400/60">Get 20% commission</div>
                                   </div>
                               </div>
 

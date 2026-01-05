@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Check, ArrowRight, Sparkles, GraduationCap, 
   Calendar, Calculator, Dumbbell, Brain, Link,
@@ -7,9 +7,12 @@ import {
 } from 'lucide-react';
 import { RainbowButton } from './ui/rainbow-button';
 import { GlowingCard } from './ui/glowing-card';
+import { Banner } from './ui/Banner';
+import ReferralTermsModal from './ReferralTermsModal';
 
 interface LandingPageProps {
   onGetStarted: () => void;
+  onShowReferral: () => void;
 }
 
 interface RevealProps {
@@ -49,11 +52,14 @@ const Reveal: React.FC<RevealProps> = ({ children, className = "", delay = 0 }) 
   );
 };
 
-const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
+const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onShowReferral }) => {
   const pricingRef = React.useRef<HTMLDivElement>(null);
+  const [showBanner, setShowBanner] = useState(false);
+  const [hasDismissedBanner, setHasDismissedBanner] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
 
   // Scroll to top on mount and center pricing
-  React.useEffect(() => {
+  useEffect(() => {
     window.scrollTo(0, 0);
     
     // Center the pricing scroll view on mobile after a short delay to ensure rendering
@@ -66,6 +72,24 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
         }, 500);
     }
   }, []);
+
+  // Scroll Listener for Banner
+  useEffect(() => {
+    const handleScroll = () => {
+      if (hasDismissedBanner) return;
+      if (!pricingRef.current) return;
+
+      const rect = pricingRef.current.getBoundingClientRect();
+      
+      // Trigger when the BOTTOM of the pricing section enters the viewport (user has scrolled past it)
+      if (rect.bottom < window.innerHeight) {
+        setShowBanner(true);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [hasDismissedBanner]);
 
   return (
     <div className="min-h-screen bg-[#0a0a0f] text-white overflow-x-hidden selection:bg-violet-500/30 font-sans">
@@ -375,6 +399,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
           </Reveal>
       </section>
 
+      <Banner 
+        show={showBanner}
+        title="Refer & Earn Cash"
+        action={{ label: "Get Code", onClick: onShowReferral }}
+        onHide={() => { setShowBanner(false); setHasDismissedBanner(true); }}
+      />
+
       {/* Footer */}
       <footer className="border-t border-white/5 py-8 md:py-12 bg-[#050508] text-center relative z-10 px-6">
         <div className="flex items-center justify-center gap-3 mb-6 md:mb-8">
@@ -386,11 +417,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
         <div className="flex flex-wrap justify-center gap-4 md:gap-8 text-[10px] md:text-sm text-slate-500 mb-6 md:mb-8 font-medium">
             <a href="#" className="hover:text-white transition-colors hover:underline decoration-violet-500 decoration-2 underline-offset-4">Features</a>
             <a href="#" className="hover:text-white transition-colors hover:underline decoration-violet-500 decoration-2 underline-offset-4">Pricing</a>
-            <a href="#" className="hover:text-white transition-colors hover:underline decoration-violet-500 decoration-2 underline-offset-4">Support</a>
+            <button onClick={() => setShowTerms(true)} className="hover:text-white transition-colors hover:underline decoration-violet-500 decoration-2 underline-offset-4 bg-transparent border-none p-0 cursor-pointer">Referral Terms</button>
             <a href="#" className="hover:text-white transition-colors hover:underline decoration-violet-500 decoration-2 underline-offset-4">Privacy</a>
         </div>
         <p className="text-[10px] md:text-xs text-slate-600">&copy; {new Date().getFullYear()} UniMate. Built for students, by students.</p>
       </footer>
+
+      <ReferralTermsModal isOpen={showTerms} onClose={() => setShowTerms(false)} />
     </div>
   );
 };
@@ -445,3 +478,4 @@ const PricingCard = ({ title, price, period, features, cta, highlighted = false,
 );
 
 export default LandingPage;
+    
