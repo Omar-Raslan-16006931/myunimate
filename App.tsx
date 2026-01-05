@@ -22,6 +22,7 @@ import ImageImportModal from './components/ImageImportModal';
 import SubscriptionPage from './components/SubscriptionPage';
 import UniversalGradeCalculator from './components/UniversalGradeCalculator';
 import PaymentPage from './components/PaymentPage';
+import CoursesView from './components/CoursesView';
 
 export const App: React.FC = () => {
   const [session, setSession] = useState<any>(null);
@@ -325,16 +326,29 @@ export const App: React.FC = () => {
                 course={course}
                 onUpdate={(updated) => setCourses(courses.map(c => c.id === updated.id ? updated : c))}
                 onBack={() => setSelectedCourseId(null)}
+                onDelete={() => {
+                    setCourses(courses.filter(c => c.id !== selectedCourseId));
+                    setSelectedCourseId(null);
+                }}
             />;
         }
-        // Fallback
-        return (
-            <div style={{...styles.scrollableContent, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column'}}>
-                <h2 style={styles.title}>Grades</h2>
-                <p style={styles.subtitle}>Select a course to view grades</p>
-                <button onClick={() => setView('dashboard')} style={{...styles.button, marginTop: '20px'}}>Back Home</button>
-            </div>
-        );
+        return <CoursesView 
+            courses={courses}
+            onSelectCourse={setSelectedCourseId}
+            onAddCourse={() => {
+                const newCourse: CourseGrade = {
+                    id: crypto.randomUUID(),
+                    title: "New Course",
+                    targetGrade: "95",
+                    categories: []
+                };
+                setCourses([...courses, newCourse]);
+                setSelectedCourseId(newCourse.id);
+            }}
+            onDeleteCourse={(id) => {
+                setCourses(courses.filter(c => c.id !== id));
+            }}
+        />;
       case 'todo':
         return <ToDoList 
             items={toDoItems}
