@@ -1,16 +1,18 @@
 
+
+
 // ... (imports)
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../lib/supabase';
 import { Plus, Trash2, CalendarDays, Palette, Layers, Pencil, Upload, ImageIcon, Loader2, LogOut, ChevronDown, ChevronUp, Columns, AlertTriangle, User, GraduationCap, Calendar, Building, Users, Moon, Sun, Check, X, Shield, Search, Ban, MessageSquare, Sparkles, Clock, ChevronRight, Ticket, Send, ArrowLeft, CheckCircle2 } from 'lucide-react';
-import { ScheduleProfile, EventColorMap, EventType, ScheduleEvent, PeriodDefinition, ThemeMode, ReferralCode, AppFeedback, FeedbackReply } from '../types';
+import { ScheduleProfile, EventColorMap, EventType, ScheduleEvent, PeriodDefinition, ThemeMode, ReferralCode, AppFeedback, FeedbackReply, ViewState } from '../types';
 import { theme, styles } from '../theme';
 import ScheduleSettings from './ScheduleSettings';
 import FeedbackModal from './FeedbackModal';
 import AdminInbox from './AdminInbox';
 
-// ... (SupportHistoryModal)
+// ... (SupportHistoryModal code remains unchanged)
 const SupportHistoryModal = ({ isOpen, onClose, userId }: { isOpen: boolean, onClose: () => void, userId?: string }) => {
     const [tickets, setTickets] = useState<AppFeedback[]>([]);
     const [loading, setLoading] = useState(false);
@@ -266,7 +268,7 @@ const SupportHistoryModal = ({ isOpen, onClose, userId }: { isOpen: boolean, onC
     );
 };
 
-// ... (rest of the file remains the same, keep existing Settings implementation)
+// ... (BanModal code remains unchanged)
 const BanModal = ({ isOpen, onClose, onConfirm, username }: { isOpen: boolean, onClose: () => void, onConfirm: (duration: string | null) => void, username: string }) => {
     if (!isOpen) return null;
     return (
@@ -314,6 +316,7 @@ interface SettingsProps {
   themeMode: ThemeMode;
   setThemeMode: (mode: ThemeMode) => void;
   onImpersonate: (userId: string) => void;
+  onNavigate: (view: ViewState) => void; // Added prop
 }
 
 const Settings: React.FC<SettingsProps> = ({
@@ -338,8 +341,10 @@ const Settings: React.FC<SettingsProps> = ({
   onUpdateAccount,
   themeMode,
   setThemeMode,
-  onImpersonate
+  onImpersonate,
+  onNavigate
 }) => {
+  // ... (rest of the state hooks)
   const [newProfileName, setNewProfileName] = useState('');
   const [isScheduleSettingsExpanded, setIsScheduleSettingsExpanded] = useState(false);
   const [isProfilesExpanded, setIsProfilesExpanded] = useState(false);
@@ -373,6 +378,7 @@ const Settings: React.FC<SettingsProps> = ({
   const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
 
+  // ... (all the handler functions: handleCreateProfile, to12h, account editing logic, user mgmt, referral logic)
   const handleCreateProfile = () => {
     if (newProfileName.trim()) {
       onAddProfile(newProfileName);
@@ -533,7 +539,6 @@ const Settings: React.FC<SettingsProps> = ({
       }
   };
 
-  // Referral Management
   const fetchReferralCodes = useCallback(async () => {
       const { data, error } = await supabase.from('referral_codes').select('*').order('created_at', { ascending: false });
       if (data) {
@@ -628,7 +633,6 @@ const Settings: React.FC<SettingsProps> = ({
       padding: '6px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyItems: 'center'
   };
   
-  // Use solid background for admin cards to prevent transparency artifacts
   const compactCardStyle = {
       ...styles.card,
       padding: '14px',
@@ -820,7 +824,9 @@ const Settings: React.FC<SettingsProps> = ({
                               </div>
 
                               {/* Subscription Tier */}
-                              <div style={{
+                              <div 
+                                onClick={() => onNavigate('subscription')}
+                                style={{
                                   backgroundColor: accountInfo.subscription_tier === 1 ? 'rgba(234, 179, 8, 0.1)' : 'var(--input-bg)',
                                   padding: '12px',
                                   borderRadius: '14px',
@@ -833,7 +839,8 @@ const Settings: React.FC<SettingsProps> = ({
                                   marginTop: '8px',
                                   position: 'relative',
                                   overflow: 'hidden',
-                                  boxShadow: accountInfo.subscription_tier === 1 ? '0 4px 15px rgba(234, 179, 8, 0.15)' : 'none'
+                                  boxShadow: accountInfo.subscription_tier === 1 ? '0 4px 15px rgba(234, 179, 8, 0.15)' : 'none',
+                                  cursor: 'pointer'
                               }}>
                                   {/* Background Shine */}
                                   {accountInfo.subscription_tier === 1 && (
@@ -884,6 +891,9 @@ const Settings: React.FC<SettingsProps> = ({
                                           </span>
                                       ) : 'Free Plan'}
                                   </div>
+                                  <div className="text-[10px] text-white/40 mt-1 font-medium bg-white/5 px-2 py-0.5 rounded-full">
+                                      Click to Manage
+                                  </div>
                               </div>
 
                               {/* Log Out Button */}
@@ -915,6 +925,7 @@ const Settings: React.FC<SettingsProps> = ({
                 )}
                 
                 {/* Profiles Accordion */}
+                {/* ... existing code ... */}
                 <div style={compactCardStyle}>
                     <div 
                         onClick={() => setIsProfilesExpanded(!isProfilesExpanded)}
@@ -1375,6 +1386,7 @@ const Settings: React.FC<SettingsProps> = ({
 
           </div>
           
+          {/* ... reset modal ... */}
           {showResetConfirm && (
              <div style={styles.modalOverlay}>
                  <div style={{...styles.modalContent, maxWidth: '320px', padding: '0', overflow: 'hidden'}} onClick={e => e.stopPropagation()}>
