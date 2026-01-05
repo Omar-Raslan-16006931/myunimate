@@ -471,7 +471,7 @@ const App = () => {
 
        </div>
 
-       {view !== 'gym' && view !== 'landing' && (
+       {view !== 'gym' && (
            <Navigation currentView={view} onNavigate={setView} />
        )}
 
