@@ -754,10 +754,11 @@ const CoursesView: React.FC<CoursesViewProps> = ({ courses, onSelectCourse, onAd
          <div className="flex gap-2">
              <button 
                 onClick={() => setViewMode('gpa')}
-                className="w-10 h-10 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-white flex items-center justify-center transition-all active:scale-95"
-                title="GPA Calculator"
+                className="h-10 px-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-white flex items-center gap-2 transition-all active:scale-95"
+                title="Open GPA Calculator"
              >
-                <Calculator size={20} className="text-indigo-300" />
+                <Calculator size={16} className="text-indigo-300" />
+                <span className="text-xs font-bold">GPA Calculator</span>
              </button>
              <button 
                 onClick={onAddCourse} 
