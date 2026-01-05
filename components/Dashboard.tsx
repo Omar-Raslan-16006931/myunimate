@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { MapPin, ClipboardList, ArrowRight, Dumbbell, Calculator, Sparkles, Megaphone, X } from 'lucide-react';
+import { MapPin, ClipboardList, ArrowRight, Dumbbell, Calculator, Sparkles, Megaphone, X, CheckSquare, Plus } from 'lucide-react';
 import { ScheduleEvent, EventColorMap, PeriodDefinition, Announcement } from '../types';
 import { getLocalISOString } from '../constants';
 import { theme, styles } from '../theme';
@@ -16,7 +16,7 @@ interface DashboardProps {
   username?: string;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ events, eventColors, onNavigate, onEventClick, onAddEventClick, periods, announcement, username }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ events, eventColors, onNavigate, onEventClick, onAddEventClick, periods, announcement, username }) => {
   const [greeting, setGreeting] = useState("Good Morning");
   const [currentTime, setCurrentTime] = useState("");
   const [currentDate, setCurrentDate] = useState("");
@@ -128,8 +128,8 @@ const Dashboard: React.FC<DashboardProps> = ({ events, eventColors, onNavigate, 
     <div style={{
         ...styles.card, 
         flex: 1, 
-        minHeight: '140px', 
-        padding: '16px',
+        minHeight: '100px', 
+        padding: '14px',
         background: event ? `linear-gradient(135deg, ${color}99 0%, ${color}44 100%)` : "rgba(30,30,40,0.6)", 
         border: event ? `1px solid ${color}66` : theme.glassBorder,
         boxShadow: event ? `0 15px 40px ${color}33` : "none", 
@@ -141,44 +141,44 @@ const Dashboard: React.FC<DashboardProps> = ({ events, eventColors, onNavigate, 
     }} onClick={() => event && onEventClick(event)}>
         {isNow && (
             <div className="absolute top-0 right-0 p-3">
-                <span className="flex h-2.5 w-2.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-white"></span>
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
                 </span>
             </div>
         )}
 
         <div>
-            <div style={{display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px'}}>
-                <h3 style={{margin: 0, color: "rgba(255,255,255,0.9)", textTransform: "uppercase", fontSize: "0.65rem", letterSpacing: "1.5px", fontWeight: 800}}>{title}</h3>
+            <div style={{display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px'}}>
+                <h3 style={{margin: 0, color: "rgba(255,255,255,0.9)", textTransform: "uppercase", fontSize: "0.6rem", letterSpacing: "1.2px", fontWeight: 800}}>{title}</h3>
             </div>
             {event ? (
                 <>
-                    <h2 style={{fontSize: "1.4rem", margin: "0 0 4px 0", fontWeight: 800, lineHeight: 1.1, textShadow: "0 2px 10px rgba(0,0,0,0.3)"}}>{event.title}</h2>
-                    <div style={{fontSize: '0.85rem', color: "rgba(255,255,255,0.9)", marginBottom: '8px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px'}}>
-                        <span style={{background: 'rgba(255,255,255,0.15)', padding: '2px 6px', borderRadius: '4px', fontSize: '0.7rem'}}>{event.code || 'No Code'}</span>
-                        {event.group && <span style={{background: 'rgba(255,255,255,0.15)', padding: '2px 6px', borderRadius: '4px', fontSize: '0.7rem'}}>Grp {event.group}</span>}
+                    <h2 style={{fontSize: "1.2rem", margin: "0 0 2px 0", fontWeight: 800, lineHeight: 1.1, textShadow: "0 2px 10px rgba(0,0,0,0.3)"}}>{event.title}</h2>
+                    <div style={{fontSize: '0.75rem', color: "rgba(255,255,255,0.9)", marginBottom: '6px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px'}}>
+                        <span style={{background: 'rgba(255,255,255,0.15)', padding: '1px 5px', borderRadius: '4px', fontSize: '0.65rem'}}>{event.code || 'No Code'}</span>
+                        {event.group && <span style={{background: 'rgba(255,255,255,0.15)', padding: '1px 5px', borderRadius: '4px', fontSize: '0.65rem'}}>Grp {event.group}</span>}
                     </div>
                 </>
             ) : (
-                <div style={{color: "rgba(255,255,255,0.5)", padding: "10px 0", fontSize: "0.95rem", fontWeight: 500}}>Nothing scheduled. Enjoy your free time!</div>
+                <div style={{color: "rgba(255,255,255,0.5)", padding: "8px 0", fontSize: "0.85rem", fontWeight: 500}}>Nothing scheduled. Enjoy!</div>
             )}
         </div>
         
         {event && (
-            <div style={{display: "flex", gap: "8px", alignItems: "center", color: "#fff", flexWrap: 'wrap'}}>
-                <div style={{display: "flex", flexDirection: "column", background: "rgba(0,0,0,0.4)", padding: "6px 10px", borderRadius: "10px", backdropFilter: "blur(10px)", border: '1px solid rgba(255,255,255,0.1)'}}>
-                    <div style={{fontSize: "0.75rem", fontWeight: 800, color: '#fff', display: "flex", alignItems: 'center', gap: '6px', marginBottom: '1px'}}>
+            <div style={{display: "flex", gap: "6px", alignItems: "center", color: "#fff", flexWrap: 'wrap'}}>
+                <div style={{display: "flex", flexDirection: "column", background: "rgba(0,0,0,0.4)", padding: "4px 8px", borderRadius: "8px", backdropFilter: "blur(10px)", border: '1px solid rgba(255,255,255,0.1)'}}>
+                    <div style={{fontSize: "0.7rem", fontWeight: 800, color: '#fff', display: "flex", alignItems: 'center', gap: '6px', marginBottom: '0px'}}>
                             {slotName || "Event"}
                     </div>
-                    <div style={{fontSize: "0.65rem", color: "rgba(255,255,255,0.8)", fontWeight: 600}}>
+                    <div style={{fontSize: "0.6rem", color: "rgba(255,255,255,0.8)", fontWeight: 600}}>
                         {to12h(event.startTime)} - {to12h(getEndTime(event.startTime, event.durationMinutes))}
                     </div>
                 </div>
 
                 {event.location && (
-                    <div style={{display: "flex", alignItems: "center", gap: "4px", background: "rgba(0,0,0,0.4)", padding: "6px 8px", borderRadius: "10px", fontSize: "0.75rem", fontWeight: 600, backdropFilter: "blur(10px)", height: 'fit-content', alignSelf: 'center', border: '1px solid rgba(255,255,255,0.1)'}}>
-                        <MapPin size={12} className="text-white/90" /> {event.location}
+                    <div style={{display: "flex", alignItems: "center", gap: "4px", background: "rgba(0,0,0,0.4)", padding: "4px 6px", borderRadius: "8px", fontSize: "0.7rem", fontWeight: 600, backdropFilter: "blur(10px)", height: 'fit-content', alignSelf: 'center', border: '1px solid rgba(255,255,255,0.1)'}}>
+                        <MapPin size={10} className="text-white/90" /> {event.location}
                     </div>
                 )}
             </div>
@@ -191,10 +191,10 @@ const Dashboard: React.FC<DashboardProps> = ({ events, eventColors, onNavigate, 
         {/* Global Announcement Banner */}
         {showAnnouncement && (
             <div style={{
-                marginBottom: "16px", 
+                marginBottom: "14px", 
                 background: "linear-gradient(135deg, #a855f7 0%, #d946ef 100%)", 
-                borderRadius: "14px", 
-                padding: "12px", 
+                borderRadius: "12px", 
+                padding: "10px", 
                 display: "flex", 
                 alignItems: "start", 
                 justifyContent: "space-between",
@@ -205,47 +205,47 @@ const Dashboard: React.FC<DashboardProps> = ({ events, eventColors, onNavigate, 
                 overflow: 'hidden'
             }}>
                 <div style={{position: 'absolute', top: '-10%', left: '-5%', width: '100px', height: '100px', background: 'rgba(255,255,255,0.1)', borderRadius: '50%', filter: 'blur(20px)'}}></div>
-                <div style={{display: 'flex', gap: '10px', position: 'relative', zIndex: 1}}>
-                    <div style={{background: 'rgba(255,255,255,0.2)', padding: '8px', borderRadius: '50%', height: 'fit-content'}}>
-                        <Megaphone size={16} className="text-white" fill="white" />
+                <div style={{display: 'flex', gap: '8px', position: 'relative', zIndex: 1}}>
+                    <div style={{background: 'rgba(255,255,255,0.2)', padding: '6px', borderRadius: '50%', height: 'fit-content'}}>
+                        <Megaphone size={14} className="text-white" fill="white" />
                     </div>
                     <div>
-                        <h4 style={{margin: '0 0 2px 0', fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', opacity: 0.9}}>Announcement</h4>
-                        <p style={{margin: 0, fontSize: '0.85rem', fontWeight: 600, lineHeight: '1.4'}}>{announcement.message}</p>
+                        <h4 style={{margin: '0 0 2px 0', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', opacity: 0.9}}>Announcement</h4>
+                        <p style={{margin: 0, fontSize: '0.8rem', fontWeight: 600, lineHeight: '1.3'}}>{announcement.message}</p>
                     </div>
                 </div>
                 <button 
                     onClick={handleDismissAnnouncement} 
-                    style={{background: 'rgba(0,0,0,0.1)', border: 'none', borderRadius: '50%', padding: '4px', cursor: 'pointer', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: '24px', minHeight: '24px'}}
+                    style={{background: 'rgba(0,0,0,0.1)', border: 'none', borderRadius: '50%', padding: '4px', cursor: 'pointer', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: '22px', minHeight: '22px'}}
                 >
-                    <X size={14} />
+                    <X size={12} />
                 </button>
             </div>
         )}
 
-        <div style={{marginBottom: "16px", paddingTop: '6px', position: 'relative'}}>
-             <div style={{fontSize: '2rem', fontWeight: 800, lineHeight: 1, letterSpacing: '-1.5px', background: `linear-gradient(to right, #fff, ${theme.textMuted})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent'}}>
+        <div style={{marginBottom: "14px", paddingTop: '4px', position: 'relative'}}>
+             <div style={{fontSize: '1.8rem', fontWeight: 800, lineHeight: 1, letterSpacing: '-1.2px', background: `linear-gradient(to right, #fff, ${theme.textMuted})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent'}}>
                  {currentTime}
              </div>
-             <div style={{fontSize: '0.85rem', fontWeight: 600, color: theme.accent, marginTop: '2px'}}>
+             <div style={{fontSize: '0.8rem', fontWeight: 600, color: theme.accent, marginTop: '2px'}}>
                  {currentDate}
              </div>
-             <p style={{...styles.subtitle, marginTop: '2px', fontSize: '0.8rem'}}>
+             <p style={{...styles.subtitle, marginTop: '2px', fontSize: '0.75rem'}}>
                 {greeting}, <span style={{color: '#fff'}}>{username || 'Student'}</span>
              </p>
 
-             {/* AI Button - Replaced floating bar item with this button */}
+             {/* AI Button */}
              <button 
                 onClick={() => onNavigate('ai')}
                 style={{
                     position: 'absolute',
-                    top: '6px',
+                    top: '4px',
                     right: '0',
                     background: 'linear-gradient(135deg, #8b5cf6, #d946ef)',
                     border: 'none',
-                    borderRadius: '12px',
-                    width: '36px',
-                    height: '36px',
+                    borderRadius: '10px',
+                    width: '32px',
+                    height: '32px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -254,11 +254,11 @@ const Dashboard: React.FC<DashboardProps> = ({ events, eventColors, onNavigate, 
                     zIndex: 10
                 }}
              >
-                <Sparkles size={18} color="#fff" />
+                <Sparkles size={16} color="#fff" />
              </button>
         </div>
 
-        <div style={{display: "flex", flexDirection: "column", gap: "16px"}}>
+        <div style={{display: "flex", flexDirection: "column", gap: "12px"}}>
             
             {renderEventCard(mainCardEvent, isHappeningNow ? "Happening Now" : "Up Next", isHappeningNow)}
 
@@ -268,7 +268,7 @@ const Dashboard: React.FC<DashboardProps> = ({ events, eventColors, onNavigate, 
                     style={{
                         ...styles.card, 
                         margin: 0, 
-                        padding: '12px', 
+                        padding: '10px', 
                         minHeight: 'auto', 
                         background: 'rgba(255,255,255,0.05)', 
                         border: '1px solid rgba(255,255,255,0.1)',
@@ -278,32 +278,32 @@ const Dashboard: React.FC<DashboardProps> = ({ events, eventColors, onNavigate, 
                         cursor: 'pointer'
                     }}
                 >
-                    <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
-                        <div style={{background: 'rgba(255,255,255,0.1)', padding: '8px', borderRadius: '10px'}}>
-                            <ArrowRight size={16} color={theme.accent} />
+                    <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                        <div style={{background: 'rgba(255,255,255,0.1)', padding: '6px', borderRadius: '8px'}}>
+                            <ArrowRight size={14} color={theme.accent} />
                         </div>
                         <div>
-                            <div style={{fontSize: '0.65rem', textTransform: 'uppercase', color: theme.textMuted, fontWeight: 700, letterSpacing: '0.5px'}}>Then</div>
-                            <div style={{fontSize: '0.9rem', fontWeight: 700, color: '#fff'}}>{nextEvent.title}</div>
+                            <div style={{fontSize: '0.6rem', textTransform: 'uppercase', color: theme.textMuted, fontWeight: 700, letterSpacing: '0.5px'}}>Then</div>
+                            <div style={{fontSize: '0.85rem', fontWeight: 700, color: '#fff'}}>{nextEvent.title}</div>
                         </div>
                     </div>
                     <div style={{textAlign: 'right'}}>
-                         <div style={{fontSize: '0.8rem', fontWeight: 600}}>{to12h(nextEvent.startTime)}</div>
-                         <div style={{fontSize: '0.7rem', color: theme.textMuted}}>{nextEvent.location}</div>
+                         <div style={{fontSize: '0.75rem', fontWeight: 600}}>{to12h(nextEvent.startTime)}</div>
+                         <div style={{fontSize: '0.65rem', color: theme.textMuted}}>{nextEvent.location}</div>
                     </div>
                 </div>
             )}
 
-            {/* Apps Grid - Redesigned Visuals */}
-            <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px'}}>
+            {/* Apps Grid - Even Smaller and Compact */}
+            <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px'}}>
                 {/* Gym Entry Card */}
                 <div 
                     onClick={() => onNavigate('gym')}
                     style={{
                         ...styles.card,
                         margin: 0,
-                        padding: '16px',
-                        minHeight: '110px',
+                        padding: '10px',
+                        minHeight: '75px',
                         background: 'linear-gradient(135deg, rgba(30, 64, 175, 0.5), rgba(30, 58, 138, 0.3))',
                         border: '1px solid rgba(96, 165, 250, 0.2)',
                         cursor: 'pointer',
@@ -314,12 +314,12 @@ const Dashboard: React.FC<DashboardProps> = ({ events, eventColors, onNavigate, 
                         boxShadow: '0 8px 20px rgba(30, 58, 138, 0.3)'
                     }}
                 >
-                    <div style={{background: 'rgba(255,255,255,0.15)', padding: '10px', borderRadius: '12px', marginBottom: '8px'}}>
-                        <Dumbbell size={24} color="#fff" />
+                    <div style={{background: 'rgba(255,255,255,0.15)', padding: '6px', borderRadius: '8px', marginBottom: '4px'}}>
+                        <Dumbbell size={16} color="#fff" />
                     </div>
                     <div>
-                        <h3 style={{margin: 0, fontSize: '1rem', fontWeight: 800, color: '#fff'}}>Gym</h3>
-                        <p style={{margin: '2px 0 0 0', fontSize: '0.7rem', color: 'rgba(255,255,255,0.7)'}}>Fitness Tracker</p>
+                        <h3 style={{margin: 0, fontSize: '0.8rem', fontWeight: 800, color: '#fff'}}>Gym</h3>
+                        <p style={{margin: 0, fontSize: '0.6rem', color: 'rgba(255,255,255,0.7)'}}>Fitness Tracker</p>
                     </div>
                 </div>
 
@@ -329,8 +329,8 @@ const Dashboard: React.FC<DashboardProps> = ({ events, eventColors, onNavigate, 
                     style={{
                         ...styles.card,
                         margin: 0,
-                        padding: '16px',
-                        minHeight: '110px',
+                        padding: '10px',
+                        minHeight: '75px',
                         background: 'linear-gradient(135deg, rgba(13, 148, 136, 0.5), rgba(17, 94, 89, 0.3))',
                         border: '1px solid rgba(45, 212, 191, 0.2)',
                         cursor: 'pointer',
@@ -341,47 +341,98 @@ const Dashboard: React.FC<DashboardProps> = ({ events, eventColors, onNavigate, 
                         boxShadow: '0 8px 20px rgba(13, 148, 136, 0.3)'
                     }}
                 >
-                    <div style={{background: 'rgba(255,255,255,0.15)', padding: '10px', borderRadius: '12px', marginBottom: '8px'}}>
-                        <Calculator size={24} color="#fff" />
+                    <div style={{background: 'rgba(255,255,255,0.15)', padding: '6px', borderRadius: '8px', marginBottom: '4px'}}>
+                        <Calculator size={16} color="#fff" />
                     </div>
                     <div>
-                        <h3 style={{margin: 0, fontSize: '1rem', fontWeight: 800, color: '#fff'}}>Grades</h3>
-                        <p style={{margin: '2px 0 0 0', fontSize: '0.7rem', color: 'rgba(255,255,255,0.7)'}}>GPA Calculator</p>
+                        <h3 style={{margin: 0, fontSize: '0.8rem', fontWeight: 800, color: '#fff'}}>Grades</h3>
+                        <p style={{margin: 0, fontSize: '0.6rem', color: 'rgba(255,255,255,0.7)'}}>GPA Calculator</p>
                     </div>
+                </div>
+
+                {/* To-Do List Entry Card */}
+                <div 
+                    onClick={() => onNavigate('todo')}
+                    style={{
+                        ...styles.card,
+                        margin: 0,
+                        padding: '10px',
+                        minHeight: '75px',
+                        background: 'linear-gradient(135deg, rgba(236, 72, 153, 0.5), rgba(219, 39, 119, 0.3))',
+                        border: '1px solid rgba(244, 114, 182, 0.2)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        alignItems: 'flex-start',
+                        boxShadow: '0 8px 20px rgba(236, 72, 153, 0.3)'
+                    }}
+                >
+                    <div style={{background: 'rgba(255,255,255,0.15)', padding: '6px', borderRadius: '8px', marginBottom: '4px'}}>
+                        <CheckSquare size={16} color="#fff" />
+                    </div>
+                    <div>
+                        <h3 style={{margin: 0, fontSize: '0.8rem', fontWeight: 800, color: '#fff'}}>To-Do</h3>
+                        <p style={{margin: 0, fontSize: '0.6rem', color: 'rgba(255,255,255,0.7)'}}>Task Manager</p>
+                    </div>
+                </div>
+
+                {/* Add Event Card */}
+                <div 
+                    onClick={onAddEventClick}
+                    style={{
+                        ...styles.card,
+                        margin: 0,
+                        padding: '10px',
+                        minHeight: '75px',
+                        background: 'rgba(255,255,255,0.03)',
+                        border: '1px dashed rgba(255,255,255,0.1)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        textAlign: 'center'
+                    }}
+                >
+                    <div style={{background: 'rgba(139, 92, 246, 0.1)', padding: '8px', borderRadius: '50%', marginBottom: '4px'}}>
+                        <Plus size={16} color={theme.accent} />
+                    </div>
+                    <span style={{fontSize: '0.7rem', fontWeight: 700, color: theme.textMuted}}>Add Event</span>
                 </div>
             </div>
 
             <div>
-                <div style={{display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px', paddingLeft: '4px'}}>
-                    <ClipboardList size={16} color={theme.accent} />
-                    <h3 style={{margin: 0, fontSize: '0.9rem', fontWeight: 700}}>Upcoming Tests</h3>
+                <div style={{display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px', paddingLeft: '4px'}}>
+                    <ClipboardList size={14} color={theme.accent} />
+                    <h3 style={{margin: 0, fontSize: '0.85rem', fontWeight: 700}}>Upcoming Tests</h3>
                 </div>
                 {upcomingDeadlines.length > 0 ? (
-                    <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
+                    <div style={{display: 'flex', flexDirection: 'column', gap: '6px'}}>
                         {upcomingDeadlines.map(task => {
                             const color = eventColors[task.type] || '#64748b';
                             const slotName = getSlotName(task.startTime);
                             return (
                                 <div key={task.id} 
                                     onClick={() => onEventClick(task)}
-                                    style={{...styles.card, marginBottom: 0, minHeight: 'auto', padding: '12px', borderLeft: `3px solid ${color}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', background: 'rgba(30,30,40,0.6)'}}
+                                    style={{...styles.card, marginBottom: 0, minHeight: 'auto', padding: '10px', borderLeft: `3px solid ${color}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', background: 'rgba(30,30,40,0.6)'}}
                                 >
                                     <div>
-                                        <div style={{fontSize: '0.65rem', fontWeight: 700, color: color, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '2px'}}>{task.type}</div>
-                                        <div style={{fontSize: '0.9rem', fontWeight: 700, color: '#fff', marginBottom: '2px'}}>{task.title}</div>
-                                        <div style={{fontSize: '0.75rem', color: theme.textMuted}}>{task.code}</div>
+                                        <div style={{fontSize: '0.6rem', fontWeight: 700, color: color, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '1px'}}>{task.type}</div>
+                                        <div style={{fontSize: '0.85rem', fontWeight: 700, color: '#fff', marginBottom: '1px'}}>{task.title}</div>
+                                        <div style={{fontSize: '0.7rem', color: theme.textMuted}}>{task.code}</div>
                                     </div>
                                     <div style={{textAlign: 'right'}}>
-                                        <div style={{fontSize: '0.8rem', fontWeight: 700, color: '#fff'}}>{new Date(task.date || "").toLocaleDateString('en-US', {month: 'short', day: 'numeric'})}</div>
-                                        <div style={{fontSize: '0.7rem', color: theme.textMuted, marginTop: '2px'}}>{to12h(task.startTime)}</div>
-                                        {slotName && <div style={{fontSize: '0.6rem', color: theme.accent, marginTop: '1px', fontWeight: 600}}>{slotName}</div>}
+                                        <div style={{fontSize: '0.75rem', fontWeight: 700, color: '#fff'}}>{new Date(task.date || "").toLocaleDateString('en-US', {month: 'short', day: 'numeric'})}</div>
+                                        <div style={{fontSize: '0.65rem', color: theme.textMuted, marginTop: '1px'}}>{to12h(task.startTime)}</div>
+                                        {slotName && <div style={{fontSize: '0.55rem', color: theme.accent, marginTop: '1px', fontWeight: 600}}>{slotName}</div>}
                                     </div>
                                 </div>
                             )
                         })}
                     </div>
                 ) : (
-                    <div style={{padding: '16px', textAlign: 'center', color: theme.textMuted, background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: theme.glassBorder, fontSize: '0.85rem'}}>
+                    <div style={{padding: '14px', textAlign: 'center', color: theme.textMuted, background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: theme.glassBorder, fontSize: '0.8rem'}}>
                         No upcoming quizzes or exams.
                     </div>
                 )}
@@ -390,5 +441,3 @@ const Dashboard: React.FC<DashboardProps> = ({ events, eventColors, onNavigate, 
     </div>
   );
 };
-
-export default Dashboard;

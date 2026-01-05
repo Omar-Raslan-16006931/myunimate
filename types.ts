@@ -1,6 +1,5 @@
 
 
-
 export type EventType = "lecture" | "tutorial" | "lab" | "quiz" | "assignment" | "exam" | "study" | "other";
 
 export interface ScheduleEvent {
@@ -17,6 +16,13 @@ export interface ScheduleEvent {
   durationMinutes: number;
   description?: string;
   location?: string;
+}
+
+export interface ToDoItem {
+  id: string;
+  text: string;
+  completed: boolean;
+  createdAt: number;
 }
 
 export interface MaterialFile {
@@ -102,6 +108,17 @@ export interface FeedbackReply {
   created_at: string;
 }
 
+export interface WalletTransaction {
+  id: string;
+  user_id: string;
+  amount: number;
+  balance_after: number;
+  transaction_type: 'referral_bonus' | 'cashout_request' | 'refund' | 'membership_purchase';
+  status: 'completed' | 'pending' | 'failed';
+  description?: string;
+  created_at: string;
+}
+
 // --- UNIVERSAL GRADE TYPES ---
 
 export interface GradeItem {
@@ -129,7 +146,7 @@ export interface CourseGrade {
   categories: GradeCategory[];
 }
 
-export type ViewState = "dashboard" | "schedule" | "courses" | "materials" | "ai" | "settings" | "grades" | "gym" | "subscription";
+export type ViewState = "dashboard" | "schedule" | "courses" | "materials" | "ai" | "settings" | "grades" | "gym" | "subscription" | "todo" | "referral";
 
 // Map event types to hex colors
 export type EventColorMap = Record<EventType, string>;
