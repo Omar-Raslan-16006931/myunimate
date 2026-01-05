@@ -1,8 +1,9 @@
+
 import { GoogleGenAI, Type, Schema, FunctionDeclaration } from "@google/genai";
 import { ScheduleEvent, EventType, Macros, PeriodDefinition } from "../types";
 import { supabase } from "../lib/supabase";
 
-const MODEL_NAME = 'gemini-2.5-flash';
+const MODEL_NAME = 'gemini-3-flash-preview';
 
 const getAiClient = () => {
   const apiKey = process.env.API_KEY;
