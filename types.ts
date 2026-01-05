@@ -1,5 +1,6 @@
 
 
+
 export type EventType = "lecture" | "tutorial" | "lab" | "quiz" | "assignment" | "exam" | "study" | "other";
 
 export interface ScheduleEvent {
@@ -128,7 +129,7 @@ export interface CourseGrade {
   categories: GradeCategory[];
 }
 
-export type ViewState = "dashboard" | "schedule" | "courses" | "materials" | "ai" | "settings" | "grades" | "gym";
+export type ViewState = "dashboard" | "schedule" | "courses" | "materials" | "ai" | "settings" | "grades" | "gym" | "subscription";
 
 // Map event types to hex colors
 export type EventColorMap = Record<EventType, string>;
