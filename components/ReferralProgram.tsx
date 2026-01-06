@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Share2, UserPlus, DollarSign, Copy, CheckCircle2, Wallet, CreditCard, ArrowRight, X, Loader2, Sparkles, Clock, History, AlertCircle, TrendingUp } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { ArrowLeft, Share2, UserPlus, DollarSign, Copy, CheckCircle2, Wallet, CreditCard, ArrowRight, X, Loader2, Sparkles, Clock, History, AlertCircle, TrendingUp, RefreshCw } from 'lucide-react';
 import { theme, styles } from '../theme';
 import { supabase } from '../lib/supabase';
 import { WalletTransaction } from '../types';
@@ -37,57 +37,126 @@ const ReferralProgram: React.FC<ReferralProgramProps> = ({
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [isRegisteringCode, setIsRegisteringCode] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
-
-  // Deterministic code generation based on username
-  const generatedCode = isLoggedIn && username 
-    ? (username.length >= 3 ? username.substring(0, 4).toUpperCase() + "2024" : "JOIN2024")
-    : "JOIN2024";
+  const [copied, setCopied] = useState(false);
+  const [codeError, setCodeError] = useState(false);
+  
+  // State for the persistent referral code
+  const [referralCode, setReferralCode] = useState<string | null>(null);
+  const attemptRef = useRef(0);
 
   useEffect(() => {
       if (userId) {
           fetchHistory();
-          ensureCodeActive();
+          // Only fetch if we don't have a code yet
+          if (!referralCode) {
+              fetchOrGenerateCode();
+          }
       }
-  }, [userId, generatedCode]);
+  }, [userId, username]);
 
-  // Ensure the code exists in the DB so friends can actually use it
-  const ensureCodeActive = async () => {
-      if (!isLoggedIn || !userId || generatedCode === "JOIN2024") return;
+  // Robust logic to fetch existing code or generate a new unique random one
+  const fetchOrGenerateCode = async () => {
+      if (!userId) return;
+      if (isRegisteringCode) return;
       
       try {
-          const { data } = await supabase
-            .from('referral_codes')
-            .select('id')
-            .eq('code', generatedCode)
-            .maybeSingle();
-          
-          if (!data) {
-              setIsRegisteringCode(true);
-              // Create it if missing, linking to this user so we know who to pay later
-              await supabase.from('referral_codes').insert({
-                  code: generatedCode,
-                  user_id: userId, // Critical for attribution
-                  is_active: true,
-                  usage_count: 0,
-                  subscription_tier: 0 
-              });
-              setIsRegisteringCode(false);
+          setIsRegisteringCode(true);
+          setCodeError(false);
+
+          // 1. Check if user already has a code assigned
+          const { data: existing, error: fetchError } = await supabase
+              .from('referral_codes')
+              .select('code')
+              .eq('user_id', userId)
+              .maybeSingle();
+
+          if (fetchError) throw fetchError;
+
+          if (existing) {
+              setReferralCode(existing.code);
+              return;
           }
-      } catch (err) {
-          console.error("Error registering code", err);
+
+          // 2. Generate unique code if none exists
+          // Format: First 4 chars of username (or USER) + 4 random digits
+          let uniqueCode = '';
+          let isUnique = false;
+          let attempts = 0;
+          
+          const cleanName = (username || 'USER').replace(/[^a-zA-Z0-9]/g, '');
+          const base = cleanName.length >= 3 
+              ? cleanName.substring(0, 4).toUpperCase() 
+              : "USER";
+
+          // Limit collision checks to avoid infinite loops or excessive API calls
+          while (!isUnique && attempts < 3) {
+              const suffix = Math.floor(1000 + Math.random() * 9000); // 4 digit random (1000-9999)
+              const candidate = `${base}${suffix}`;
+              
+              // Check collision in DB
+              const { data } = await supabase
+                  .from('referral_codes')
+                  .select('id')
+                  .eq('code', candidate)
+                  .maybeSingle();
+              
+              if (!data) {
+                  uniqueCode = candidate;
+                  isUnique = true;
+              }
+              attempts++;
+          }
+
+          // Fallback if we failed to find a unique code after retries
+          if (!uniqueCode) {
+              uniqueCode = `UNI${Math.floor(100000 + Math.random() * 900000)}`;
+          }
+
+          // 3. Register the unique code
+          // Explicitly generating UUID for ID to prevent issues if default isn't set on DB
+          const newId = crypto.randomUUID();
+          
+          const { error: insertError } = await supabase.from('referral_codes').insert({
+              id: newId,
+              code: uniqueCode,
+              user_id: userId,
+              is_active: true,
+              usage_count: 0,
+              subscription_tier: 0 
+          });
+
+          if (insertError) {
+              // If unique constraint violation (race condition), try fetching one last time
+              if (insertError.code === '23505') {
+                  const { data: retryFetch } = await supabase.from('referral_codes').select('code').eq('user_id', userId).maybeSingle();
+                  if (retryFetch) {
+                      setReferralCode(retryFetch.code);
+                      return;
+                  }
+              }
+              throw insertError;
+          }
+
+          setReferralCode(uniqueCode);
+
+      } catch (err: any) {
+          console.error("Error creating code:", err.message || err);
+          setCodeError(true);
+      } finally {
+          setIsRegisteringCode(false);
       }
   };
 
   const fetchHistory = async () => {
       if (!userId) return;
       setLoadingHistory(true);
-      const { data } = await supabase
+      const { data, error } = await supabase
           .from('wallet_ledger')
           .select('*')
           .eq('user_id', userId)
           .order('created_at', { ascending: false });
       
-      if (data) {
+      if (!error && data) {
           setTransactions(data as WalletTransaction[]);
       }
       setLoadingHistory(false);
@@ -119,6 +188,7 @@ const ReferralProgram: React.FC<ReferralProgramProps> = ({
           const { error: ledgerError } = await supabase
               .from('wallet_ledger')
               .insert({
+                  id: crypto.randomUUID(),
                   user_id: userId,
                   amount: -5.99,
                   balance_after: newBalance,
@@ -181,6 +251,7 @@ const ReferralProgram: React.FC<ReferralProgramProps> = ({
           const { error: ledgerError } = await supabase
               .from('wallet_ledger')
               .insert({
+                  id: crypto.randomUUID(),
                   user_id: userId,
                   amount: -amount,
                   balance_after: newBalance,
@@ -207,6 +278,13 @@ const ReferralProgram: React.FC<ReferralProgramProps> = ({
       }
   };
 
+  const handleCopyCode = () => {
+      if (!referralCode || codeError) return;
+      navigator.clipboard.writeText(referralCode);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
     <div style={styles.container}>
       <div style={styles.scrollableContent}>
@@ -226,11 +304,9 @@ const ReferralProgram: React.FC<ReferralProgramProps> = ({
             <div className="mb-8 animate-in slide-in-from-top-5 duration-500">
                 {/* Wallet Card */}
                 <div className="relative bg-gradient-to-br from-[#1e1b2e] to-[#0f0f12] border border-white/10 rounded-3xl p-6 overflow-hidden shadow-2xl group">
-                    {/* Ambient Glow */}
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-[80px] -mr-16 -mt-16 pointer-events-none group-hover:bg-emerald-500/20 transition-colors duration-500" />
-                    
                     <div className="relative z-10 flex flex-col items-center text-center">
-                        <div className="text-emerald-400 text-xs font-bold uppercase tracking-widest mb-3 flex items-center gap-2 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
+                        {/* UPDATED: Removed background and border from this pill */}
+                        <div className="text-emerald-400 text-xs font-bold uppercase tracking-widest mb-3 flex items-center gap-2 px-3 py-1 rounded-full">
                             <Wallet size={12} /> Available Funds
                         </div>
                         <div className="text-6xl font-black text-white mb-8 tracking-tighter tabular-nums">
@@ -302,15 +378,35 @@ const ReferralProgram: React.FC<ReferralProgramProps> = ({
                         Your Referral Code {isRegisteringCode && <Loader2 size={10} className="animate-spin" />}
                     </p>
                     <div 
-                        className="bg-white/5 border border-white/10 rounded-xl p-4 flex items-center justify-between gap-4 cursor-pointer hover:bg-white/10 transition-colors group relative overflow-hidden"
-                        onClick={() => navigator.clipboard.writeText(generatedCode)}
+                        className={`
+                            border rounded-xl p-4 flex items-center justify-between gap-4 cursor-pointer transition-all duration-300 group relative overflow-hidden active:scale-[0.98]
+                            ${copied 
+                                ? 'bg-emerald-500/20 border-emerald-500/50 shadow-[0_0_20px_rgba(16,185,129,0.2)]' 
+                                : codeError ? 'bg-red-500/10 border-red-500/50' 
+                                : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20'
+                            }
+                        `}
+                        onClick={codeError ? fetchOrGenerateCode : handleCopyCode}
                     >
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
-                        <code className="text-xl md:text-2xl font-mono font-bold text-emerald-400 tracking-widest">{generatedCode}</code>
-                        <div className="flex items-center gap-1.5 text-white/40 group-hover:text-white transition-colors text-xs font-bold">
-                            <Copy size={14} />
-                            <span className="hidden sm:inline">COPY</span>
-                        </div>
+                        {!copied && !codeError && <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />}
+                        
+                        {codeError ? (
+                            <div className="flex items-center justify-center gap-2 w-full text-red-400">
+                                <AlertCircle size={20} />
+                                <span className="font-bold">Error. Tap to retry.</span>
+                            </div>
+                        ) : (
+                            <>
+                                <code className={`text-xl md:text-2xl font-mono font-bold tracking-widest transition-colors ${copied ? 'text-emerald-300' : 'text-emerald-400'}`}>
+                                    {referralCode || (isRegisteringCode ? "GENERATING..." : "LOADING...")}
+                                </code>
+                                
+                                <div className={`flex items-center gap-1.5 transition-all text-xs font-bold ${copied ? 'text-emerald-300 scale-110' : 'text-white/40 group-hover:text-white'}`}>
+                                    {copied ? <CheckCircle2 size={16} className="animate-in zoom-in spin-in-180" /> : <Copy size={14} />}
+                                    <span className="hidden sm:inline">{copied ? 'COPIED' : 'COPY'}</span>
+                                </div>
+                            </>
+                        )}
                     </div>
                     <p className="text-white/30 text-[10px] mt-3">
                         Share this code. Friends get free Pro trials. You get cash.
@@ -340,11 +436,20 @@ const ReferralProgram: React.FC<ReferralProgramProps> = ({
                     <h3 className="text-white/60 text-xs font-bold uppercase tracking-widest flex items-center gap-2">
                         <History size={12} /> Recent Activity
                     </h3>
-                    <div className="text-[10px] text-white/30">{transactions.length} Records</div>
+                    <div className="flex items-center gap-2">
+                        <button 
+                            onClick={fetchHistory}
+                            disabled={loadingHistory}
+                            className="p-1 hover:bg-white/10 rounded-full transition text-white/40 hover:text-white"
+                        >
+                            <RefreshCw size={12} className={loadingHistory ? "animate-spin" : ""} />
+                        </button>
+                        <div className="text-[10px] text-white/30">{transactions.length} Records</div>
+                    </div>
                 </div>
                 
                 <div className="space-y-2">
-                    {loadingHistory ? (
+                    {loadingHistory && transactions.length === 0 ? (
                         <div className="text-center py-8"><Loader2 className="animate-spin text-white/20 mx-auto" size={24} /></div>
                     ) : transactions.length === 0 ? (
                         <div className="p-6 rounded-xl bg-white/[0.02] border border-dashed border-white/10 text-center">
