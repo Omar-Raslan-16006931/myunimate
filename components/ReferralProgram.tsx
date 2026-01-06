@@ -78,7 +78,7 @@ const ReferralProgram: React.FC<ReferralProgramProps> = ({
           }
 
           // 2. Generate unique code if none exists
-          // Format: First 4 chars of username (or USER) + 4 random digits
+          // Format: First 3-4 chars of username + 5 random alphanumeric chars
           let uniqueCode = '';
           let isUnique = false;
           let attempts = 0;
@@ -88,9 +88,15 @@ const ReferralProgram: React.FC<ReferralProgramProps> = ({
               ? cleanName.substring(0, 4).toUpperCase() 
               : "USER";
 
+          const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
           // Limit collision checks to avoid infinite loops or excessive API calls
-          while (!isUnique && attempts < 3) {
-              const suffix = Math.floor(1000 + Math.random() * 9000); // 4 digit random (1000-9999)
+          while (!isUnique && attempts < 5) {
+              let suffix = '';
+              // Use 5 random alphanumeric characters for high entropy (36^5 combinations)
+              for (let i = 0; i < 5; i++) {
+                  suffix += chars.charAt(Math.floor(Math.random() * chars.length));
+              }
               const candidate = `${base}${suffix}`;
               
               // Check collision in DB
@@ -109,7 +115,8 @@ const ReferralProgram: React.FC<ReferralProgramProps> = ({
 
           // Fallback if we failed to find a unique code after retries
           if (!uniqueCode) {
-              uniqueCode = `UNI${Math.floor(100000 + Math.random() * 900000)}`;
+              // Fallback to something highly likely to be unique based on timestamp
+              uniqueCode = `U${Date.now().toString(36).toUpperCase().slice(-6)}${Math.floor(Math.random()*9)}`;
           }
 
           // 3. Register the unique code
@@ -305,7 +312,6 @@ const ReferralProgram: React.FC<ReferralProgramProps> = ({
                 {/* Wallet Card */}
                 <div className="relative bg-gradient-to-br from-[#1e1b2e] to-[#0f0f12] border border-white/10 rounded-3xl p-6 overflow-hidden shadow-2xl group">
                     <div className="relative z-10 flex flex-col items-center text-center">
-                        {/* UPDATED: Removed background and border from this pill */}
                         <div className="text-emerald-400 text-xs font-bold uppercase tracking-widest mb-3 flex items-center gap-2 px-3 py-1 rounded-full">
                             <Wallet size={12} /> Available Funds
                         </div>
@@ -398,7 +404,7 @@ const ReferralProgram: React.FC<ReferralProgramProps> = ({
                         ) : (
                             <>
                                 <code className={`text-xl md:text-2xl font-mono font-bold tracking-widest transition-colors ${copied ? 'text-emerald-300' : 'text-emerald-400'}`}>
-                                    {referralCode || (isRegisteringCode ? "GENERATING..." : "LOADING...")}
+                                    {referralCode || "LOADING..."}
                                 </code>
                                 
                                 <div className={`flex items-center gap-1.5 transition-all text-xs font-bold ${copied ? 'text-emerald-300 scale-110' : 'text-white/40 group-hover:text-white'}`}>
