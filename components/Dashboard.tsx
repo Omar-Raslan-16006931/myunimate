@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { MapPin, ClipboardList, ArrowRight, Dumbbell, Calculator, Sparkles, Megaphone, X, CheckSquare, Plus } from 'lucide-react';
+import { MapPin, ClipboardList, ArrowRight, Dumbbell, Calculator, Sparkles, Megaphone, X, CheckSquare, Plus, Lock } from 'lucide-react';
 import { ScheduleEvent, EventColorMap, PeriodDefinition, Announcement } from '../types';
 import { getLocalISOString } from '../constants';
 import { theme, styles } from '../theme';
@@ -296,30 +296,35 @@ export const Dashboard: React.FC<DashboardProps> = ({ events, eventColors, onNav
 
             {/* Apps Grid - Even Smaller and Compact */}
             <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px'}}>
-                {/* Gym Entry Card */}
+                {/* Gym Entry Card - UPDATED TO COMING SOON */}
                 <div 
-                    onClick={() => onNavigate('gym')}
                     style={{
                         ...styles.card,
                         margin: 0,
                         padding: '10px',
                         minHeight: '75px',
-                        background: 'linear-gradient(135deg, rgba(30, 64, 175, 0.5), rgba(30, 58, 138, 0.3))',
-                        border: '1px solid rgba(96, 165, 250, 0.2)',
-                        cursor: 'pointer',
+                        background: 'linear-gradient(135deg, rgba(30, 64, 175, 0.25), rgba(30, 58, 138, 0.15))',
+                        border: '1px solid rgba(96, 165, 250, 0.1)',
+                        cursor: 'default',
                         display: 'flex',
                         flexDirection: 'column',
                         justifyContent: 'space-between',
                         alignItems: 'flex-start',
-                        boxShadow: '0 8px 20px rgba(30, 58, 138, 0.3)'
+                        opacity: 0.7,
+                        position: 'relative',
+                        overflow: 'hidden'
                     }}
                 >
-                    <div style={{background: 'rgba(255,255,255,0.15)', padding: '6px', borderRadius: '8px', marginBottom: '4px'}}>
-                        <Dumbbell size={16} color="#fff" />
+                    <div className="absolute top-2 right-2 flex items-center gap-1.5 bg-black/40 px-1.5 py-0.5 rounded-full border border-white/10">
+                        <Lock size={8} className="text-white/60" />
+                        <span style={{fontSize: '0.5rem', fontWeight: 800, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.5px'}}>Soon</span>
+                    </div>
+                    <div style={{background: 'rgba(255,255,255,0.05)', padding: '6px', borderRadius: '8px', marginBottom: '4px'}}>
+                        <Dumbbell size={16} color="rgba(255,255,255,0.4)" />
                     </div>
                     <div>
-                        <h3 style={{margin: 0, fontSize: '0.8rem', fontWeight: 800, color: '#fff'}}>Gym</h3>
-                        <p style={{margin: 0, fontSize: '0.6rem', color: 'rgba(255,255,255,0.7)'}}>Fitness Tracker</p>
+                        <h3 style={{margin: 0, fontSize: '0.8rem', fontWeight: 800, color: 'rgba(255,255,255,0.6)'}}>Gym</h3>
+                        <p style={{margin: 0, fontSize: '0.6rem', color: 'rgba(255,255,255,0.4)'}}>Coming Soon</p>
                     </div>
                 </div>
 

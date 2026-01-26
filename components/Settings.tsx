@@ -1,20 +1,17 @@
 
-
-
-
-
-// ... (imports)
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../lib/supabase';
-import { Plus, Trash2, CalendarDays, Palette, Layers, Pencil, Upload, ImageIcon, Loader2, LogOut, ChevronDown, ChevronUp, Columns, AlertTriangle, User, GraduationCap, Calendar, Building, Users, Moon, Sun, Check, X, Shield, Search, Ban, MessageSquare, Sparkles, Clock, ChevronRight, Ticket, Send, ArrowLeft, CheckCircle2, DollarSign } from 'lucide-react';
+// Added Crown to the lucide-react imports to fix 'Cannot find name Crown' error
+import { Plus, Trash2, CalendarDays, Palette, Layers, Pencil, Upload, ImageIcon, Loader2, LogOut, ChevronDown, ChevronUp, Columns, AlertTriangle, User, GraduationCap, Calendar, Building, Users, Moon, Sun, Check, X, Shield, Search, Ban, MessageSquare, Sparkles, Clock, ChevronRight, Ticket, Send, ArrowLeft, CheckCircle2, DollarSign, Heart, ExternalLink, Crown } from 'lucide-react';
 import { ScheduleProfile, EventColorMap, EventType, ScheduleEvent, PeriodDefinition, ThemeMode, ReferralCode, AppFeedback, FeedbackReply, ViewState } from '../types';
 import { theme, styles } from '../theme';
 import ScheduleSettings from './ScheduleSettings';
 import FeedbackModal from './FeedbackModal';
 import AdminInbox from './AdminInbox';
 
-// ... (SupportHistoryModal code remains unchanged)
+// --- SUPPORTING COMPONENTS ---
+
 const SupportHistoryModal = ({ isOpen, onClose, userId }: { isOpen: boolean, onClose: () => void, userId?: string }) => {
     const [tickets, setTickets] = useState<AppFeedback[]>([]);
     const [loading, setLoading] = useState(false);
@@ -24,7 +21,6 @@ const SupportHistoryModal = ({ isOpen, onClose, userId }: { isOpen: boolean, onC
     const [sendingReply, setSendingReply] = useState(false);
     const replyEndRef = useRef<HTMLDivElement>(null);
 
-    // Fetch Tickets & Subscribe to updates
     useEffect(() => {
         if (isOpen && userId) {
             setLoading(true);
@@ -38,7 +34,6 @@ const SupportHistoryModal = ({ isOpen, onClose, userId }: { isOpen: boolean, onC
             };
             fetchTickets();
 
-            // Subscribe to Ticket Changes (e.g. admin deletes a ticket or changes status)
             const channel = supabase.channel(`user_feedback_list_${userId}`)
                 .on(
                     'postgres_changes',
@@ -48,11 +43,9 @@ const SupportHistoryModal = ({ isOpen, onClose, userId }: { isOpen: boolean, onC
                             setTickets(prev => [payload.new as AppFeedback, ...prev]);
                         } else if (payload.eventType === 'UPDATE') {
                             setTickets(prev => prev.map(t => t.id === payload.new.id ? { ...t, ...payload.new } : t));
-                            // Also update active ticket if it's the one modified
                             setActiveTicket(prev => prev?.id === payload.new.id ? { ...prev, ...payload.new } : prev);
                         } else if (payload.eventType === 'DELETE') {
                             setTickets(prev => prev.filter(t => t.id !== payload.old.id));
-                            // Close chat if active ticket was deleted
                             setActiveTicket(prev => prev?.id === payload.old.id ? null : prev);
                         }
                     }
@@ -63,7 +56,6 @@ const SupportHistoryModal = ({ isOpen, onClose, userId }: { isOpen: boolean, onC
         }
     }, [isOpen, userId]);
 
-    // Fetch replies & Subscribe to chat
     useEffect(() => {
         if (activeTicket) {
             setReplies([]);
@@ -88,9 +80,8 @@ const SupportHistoryModal = ({ isOpen, onClose, userId }: { isOpen: boolean, onC
 
             return () => { supabase.removeChannel(channel); };
         }
-    }, [activeTicket?.id]); // Depend on ID specifically to prevent stale closures
+    }, [activeTicket?.id]);
 
-    // Auto-scroll to bottom
     useEffect(() => {
         if (activeTicket) {
             setTimeout(() => {
@@ -112,8 +103,6 @@ const SupportHistoryModal = ({ isOpen, onClose, userId }: { isOpen: boolean, onC
             });
             
             if (replyError) throw replyError;
-            
-            // Mark as unread for admins
             await supabase.from('app_feedback').update({ status: 'unread' }).eq('id', activeTicket.id);
             setReplyText('');
         } catch (error) {
@@ -126,21 +115,16 @@ const SupportHistoryModal = ({ isOpen, onClose, userId }: { isOpen: boolean, onC
 
     if (!isOpen) return null;
 
-    // Use Portal to break out of any scroll containers or overflow:hidden parents
     return createPortal(
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200" onClick={onClose}>
             <div 
-                className="w-full max-w-md h-[85vh] bg-[#0f172a] rounded-3xl border border-white/10 shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-300"
+                className="w-full max-w-md h-[85vh] bg-[#0f172a] rounded-[32px] border border-white/10 shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-300"
                 onClick={e => e.stopPropagation()}
             >
-                {/* Header */}
                 <div className="flex items-center justify-between px-5 py-4 border-b border-white/5 bg-[#130f1c] shrink-0">
                     <div className="flex items-center gap-3">
                         {activeTicket ? (
-                            <button 
-                                onClick={() => setActiveTicket(null)}
-                                className="p-1.5 -ml-2 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition"
-                            >
+                            <button onClick={() => setActiveTicket(null)} className="p-1.5 -ml-2 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition">
                                 <ArrowLeft size={20} />
                             </button>
                         ) : (
@@ -148,25 +132,17 @@ const SupportHistoryModal = ({ isOpen, onClose, userId }: { isOpen: boolean, onC
                                 <MessageSquare size={20} />
                             </div>
                         )}
-                        <div>
-                            <h3 className="text-lg font-bold text-white leading-none">
-                                {activeTicket ? 'Support Chat' : 'Support Inbox'}
-                            </h3>
-                        </div>
+                        <h3 className="text-lg font-bold text-white leading-none">
+                            {activeTicket ? 'Support Chat' : 'Support Inbox'}
+                        </h3>
                     </div>
-                    <button 
-                        onClick={onClose} 
-                        className="p-2 text-white/40 hover:text-white hover:bg-white/5 rounded-full transition-colors"
-                    >
+                    <button onClick={onClose} className="p-2 text-white/40 hover:text-white hover:bg-white/5 rounded-full transition-colors">
                         <X size={20} />
                     </button>
                 </div>
                 
-                {/* Content Area */}
                 <div className="flex-1 overflow-hidden relative bg-[#0f172a]">
-                    
                     {!activeTicket ? (
-                        /* TICKET LIST VIEW */
                         <div className="absolute inset-0 overflow-y-auto p-4 space-y-3 custom-scrollbar">
                             {loading ? (
                                 <div className="flex justify-center py-10"><Loader2 className="animate-spin text-indigo-500" /></div>
@@ -174,89 +150,41 @@ const SupportHistoryModal = ({ isOpen, onClose, userId }: { isOpen: boolean, onC
                                 <div className="text-center text-white/30 py-12 text-sm italic">No support tickets found.</div>
                             ) : (
                                 tickets.map(t => (
-                                    <div 
-                                        key={t.id} 
-                                        onClick={() => setActiveTicket(t)}
-                                        className="group bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/10 rounded-2xl p-4 cursor-pointer transition-all active:scale-[0.98]"
-                                    >
+                                    <div key={t.id} onClick={() => setActiveTicket(t)} className="group bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/10 rounded-2xl p-4 cursor-pointer transition-all active:scale-[0.98]">
                                         <div className="flex justify-between items-start mb-2">
                                             <div className="flex items-center gap-2">
-                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${
-                                                    t.category === 'Bug' ? 'text-red-400 bg-red-400/10' : 
-                                                    t.category === 'Feature Request' ? 'text-green-400 bg-green-400/10' : 
-                                                    'text-blue-400 bg-blue-400/10'
-                                                }`}>
-                                                    {t.category}
-                                                </span>
+                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${t.category === 'Bug' ? 'text-red-400 bg-red-400/10' : t.category === 'Feature Request' ? 'text-green-400 bg-green-400/10' : 'text-blue-400 bg-blue-400/10'}`}>{t.category}</span>
                                                 <span className="text-[10px] text-white/30">{new Date(t.created_at).toLocaleDateString()}</span>
                                             </div>
                                             <ChevronRight size={16} className="text-white/20 group-hover:text-white/60 transition-colors" />
                                         </div>
-                                        <p className="text-sm text-white/90 font-medium line-clamp-2 leading-relaxed">
-                                            {t.message}
-                                        </p>
+                                        <p className="text-sm text-white/90 font-medium line-clamp-2 leading-relaxed">{t.message}</p>
                                     </div>
                                 ))
                             )}
                         </div>
                     ) : (
-                        /* CHAT VIEW */
                         <div className="flex flex-col h-full">
                             <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-[#0f172a] to-[#130f1c] custom-scrollbar">
-                                {/* Original Ticket - Shown as user message */}
                                 <div className="flex flex-col items-end animate-in slide-in-from-bottom-2">
-                                    <div className="bg-indigo-600 text-white px-4 py-3 rounded-2xl rounded-tr-none max-w-[85%] text-sm shadow-md leading-relaxed">
-                                        {activeTicket.message}
-                                    </div>
-                                    <span className="text-[10px] text-white/20 mt-1 mr-1">
-                                        {new Date(activeTicket.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                                    </span>
+                                    <div className="bg-indigo-600 text-white px-4 py-3 rounded-2xl rounded-tr-none max-w-[85%] text-sm shadow-md leading-relaxed">{activeTicket.message}</div>
+                                    <span className="text-[10px] text-white/20 mt-1 mr-1">{new Date(activeTicket.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                                 </div>
-
-                                {/* Thread */}
                                 {replies.map(reply => {
                                     const isMe = !reply.is_admin;
                                     return (
-                                        <div 
-                                            key={reply.id} 
-                                            className={`flex flex-col animate-in slide-in-from-bottom-2 ${isMe ? 'items-end' : 'items-start'}`}
-                                        >
-                                            <div className={`px-4 py-3 rounded-2xl max-w-[85%] text-sm shadow-md leading-relaxed ${
-                                                isMe 
-                                                    ? 'bg-indigo-600 text-white rounded-tr-none' 
-                                                    : 'bg-white/10 text-white/90 rounded-tl-none border border-white/5'
-                                            }`}>
-                                                {reply.message}
-                                            </div>
-                                            <span className={`text-[10px] text-white/20 mt-1 ${isMe ? 'mr-1' : 'ml-1'}`}>
-                                                {isMe ? 'You' : 'Support'} • {new Date(reply.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                                            </span>
+                                        <div key={reply.id} className={`flex flex-col animate-in slide-in-from-bottom-2 ${isMe ? 'items-end' : 'items-start'}`}>
+                                            <div className={`px-4 py-3 rounded-2xl max-w-[85%] text-sm shadow-md leading-relaxed ${isMe ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-white/10 text-white/90 rounded-tl-none border border-white/5'}`}>{reply.message}</div>
+                                            <span className={`text-[10px] text-white/20 mt-1 ${isMe ? 'mr-1' : 'ml-1'}`}>{isMe ? 'You' : 'Support'} • {new Date(reply.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                                         </div>
                                     );
                                 })}
                                 <div ref={replyEndRef} />
                             </div>
-
-                            {/* Input Bar */}
                             <div className="p-3 bg-[#130f1c] border-t border-white/5 shrink-0">
                                 <div className="flex gap-2 items-end bg-white/5 rounded-3xl p-1 border border-white/10 focus-within:border-indigo-500/50 transition-colors">
-                                    <textarea 
-                                        value={replyText}
-                                        onChange={e => setReplyText(e.target.value)}
-                                        onKeyDown={e => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendReply(); } }}
-                                        placeholder="Type a message..."
-                                        className="flex-1 bg-transparent border-none text-white text-sm px-4 py-3 focus:outline-none resize-none max-h-[100px] min-h-[44px] placeholder-white/30"
-                                        rows={1}
-                                    />
-                                    <button 
-                                        onClick={handleSendReply}
-                                        disabled={!replyText.trim() || sendingReply}
-                                        className={`w-10 h-10 rounded-full flex items-center justify-center transition-all shrink-0 ${
-                                            (!replyText.trim() || sendingReply) 
-                                                ? 'bg-white/5 text-white/20' 
-                                                : 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-900/20'
-                                        }`}
-                                    >
+                                    <textarea value={replyText} onChange={e => setReplyText(e.target.value)} onKeyDown={e => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendReply(); } }} placeholder="Type a message..." className="flex-1 bg-transparent border-none text-white text-sm px-4 py-3 focus:outline-none resize-none max-h-[100px] min-h-[44px] placeholder-white/30" rows={1}/>
+                                    <button onClick={handleSendReply} disabled={!replyText.trim() || sendingReply} className={`w-10 h-10 rounded-full flex items-center justify-center transition-all shrink-0 ${(!replyText.trim() || sendingReply) ? 'bg-white/5 text-white/20' : 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-900/20'}`}>
                                         {sendingReply ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} className={replyText.trim() ? 'ml-0.5' : ''} />}
                                     </button>
                                 </div>
@@ -270,18 +198,16 @@ const SupportHistoryModal = ({ isOpen, onClose, userId }: { isOpen: boolean, onC
     );
 };
 
-// ... (BanModal code remains unchanged)
 const BanModal = ({ isOpen, onClose, onConfirm, username }: { isOpen: boolean, onClose: () => void, onConfirm: (duration: string | null) => void, username: string }) => {
     if (!isOpen) return null;
     return (
         <div style={styles.modalOverlay} onClick={onClose}>
             <div style={{...styles.modalContent, maxWidth: '300px', textAlign: 'center'}} onClick={e => e.stopPropagation()}>
-                <div style={{margin: '0 auto 16px', width: '50px', height: '50px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.danger}}>
+                <div style={{margin: '0 auto 16px', width: '50px', height: '50px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyCenter: 'center', color: theme.danger}}>
                     <Ban size={24} />
                 </div>
                 <h3 style={{fontSize: '1.2rem', fontWeight: 800, margin: '0 0 8px 0'}}>Suspend {username}?</h3>
                 <p style={{fontSize: '0.85rem', color: theme.textMuted, marginBottom: '20px'}}>Select suspension duration.</p>
-                
                 <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '12px'}}>
                     <button onClick={() => onConfirm('1d')} style={{padding: '8px', background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '0.8rem'}}>1 Day</button>
                     <button onClick={() => onConfirm('3d')} style={{padding: '8px', background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '0.8rem'}}>3 Days</button>
@@ -294,6 +220,8 @@ const BanModal = ({ isOpen, onClose, onConfirm, username }: { isOpen: boolean, o
         </div>
     );
 };
+
+// --- MAIN SETTINGS COMPONENT ---
 
 interface SettingsProps {
   profiles: ScheduleProfile[];
@@ -318,35 +246,12 @@ interface SettingsProps {
   themeMode: ThemeMode;
   setThemeMode: (mode: ThemeMode) => void;
   onImpersonate: (userId: string) => void;
-  onNavigate: (view: ViewState) => void; // Added prop
+  onNavigate: (view: ViewState) => void;
 }
 
 const Settings: React.FC<SettingsProps> = ({
-  profiles,
-  activeProfileId,
-  eventColors,
-  baseEvents,
-  onAddProfile,
-  onSwitchProfile,
-  onDeleteProfile,
-  onUpdateColor,
-  onDeleteEvent,
-  onEditEvent,
-  onAddBaseEventClick,
-  onImageUpload,
-  isAnalyzing,
-  onResetApp,
-  onSignOut,
-  periods,
-  setPeriods,
-  accountInfo,
-  onUpdateAccount,
-  themeMode,
-  setThemeMode,
-  onImpersonate,
-  onNavigate
+  profiles, activeProfileId, eventColors, baseEvents, onAddProfile, onSwitchProfile, onDeleteProfile, onUpdateColor, onDeleteEvent, onEditEvent, onAddBaseEventClick, onImageUpload, isAnalyzing, onResetApp, onSignOut, periods, setPeriods, accountInfo, onUpdateAccount, themeMode, setThemeMode, onImpersonate, onNavigate
 }) => {
-  // ... (rest of the state hooks)
   const [newProfileName, setNewProfileName] = useState('');
   const [isScheduleSettingsExpanded, setIsScheduleSettingsExpanded] = useState(false);
   const [isProfilesExpanded, setIsProfilesExpanded] = useState(false);
@@ -355,132 +260,55 @@ const Settings: React.FC<SettingsProps> = ({
   const [isAccountExpanded, setIsAccountExpanded] = useState(false);
   const [isUserMgmtExpanded, setIsUserMgmtExpanded] = useState(false);
   const [isFeedbackInboxExpanded, setIsFeedbackInboxExpanded] = useState(false);
-  
   const [isReferralExpanded, setIsReferralExpanded] = useState(false);
   const [referralCodes, setReferralCodes] = useState<ReferralCode[]>([]);
   const [isCreatingReferral, setIsCreatingReferral] = useState(false);
   const [newReferralCode, setNewReferralCode] = useState('');
   const [newReferralTier, setNewReferralTier] = useState(0);
-
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
-
   const [isEditingAccount, setIsEditingAccount] = useState(false);
   const [editForm, setEditForm] = useState<any>({});
-  
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
   const [isCheckingUsername, setIsCheckingUsername] = useState(false);
-
   const [users, setUsers] = useState<any[]>([]);
   const [userSearch, setUserSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [banModalUser, setBanModalUser] = useState<{id: string, username: string} | null>(null);
-
   const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
 
-  // ... (all the handler functions: handleCreateProfile, to12h, account editing logic, user mgmt, referral logic)
-  const handleCreateProfile = () => {
-    if (newProfileName.trim()) {
-      onAddProfile(newProfileName);
-      setNewProfileName('');
-    }
-  };
-  
-  const to12h = (time24: string) => {
-    if (!time24) return "";
-    const [h, m] = time24.split(":").map(Number);
-    const period = h >= 12 ? "PM" : "AM";
-    const h12 = h % 12 || 12;
-    return `${h12}:${m.toString().padStart(2, "0")} ${period}`;
-  };
+  const handleCreateProfile = () => { if (newProfileName.trim()) { onAddProfile(newProfileName); setNewProfileName(''); } };
+  const to12h = (time24: string) => { if (!time24) return ""; const [h, m] = time24.split(":").map(Number); const period = h >= 12 ? "PM" : "AM"; const h12 = h % 12 || 12; return `${h12}:${m.toString().padStart(2, "0")} ${period}`; };
+  const startEditingAccount = (e: React.MouseEvent) => { e.stopPropagation(); setEditForm({ ...accountInfo }); setIsEditingAccount(true); setIsAccountExpanded(true); setUsernameAvailable(null); };
+  const cancelEditingAccount = () => { setIsEditingAccount(false); setEditForm({}); setUsernameAvailable(null); setIsCheckingUsername(false); };
+  const saveEditingAccount = () => { onUpdateAccount(editForm); setIsEditingAccount(false); setUsernameAvailable(null); };
 
-  const startEditingAccount = (e: React.MouseEvent) => {
-      e.stopPropagation();
-      setEditForm({ ...accountInfo });
-      setIsEditingAccount(true);
-      setIsAccountExpanded(true); 
-      setUsernameAvailable(null);
-  };
-
-  const cancelEditingAccount = () => {
-      setIsEditingAccount(false);
-      setEditForm({});
-      setUsernameAvailable(null);
-      setIsCheckingUsername(false);
-  };
-
-  const saveEditingAccount = () => {
-      onUpdateAccount(editForm);
-      setIsEditingAccount(false);
-      setUsernameAvailable(null);
-  };
-
-  useEffect(() => {
-      const timer = setTimeout(() => {
-          setDebouncedSearch(userSearch);
-      }, 500);
-      return () => clearTimeout(timer);
-  }, [userSearch]);
+  useEffect(() => { const timer = setTimeout(() => setDebouncedSearch(userSearch), 500); return () => clearTimeout(timer); }, [userSearch]);
 
   const fetchUsers = useCallback(async (manualSearchTerm?: string) => {
       if (!isUserMgmtExpanded) return;
-      
       setIsLoadingUsers(true);
       const term = manualSearchTerm !== undefined ? manualSearchTerm : debouncedSearch;
       const cleanTerm = term.trim();
-      
       try {
-          let query = supabase
-            .from('profiles')
-            .select('id, username, created_at, updated_at, college, subscription_tier, is_banned, settings')
-            .order('updated_at', { ascending: false });
-
+          let query = supabase.from('profiles').select('id, username, created_at, updated_at, college, subscription_tier, is_banned, settings').order('updated_at', { ascending: false });
           if (cleanTerm) {
              const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanTerm);
-             if (isUUID) {
-                 query = query.eq('id', cleanTerm);
-             } else {
-                 query = query.ilike('username', `%${cleanTerm}%`);
-             }
+             if (isUUID) query = query.eq('id', cleanTerm);
+             else query = query.ilike('username', `%${cleanTerm}%`);
              query = query.limit(50); 
-          } else {
-             query = query.limit(20);
-          }
-
-          const { data, error } = await query;
-
-          if (data) {
-              const mappedUsers = data.map((u: any) => ({
-                  ...u,
-                  email: u.settings?.account?.email || 'No Email',
-                  usage: u.settings?.usage || { total: 0, today: 0, features: {} }
-              }));
-              setUsers(mappedUsers);
-          } else if (error) {
-              if (error.message?.includes("Failed to fetch")) {
-                  console.warn("Failed to fetch users (offline or blocked)");
-              } else {
-                  console.error("Error loading users:", error);
-              }
-          }
-      } catch (err) {
-          console.error("Failed to fetch users", err);
-      } finally {
-          setIsLoadingUsers(false);
-      }
+          } else query = query.limit(20);
+          const { data } = await query;
+          if (data) setUsers(data.map((u: any) => ({ ...u, email: u.settings?.account?.email || 'No Email', usage: u.settings?.usage || { total: 0, today: 0, features: {} } })));
+      } catch (err) { console.error(err); } finally { setIsLoadingUsers(false); }
   }, [debouncedSearch, isUserMgmtExpanded]);
 
-  useEffect(() => {
-      if (isUserMgmtExpanded) {
-          fetchUsers();
-      }
-  }, [fetchUsers, isUserMgmtExpanded]);
+  useEffect(() => { if (isUserMgmtExpanded) fetchUsers(); }, [fetchUsers, isUserMgmtExpanded]);
 
   const handleBanConfirm = async (duration: string | null) => {
       if (!banModalUser) return;
-      
       let bannedUntil = null;
       if (duration) {
           const now = new Date();
@@ -490,137 +318,37 @@ const Settings: React.FC<SettingsProps> = ({
           if (duration === '1m') now.setMonth(now.getMonth() + 1);
           bannedUntil = now.toISOString();
       }
-
-      const { error } = await supabase
-          .from('profiles')
-          .update({ is_banned: true, banned_until: bannedUntil })
-          .eq('id', banModalUser.id);
-
-      if (!error) {
-          setUsers(users.map(u => u.id === banModalUser.id ? { ...u, is_banned: true } : u));
-      } else {
-          alert("Failed to ban user");
-      }
+      const { error } = await supabase.from('profiles').update({ is_banned: true, banned_until: bannedUntil }).eq('id', banModalUser.id);
+      if (!error) setUsers(users.map(u => u.id === banModalUser.id ? { ...u, is_banned: true } : u));
       setBanModalUser(null);
   };
 
-  const unbanUser = async (id: string) => {
-      if (!confirm("Unban this user?")) return;
-      const { error } = await supabase
-          .from('profiles')
-          .update({ is_banned: false, banned_until: null })
-          .eq('id', id);
-      
-      if (!error) {
-          setUsers(users.map(u => u.id === id ? { ...u, is_banned: false } : u));
-      }
-  };
-
-  const toggleUserPro = async (id: string, currentTier: number) => {
-      const newTier = currentTier === 1 ? 0 : 1;
-      const { error } = await supabase
-          .from('profiles')
-          .update({ subscription_tier: newTier })
-          .eq('id', id);
-
-      if (!error) {
-          setUsers(users.map(u => u.id === id ? { ...u, subscription_tier: newTier } : u));
-      } else {
-          alert("Failed to update subscription");
-      }
-  };
-
-  const deleteUser = async (id: string) => {
-      if (!confirm("DANGER: This will permanently delete the user profile. This action cannot be undone. Are you absolutely sure?")) return;
-      
-      const { error } = await supabase.from('profiles').delete().eq('id', id);
-      if (!error) {
-          setUsers(users.filter(u => u.id !== id));
-      } else {
-          alert("Failed to delete user. Check permissions.");
-      }
-  };
-
-  const fetchReferralCodes = useCallback(async () => {
-      const { data, error } = await supabase.from('referral_codes').select('*').order('created_at', { ascending: false });
-      if (data) {
-          setReferralCodes(data);
-      } else if (error) {
-          console.error("Error fetching referral codes:", error);
-      }
-  }, []);
-
-  useEffect(() => {
-      if (isReferralExpanded) fetchReferralCodes();
-  }, [isReferralExpanded, fetchReferralCodes]);
+  const unbanUser = async (id: string) => { if (!confirm("Unban this user?")) return; const { error } = await supabase.from('profiles').update({ is_banned: false, banned_until: null }).eq('id', id); if (!error) setUsers(users.map(u => u.id === id ? { ...u, is_banned: false } : u)); };
+  const toggleUserPro = async (id: string, currentTier: number) => { const newTier = currentTier === 1 ? 0 : 1; const { error } = await supabase.from('profiles').update({ subscription_tier: newTier }).eq('id', id); if (!error) setUsers(users.map(u => u.id === id ? { ...u, subscription_tier: newTier } : u)); };
+  const deleteUser = async (id: string) => { if (!confirm("Are you sure?")) return; const { error } = await supabase.from('profiles').delete().eq('id', id); if (!error) setUsers(users.filter(u => u.id !== id)); };
+  const fetchReferralCodes = useCallback(async () => { const { data } = await supabase.from('referral_codes').select('*').order('created_at', { ascending: false }); if (data) setReferralCodes(data); }, []);
+  useEffect(() => { if (isReferralExpanded) fetchReferralCodes(); }, [isReferralExpanded, fetchReferralCodes]);
 
   const createReferralCode = async () => {
       if (!newReferralCode.trim()) return;
-      const code = newReferralCode.trim().toUpperCase();
-      
       try {
-          const { data, error } = await supabase.from('referral_codes').insert({
-              code,
-              is_active: true,
-              usage_count: 0,
-              subscription_tier: newReferralTier
-          }).select().single();
-
+          const { data, error } = await supabase.from('referral_codes').insert({ code: newReferralCode.trim().toUpperCase(), is_active: true, usage_count: 0, subscription_tier: newReferralTier }).select().single();
+          if (data) { setReferralCodes([data, ...referralCodes]); setIsCreatingReferral(false); setNewReferralCode(''); }
           if (error) throw error;
-
-          if (data) {
-              setReferralCodes([data, ...referralCodes]);
-              setIsCreatingReferral(false);
-              setNewReferralCode('');
-          }
-      } catch (err: any) {
-          console.error("Error creating code:", err);
-          alert(`Failed to create code: ${err.message || 'Unknown error'}`);
-      }
+      } catch (err) { console.error(err); }
   };
 
-  const toggleReferralCode = async (id: string, currentState: boolean) => {
-      const { error } = await supabase.from('referral_codes').update({ is_active: !currentState }).eq('id', id);
-      if (!error) {
-          setReferralCodes(referralCodes.map(c => c.id === id ? { ...c, is_active: !currentState } : c));
-      } else {
-          console.error("Error toggling code:", error);
-          alert("Failed to update code status.");
-      }
-  };
+  const toggleReferralCode = async (id: string, currentState: boolean) => { const { error } = await supabase.from('referral_codes').update({ is_active: !currentState }).eq('id', id); if (!error) setReferralCodes(referralCodes.map(c => c.id === id ? { ...c, is_active: !currentState } : c)); };
 
   useEffect(() => {
-    if (!isEditingAccount || !editForm.username) return;
-
-    if (editForm.username === accountInfo?.username) {
-        setUsernameAvailable(null);
-        setIsCheckingUsername(false);
-        return;
-    }
-
-    if (editForm.username.length < 4) {
-        setUsernameAvailable(null);
-        return;
-    }
-
+    if (!isEditingAccount || !editForm.username || editForm.username === accountInfo?.username || editForm.username.length < 4) { setUsernameAvailable(null); setIsCheckingUsername(false); return; }
     setIsCheckingUsername(true);
     const timer = setTimeout(async () => {
         try {
-            const { data } = await supabase
-                .from('profiles')
-                .select('username')
-                .ilike('username', editForm.username.trim())
-                .neq('id', accountInfo?.id || '')
-                .maybeSingle();
-            
+            const { data } = await supabase.from('profiles').select('username').ilike('username', editForm.username.trim()).neq('id', accountInfo?.id || '').maybeSingle();
             setUsernameAvailable(!data);
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setIsCheckingUsername(false);
-        }
+        } catch (err) { console.error(err); } finally { setIsCheckingUsername(false); }
     }, 500);
-
     return () => clearTimeout(timer);
   }, [editForm.username, isEditingAccount, accountInfo]);
 
@@ -628,853 +356,450 @@ const Settings: React.FC<SettingsProps> = ({
   const isSaveDisabled = isCheckingUsername || (usernameAvailable === false && editForm.username !== accountInfo?.username) || (editForm.username && editForm.username.length < 4);
   const days = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
-  const sectionHeaderStyle: React.CSSProperties = {
-      marginTop: 0, display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.95rem', margin: 0, fontWeight: 700
-  };
-  const sectionIconStyle = {
-      padding: '6px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyItems: 'center'
-  };
-  
-  const compactCardStyle = {
-      ...styles.card,
-      padding: '14px',
-      borderRadius: '18px',
-      marginBottom: '12px'
-  };
+  // --- REFINED STYLE HELPERS ---
+  const SectionHeader = ({ icon: Icon, color, title, isExpanded, onToggle, rightElement }: any) => (
+      <div 
+        onClick={onToggle}
+        className="flex items-center justify-between cursor-pointer p-4 group"
+      >
+          <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-300 group-hover:scale-110" style={{ background: `${color}15`, color: color }}>
+                  <Icon size={20} />
+              </div>
+              <h3 className="text-[15px] font-bold text-white tracking-tight">{title}</h3>
+          </div>
+          <div className="flex items-center gap-3">
+              {rightElement}
+              <div className={`text-white/20 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
+                  <ChevronDown size={18} />
+              </div>
+          </div>
+      </div>
+  );
 
-  const adminCardStyle = {
-      ...compactCardStyle,
-      background: '#130f1c', // Solid background for admin tools
-      backdropFilter: 'none'
-  };
+  const GroupCard = ({ children, className = "" }: any) => (
+      <div className={`bg-white/[0.03] backdrop-blur-xl border border-white/[0.05] rounded-[28px] overflow-hidden shadow-2xl ${className}`}>
+          {children}
+      </div>
+  );
 
   return (
-    <div style={styles.scrollableContent}>
-          <h1 style={{...styles.title, fontSize: '1.5rem'}}>Settings</h1>
-          <p style={styles.subtitle}>Personalize your app</p>
-          <div style={{display: "flex", flexDirection: "column", gap: "12px", marginTop: "16px"}}>
+    <div style={styles.scrollableContent} className="animate-in fade-in duration-700">
+          <header className="mb-8 px-1">
+               <h1 className="text-3xl font-black text-white tracking-tight leading-tight">Settings</h1>
+               <p className="text-[13px] text-white/40 font-medium tracking-wide">Manage your university operating system</p>
+          </header>
+
+          <div className="space-y-6">
                 
-                {/* Account Info Accordion */}
-                {accountInfo && (
-                  <div style={compactCardStyle}>
-                      <div 
-                        onClick={() => setIsAccountExpanded(!isAccountExpanded)}
-                        style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '2px 0'}}
-                      >
-                          <h3 style={sectionHeaderStyle}>
-                              <div style={{...sectionIconStyle, background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa'}}>
-                                  <User size={16} />
-                              </div>
-                              <span>Account Info</span>
-                          </h3>
-                          <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
-                              {!isEditingAccount && (
-                                  <button 
-                                    onClick={startEditingAccount}
-                                    style={{background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '6px', padding: '4px 8px', fontSize: '0.65rem', fontWeight: 600, color: theme.text, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px'}}
+                {/* --- PERSONAL GROUP --- */}
+                <GroupCard>
+                    <div className="px-5 pt-6 pb-2">
+                        <div className="flex items-center gap-2 mb-4 opacity-40">
+                             <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white">Personal & Identity</span>
+                        </div>
+                    </div>
+
+                    {/* Account Section */}
+                    {accountInfo && (
+                      <div className="border-b border-white/[0.05] last:border-0">
+                          <SectionHeader 
+                            icon={User} 
+                            color="#3b82f6" 
+                            title="Account Profile" 
+                            isExpanded={isAccountExpanded} 
+                            onToggle={() => setIsAccountExpanded(!isAccountExpanded)}
+                            rightElement={!isEditingAccount && (
+                                <button onClick={startEditingAccount} className="px-3 py-1.5 bg-white/5 rounded-full text-[11px] font-bold text-white/60 hover:text-white transition-colors border border-white/5">Edit</button>
+                            )}
+                          />
+                          {isAccountExpanded && (
+                              <div className="px-5 pb-6 pt-2 animate-in slide-in-from-top-2 duration-300">
+                                  {isEditingAccount && (
+                                      <div className="flex gap-2 mb-5">
+                                          <button onClick={saveEditingAccount} disabled={isSaveDisabled} className="flex-1 py-2.5 bg-blue-600 rounded-xl text-xs font-bold text-white shadow-lg shadow-blue-900/20 disabled:opacity-50">Save Changes</button>
+                                          <button onClick={cancelEditingAccount} className="flex-1 py-2.5 bg-white/5 rounded-xl text-xs font-bold text-white/60">Cancel</button>
+                                      </div>
+                                  )}
+                                  <div className="grid gap-3">
+                                      <div className="bg-black/20 rounded-[20px] p-4 border border-white/[0.03] flex items-center gap-4">
+                                          <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/20"><User size={18} /></div>
+                                          <div className="flex-1">
+                                              <p className="text-[9px] font-black text-white/20 uppercase tracking-widest mb-0.5">Username</p>
+                                              {isEditingAccount ? (
+                                                  <div className="relative">
+                                                      <input value={editForm.username} onChange={e => setEditForm({...editForm, username: e.target.value})} disabled={!canEditUsername} className="w-full bg-transparent text-sm font-bold text-white outline-none" />
+                                                      {isCheckingUsername && <Loader2 size={12} className="absolute right-0 top-1 animate-spin text-white/40" />}
+                                                  </div>
+                                              ) : <p className="text-sm font-bold text-white">{accountInfo.username}</p>}
+                                          </div>
+                                      </div>
+                                      <div className="bg-black/20 rounded-[20px] p-4 border border-white/[0.03] flex items-center gap-4">
+                                          <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/20"><MessageSquare size={18} /></div>
+                                          <div className="flex-1 overflow-hidden">
+                                              <p className="text-[9px] font-black text-white/20 uppercase tracking-widest mb-0.5">Email Address</p>
+                                              <p className="text-sm font-bold text-white/60 truncate">{accountInfo.email}</p>
+                                          </div>
+                                      </div>
+                                      <div className="grid grid-cols-2 gap-3">
+                                          <div className="bg-black/20 rounded-[20px] p-4 border border-white/[0.03]">
+                                              <p className="text-[9px] font-black text-white/20 uppercase tracking-widest mb-1.5">Gender</p>
+                                              {isEditingAccount ? (
+                                                  <select value={editForm.gender || ''} onChange={e => setEditForm({...editForm, gender: e.target.value})} className="bg-transparent text-sm font-bold text-white outline-none w-full appearance-none"><option value="male">Male</option><option value="female">Female</option><option value="other">Other</option></select>
+                                              ) : <p className="text-sm font-bold text-white">{accountInfo.gender || '—'}</p>}
+                                          </div>
+                                          <div className="bg-black/20 rounded-[20px] p-4 border border-white/[0.03]">
+                                              <p className="text-[9px] font-black text-white/20 uppercase tracking-widest mb-1.5">Year</p>
+                                              {isEditingAccount ? (
+                                                  <select value={editForm.year || ''} onChange={e => setEditForm({...editForm, year: e.target.value})} className="bg-transparent text-sm font-bold text-white outline-none w-full appearance-none"><option value="1">Year 1</option><option value="2">Year 2</option><option value="3">Year 3</option><option value="4">Year 4</option><option value="5">Year 5+</option></select>
+                                              ) : <p className="text-sm font-bold text-white">Year {accountInfo.year || '—'}</p>}
+                                          </div>
+                                      </div>
+                                      <div className="bg-black/20 rounded-[20px] p-4 border border-white/[0.03]">
+                                          <p className="text-[9px] font-black text-white/20 uppercase tracking-widest mb-0.5">College / Major</p>
+                                          <p className="text-sm font-bold text-white">{accountInfo.college || 'Not set'} • <span className="text-white/50">{accountInfo.major || 'Not set'}</span></p>
+                                      </div>
+                                  </div>
+
+                                  {/* Membership Badge UI */}
+                                  <div 
+                                    onClick={() => onNavigate('subscription')}
+                                    className="mt-6 group/badge relative cursor-pointer"
                                   >
-                                      <Pencil size={10} /> Edit
-                                  </button>
-                              )}
-                              {isAccountExpanded ? <ChevronUp size={16} color={theme.textMuted} /> : <ChevronDown size={16} color={theme.textMuted} />}
-                          </div>
-                      </div>
-
-                      {isAccountExpanded && (
-                          <div style={{marginTop: '10px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.1)', animation: 'fadeIn 0.2s', display: 'flex', flexDirection: 'column', gap: '6px'}}>
-                              {/* Account Fields (same as original) */}
-                              {isEditingAccount && (
-                                  <div style={{display: 'flex', gap: '6px', marginBottom: '4px'}}>
-                                      <button 
-                                        onClick={saveEditingAccount} 
-                                        disabled={isSaveDisabled}
-                                        style={{...styles.button, flex: 1, justifyContent: 'center', opacity: isSaveDisabled ? 0.5 : 1, padding: '6px', fontSize: '0.75rem', borderRadius: '8px'}}
-                                      >
-                                          <Check size={14} /> Save
-                                      </button>
-                                      <button onClick={cancelEditingAccount} style={{...styles.secondaryButton, flex: 1, justifyContent: 'center', padding: '6px', fontSize: '0.75rem', borderRadius: '8px'}}>
-                                          <X size={14} /> Cancel
-                                      </button>
-                                  </div>
-                              )}
-
-                              {/* Username Field */}
-                              <div style={{backgroundColor: 'var(--input-bg)', padding: '6px 8px', borderRadius: '8px', border: '1px solid var(--glass-border)', display: 'flex', gap: '8px', alignItems: 'center'}}>
-                                  <div style={{background: 'rgba(255,255,255,0.05)', padding: '5px', borderRadius: '6px', height: 'fit-content', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
-                                      <User size={12} color={theme.textMuted} />
-                                  </div>
-                                  <div style={{flex: 1}}>
-                                      <div style={{fontSize: '0.55rem', fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', marginBottom: '0px', letterSpacing: '0.5px'}}>Username</div>
-                                      {isEditingAccount ? (
-                                          <div style={{position: 'relative'}}>
-                                              <input 
-                                                value={editForm.username}
-                                                onChange={e => setEditForm({...editForm, username: e.target.value})}
-                                                disabled={!canEditUsername}
-                                                style={{...styles.input, width: '100%', boxSizing: 'border-box', opacity: canEditUsername ? 1 : 0.5, paddingRight: '24px', padding: '4px', fontSize: '0.8rem', minHeight: 'auto', borderRadius: '6px'}}
-                                              />
-                                              <div style={{position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)'}}>
-                                                  {isCheckingUsername ? <Loader2 size={12} className="animate-spin text-white/50" /> : null}
+                                      <div className={`absolute -inset-1 rounded-2xl blur-xl opacity-20 transition duration-500 ${accountInfo.subscription_tier === 1 ? 'bg-amber-400 group-hover/badge:opacity-40' : 'bg-white group-hover/badge:opacity-20'}`} />
+                                      <div className={`relative flex items-center justify-between p-5 rounded-2xl border backdrop-blur-2xl transition-all ${accountInfo.subscription_tier === 1 ? 'bg-gradient-to-br from-amber-500/10 to-yellow-600/10 border-amber-500/30' : 'bg-white/5 border-white/10'}`}>
+                                          <div className="flex items-center gap-4">
+                                              <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-xl ${accountInfo.subscription_tier === 1 ? 'bg-gradient-to-br from-amber-300 to-yellow-600 text-white' : 'bg-white/10 text-white/40'}`}>
+                                                  {accountInfo.subscription_tier === 1 ? <Crown size={24} /> : <Shield size={24} />}
+                                              </div>
+                                              <div>
+                                                  <p className="text-[10px] font-black text-white/30 uppercase tracking-widest">Active Plan</p>
+                                                  <p className={`text-lg font-black tracking-tight ${accountInfo.subscription_tier === 1 ? 'text-amber-200' : 'text-white'}`}>
+                                                      {accountInfo.subscription_tier === 1 ? 'Scholar Pro' : 'Free Tier'}
+                                                  </p>
                                               </div>
                                           </div>
-                                      ) : (
-                                          <div style={{fontSize: '0.8rem', fontWeight: 600, color: '#fff', lineHeight: 1.2}}>{accountInfo.username}</div>
-                                      )}
-                                  </div>
-                              </div>
-
-                              {/* Email Field */}
-                              <div style={{backgroundColor: 'var(--input-bg)', padding: '6px 8px', borderRadius: '8px', border: '1px solid var(--glass-border)', display: 'flex', gap: '8px', alignItems: 'center'}}>
-                                  <div style={{background: 'rgba(255,255,255,0.05)', padding: '5px', borderRadius: '6px', height: 'fit-content', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
-                                      <User size={12} color={theme.textMuted} />
-                                  </div>
-                                  <div style={{flex: 1, minWidth: 0}}>
-                                      <div style={{fontSize: '0.55rem', fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', marginBottom: '0px', letterSpacing: '0.5px'}}>Email</div>
-                                      <div style={{fontSize: '0.8rem', fontWeight: 600, color: theme.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.2}}>{accountInfo.email}</div>
-                                  </div>
-                              </div>
-
-                              {/* Gender & Year Grid */}
-                              <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px'}}>
-                                  <div style={{backgroundColor: 'var(--input-bg)', padding: '6px 8px', borderRadius: '8px', border: '1px solid var(--glass-border)', display: 'flex', gap: '8px', alignItems: 'center'}}>
-                                      <div style={{background: 'rgba(255,255,255,0.05)', padding: '5px', borderRadius: '6px', height: 'fit-content', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
-                                          <Users size={12} color={theme.textMuted} />
+                                          <div className="flex flex-col items-end">
+                                              <span className="text-[10px] font-bold text-white/40 uppercase bg-white/5 px-2 py-1 rounded-md border border-white/5">Manage</span>
+                                          </div>
                                       </div>
-                                      <div style={{flex: 1}}>
-                                          <div style={{fontSize: '0.55rem', fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', marginBottom: '0px', letterSpacing: '0.5px'}}>Gender</div>
-                                          {isEditingAccount ? (
-                                              <select 
-                                                  value={editForm.gender || ''} 
-                                                  onChange={e => setEditForm({...editForm, gender: e.target.value})}
-                                                  style={{...styles.input, width: '100%', padding: '2px', fontSize: '0.8rem', minHeight: 'auto', borderRadius: '4px', background: 'transparent', border: 'none'}}
-                                              >
-                                                  <option value="" disabled>Select</option>
-                                                  <option value="male">Male</option>
-                                                  <option value="female">Female</option>
-                                                  <option value="other">Other</option>
-                                              </select>
-                                          ) : (
-                                              <div style={{fontSize: '0.8rem', fontWeight: 600, color: '#fff'}}>{accountInfo.gender || 'Not Set'}</div>
-                                          )}
-                                      </div>
-                                  </div>
-
-                                  <div style={{backgroundColor: 'var(--input-bg)', padding: '6px 8px', borderRadius: '8px', border: '1px solid var(--glass-border)', display: 'flex', gap: '8px', alignItems: 'center'}}>
-                                      <div style={{background: 'rgba(255,255,255,0.05)', padding: '5px', borderRadius: '6px', height: 'fit-content', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
-                                          <Calendar size={12} color={theme.textMuted} />
-                                      </div>
-                                      <div style={{flex: 1}}>
-                                          <div style={{fontSize: '0.55rem', fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', marginBottom: '0px', letterSpacing: '0.5px'}}>Year</div>
-                                          {isEditingAccount ? (
-                                              <select 
-                                                  value={editForm.year || ''} 
-                                                  onChange={e => setEditForm({...editForm, year: e.target.value})}
-                                                  style={{...styles.input, width: '100%', padding: '2px', fontSize: '0.8rem', minHeight: 'auto', borderRadius: '4px', background: 'transparent', border: 'none'}}
-                                              >
-                                                  <option value="" disabled>Select</option>
-                                                  <option value="1">Year 1</option>
-                                                  <option value="2">Year 2</option>
-                                                  <option value="3">Year 3</option>
-                                                  <option value="4">Year 4</option>
-                                                  <option value="5">Year 5+</option>
-                                              </select>
-                                          ) : (
-                                              <div style={{fontSize: '0.8rem', fontWeight: 600, color: '#fff'}}>Year {accountInfo.year || '-'}</div>
-                                          )}
-                                      </div>
-                                  </div>
-                              </div>
-
-                              {/* Major Field */}
-                              <div style={{backgroundColor: 'var(--input-bg)', padding: '6px 8px', borderRadius: '8px', border: '1px solid var(--glass-border)', display: 'flex', gap: '8px', alignItems: 'center'}}>
-                                  <div style={{background: 'rgba(255,255,255,0.05)', padding: '5px', borderRadius: '6px', height: 'fit-content', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
-                                      <GraduationCap size={12} color={theme.textMuted} />
-                                  </div>
-                                  <div style={{flex: 1}}>
-                                      <div style={{fontSize: '0.55rem', fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', marginBottom: '0px', letterSpacing: '0.5px'}}>Major</div>
-                                      {isEditingAccount ? (
-                                          <input 
-                                              value={editForm.major || ''} 
-                                              onChange={e => setEditForm({...editForm, major: e.target.value})}
-                                              style={{...styles.input, width: '100%', padding: '2px', fontSize: '0.8rem', minHeight: 'auto', borderRadius: '4px', background: 'transparent', border: 'none'}}
-                                              placeholder="Major"
-                                          />
-                                      ) : (
-                                          <div style={{fontSize: '0.8rem', fontWeight: 600, color: '#fff'}}>{accountInfo.major || 'Not Set'}</div>
-                                      )}
-                                  </div>
-                              </div>
-
-                              {/* College Field */}
-                              <div style={{backgroundColor: 'var(--input-bg)', padding: '6px 8px', borderRadius: '8px', border: '1px solid var(--glass-border)', display: 'flex', gap: '8px', alignItems: 'center'}}>
-                                  <div style={{background: 'rgba(255,255,255,0.05)', padding: '5px', borderRadius: '6px', height: 'fit-content', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
-                                      <Building size={12} color={theme.textMuted} />
-                                  </div>
-                                  <div style={{flex: 1}}>
-                                      <div style={{fontSize: '0.55rem', fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', marginBottom: '0px', letterSpacing: '0.5px'}}>College / University</div>
-                                      {isEditingAccount ? (
-                                          <input 
-                                              value={editForm.college || ''} 
-                                              onChange={e => setEditForm({...editForm, college: e.target.value})}
-                                              style={{...styles.input, width: '100%', padding: '2px', fontSize: '0.8rem', minHeight: 'auto', borderRadius: '4px', background: 'transparent', border: 'none'}}
-                                              placeholder="College Name"
-                                          />
-                                      ) : (
-                                          <div style={{fontSize: '0.8rem', fontWeight: 600, color: '#fff'}}>{accountInfo.college || 'Not Set'}</div>
-                                      )}
-                                  </div>
-                              </div>
-
-                              {/* Subscription Tier */}
-                              <div 
-                                onClick={() => onNavigate('subscription')}
-                                style={{
-                                  backgroundColor: accountInfo.subscription_tier === 1 ? 'rgba(234, 179, 8, 0.1)' : 'var(--input-bg)',
-                                  padding: '12px',
-                                  borderRadius: '14px',
-                                  border: accountInfo.subscription_tier === 1 ? '1px solid rgba(251, 191, 36, 0.3)' : '1px solid var(--glass-border)',
-                                  display: 'flex',
-                                  flexDirection: 'column',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  gap: '2px',
-                                  marginTop: '8px',
-                                  position: 'relative',
-                                  overflow: 'hidden',
-                                  boxShadow: accountInfo.subscription_tier === 1 ? '0 4px 15px rgba(234, 179, 8, 0.15)' : 'none',
-                                  cursor: 'pointer'
-                              }}>
-                                  {/* Background Shine */}
-                                  {accountInfo.subscription_tier === 1 && (
-                                      <div style={{
-                                          position: 'absolute',
-                                          top: -20, left: -20, right: -20, bottom: -20,
-                                          background: 'linear-gradient(120deg, transparent 40%, rgba(255,255,255,0.1) 50%, transparent 60%)',
-                                          animation: 'shine 4s infinite linear',
-                                          pointerEvents: 'none'
-                                      }} />
-                                  )}
-
-                                  <div style={{
-                                      background: accountInfo.subscription_tier === 1 ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' : 'rgba(255,255,255,0.05)',
-                                      padding: '6px',
-                                      borderRadius: '50%',
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
-                                      marginBottom: '4px',
-                                      boxShadow: accountInfo.subscription_tier === 1 ? '0 4px 10px rgba(245, 158, 11, 0.3)' : 'none'
-                                  }}>
-                                      <Sparkles
-                                          size={12}
-                                          color={accountInfo.subscription_tier === 1 ? '#fff' : theme.textMuted}
-                                          fill={accountInfo.subscription_tier === 1 ? '#fff' : 'none'}
-                                      />
                                   </div>
                                   
-                                  <div style={{fontSize: '0.55rem', fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '1px'}}>Current Plan</div>
-                                  
-                                  <div style={{
-                                      fontSize: '1rem',
-                                      fontWeight: 900,
-                                      letterSpacing: '-0.5px',
-                                      color: '#fff'
-                                  }}>
-                                      {accountInfo.subscription_tier === 1 ? (
-                                          <span style={{
-                                              background: 'linear-gradient(to right, #fde047, #fbbf24, #fff, #fde047)',
-                                              backgroundSize: '200% auto',
-                                              WebkitBackgroundClip: 'text',
-                                              WebkitTextFillColor: 'transparent',
-                                              animation: 'textShine 3s linear infinite',
-                                              textShadow: '0 0 15px rgba(251, 191, 36, 0.4)'
-                                          }}>
-                                              PRO MEMBER
-                                          </span>
-                                      ) : 'Free Plan'}
-                                  </div>
-                                  <div className="text-[10px] text-white/40 mt-1 font-medium bg-white/5 px-2 py-0.5 rounded-full">
-                                      Click to Manage
+                                  {/* Refer & Earn Mini Card */}
+                                  <div onClick={() => onNavigate('referral')} className="mt-3 bg-emerald-500/5 hover:bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-4 flex items-center justify-between cursor-pointer transition-all active:scale-[0.98]">
+                                      <div className="flex items-center gap-3">
+                                          <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400"><DollarSign size={16} /></div>
+                                          <div>
+                                              <p className="text-[13px] font-bold text-emerald-200">Refer & Earn</p>
+                                              <p className="text-[10px] text-emerald-400/60 font-medium">Get 20% commission on every friend</p>
+                                          </div>
+                                      </div>
+                                      <ChevronRight size={16} className="text-emerald-500/40" />
                                   </div>
                               </div>
+                          )}
+                      </div>
+                    )}
 
-                              {/* Refer & Earn Button */}
-                              <div 
-                                onClick={() => onNavigate('referral')}
-                                style={{
-                                  backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                                  padding: '10px',
-                                  borderRadius: '12px',
-                                  border: '1px solid rgba(16, 185, 129, 0.2)',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  gap: '8px',
-                                  marginTop: '4px',
-                                  cursor: 'pointer',
-                                  transition: 'all 0.2s',
-                                }}
-                                className="hover:bg-emerald-500/20 active:scale-[0.98]"
-                              >
-                                  <div className="bg-emerald-500/20 p-1.5 rounded-full">
-                                      <DollarSign size={14} className="text-emerald-400" />
-                                  </div>
-                                  <div className="text-center">
-                                      <div className="text-xs font-bold text-emerald-400">Refer & Earn</div>
-                                      <div className="text-[9px] text-emerald-400/60">Get 20% commission</div>
-                                  </div>
-                              </div>
-
-                              {/* Log Out Button */}
-                              <button 
-                                  onClick={onSignOut}
-                                  style={{
-                                      marginTop: '6px',
-                                      background: 'rgba(239, 68, 68, 0.1)', 
-                                      border: '1px solid rgba(239, 68, 68, 0.2)', 
-                                      borderRadius: '8px', 
-                                      padding: '8px', 
-                                      color: theme.danger, 
-                                      fontWeight: 700, 
-                                      fontSize: '0.75rem',
-                                      cursor: 'pointer',
-                                      display: 'flex', 
-                                      alignItems: 'center', 
-                                      justifyContent: 'center', 
-                                      gap: '4px',
-                                      width: '100%'
-                                  }}
-                              >
-                                  <LogOut size={14} /> Log Out
-                              </button>
-
-                          </div>
-                      )}
-                  </div>
-                )}
-                
-                {/* Profiles Accordion */}
-                {/* ... existing code ... */}
-                <div style={compactCardStyle}>
-                    <div 
-                        onClick={() => setIsProfilesExpanded(!isProfilesExpanded)}
-                        style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '2px 0'}}
-                    >
-                         <h3 style={sectionHeaderStyle}>
-                            <div style={{...sectionIconStyle, background: 'rgba(139, 92, 246, 0.15)', color: theme.accent}}>
-                                <Layers size={16} />
+                    {/* Appearance */}
+                    <div className="border-b border-white/[0.05] last:border-0">
+                        <div className="flex items-center justify-between p-4 px-5">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-2xl bg-white/5 flex items-center justify-center text-white/60">
+                                    {themeMode === 'dark' ? <Moon size={20} /> : <Sun size={20} />}
+                                </div>
+                                <h3 className="text-[15px] font-bold text-white tracking-tight">Appearance</h3>
                             </div>
-                            <span>Profiles</span>
-                        </h3>
-                        {isProfilesExpanded ? <ChevronUp size={16} color={theme.textMuted} /> : <ChevronDown size={16} color={theme.textMuted} />}
+                            <div className="bg-black/40 p-1 rounded-xl flex gap-1 border border-white/5">
+                                <button onClick={() => setThemeMode('light')} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${themeMode === 'light' ? 'bg-white text-black' : 'text-white/40'}`}>Light</button>
+                                <button onClick={() => setThemeMode('dark')} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${themeMode === 'dark' ? 'bg-white text-black' : 'text-white/40'}`}>Dark</button>
+                            </div>
+                        </div>
+                    </div>
+                </GroupCard>
+
+                {/* --- ACADEMIC ENGINE GROUP --- */}
+                <GroupCard>
+                    <div className="px-5 pt-6 pb-2">
+                        <div className="flex items-center gap-2 mb-4 opacity-40">
+                             <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white">Academic Engine</span>
+                        </div>
                     </div>
 
-                    {isProfilesExpanded && (
-                        <div style={{marginTop: '12px', paddingTop: '12px', borderTop: '1px solid rgba(255,255,255,0.1)', animation: 'fadeIn 0.2s'}}>
-                            <div style={{marginBottom: "10px"}}>
-                                <label style={{...styles.label, fontSize: '0.65rem'}}>Active Profile</label>
-                                <div style={{display: 'flex', gap: '8px'}}>
-                                    <select style={{...styles.select, flex: 1, padding: '8px', fontSize: '0.8rem'}} value={activeProfileId} onChange={(e) => onSwitchProfile(e.target.value)}>
-                                        {profiles.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                                    </select>
-                                    <button 
-                                        onClick={() => onDeleteProfile(activeProfileId)}
-                                        style={{
-                                            backgroundColor: 'rgba(239, 68, 68, 0.15)', color: theme.danger, border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '12px', padding: '0 10px', cursor: 'pointer'
-                                        }}
-                                    >
-                                        <Trash2 size={16} />
-                                    </button>
+                    {/* Profiles */}
+                    <div className="border-b border-white/[0.05] last:border-0">
+                        <SectionHeader 
+                            icon={Layers} color="#8b5cf6" title="Schedules & Profiles" 
+                            isExpanded={isProfilesExpanded} onToggle={() => setIsProfilesExpanded(!isProfilesExpanded)} 
+                            rightElement={<span className="text-[10px] font-bold text-white/30 bg-white/5 px-2 py-0.5 rounded-md">{profiles.length} Profiles</span>}
+                        />
+                        {isProfilesExpanded && (
+                            <div className="px-5 pb-6 pt-2 animate-in slide-in-from-top-2 duration-300 space-y-4">
+                                <div className="grid gap-2">
+                                    {profiles.map(s => (
+                                        <div key={s.id} className={`flex items-center justify-between p-3 rounded-2xl border transition-all ${s.id === activeProfileId ? 'bg-violet-500/10 border-violet-500/30' : 'bg-white/5 border-transparent'}`} onClick={() => onSwitchProfile(s.id)}>
+                                            <div className="flex items-center gap-3">
+                                                <div className={`w-2 h-2 rounded-full ${s.id === activeProfileId ? 'bg-violet-400 animate-pulse' : 'bg-white/20'}`} />
+                                                <span className={`text-sm font-bold ${s.id === activeProfileId ? 'text-white' : 'text-white/40'}`}>{s.name}</span>
+                                            </div>
+                                            {profiles.length > 1 && (
+                                                <button onClick={(e) => { e.stopPropagation(); onDeleteProfile(s.id); }} className="p-2 text-white/20 hover:text-red-400 transition-colors"><Trash2 size={14} /></button>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="flex gap-2">
+                                    <input className="flex-1 bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 focus:outline-none focus:border-violet-500/50" placeholder="Profile name..." value={newProfileName} onChange={e => setNewProfileName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleCreateProfile()} />
+                                    <button onClick={handleCreateProfile} className="bg-violet-600 text-white px-4 rounded-xl shadow-lg shadow-violet-900/20 active:scale-95 transition-transform"><Plus size={20} /></button>
                                 </div>
                             </div>
-                            <div style={{display: 'flex', gap: '8px'}}>
-                                <input style={{...styles.input, padding: "8px", fontSize: '0.8rem'}} placeholder="New Profile..." value={newProfileName} onChange={e => setNewProfileName(e.target.value)} />
-                                <button style={{...styles.button, padding: "8px"}} onClick={handleCreateProfile}><Plus size={16} /></button>
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-                {/* Grid Structure Accordion */}
-                <div style={compactCardStyle}>
-                    <div 
-                        onClick={() => setIsScheduleSettingsExpanded(!isScheduleSettingsExpanded)}
-                        style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '2px 0'}}
-                    >
-                        <h3 style={sectionHeaderStyle}>
-                            <div style={{...sectionIconStyle, background: 'rgba(139, 92, 246, 0.15)', color: theme.accent}}>
-                                <Columns size={16} />
-                            </div>
-                            <span>Grid Structure</span>
-                        </h3>
-                        {isScheduleSettingsExpanded ? <ChevronUp size={16} color={theme.textMuted} /> : <ChevronDown size={16} color={theme.textMuted} />}
-                    </div>
-                    
-                    {isScheduleSettingsExpanded && (
-                        <div style={{marginTop: '12px', paddingTop: '12px', borderTop: '1px solid rgba(255,255,255,0.1)', animation: 'fadeIn 0.2s'}}>
-                             <ScheduleSettings periods={periods} setPeriods={setPeriods} />
-                        </div>
-                    )}
-                </div>
-
-                {/* Colors Accordion */}
-                <div style={compactCardStyle}>
-                    <div 
-                        onClick={() => setIsColorsExpanded(!isColorsExpanded)}
-                        style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '2px 0'}}
-                    >
-                        <h3 style={sectionHeaderStyle}>
-                            <div style={{...sectionIconStyle, background: 'rgba(139, 92, 246, 0.15)', color: theme.accent}}>
-                                <Palette size={16} />
-                            </div>
-                            <span>Colors</span>
-                        </h3>
-                        {isColorsExpanded ? <ChevronUp size={16} color={theme.textMuted} /> : <ChevronDown size={16} color={theme.textMuted} />}
+                        )}
                     </div>
 
-                    {isColorsExpanded && (
-                        <div style={{marginTop: '12px', paddingTop: '12px', borderTop: '1px solid rgba(255,255,255,0.1)', animation: 'fadeIn 0.2s'}}>
-                            <div style={{display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px"}}>
+                    {/* Structure */}
+                    <div className="border-b border-white/[0.05] last:border-0">
+                        <SectionHeader icon={Columns} color="#ec4899" title="Timeline Grid" isExpanded={isScheduleSettingsExpanded} onToggle={() => setIsScheduleSettingsExpanded(!isScheduleSettingsExpanded)} />
+                        {isScheduleSettingsExpanded && <div className="px-5 pb-6 pt-2 animate-in slide-in-from-top-2 duration-300"><ScheduleSettings periods={periods} setPeriods={setPeriods} /></div>}
+                    </div>
+
+                    {/* Colors */}
+                    <div className="border-b border-white/[0.05] last:border-0">
+                        <SectionHeader icon={Palette} color="#f59e0b" title="Theme Colors" isExpanded={isColorsExpanded} onToggle={() => setIsColorsExpanded(!isColorsExpanded)} />
+                        {isColorsExpanded && (
+                            <div className="px-5 pb-6 pt-2 animate-in slide-in-from-top-2 duration-300 grid grid-cols-2 gap-2">
                                 {Object.keys(eventColors).map(key => (
-                                    <div key={key} style={{...styles.colorPickerContainer, padding: '6px'}}>
-                                        <div style={{width: '24px', height: '24px', borderRadius: '6px', overflow: 'hidden', position: 'relative'}}>
-                                            <input type="color" value={eventColors[key as EventType]} onChange={(e) => onUpdateColor(key as EventType, e.target.value)} style={{border: 'none', padding: 0, width: '200%', height: '200%', margin: '-50%', cursor: 'pointer'}} />
+                                    <div key={key} className="bg-black/40 p-2.5 rounded-2xl border border-white/[0.03] flex items-center justify-between">
+                                        <span className="text-[11px] font-bold text-white/40 uppercase tracking-wider pl-1">{key}</span>
+                                        <div className="w-6 h-6 rounded-lg overflow-hidden border border-white/10 relative">
+                                            <input type="color" value={eventColors[key as EventType]} onChange={(e) => onUpdateColor(key as EventType, e.target.value)} className="absolute inset-[-10px] w-[200%] h-[200%] cursor-pointer border-none p-0" />
                                         </div>
-                                        <span style={{fontSize: '0.7rem', textTransform: 'capitalize', color: theme.textMuted, fontWeight: 600}}>{key}</span>
                                     </div>
                                 ))}
                             </div>
-                        </div>
-                    )}
-                </div>
-
-                {/* Base Schedule Accordion */}
-                <div style={compactCardStyle}>
-                    <div 
-                        onClick={() => setIsBaseScheduleExpanded(!isBaseScheduleExpanded)}
-                        style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '2px 0'}}
-                    >
-                        <h3 style={sectionHeaderStyle}>
-                            <div style={{...sectionIconStyle, background: 'rgba(139, 92, 246, 0.15)', color: theme.accent}}>
-                                <CalendarDays size={16} />
-                            </div>
-                            <span>Base Schedule</span>
-                        </h3>
-                        {isBaseScheduleExpanded ? <ChevronUp size={16} color={theme.textMuted} /> : <ChevronDown size={16} color={theme.textMuted} />}
+                        )}
                     </div>
 
-                    {isBaseScheduleExpanded && (
-                        <div style={{marginTop: '12px', paddingTop: '12px', borderTop: '1px solid rgba(255,255,255,0.1)', animation: 'fadeIn 0.2s'}}>
-                            <div style={{display: 'flex', justifyContent: 'flex-end', marginBottom: '12px'}}>
-                                <button onClick={onAddBaseEventClick} style={{...styles.secondaryButton, padding: '6px 12px', fontSize: '0.75rem', borderRadius: '8px'}}>
-                                    <Plus size={14} /> Add Class
-                                </button>
-                            </div>
-                            <div style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
-                                {days.map(day => {
-                                    const dayEvents = baseEvents.filter(e => e.dayOfWeek === day).sort((a,b) => a.startTime.localeCompare(b.startTime));
-                                    if (dayEvents.length === 0) return null;
-                                    return (
-                                        <div key={day}>
-                                            <div style={{fontSize: '0.7rem', fontWeight: 700, color: theme.textMuted, marginBottom: '6px', textTransform: 'uppercase'}}>{day}</div>
-                                            <div style={{display: 'flex', flexDirection: 'column', gap: '6px'}}>
+                    {/* Base Schedule */}
+                    <div className="border-b border-white/[0.05] last:border-0">
+                        <SectionHeader icon={CalendarDays} color="#10b981" title="Academic Baseline" isExpanded={isBaseScheduleExpanded} onToggle={() => setIsBaseScheduleExpanded(!isBaseScheduleExpanded)} />
+                        {isBaseScheduleExpanded && (
+                            <div className="px-5 pb-6 pt-2 animate-in slide-in-from-top-2 duration-300">
+                                <button onClick={onAddBaseEventClick} className="w-full py-3 bg-emerald-600/10 border border-emerald-500/20 rounded-xl text-emerald-400 text-xs font-black uppercase tracking-widest mb-4 hover:bg-emerald-600/20 transition-all flex items-center justify-center gap-2"><Plus size={14} /> Add Recurrent Class</button>
+                                <div className="space-y-4">
+                                    {days.map(day => {
+                                        const dayEvents = baseEvents.filter(e => e.dayOfWeek === day).sort((a,b) => a.startTime.localeCompare(b.startTime));
+                                        if (dayEvents.length === 0) return null;
+                                        return (
+                                            <div key={day} className="space-y-2">
+                                                <p className="text-[10px] font-black text-white/20 uppercase tracking-widest ml-1">{day}</p>
                                                 {dayEvents.map(e => (
-                                                    <div key={e.id} style={{backgroundColor: 'var(--input-bg)', padding: '8px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                                                        <div>
-                                                            <div style={{fontWeight: 600, fontSize: '0.8rem', color: 'var(--text-primary)'}}>{e.title}</div>
-                                                            <div style={{fontSize: '0.65rem', color: theme.textMuted}}>{to12h(e.startTime)} • {e.type}</div>
+                                                    <div key={e.id} className="bg-black/40 p-3 rounded-2xl border border-white/[0.03] flex items-center justify-between group">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-1.5 h-6 rounded-full" style={{ background: eventColors[e.type] }} />
+                                                            <div>
+                                                                <p className="text-sm font-bold text-white leading-none mb-1">{e.title}</p>
+                                                                <p className="text-[10px] font-bold text-white/30 uppercase">{to12h(e.startTime)} • {e.type}</p>
+                                                            </div>
                                                         </div>
-                                                        <div style={{display: 'flex', gap: '6px'}}>
-                                                            <button onClick={() => onEditEvent(e)} style={{background: 'rgba(255,255,255,0.05)', border: 'none', padding: '4px', borderRadius: '6px', cursor: 'pointer', color: theme.text}}><Pencil size={14} /></button>
-                                                            <button onClick={() => onDeleteEvent(e.id)} style={{background: 'rgba(255,255,255,0.05)', border: 'none', padding: '4px', borderRadius: '6px', cursor: 'pointer', color: theme.danger}}><Trash2 size={14} /></button>
+                                                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <button onClick={() => onEditEvent(e)} className="p-2 text-white/40 hover:text-white"><Pencil size={14} /></button>
+                                                            <button onClick={() => onDeleteEvent(e.id)} className="p-2 text-white/40 hover:text-red-400"><Trash2 size={14} /></button>
                                                         </div>
                                                     </div>
                                                 ))}
                                             </div>
-                                        </div>
-                                    )
-                                })}
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-                {/* AI Import */}
-                <div style={compactCardStyle}>
-                    <h3 style={{...sectionHeaderStyle, marginBottom: '12px'}}>
-                        <div style={{...sectionIconStyle, background: 'rgba(192, 132, 252, 0.15)', color: '#c084fc'}}>
-                            <ImageIcon size={16} />
-                        </div>
-                        <span>AI Import</span>
-                    </h3>
-                    <div style={{...styles.dropZone, padding: '16px', borderRadius: '12px'}} onClick={() => fileInputRef.current?.click()}>
-                        {isAnalyzing ? (
-                            <div style={{color: theme.accent, display: "flex", alignItems: "center", justifyContent: "center", gap: "8px"}}>
-                                <Loader2 size={16} className="spin" style={{animation: "spin 1s linear infinite"}} />
-                                <span style={{fontSize: '0.8rem'}}>Analyzing Schedule...</span>
-                            </div>
-                        ) : (
-                            <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'}}>
-                                <Upload size={16} color={theme.textMuted} />
-                                <span style={{color: theme.textMuted, fontSize: '0.8rem'}}>Upload Schedule Image</span>
+                                        );
+                                    })}
+                                </div>
                             </div>
                         )}
-                        <input 
-                            ref={fileInputRef}
-                            type="file" 
-                            accept="image/*" 
-                            style={{display: "none"}} 
-                            onChange={e => {
-                                if (e.target.files?.[0]) onImageUpload(e.target.files[0]);
-                                e.target.value = ''; // Reset
-                            }} 
-                        />
                     </div>
-                </div>
+                </GroupCard>
 
-                {/* Appearance Card */}
-                <div style={compactCardStyle}>
-                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '2px 0'}}>
-                        <h3 style={sectionHeaderStyle}>
-                            <div style={{...sectionIconStyle, background: 'rgba(255, 255, 255, 0.1)', color: theme.text}}>
-                                {themeMode === 'dark' ? <Moon size={16} /> : <Sun size={16} />}
+                {/* --- UTILITIES & SUPPORT GROUP --- */}
+                <GroupCard>
+                    <div className="px-5 pt-6 pb-2">
+                        <div className="flex items-center gap-2 mb-4 opacity-40">
+                             <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white">System & Support</span>
+                        </div>
+                    </div>
+
+                    {/* AI Import */}
+                    <div className="p-5">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center"><ImageIcon size={18} /></div>
+                            <h3 className="text-sm font-bold text-white">Smart Import</h3>
+                        </div>
+                        <div className="bg-black/40 border-2 border-dashed border-white/10 rounded-[24px] p-8 text-center cursor-pointer hover:border-violet-500/50 hover:bg-violet-500/5 transition-all group" onClick={() => fileInputRef.current?.click()}>
+                            {isAnalyzing ? (
+                                <div className="flex flex-col items-center gap-3">
+                                    <Loader2 size={32} className="animate-spin text-violet-400" />
+                                    <p className="text-xs font-bold text-violet-200">Processing Timetable...</p>
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center gap-3">
+                                    <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center text-white/30 group-hover:text-violet-400 group-hover:scale-110 transition-all"><Upload size={24} /></div>
+                                    <p className="text-xs font-medium text-white/40">Upload Screenshot to Sync Schedule</p>
+                                </div>
+                            )}
+                            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={e => { if (e.target.files?.[0]) onImageUpload(e.target.files[0]); e.target.value = ''; }} />
+                        </div>
+                    </div>
+
+                    <div className="h-px bg-white/[0.05] mx-5" />
+
+                    {/* Support Buttons */}
+                    <div className="p-4 px-5 space-y-2">
+                        <button onClick={() => setIsHistoryModalOpen(true)} className="w-full flex items-center justify-between p-4 bg-white/5 rounded-[20px] hover:bg-white/10 transition-all group border border-white/[0.03]">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center group-hover:scale-110 transition-transform"><MessageSquare size={20} /></div>
+                                <div className="text-left">
+                                    <p className="text-[15px] font-bold text-white leading-tight">Support Tickets</p>
+                                    <p className="text-[11px] text-white/30 font-medium">History & Communications</p>
+                                </div>
                             </div>
-                            <span>Appearance</span>
-                        </h3>
-                        <div style={{display: 'flex', gap: '4px', background: 'var(--input-bg)', padding: '3px', borderRadius: '8px', border: '1px solid var(--glass-border)'}}>
-                            <button 
-                            onClick={() => setThemeMode('light')}
-                            style={{
-                                padding: '4px 8px', borderRadius: '6px', border: 'none',
-                                background: themeMode === 'light' ? theme.accent : 'transparent',
-                                color: themeMode === 'light' ? '#fff' : theme.textMuted,
-                                fontSize: '0.7rem', fontWeight: 600, cursor: 'pointer',
-                                display: 'flex', alignItems: 'center', gap: '3px'
-                            }}
-                            >
-                                <Sun size={12} /> Light
-                            </button>
-                            <button 
-                            onClick={() => setThemeMode('dark')}
-                            style={{
-                                padding: '4px 8px', borderRadius: '6px', border: 'none',
-                                background: themeMode === 'dark' ? theme.accent : 'transparent',
-                                color: themeMode === 'dark' ? '#fff' : theme.textMuted,
-                                fontSize: '0.7rem', fontWeight: 600, cursor: 'pointer',
-                                display: 'flex', alignItems: 'center', gap: '3px'
-                            }}
-                            >
-                                <Moon size={12} /> Dark
-                            </button>
-                        </div>
+                            <ChevronRight size={18} className="text-white/10" />
+                        </button>
+                        <button onClick={() => setIsFeedbackModalOpen(true)} className="w-full flex items-center justify-between p-4 bg-white/5 rounded-[20px] hover:bg-white/10 transition-all group border border-white/[0.03]">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-2xl bg-white/5 text-white/60 flex items-center justify-center group-hover:scale-110 transition-transform"><Plus size={20} /></div>
+                                <div className="text-left">
+                                    <p className="text-[15px] font-bold text-white leading-tight">New Ticket</p>
+                                    <p className="text-[11px] text-white/30 font-medium">Feature Request or Bug Report</p>
+                                </div>
+                            </div>
+                            <ChevronRight size={18} className="text-white/10" />
+                        </button>
                     </div>
-                </div>
 
-                {/* Support Tickets for Users */}
-                <div 
-                    style={{...compactCardStyle, cursor: 'pointer', background: 'rgba(139, 92, 246, 0.1)'}} 
-                    onClick={() => setIsHistoryModalOpen(true)}
-                >
-                    <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
-                        <div style={{background: 'rgba(139, 92, 246, 0.2)', padding: '6px', borderRadius: '50%'}}>
-                            <MessageSquare size={16} color={theme.accent} />
-                        </div>
-                        <div>
-                            <h3 style={{margin: 0, fontSize: '0.9rem', color: theme.accent, fontWeight: 800}}>Support Tickets</h3>
-                            <p style={{margin: 0, fontSize: '0.7rem', color: theme.textMuted}}>View history & replies</p>
-                        </div>
-                        <ChevronRight size={16} color={theme.textMuted} style={{marginLeft: 'auto'}} />
+                    <div className="p-5 pt-0">
+                         <button onClick={onSignOut} className="w-full py-4 bg-red-500/10 text-red-500 rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:bg-red-500/20 transition-all flex items-center justify-center gap-3"><LogOut size={16} /> Sign Out</button>
+                         <button onClick={() => setShowResetConfirm(true)} className="w-full py-3 text-white/20 hover:text-white/40 text-[10px] font-bold uppercase tracking-widest transition-colors mt-2">Factory Reset</button>
                     </div>
-                </div>
+                </GroupCard>
 
-                {/* Feedback Button for Users */}
-                <div 
-                    style={{...compactCardStyle, cursor: 'pointer'}} 
-                    onClick={() => setIsFeedbackModalOpen(true)}
-                >
-                    <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
-                        <div style={{background: 'rgba(255,255,255,0.1)', padding: '6px', borderRadius: '50%'}}>
-                            <Pencil size={16} color="#fff" />
-                        </div>
-                        <div>
-                            <h3 style={{margin: 0, fontSize: '0.9rem', color: '#fff', fontWeight: 800}}>New Ticket</h3>
-                            <p style={{margin: 0, fontSize: '0.7rem', color: theme.textMuted}}>Report bugs or suggest features</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div 
-                    style={{...compactCardStyle, cursor: 'pointer', border: `1px solid ${theme.danger}`, background: 'rgba(239, 68, 68, 0.1)'}} 
-                    onClick={() => setShowResetConfirm(true)}
-                >
-                    <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
-                        <div style={{background: 'rgba(239, 68, 68, 0.2)', padding: '6px', borderRadius: '50%'}}>
-                            <AlertTriangle size={16} color={theme.danger} />
-                        </div>
-                        <div>
-                            <h3 style={{margin: 0, fontSize: '0.9rem', color: theme.danger, fontWeight: 800}}>Factory Reset</h3>
-                            <p style={{margin: 0, fontSize: '0.7rem', color: 'var(--text-muted)'}}>Wipe all data & restore defaults</p>
-                        </div>
-                    </div>
-                </div>
-
-                {/* --- ADMIN ONLY SECTIONS --- */}
+                {/* --- ADMIN ZONE --- */}
                 {accountInfo?.is_admin && (
-                    <div style={{marginTop: '30px', borderTop: '1px dashed rgba(255,255,255,0.1)', paddingTop: '20px'}}>
-                        <h3 style={{fontSize: '0.8rem', fontWeight: 800, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px'}}>Admin Tools</h3>
+                    <GroupCard className="border-red-500/20 bg-red-500/[0.02]">
+                        <div className="px-5 pt-6 pb-2">
+                            <div className="flex items-center gap-2 mb-4">
+                                <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-red-400">Restricted Admin Access</span>
+                            </div>
+                        </div>
                         
                         {/* User Management */}
-                        <div style={adminCardStyle}>
-                            <div 
-                                onClick={() => setIsUserMgmtExpanded(!isUserMgmtExpanded)}
-                                style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '2px 0'}}
-                            >
-                                <h3 style={sectionHeaderStyle}>
-                                    <div style={{...sectionIconStyle, background: 'rgba(255, 255, 255, 0.1)', color: '#fff'}}>
-                                        <Shield size={16} />
-                                    </div>
-                                    <span>User Management</span>
-                                </h3>
-                                {isUserMgmtExpanded ? <ChevronUp size={16} color={theme.textMuted} /> : <ChevronDown size={16} color={theme.textMuted} />}
-                            </div>
-
+                        <div className="border-b border-red-500/10 last:border-0">
+                            <SectionHeader icon={Shield} color="#ef4444" title="User Control" isExpanded={isUserMgmtExpanded} onToggle={() => setIsUserMgmtExpanded(!isUserMgmtExpanded)} />
                             {isUserMgmtExpanded && (
-                                <div style={{marginTop: '12px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '12px'}}>
-                                    <div style={{display: 'flex', gap: '8px', marginBottom: '10px'}}>
-                                        <input 
-                                            placeholder="Search username or exact ID..." 
-                                            value={userSearch} 
-                                            onChange={(e) => setUserSearch(e.target.value)} 
-                                            onKeyDown={(e) => e.key === 'Enter' && fetchUsers(userSearch)}
-                                            style={{...styles.input, width: '100%', fontSize: '0.8rem', padding: '8px', flex: 1}}
-                                        />
-                                        <button 
-                                            onClick={() => fetchUsers(userSearch)}
-                                            style={{...styles.button, padding: '0 12px', fontSize: '0.8rem', fontWeight: 700}}
-                                        >
-                                            <Search size={14} /> Search
-                                        </button>
+                                <div className="px-5 pb-6 pt-2 animate-in slide-in-from-top-2 duration-300">
+                                    <div className="flex gap-2 mb-4">
+                                        <input placeholder="Search username..." value={userSearch} onChange={(e) => setUserSearch(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && fetchUsers(userSearch)} className="flex-1 bg-black/40 border border-white/5 rounded-xl px-4 py-2.5 text-sm text-white" />
+                                        <button onClick={() => fetchUsers(userSearch)} className="bg-white/5 hover:bg-white/10 text-white p-2.5 rounded-xl transition-all"><Search size={18} /></button>
                                     </div>
-                                    
-                                    {isLoadingUsers ? (
-                                        <div style={{textAlign: 'center', padding: '10px'}}><Loader2 className="animate-spin" size={20} /></div>
-                                    ) : (
-                                        <div style={{display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '300px', overflowY: 'auto'}}>
+                                    {isLoadingUsers ? <div className="text-center py-4"><Loader2 className="animate-spin text-white/20" /></div> : (
+                                        <div className="space-y-2 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
                                             {users.map(user => (
-                                                <div key={user.id} style={{background: 'rgba(0,0,0,0.2)', padding: '10px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)'}}>
-                                                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                                                        <div>
-                                                            <div style={{fontWeight: 700, fontSize: '0.8rem', color: '#fff'}}>{user.username}</div>
-                                                            <div style={{fontSize: '0.65rem', color: theme.textMuted}}>{user.email}</div>
-                                                        </div>
-                                                        <div style={{display: 'flex', gap: '4px'}}>
-                                                            <button 
-                                                                onClick={() => toggleUserPro(user.id, user.subscription_tier || 0)}
-                                                                style={{padding: '4px 8px', borderRadius: '4px', background: user.subscription_tier === 1 ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.1)', color: user.subscription_tier === 1 ? theme.success : theme.textMuted, border: 'none', fontSize: '0.65rem', fontWeight: 700, cursor: 'pointer'}}
-                                                            >
-                                                                {user.subscription_tier === 1 ? 'PRO' : 'FREE'}
-                                                            </button>
-                                                            {user.is_banned ? (
-                                                                <button 
-                                                                    onClick={() => unbanUser(user.id)}
-                                                                    style={{padding: '4px', borderRadius: '4px', background: theme.success, color: '#fff', border: 'none', cursor: 'pointer'}}
-                                                                    title="Unban"
-                                                                >
-                                                                    <Check size={12} />
-                                                                </button>
-                                                            ) : (
-                                                                <button 
-                                                                    onClick={() => setBanModalUser({id: user.id, username: user.username})}
-                                                                    style={{padding: '4px', borderRadius: '4px', background: 'rgba(255,255,255,0.1)', color: theme.textMuted, border: 'none', cursor: 'pointer'}}
-                                                                    title="Ban"
-                                                                >
-                                                                    <Ban size={12} />
-                                                                </button>
-                                                            )}
-                                                            <button 
-                                                                onClick={() => deleteUser(user.id)}
-                                                                style={{padding: '4px', borderRadius: '4px', background: 'rgba(239, 68, 68, 0.2)', color: theme.danger, border: 'none', cursor: 'pointer'}}
-                                                            >
-                                                                <Trash2 size={12} />
-                                                            </button>
-                                                        </div>
+                                                <div key={user.id} className="bg-black/40 p-3 rounded-2xl border border-white/[0.03] flex items-center justify-between">
+                                                    <div>
+                                                        <p className="text-xs font-bold text-white">{user.username}</p>
+                                                        <p className="text-[10px] text-white/30 truncate max-w-[120px]">{user.email}</p>
+                                                    </div>
+                                                    <div className="flex gap-1">
+                                                        <button onClick={() => toggleUserPro(user.id, user.subscription_tier || 0)} className={`px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-wider ${user.subscription_tier === 1 ? 'bg-amber-500 text-black' : 'bg-white/10 text-white/40'}`}>{user.subscription_tier === 1 ? 'PRO' : 'FREE'}</button>
+                                                        {user.is_banned ? (
+                                                            <button onClick={() => unbanUser(user.id)} className="p-1.5 bg-emerald-500/20 text-emerald-400 rounded-lg"><Check size={14} /></button>
+                                                        ) : (
+                                                            <button onClick={() => setBanModalUser({id: user.id, username: user.username})} className="p-1.5 bg-white/5 text-white/40 rounded-lg"><Ban size={14} /></button>
+                                                        )}
+                                                        <button onClick={() => deleteUser(user.id)} className="p-1.5 bg-red-500/20 text-red-400 rounded-lg"><Trash2 size={14} /></button>
                                                     </div>
                                                 </div>
                                             ))}
-                                            {users.length === 0 && !isLoadingUsers && (
-                                                <div style={{textAlign: 'center', padding: '20px', color: theme.textMuted, fontSize: '0.8rem'}}>No users found.</div>
-                                            )}
                                         </div>
                                     )}
                                 </div>
                             )}
                         </div>
 
-                        {/* Referral Codes Management */}
-                        <div style={adminCardStyle}>
-                            <div 
-                                onClick={() => setIsReferralExpanded(!isReferralExpanded)}
-                                style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '2px 0'}}
-                            >
-                                <h3 style={sectionHeaderStyle}>
-                                    <div style={{...sectionIconStyle, background: 'rgba(16, 185, 129, 0.15)', color: theme.success}}>
-                                        <Ticket size={16} /> 
-                                    </div>
-                                    <span>Referral Codes</span>
-                                </h3>
-                                {isReferralExpanded ? <ChevronUp size={16} color={theme.textMuted} /> : <ChevronDown size={16} color={theme.textMuted} />}
-                            </div>
-
+                        {/* Referral Management */}
+                        <div className="border-b border-red-500/10 last:border-0">
+                            <SectionHeader icon={Ticket} color="#10b981" title="Referral Codes" isExpanded={isReferralExpanded} onToggle={() => setIsReferralExpanded(!isReferralExpanded)} />
                             {isReferralExpanded && (
-                                <div style={{marginTop: '12px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '12px'}}>
-                                    
-                                    {!isCreatingReferral ? (
-                                        <button 
-                                            onClick={() => setIsCreatingReferral(true)}
-                                            style={{...styles.button, width: '100%', justifyContent: 'center', fontSize: '0.8rem', padding: '8px', marginBottom: '12px'}}
-                                        >
-                                            <Plus size={14} /> Create New Code
-                                        </button>
-                                    ) : (
-                                        <div style={{background: 'rgba(0,0,0,0.2)', padding: '10px', borderRadius: '8px', marginBottom: '12px'}}>
-                                            <input 
-                                                value={newReferralCode}
-                                                onChange={(e) => setNewReferralCode(e.target.value.toUpperCase())}
-                                                placeholder="CODE (e.g. VIP2024)"
-                                                style={{...styles.input, width: '100%', marginBottom: '8px', fontSize: '0.9rem', textTransform: 'uppercase'}}
-                                            />
-                                            <div style={{display: 'flex', gap: '8px', marginBottom: '8px'}}>
-                                                <button 
-                                                    onClick={() => setNewReferralTier(0)}
-                                                    style={{flex: 1, padding: '6px', borderRadius: '6px', border: 'none', background: newReferralTier === 0 ? theme.accent : 'rgba(255,255,255,0.1)', color: newReferralTier === 0 ? '#fff' : theme.textMuted, fontSize: '0.7rem', fontWeight: 600, cursor: 'pointer'}}
-                                                >
-                                                    Free Tier
-                                                </button>
-                                                <button 
-                                                    onClick={() => setNewReferralTier(1)}
-                                                    style={{flex: 1, padding: '6px', borderRadius: '6px', border: 'none', background: newReferralTier === 1 ? '#eab308' : 'rgba(255,255,255,0.1)', color: newReferralTier === 1 ? '#fff' : theme.textMuted, fontSize: '0.7rem', fontWeight: 600, cursor: 'pointer'}}
-                                                >
-                                                    Pro Tier
-                                                </button>
+                                <div className="px-5 pb-6 pt-2 animate-in slide-in-from-top-2 duration-300">
+                                    {!isCreatingReferral ? <button onClick={() => setIsCreatingReferral(true)} className="w-full py-2 bg-emerald-600/20 text-emerald-400 rounded-xl text-[10px] font-black uppercase tracking-widest mb-4">Create Master Code</button> : (
+                                        <div className="bg-black/40 p-4 rounded-2xl border border-white/5 mb-4 space-y-3">
+                                            <input value={newReferralCode} onChange={(e) => setNewReferralCode(e.target.value.toUpperCase())} placeholder="CODE NAME" className="w-full bg-transparent border-b border-white/10 text-lg font-black text-white text-center outline-none" />
+                                            <div className="flex gap-2">
+                                                <button onClick={() => setNewReferralTier(0)} className={`flex-1 py-2 rounded-lg text-[9px] font-black ${newReferralTier === 0 ? 'bg-white text-black' : 'bg-white/5 text-white/40'}`}>FREE</button>
+                                                <button onClick={() => setNewReferralTier(1)} className={`flex-1 py-2 rounded-lg text-[9px] font-black ${newReferralTier === 1 ? 'bg-amber-500 text-black' : 'bg-white/5 text-white/40'}`}>PRO</button>
                                             </div>
-                                            <div style={{display: 'flex', gap: '8px'}}>
-                                                <button onClick={createReferralCode} style={{...styles.button, flex: 1, justifyContent: 'center', padding: '6px', fontSize: '0.75rem'}}>Save</button>
-                                                <button onClick={() => setIsCreatingReferral(false)} style={{...styles.secondaryButton, flex: 1, justifyContent: 'center', padding: '6px', fontSize: '0.75rem'}}>Cancel</button>
+                                            <div className="flex gap-2">
+                                                <button onClick={createReferralCode} className="flex-1 py-2 bg-emerald-600 rounded-lg text-[10px] font-black text-white">SAVE</button>
+                                                <button onClick={() => setIsCreatingReferral(false)} className="flex-1 py-2 bg-white/5 rounded-lg text-[10px] font-black text-white/40">CANCEL</button>
                                             </div>
                                         </div>
                                     )}
-
-                                    <div style={{display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '250px', overflowY: 'auto'}}>
+                                    <div className="space-y-2 max-h-[250px] overflow-y-auto custom-scrollbar pr-1">
                                         {referralCodes.map(code => (
-                                            <div key={code.id} style={{background: 'rgba(255,255,255,0.02)', padding: '8px 10px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                                            <div key={code.id} className="bg-black/40 p-3 rounded-2xl border border-white/[0.03] flex items-center justify-between">
                                                 <div>
-                                                    <div style={{fontWeight: 700, fontSize: '0.85rem', color: code.is_active ? '#fff' : theme.textMuted, textDecoration: code.is_active ? 'none' : 'line-through'}}>{code.code}</div>
-                                                    <div style={{fontSize: '0.65rem', color: theme.textMuted, display: 'flex', gap: '6px'}}>
-                                                        <span>Used: {code.usage_count}</span>
-                                                        <span style={{color: code.subscription_tier === 1 ? '#eab308' : theme.textMuted}}>{code.subscription_tier === 1 ? 'PRO' : 'FREE'}</span>
-                                                    </div>
+                                                    <p className="text-xs font-black text-white tracking-widest">{code.code}</p>
+                                                    <p className="text-[9px] font-bold text-white/20 uppercase">Uses: {code.usage_count} • Tier: {code.subscription_tier === 1 ? 'PRO' : 'FREE'}</p>
                                                 </div>
-                                                <button 
-                                                    onClick={() => toggleReferralCode(code.id, code.is_active)}
-                                                    style={{background: code.is_active ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)', color: code.is_active ? theme.success : theme.danger, border: 'none', padding: '4px 8px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 700, cursor: 'pointer'}}
-                                                >
-                                                    {code.is_active ? 'Active' : 'Inactive'}
-                                                </button>
+                                                <button onClick={() => toggleReferralCode(code.id, code.is_active)} className={`px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-wider ${code.is_active ? 'bg-emerald-500 text-black' : 'bg-red-500 text-white'}`}>{code.is_active ? 'Active' : 'Locked'}</button>
                                             </div>
                                         ))}
-                                        {referralCodes.length === 0 && <div style={{textAlign: 'center', color: theme.textMuted, fontSize: '0.8rem', fontStyle: 'italic'}}>No codes yet.</div>}
                                     </div>
                                 </div>
                             )}
                         </div>
 
-                        {/* Admin Inbox for Feedback */}
-                        <div style={adminCardStyle}>
-                            <div 
-                                onClick={() => setIsFeedbackInboxExpanded(!isFeedbackInboxExpanded)}
-                                style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '2px 0'}}
-                            >
-                                <h3 style={sectionHeaderStyle}>
-                                    <div style={{...sectionIconStyle, background: 'rgba(139, 92, 246, 0.15)', color: theme.accent}}>
-                                        <MessageSquare size={16} />
-                                    </div>
-                                    <span>Feedback Inbox</span>
-                                </h3>
-                                {isFeedbackInboxExpanded ? <ChevronUp size={16} color={theme.textMuted} /> : <ChevronDown size={16} color={theme.textMuted} />}
-                            </div>
-                            
-                            {isFeedbackInboxExpanded && (
-                                <div style={{borderTop: '1px solid rgba(255,255,255,0.1)', marginTop: '10px'}}>
-                                    <AdminInbox />
-                                </div>
-                            )}
+                        {/* Admin Feedback */}
+                        <div className="border-b border-red-500/10 last:border-0">
+                            <SectionHeader icon={MessageSquare} color="#3b82f6" title="Feedback Inbox" isExpanded={isFeedbackInboxExpanded} onToggle={() => setIsFeedbackInboxExpanded(!isFeedbackInboxExpanded)} />
+                            {isFeedbackInboxExpanded && <div className="px-5 pb-6 pt-2 animate-in slide-in-from-top-2 duration-300"><AdminInbox /></div>}
                         </div>
-
-                    </div>
+                    </GroupCard>
                 )}
 
+                {/* Footer Credits */}
+                <div className="pt-4 pb-12 text-center flex flex-col items-center gap-3">
+                    <div className="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-full border border-white/5 backdrop-blur-sm">
+                        <Heart size={12} className="text-red-500 fill-red-500" />
+                        <span className="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em]">Build 2.4.0 • Made with Pride</span>
+                    </div>
+                    <div className="flex gap-4">
+                        <a href="#" className="text-[10px] font-bold text-white/20 hover:text-white transition-colors underline-offset-4 underline decoration-white/10">Terms of Service</a>
+                        <a href="#" className="text-[10px] font-bold text-white/20 hover:text-white transition-colors underline-offset-4 underline decoration-white/10">Privacy Policy</a>
+                    </div>
+                </div>
           </div>
           
-          {/* ... reset modal ... */}
+          {/* Reset Modal */}
           {showResetConfirm && (
              <div style={styles.modalOverlay}>
                  <div style={{...styles.modalContent, maxWidth: '320px', padding: '0', overflow: 'hidden'}} onClick={e => e.stopPropagation()}>
-                     <div style={{padding: '24px', textAlign: 'center'}}>
-                         <div style={{width: '60px', height: '60px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px'}}>
-                             <AlertTriangle size={32} color={theme.danger} />
+                     <div style={{padding: '32px 24px', textAlign: 'center'}}>
+                         <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-5 text-red-500">
+                             <AlertTriangle size={32} />
                          </div>
-                         <h3 style={{margin: '0 0 8px 0', fontSize: '1.2rem', fontWeight: 800}}>Factory Reset?</h3>
-                         <p style={{margin: 0, fontSize: '0.9rem', color: theme.textMuted, lineHeight: '1.5'}}>
-                             This will wipe <b>ALL</b> your data.
+                         <h3 className="text-xl font-black text-white mb-2">Factory Reset?</h3>
+                         <p className="text-sm text-white/40 leading-relaxed font-medium">
+                             This will permanently wipe <b>all</b> your courses, logs, and settings. This cannot be undone.
                          </p>
                      </div>
-                     <div style={{display: 'flex', borderTop: '1px solid rgba(255,255,255,0.1)'}}>
-                         <button 
-                             onClick={() => setShowResetConfirm(false)}
-                             style={{flex: 1, padding: '16px', background: 'transparent', border: 'none', color: theme.text, fontSize: '1rem', fontWeight: 600, cursor: 'pointer', borderRight: '1px solid rgba(255,255,255,0.1)'}}
-                         >
-                             Cancel
-                         </button>
-                         <button 
-                             onClick={() => { setShowResetConfirm(false); onResetApp(); }}
-                             style={{flex: 1, padding: '16px', background: 'rgba(239, 68, 68, 0.1)', border: 'none', color: theme.danger, fontSize: '1rem', fontWeight: 800, cursor: 'pointer'}}
-                         >
-                             Reset App
-                         </button>
+                     <div className="flex border-t border-white/5">
+                         <button onClick={() => setShowResetConfirm(false)} className="flex-1 py-5 text-sm font-bold text-white/40 hover:bg-white/5 transition-colors border-r border-white/5">Cancel</button>
+                         <button onClick={() => { setShowResetConfirm(false); onResetApp(); }} className="flex-1 py-5 text-sm font-black text-red-500 hover:bg-red-500/10 transition-colors uppercase tracking-widest">Wipe Data</button>
                      </div>
                  </div>
              </div>
           )}
 
-          <FeedbackModal 
-            isOpen={isFeedbackModalOpen} 
-            onClose={() => setIsFeedbackModalOpen(false)} 
-            userId={accountInfo?.id}
-          />
-
-          <SupportHistoryModal 
-            isOpen={isHistoryModalOpen}
-            onClose={() => setIsHistoryModalOpen(false)}
-            userId={accountInfo?.id}
-          />
-
-          <BanModal 
-            isOpen={!!banModalUser}
-            username={banModalUser?.username || ''}
-            onClose={() => setBanModalUser(null)}
-            onConfirm={handleBanConfirm}
-          />
-
-          <style>{`
-            @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
-            @keyframes shine { 
-                0% { transform: translateX(-100%) translateY(-100%) rotate(30deg); }
-                100% { transform: translateX(200%) translateY(200%) rotate(30deg); }
-            }
-            @keyframes textShine {
-                to { background-position: 200% center; }
-            }
-          `}</style>
+          <FeedbackModal isOpen={isFeedbackModalOpen} onClose={() => setIsFeedbackModalOpen(false)} userId={accountInfo?.id}/>
+          <SupportHistoryModal isOpen={isHistoryModalOpen} onClose={() => setIsHistoryModalOpen(false)} userId={accountInfo?.id}/>
+          <BanModal isOpen={!!banModalUser} username={banModalUser?.username || ''} onClose={() => setBanModalUser(null)} onConfirm={handleBanConfirm}/>
     </div>
   );
 };
