@@ -203,7 +203,7 @@ const BanModal = ({ isOpen, onClose, onConfirm, username }: { isOpen: boolean, o
     return (
         <div style={styles.modalOverlay} onClick={onClose}>
             <div style={{...styles.modalContent, maxWidth: '300px', textAlign: 'center'}} onClick={e => e.stopPropagation()}>
-                <div style={{margin: '0 auto 16px', width: '50px', height: '50px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyCenter: 'center', color: theme.danger}}>
+                <div style={{margin: '0 auto 16px', width: '50px', height: '50px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.danger}}>
                     <Ban size={24} />
                 </div>
                 <h3 style={{fontSize: '1.2rem', fontWeight: 800, margin: '0 0 8px 0'}}>Suspend {username}?</h3>
