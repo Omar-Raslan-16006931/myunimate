@@ -1,16 +1,13 @@
 
-import { GoogleGenAI, Type, Schema, FunctionDeclaration } from "@google/genai";
+import { GoogleGenAI, Type, FunctionDeclaration } from "@google/genai";
 import { ScheduleEvent, EventType, Macros, PeriodDefinition } from "../types";
 import { supabase } from "../lib/supabase";
 
 const MODEL_NAME = 'gemini-3-flash-preview';
 
 const getAiClient = () => {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) {
-    throw new Error("API Key is missing. Please provide a valid API key.");
-  }
-  return new GoogleGenAI({ apiKey });
+  // Always use a new GoogleGenAI instance with the API key directly from process.env as per guidelines
+  return new GoogleGenAI({ apiKey: process.env.API_KEY });
 };
 
 // --- Usage Tracking Helper ---
@@ -58,7 +55,8 @@ const trackUsage = async (feature: string) => {
 };
 
 // --- Nutrition Schema ---
-const nutritionSchema: Schema = {
+// Removed Schema type annotation as per naming safety guidelines
+const nutritionSchema = {
   type: Type.OBJECT,
   properties: {
     foodName: { type: Type.STRING, description: "A short, descriptive name of the food identified." },
