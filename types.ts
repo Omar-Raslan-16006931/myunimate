@@ -23,6 +23,7 @@ export interface ToDoItem {
   text: string;
   completed: boolean;
   createdAt: number;
+  priority?: 'low' | 'medium' | 'high';
 }
 
 export interface MaterialFile {
@@ -37,12 +38,14 @@ export interface MaterialFile {
   webViewLink?: string;
   iconLink?: string;
   mimeType?: string;
+  fileData?: string; // Base64 data for local files
 }
 
 export interface ScheduleProfile {
   id: string;
   name: string;
   isActive?: boolean;
+  periods?: PeriodDefinition[];
 }
 
 export interface ChatMessage {

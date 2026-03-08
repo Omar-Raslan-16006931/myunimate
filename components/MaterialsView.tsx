@@ -1,14 +1,18 @@
 
-import React from 'react';
+import React, { useRef } from 'react';
 import { MaterialFile } from '../types';
-import { Folder, FileText, Download, MoreVertical, Search, Plus, Image, FileSpreadsheet, File } from 'lucide-react';
+import { Folder, FileText, Download, MoreVertical, Search, Plus, Image, FileSpreadsheet, File, ArrowLeft, Eye } from 'lucide-react';
 import { styles, theme } from '../theme';
 
 interface MaterialsViewProps {
   files: MaterialFile[];
+  onAddFile: (file: MaterialFile) => void;
+  onBack: () => void;
 }
 
-const MaterialsView: React.FC<MaterialsViewProps> = ({ files }) => {
+const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onBack }) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const getIcon = (type: string) => {
       switch(type) {
           case 'folder': return <Folder size={32} className="text-yellow-400" fill="currentColor" fillOpacity={0.2} />;
@@ -19,14 +23,53 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files }) => {
       }
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+          const base64 = event.target?.result as string;
+          const newFile: MaterialFile = {
+              id: crypto.randomUUID(),
+              name: file.name,
+              type: file.type.includes('pdf') ? 'pdf' : file.type.includes('image') ? 'image' : 'other',
+              size: (file.size / 1024 / 1024).toFixed(2) + ' MB',
+              dateAdded: new Date().toISOString().split('T')[0],
+              fileData: base64,
+              mimeType: file.type
+          };
+          onAddFile(newFile);
+      };
+      reader.readAsDataURL(file);
+  };
+
+  const openFile = (file: MaterialFile) => {
+      if (file.fileData) {
+          const win = window.open();
+          if (win) {
+              win.document.write(
+                  `<iframe src="${file.fileData}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`
+              );
+          }
+      } else if (file.webViewLink) {
+          window.open(file.webViewLink, '_blank');
+      }
+  };
+
   const folders = files.filter(f => f.type === 'folder');
   const items = files.filter(f => f.type !== 'folder');
 
   return (
     <div style={styles.scrollableContent}>
-       <div style={{marginBottom: '20px', paddingTop: '8px'}}>
-          <h1 style={styles.title}>Materials</h1>
-          <p style={styles.subtitle}>Documents & Resources</p>
+       <div style={{marginBottom: '20px', paddingTop: '8px', display: 'flex', alignItems: 'center', gap: '12px'}}>
+          <button onClick={onBack} style={{background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', padding: 0}}>
+              <ArrowLeft size={24} />
+          </button>
+          <div>
+              <h1 style={styles.title}>Materials</h1>
+              <p style={styles.subtitle}>Documents & Resources</p>
+          </div>
        </div>
 
        <div style={{marginBottom: '24px', position: 'relative'}}>
@@ -38,17 +81,17 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files }) => {
        </div>
 
        <div style={{marginBottom: '24px'}}>
-           <h3 style={{fontSize: '0.8rem', fontWeight: 800, color: theme.textMuted, marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '1px'}}>Folders</h3>
-           <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: '12px'}}>
-              {folders.map(folder => (
-                  <div key={folder.id} style={{...styles.card, padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: 0, cursor: 'pointer', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)'}}>
-                     {getIcon(folder.type)}
-                     <span style={{fontSize: '0.75rem', fontWeight: 600, color: '#fff', textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%', whiteSpace: 'nowrap'}}>{folder.name}</span>
-                     <span style={{fontSize: '0.6rem', color: theme.textMuted}}>2 items</span>
-                  </div>
-              ))}
-              {folders.length === 0 && <p style={{color: theme.textMuted, fontSize: '0.8rem', fontStyle: 'italic'}}>No folders.</p>}
-           </div>
+            <h3 style={{fontSize: '0.8rem', fontWeight: 800, color: theme.textMuted, marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '1px'}}>Folders</h3>
+            <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: '12px'}}>
+               {folders.map(folder => (
+                   <div key={folder.id} style={{...styles.card, padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: 0, cursor: 'pointer', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)'}}>
+                      {getIcon(folder.type)}
+                      <span style={{fontSize: '0.75rem', fontWeight: 600, color: '#fff', textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%', whiteSpace: 'nowrap'}}>{folder.name}</span>
+                      <span style={{fontSize: '0.6rem', color: theme.textMuted}}>2 items</span>
+                   </div>
+               ))}
+               {folders.length === 0 && <p style={{color: theme.textMuted, fontSize: '0.8rem', fontStyle: 'italic'}}>No folders.</p>}
+            </div>
        </div>
 
        <h3 style={{fontSize: '0.8rem', fontWeight: 800, color: theme.textMuted, marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '1px'}}>Recent Files</h3>
@@ -58,19 +101,34 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files }) => {
                 <div style={{width: '42px', height: '42px', borderRadius: '10px', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
                    {getIcon(file.type)}
                 </div>
-                <div style={{flex: 1}}>
+                <div style={{flex: 1, cursor: 'pointer'}} onClick={() => openFile(file)}>
                    <h4 style={{margin: 0, fontSize: '0.9rem', fontWeight: 600, color: '#fff'}}>{file.name}</h4>
                    <p style={{margin: 0, fontSize: '0.7rem', color: theme.textMuted}}>{file.size} • {file.dateAdded}</p>
                 </div>
-                <button style={{background: 'transparent', border: 'none', color: theme.textMuted, cursor: 'pointer', padding: '8px', borderRadius: '50%'}}>
-                   <MoreVertical size={18} />
-                </button>
+                <div style={{display: 'flex', gap: '8px'}}>
+                    <button onClick={() => openFile(file)} style={{background: 'transparent', border: 'none', color: theme.accent, cursor: 'pointer', padding: '8px', borderRadius: '50%'}}>
+                       <Eye size={18} />
+                    </button>
+                    <button style={{background: 'transparent', border: 'none', color: theme.textMuted, cursor: 'pointer', padding: '8px', borderRadius: '50%'}}>
+                       <MoreVertical size={18} />
+                    </button>
+                </div>
              </div>
           ))}
           {items.length === 0 && <p style={{color: theme.textMuted, fontSize: '0.8rem', fontStyle: 'italic', textAlign: 'center', padding: '20px'}}>No files yet.</p>}
        </div>
        
-       <button style={{...styles.button, position: 'fixed', bottom: '100px', right: '20px', width: '56px', height: '56px', borderRadius: '50%', padding: 0, justifyContent: 'center', boxShadow: '0 8px 30px rgba(139, 92, 246, 0.4)', zIndex: 100}}>
+       <input 
+           type="file" 
+           ref={fileInputRef} 
+           style={{display: 'none'}} 
+           onChange={handleFileChange}
+           accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
+       />
+       <button 
+           onClick={() => fileInputRef.current?.click()}
+           style={{...styles.button, position: 'fixed', bottom: '100px', right: '20px', width: '56px', height: '56px', borderRadius: '50%', padding: 0, justifyContent: 'center', boxShadow: '0 8px 30px rgba(139, 92, 246, 0.4)', zIndex: 100}}
+       >
           <Plus size={24} />
        </button>
     </div>

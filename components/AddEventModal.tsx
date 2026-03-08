@@ -1,7 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
-import { X, Sparkles, Loader2, Wand2, Clock, Calendar, BookOpen, ChevronRight } from 'lucide-react';
-import { ScheduleEvent, EventColorMap, EventType, PeriodDefinition } from '../types';
+import { ScheduleEvent, EventColorMap, EventType, PeriodDefinition, CourseGrade } from '../types';
 import { parseNaturalLanguageEvent } from '../services/geminiService';
 import { styles, theme } from '../theme';
 import { getLocalISOString } from '../constants';
@@ -9,14 +7,14 @@ import { getLocalISOString } from '../constants';
 interface AddEventModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (event: Partial<ScheduleEvent>) => void;
+  onSave: (event: Partial<ScheduleEvent>, addToGrades?: boolean) => void;
   eventColors: EventColorMap;
   initialData: Partial<ScheduleEvent> | null;
   periods: PeriodDefinition[];
-  existingCourses?: { title: string, code: string, type: EventType }[];
+  courses?: CourseGrade[];
 }
 
-const AddEventModal: React.FC<AddEventModalProps> = ({ isOpen, onClose, onSave, eventColors, initialData, periods, existingCourses = [] }) => {
+const AddEventModal: React.FC<AddEventModalProps> = ({ isOpen, onClose, onSave, eventColors, initialData, periods, courses = [] }) => {
   const [formData, setFormData] = useState<Partial<ScheduleEvent>>({
     isRecurring: false,
     type: "lecture",
@@ -29,6 +27,7 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ isOpen, onClose, onSave, 
   const [isMagicLoading, setIsMagicLoading] = useState(false);
   const [timeMode, setTimeMode] = useState<'time' | 'slot'>('time');
   const [showCoursePicker, setShowCoursePicker] = useState(false);
+  const [addToGrades, setAddToGrades] = useState(false);
 
   useEffect(() => {
     if (initialData) {
@@ -38,6 +37,7 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ isOpen, onClose, onSave, 
              const isSlot = periods.some(p => p.startTime === initialData.startTime);
              if (isSlot) setTimeMode('slot');
         }
+        setAddToGrades(false);
     } else {
         setFormData({
             isRecurring: false,
@@ -47,6 +47,7 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ isOpen, onClose, onSave, 
             dayOfWeek: "Saturday",
             date: getLocalISOString()
         });
+        setAddToGrades(false);
     }
   }, [initialData, isOpen]);
 
@@ -92,21 +93,20 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ isOpen, onClose, onSave, 
 
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const val = e.target.value;
-      const match = existingCourses.find(c => c.title === val);
+      const match = courses.find(c => c.title === val);
       
       setFormData(prev => ({
           ...prev,
           title: val,
-          ...(match ? { code: match.code, type: match.type } : {})
+          ...(match ? { code: match.code } : {})
       }));
   };
 
-  const selectCourse = (course: { title: string, code: string, type: EventType }) => {
+  const selectCourse = (course: CourseGrade) => {
       setFormData(prev => ({
           ...prev,
           title: course.title,
           code: course.code,
-          type: course.type
       }));
       setShowCoursePicker(false);
   };
@@ -160,7 +160,7 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ isOpen, onClose, onSave, 
                 <div style={styles.formGroup}>
                     <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
                         <label style={{...styles.label, marginBottom: 0}}>Title <RequiredMark /></label>
-                        {existingCourses.length > 0 && (
+                        {courses.length > 0 && (
                             <button 
                                 onClick={() => setShowCoursePicker(!showCoursePicker)}
                                 style={{fontSize: '0.75rem', color: theme.accent, background: 'rgba(139, 92, 246, 0.1)', border: 'none', padding: '4px 8px', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px'}}
@@ -172,7 +172,7 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ isOpen, onClose, onSave, 
                     
                     {showCoursePicker && (
                          <div style={{marginBottom: '12px', background: 'rgba(0,0,0,0.3)', borderRadius: '12px', padding: '8px', maxHeight: '150px', overflowY: 'auto', border: '1px solid rgba(255,255,255,0.1)', animation: 'fadeIn 0.2s'}}>
-                             {existingCourses.map((c, i) => (
+                             {courses.map((c, i) => (
                                  <div 
                                     key={i} 
                                     onClick={() => selectCourse(c)}
@@ -194,7 +194,7 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ isOpen, onClose, onSave, 
                         onChange={handleTitleChange} 
                     />
                     <datalist id="course-suggestions">
-                        {existingCourses.map((c, i) => <option key={i} value={c.title} />)}
+                        {courses.map((c, i) => <option key={i} value={c.title} />)}
                     </datalist>
                 </div>
                 
@@ -209,6 +209,18 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ isOpen, onClose, onSave, 
                         <input style={{...styles.input, width: "100%", boxSizing: 'border-box'}} placeholder="A1" value={formData.group || ''} onChange={e => setFormData({...formData, group: e.target.value})} />
                     </div>
                 </div>
+
+                {/* Add to Grades Checkbox */}
+                {!formData.id && (
+                    <div style={{background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '12px', border: theme.glassBorder}}>
+                       <label style={{...styles.label, marginBottom: 0, textTransform: 'none', display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', fontSize: '0.9rem', color: '#fff', width: '100%'}}>
+                         <div style={{position: 'relative', display: 'flex', alignItems: 'center'}}>
+                             <input type="checkbox" checked={addToGrades} onChange={e => setAddToGrades(e.target.checked)} style={{width: '20px', height: '20px', accentColor: theme.accent, cursor: 'pointer'}} /> 
+                         </div>
+                         <span>Add to Grades / Courses</span>
+                       </label>
+                    </div>
+                )}
 
                 {/* 1. Type Selection (Moved to Top of Time section) */}
                 <div>
@@ -333,7 +345,7 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ isOpen, onClose, onSave, 
 
             <button 
                 style={{...styles.button, width: "100%", justifyContent: "center", marginTop: "32px", padding: "18px", fontSize: '1.1rem', boxShadow: '0 8px 25px rgba(139, 92, 246, 0.4)'}} 
-                onClick={() => onSave(formData)}
+                onClick={() => onSave(formData, addToGrades)}
             >
                 {formData.id ? "Update Event" : "Add to Schedule"}
             </button>

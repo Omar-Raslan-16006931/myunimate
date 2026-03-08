@@ -97,11 +97,23 @@ const ScheduleSettings: React.FC<ScheduleSettingsProps> = ({ periods, setPeriods
     const updatePeriod = (id: string, field: keyof PeriodDefinition, value: any) => {
         const updated = periods.map(p => {
             if (p.id === id) {
-                return { ...p, [field]: value };
+                const newP = { ...p, [field]: value };
+                // Update startVal if time changes
+                if (field === 'startTime') {
+                    const [h, m] = String(value).split(':').map(Number);
+                    newP.startVal = h + m / 60;
+                }
+                return newP;
             }
             return p;
         });
-        recalculatePeriods(updated);
+        
+        // Only recalculate all (labels etc) if isBreak changes
+        if (field === 'isBreak') {
+            recalculatePeriods(updated);
+        } else {
+            setPeriods(updated);
+        }
     };
 
     const deletePeriod = (id: string) => {

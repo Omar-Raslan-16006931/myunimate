@@ -29,7 +29,7 @@ export const INITIAL_PERIODS: PeriodDefinition[] = [
 ];
 
 export const INITIAL_PROFILES: ScheduleProfile[] = [
-  { id: 'main', name: 'Main Schedule' },
+  { id: 'main', name: 'Main Schedule', periods: INITIAL_PERIODS },
 ];
 
 export const INITIAL_EVENTS: ScheduleEvent[] = [
