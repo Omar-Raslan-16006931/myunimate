@@ -42,8 +42,17 @@ export const App: React.FC = () => {
   const [profiles, setProfiles] = useState<ScheduleProfile[]>(INITIAL_PROFILES);
   const [activeProfileId, setActiveProfileId] = useState<string>(INITIAL_PROFILES[0].id);
   const [eventColors, setEventColors] = useState<EventColorMap>(INITIAL_COLORS);
-  const [periods, setPeriods] = useState<PeriodDefinition[]>(INITIAL_PERIODS);
   const [announcement, setAnnouncement] = useState<Announcement | null>(null);
+
+  const currentPeriods = profiles.find(p => p.id === activeProfileId)?.periods || INITIAL_PERIODS;
+
+  const handleUpdateProfilePeriods = async (newPeriods: PeriodDefinition[]) => {
+      if (!session?.user?.id) return;
+      const { error } = await supabase.from('schedule_profiles').update({ periods: newPeriods }).eq('id', activeProfileId);
+      if (!error) {
+          setProfiles(profiles.map(p => p.id === activeProfileId ? { ...p, periods: newPeriods } : p));
+      }
+  };
 
   // Modals
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -71,18 +80,82 @@ export const App: React.FC = () => {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      if (session) fetchProfile(session.user.id);
+      if (session) {
+          fetchProfile(session.user.id);
+          fetchUserData(session.user.id);
+      }
       setLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      if (session) fetchProfile(session.user.id);
-      else setProfile(null);
+      if (session) {
+          fetchProfile(session.user.id);
+          fetchUserData(session.user.id);
+      }
+      else {
+          setProfile(null);
+          setEvents(INITIAL_EVENTS);
+          setProfiles(INITIAL_PROFILES);
+          setCourses([]);
+          setToDoItems([]);
+          setFiles(INITIAL_FILES);
+      }
     });
 
     return () => subscription.unsubscribe();
   }, []);
+
+  const fetchUserData = async (userId: string) => {
+      // Fetch Events
+      const { data: eventsData } = await supabase.from('events').select('*').eq('user_id', userId);
+      if (eventsData && eventsData.length > 0) {
+          setEvents(eventsData.map((e: any) => ({
+              ...e,
+              scheduleId: e.schedule_id,
+              startTime: e.start_time,
+              durationMinutes: e.duration_minutes,
+              isRecurring: e.is_recurring,
+              dayOfWeek: e.day_of_week
+          })));
+      }
+
+      // Fetch Profiles
+      const { data: profilesData } = await supabase.from('schedule_profiles').select('*').eq('user_id', userId);
+      if (profilesData && profilesData.length > 0) {
+          setProfiles(profilesData);
+          const active = profilesData.find((p: any) => p.is_active);
+          if (active) setActiveProfileId(active.id);
+          else setActiveProfileId(profilesData[0].id);
+      } else {
+          // Insert default profiles
+          const defaultProfiles = INITIAL_PROFILES.map((p, index) => ({
+              id: crypto.randomUUID(),
+              user_id: userId,
+              name: p.name,
+              is_active: index === 0,
+              periods: p.periods
+          }));
+          
+          const { error } = await supabase.from('schedule_profiles').insert(defaultProfiles);
+          if (!error) {
+              setProfiles(defaultProfiles);
+              setActiveProfileId(defaultProfiles[0].id);
+          }
+      }
+
+      // Fetch Courses
+      const { data: coursesData } = await supabase.from('courses').select('*').eq('user_id', userId);
+      if (coursesData) setCourses(coursesData.map((c: any) => ({ ...c, targetGrade: c.target_grade })));
+
+      // Fetch Todos
+      const { data: todosData } = await supabase.from('todos').select('*').eq('user_id', userId);
+      if (todosData) setToDoItems(todosData.map((t: any) => ({...t, createdAt: t.created_at})));
+
+      // Fetch Materials
+      const { data: materialsData } = await supabase.from('materials').select('*').eq('user_id', userId);
+      if (materialsData) setFiles(materialsData.map((m: any) => ({...m, dateAdded: m.date_added, fileData: m.file_data, mimeType: m.mime_type})));
+  };
 
   const fetchProfile = async (userId: string) => {
     const { data } = await supabase.from('profiles').select('*').eq('id', userId).single();
@@ -162,7 +235,8 @@ export const App: React.FC = () => {
       alert("Plan cancelled.");
   };
 
-  const onAddEvent = (eventData: Partial<ScheduleEvent>) => {
+  const onAddEvent = async (eventData: Partial<ScheduleEvent>) => {
+    if (!session?.user?.id) return;
     const newEvent: ScheduleEvent = {
         id: eventData.id || crypto.randomUUID(),
         scheduleId: activeProfileId,
@@ -178,19 +252,62 @@ export const App: React.FC = () => {
         code: eventData.code,
         group: eventData.group
     };
-    setEvents([...events, newEvent]);
-    setIsAddModalOpen(false);
-    setEditingEvent(null);
+    
+    const { error } = await supabase.from('events').insert({
+        id: newEvent.id,
+        user_id: session.user.id,
+        schedule_id: newEvent.scheduleId,
+        title: newEvent.title,
+        type: newEvent.type,
+        start_time: newEvent.startTime,
+        duration_minutes: newEvent.durationMinutes,
+        is_recurring: newEvent.isRecurring,
+        day_of_week: newEvent.dayOfWeek,
+        date: newEvent.date,
+        location: newEvent.location,
+        description: newEvent.description,
+        code: newEvent.code,
+        "group": newEvent.group
+    });
+
+    if (!error) {
+        setEvents([...events, newEvent]);
+        setIsAddModalOpen(false);
+        setEditingEvent(null);
+    } else {
+        console.error('Error adding event:', error);
+    }
   };
 
-  const onUpdateEvent = (updatedEvent: ScheduleEvent) => {
-    setEvents(events.map(e => e.id === updatedEvent.id ? updatedEvent : e));
-    setViewingEvent(null);
+  const onUpdateEvent = async (updatedEvent: ScheduleEvent) => {
+    if (!session?.user?.id) return;
+    const { error } = await supabase.from('events').update({
+        title: updatedEvent.title,
+        type: updatedEvent.type,
+        start_time: updatedEvent.startTime,
+        duration_minutes: updatedEvent.durationMinutes,
+        is_recurring: updatedEvent.isRecurring,
+        day_of_week: updatedEvent.dayOfWeek,
+        date: updatedEvent.date,
+        location: updatedEvent.location,
+        description: updatedEvent.description,
+        code: updatedEvent.code,
+        "group": updatedEvent.group
+    }).eq('id', updatedEvent.id);
+
+    if (!error) {
+        setEvents(events.map(e => e.id === updatedEvent.id ? updatedEvent : e));
+        setViewingEvent(null);
+    }
   };
 
-  const onDeleteEvent = (id: string) => {
-    setEvents(events.filter(e => e.id !== id));
-    setViewingEvent(null);
+  const onDeleteEvent = async (id: string) => {
+    if (!session?.user?.id) return;
+    const { error } = await supabase.from('events').delete().eq('id', id);
+    if (!error) {
+        setEvents(events.filter(e => e.id !== id));
+        setViewingEvent(null);
+    }
   };
 
   const handleGymUpdate = (updates: Partial<ActiveGymState>) => setActiveGymState({ ...activeGymState, ...updates });
@@ -260,7 +377,7 @@ export const App: React.FC = () => {
             onNavigate={setView}
             onEventClick={setViewingEvent}
             onAddEventClick={() => { setEditingEvent(null); setIsAddModalOpen(true); }}
-            periods={periods}
+            periods={currentPeriods}
             announcement={announcement}
             username={profile?.username}
         />;
@@ -279,10 +396,10 @@ export const App: React.FC = () => {
                    if (ev) onUpdateEvent({ ...ev, ...updates } as ScheduleEvent);
                }
             }}
-            periods={periods}
+            periods={currentPeriods}
         />;
       case 'ai':
-        return <AIChat onAddEvent={onAddEvent} periods={periods} />;
+        return <AIChat onAddEvent={onAddEvent} periods={currentPeriods} />;
       case 'gym':
         return <GymView 
             onBack={() => setView('dashboard')}
@@ -310,51 +427,123 @@ export const App: React.FC = () => {
             updateSettings={setGymSettings}
         />;
       case 'courses':
+        return <CoursesView 
+            courses={courses}
+            onSelectCourse={setSelectedCourseId}
+            onAddCourse={async () => {
+                if (!session?.user?.id) return;
+                const newCourse = {
+                    id: crypto.randomUUID(),
+                    user_id: session.user.id,
+                    title: "New Course",
+                    target_grade: "95",
+                    categories: []
+                };
+                const { error } = await supabase.from('courses').insert(newCourse);
+                if (!error) {
+                    setCourses([...courses, { ...newCourse, targetGrade: newCourse.target_grade }]);
+                    setSelectedCourseId(newCourse.id);
+                }
+            }}
+            onDeleteCourse={async (id) => {
+                const { error } = await supabase.from('courses').delete().eq('id', id);
+                if (!error) setCourses(courses.filter(c => c.id !== id));
+            }}
+        />;
       case 'materials':
-        return (
-            <div style={{...styles.scrollableContent, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column'}}>
-                <h2 style={styles.title}>Coming Soon</h2>
-                <p style={styles.subtitle}>This module is under construction.</p>
-                <button onClick={() => setView('dashboard')} style={{...styles.button, marginTop: '20px'}}>Back Home</button>
-            </div>
-        );
+        return <MaterialsView 
+            files={files}
+            onAddFile={async (file) => {
+                if (!session?.user?.id) return;
+                const newFile = {
+                    id: file.id,
+                    user_id: session.user.id,
+                    name: file.name,
+                    type: file.type,
+                    size: file.size,
+                    date_added: file.dateAdded,
+                    file_data: file.fileData,
+                    mime_type: file.mimeType
+                };
+                const { error } = await supabase.from('materials').insert(newFile);
+                if (!error) setFiles([...files, file]);
+            }}
+            onBack={() => setView('dashboard')}
+        />;
       case 'grades':
         if (selectedCourseId) {
             const course = courses.find(c => c.id === selectedCourseId);
             if (!course) return <div>Course not found</div>;
             return <UniversalGradeCalculator 
                 course={course}
-                onUpdate={(updated) => setCourses(courses.map(c => c.id === updated.id ? updated : c))}
+                onUpdate={async (updated) => {
+                    const { error } = await supabase.from('courses').update({
+                        title: updated.title,
+                        target_grade: updated.targetGrade,
+                        categories: updated.categories
+                    }).eq('id', updated.id);
+                    if (!error) setCourses(courses.map(c => c.id === updated.id ? updated : c));
+                }}
                 onBack={() => setSelectedCourseId(null)}
-                onDelete={() => {
-                    setCourses(courses.filter(c => c.id !== selectedCourseId));
-                    setSelectedCourseId(null);
+                onDelete={async () => {
+                    const { error } = await supabase.from('courses').delete().eq('id', selectedCourseId);
+                    if (!error) {
+                        setCourses(courses.filter(c => c.id !== selectedCourseId));
+                        setSelectedCourseId(null);
+                    }
                 }}
             />;
         }
         return <CoursesView 
             courses={courses}
             onSelectCourse={setSelectedCourseId}
-            onAddCourse={() => {
-                const newCourse: CourseGrade = {
+            onAddCourse={async () => {
+                if (!session?.user?.id) return;
+                const newCourse = {
                     id: crypto.randomUUID(),
+                    user_id: session.user.id,
                     title: "New Course",
-                    targetGrade: "95",
+                    target_grade: "95",
                     categories: []
                 };
-                setCourses([...courses, newCourse]);
-                setSelectedCourseId(newCourse.id);
+                const { error } = await supabase.from('courses').insert(newCourse);
+                if (!error) {
+                    setCourses([...courses, { ...newCourse, targetGrade: newCourse.target_grade }]);
+                    setSelectedCourseId(newCourse.id);
+                }
             }}
-            onDeleteCourse={(id) => {
-                setCourses(courses.filter(c => c.id !== id));
+            onDeleteCourse={async (id) => {
+                const { error } = await supabase.from('courses').delete().eq('id', id);
+                if (!error) setCourses(courses.filter(c => c.id !== id));
             }}
         />;
       case 'todo':
         return <ToDoList 
             items={toDoItems}
-            onAdd={(text) => setToDoItems([...toDoItems, { id: crypto.randomUUID(), text, completed: false, createdAt: Date.now() }])}
-            onToggle={(id) => setToDoItems(toDoItems.map(i => i.id === id ? { ...i, completed: !i.completed } : i))}
-            onDelete={(id) => setToDoItems(toDoItems.filter(i => i.id !== id))}
+            onAdd={async (text, priority) => {
+                if (!session?.user?.id) return;
+                const newItem = {
+                    id: crypto.randomUUID(),
+                    user_id: session.user.id,
+                    text,
+                    completed: false,
+                    priority,
+                    created_at: Date.now()
+                };
+                const { error } = await supabase.from('todos').insert(newItem);
+                if (!error) setToDoItems([...toDoItems, { ...newItem, createdAt: newItem.created_at }]);
+            }}
+            onToggle={async (id) => {
+                const item = toDoItems.find(i => i.id === id);
+                if (item) {
+                    const { error } = await supabase.from('todos').update({ completed: !item.completed }).eq('id', id);
+                    if (!error) setToDoItems(toDoItems.map(i => i.id === id ? { ...i, completed: !i.completed } : i));
+                }
+            }}
+            onDelete={async (id) => {
+                const { error } = await supabase.from('todos').delete().eq('id', id);
+                if (!error) setToDoItems(toDoItems.filter(i => i.id !== id));
+            }}
             onBack={() => setView('dashboard')}
         />;
       case 'subscription':
@@ -382,12 +571,26 @@ export const App: React.FC = () => {
             activeProfileId={activeProfileId}
             eventColors={eventColors}
             baseEvents={events} 
-            onAddProfile={(name) => setProfiles([...profiles, { id: crypto.randomUUID(), name }])}
+            onAddProfile={async (name) => {
+                if (!session?.user?.id) return;
+                const newProfile = { 
+                    id: crypto.randomUUID(), 
+                    name, 
+                    periods: INITIAL_PERIODS,
+                    user_id: session.user.id,
+                    is_active: false
+                };
+                const { error } = await supabase.from('schedule_profiles').insert(newProfile);
+                if (!error) setProfiles([...profiles, newProfile]);
+            }}
             onSwitchProfile={setActiveProfileId}
-            onDeleteProfile={(id) => {
+            onDeleteProfile={async (id) => {
                 if (profiles.length > 1) {
-                    setProfiles(profiles.filter(p => p.id !== id));
-                    if (activeProfileId === id) setActiveProfileId(profiles[0].id);
+                    const { error } = await supabase.from('schedule_profiles').delete().eq('id', id);
+                    if (!error) {
+                        setProfiles(profiles.filter(p => p.id !== id));
+                        if (activeProfileId === id) setActiveProfileId(profiles[0].id);
+                    }
                 }
             }}
             onUpdateColor={(type, color) => setEventColors({ ...eventColors, [type]: color })}
@@ -402,8 +605,8 @@ export const App: React.FC = () => {
                 // etc...
             }}
             onSignOut={() => supabase.auth.signOut()}
-            periods={periods}
-            setPeriods={setPeriods}
+            periods={currentPeriods}
+            setPeriods={handleUpdateProfilePeriods}
             accountInfo={profile}
             onUpdateAccount={handleUpdateProfile}
             themeMode={themeMode}
@@ -433,14 +636,28 @@ export const App: React.FC = () => {
       <AddEventModal 
         isOpen={isAddModalOpen} 
         onClose={() => setIsAddModalOpen(false)} 
-        onSave={(data) => {
-            if (editingEvent) onUpdateEvent({ ...editingEvent, ...data } as ScheduleEvent);
-            else onAddEvent(data);
+        onSave={async (data, addToGrades) => {
+            if (editingEvent) await onUpdateEvent({ ...editingEvent, ...data } as ScheduleEvent);
+            else await onAddEvent(data);
+
+            if (addToGrades && data.title && session?.user?.id) {
+                const newCourse = {
+                    id: crypto.randomUUID(),
+                    user_id: session.user.id,
+                    title: data.title,
+                    code: data.code,
+                    target_grade: "95",
+                    categories: []
+                };
+                const { error } = await supabase.from('courses').insert(newCourse);
+                if (!error) setCourses([...courses, { ...newCourse, targetGrade: newCourse.target_grade }]);
+            }
             setIsAddModalOpen(false);
         }}
         eventColors={eventColors}
         initialData={editingEvent}
-        periods={periods}
+        periods={currentPeriods}
+        courses={courses}
       />
 
       <EventDetailsModal 
