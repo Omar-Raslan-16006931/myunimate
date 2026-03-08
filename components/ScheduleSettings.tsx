@@ -121,6 +121,34 @@ const ScheduleSettings: React.FC<ScheduleSettingsProps> = ({ periods, setPeriods
         recalculatePeriods(updated);
     };
 
+    const autoFillGaps = () => {
+        // Sort periods by start time first
+        const sorted = [...periods].sort((a, b) => getMinutes(a.startTime) - getMinutes(b.startTime));
+        const newPeriods: PeriodDefinition[] = [];
+        
+        for (let i = 0; i < sorted.length; i++) {
+            newPeriods.push(sorted[i]);
+            if (i < sorted.length - 1) {
+                const currentEnd = getMinutes(sorted[i].endTime);
+                const nextStart = getMinutes(sorted[i+1].startTime);
+                
+                if (nextStart > currentEnd) {
+                    // There is a gap, insert a break
+                    newPeriods.push({
+                        id: Math.random().toString(36).substr(2, 9),
+                        label: "Break",
+                        startTime: formatTime(currentEnd),
+                        endTime: formatTime(nextStart),
+                        isBreak: true,
+                        startVal: currentEnd / 60
+                    });
+                }
+            }
+        }
+        
+        recalculatePeriods(newPeriods);
+    };
+
     const to12h = (time24: string) => {
         if (!time24) return "";
         const [h, m] = time24.split(":").map(Number);
@@ -249,19 +277,36 @@ const ScheduleSettings: React.FC<ScheduleSettingsProps> = ({ periods, setPeriods
                     );
                 })}
 
-                <button 
-                    onClick={addPeriod}
-                    style={{
-                        ...styles.secondaryButton,
-                        justifyContent: 'center',
-                        padding: '12px',
-                        borderStyle: 'dashed',
-                        marginTop: '8px',
-                        fontSize: '0.8rem'
-                    }}
-                >
-                    <Plus size={16} /> Add New Slot
-                </button>
+                <div style={{display: 'flex', gap: '8px', marginTop: '8px'}}>
+                    <button 
+                        onClick={addPeriod}
+                        style={{
+                            ...styles.secondaryButton,
+                            flex: 1,
+                            justifyContent: 'center',
+                            padding: '12px',
+                            borderStyle: 'dashed',
+                            fontSize: '0.8rem'
+                        }}
+                    >
+                        <Plus size={16} /> Add New Slot
+                    </button>
+                    <button 
+                        onClick={autoFillGaps}
+                        style={{
+                            ...styles.secondaryButton,
+                            flex: 1,
+                            justifyContent: 'center',
+                            padding: '12px',
+                            borderStyle: 'dashed',
+                            fontSize: '0.8rem',
+                            color: theme.accent,
+                            borderColor: 'rgba(139, 92, 246, 0.3)'
+                        }}
+                    >
+                        <Coffee size={16} /> Auto-Fill Gaps
+                    </button>
+                </div>
             </div>
 
             {/* Visual Preview */}

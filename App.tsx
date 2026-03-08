@@ -50,10 +50,9 @@ export const App: React.FC = () => {
 
   const handleUpdateProfilePeriods = async (newPeriods: PeriodDefinition[]) => {
       if (!session?.user?.id) return;
+      setProfiles(profiles.map(p => p.id === activeProfileId ? { ...p, periods: newPeriods } : p));
       const { error } = await supabase.from('schedule_profiles').update({ periods: newPeriods }).eq('id', activeProfileId);
-      if (!error) {
-          setProfiles(profiles.map(p => p.id === activeProfileId ? { ...p, periods: newPeriods } : p));
-      }
+      if (error) console.error("Error updating periods:", error);
   };
 
   // Modals
@@ -166,7 +165,7 @@ export const App: React.FC = () => {
       // Load saved settings if any
       if (data.settings) {
         if (data.settings.theme) setThemeMode(data.settings.theme);
-        // Load other settings...
+        if (data.settings.eventColors) setEventColors(data.settings.eventColors);
       }
     }
   };
@@ -177,6 +176,17 @@ export const App: React.FC = () => {
     if (!error) {
       setProfile({ ...profile, ...updates });
     }
+  };
+
+  const handleUpdateColor = async (type: EventType, color: string) => {
+      const newColors = { ...eventColors, [type]: color };
+      setEventColors(newColors);
+      if (session?.user?.id) {
+          const currentSettings = profile?.settings || {};
+          const newSettings = { ...currentSettings, eventColors: newColors };
+          await supabase.from('profiles').update({ settings: newSettings }).eq('id', session.user.id);
+          setProfile({ ...profile, settings: newSettings });
+      }
   };
 
   const handleUpgrade = async (price: number) => {
@@ -283,6 +293,8 @@ export const App: React.FC = () => {
 
   const onUpdateEvent = async (updatedEvent: ScheduleEvent) => {
     if (!session?.user?.id) return;
+    setEvents(events.map(e => e.id === updatedEvent.id ? updatedEvent : e));
+    setViewingEvent(null);
     const { error } = await supabase.from('events').update({
         title: updatedEvent.title,
         type: updatedEvent.type,
@@ -297,9 +309,8 @@ export const App: React.FC = () => {
         "group": updatedEvent.group
     }).eq('id', updatedEvent.id);
 
-    if (!error) {
-        setEvents(events.map(e => e.id === updatedEvent.id ? updatedEvent : e));
-        setViewingEvent(null);
+    if (error) {
+        console.error("Error updating event:", error);
     }
   };
 
@@ -485,12 +496,13 @@ export const App: React.FC = () => {
             return <UniversalGradeCalculator 
                 course={course}
                 onUpdate={async (updated) => {
+                    setCourses(courses.map(c => c.id === updated.id ? updated : c));
                     const { error } = await supabase.from('courses').update({
                         title: updated.title,
                         target_grade: updated.targetGrade,
                         categories: updated.categories
                     }).eq('id', updated.id);
-                    if (!error) setCourses(courses.map(c => c.id === updated.id ? updated : c));
+                    if (error) console.error("Error updating course:", error);
                 }}
                 onBack={() => setSelectedCourseId(null)}
                 onDelete={async () => {
@@ -544,13 +556,15 @@ export const App: React.FC = () => {
             onToggle={async (id) => {
                 const item = toDoItems.find(i => i.id === id);
                 if (item) {
+                    setToDoItems(toDoItems.map(i => i.id === id ? { ...i, completed: !i.completed } : i));
                     const { error } = await supabase.from('todos').update({ completed: !item.completed }).eq('id', id);
-                    if (!error) setToDoItems(toDoItems.map(i => i.id === id ? { ...i, completed: !i.completed } : i));
+                    if (error) console.error("Error toggling todo:", error);
                 }
             }}
             onDelete={async (id) => {
+                setToDoItems(toDoItems.filter(i => i.id !== id));
                 const { error } = await supabase.from('todos').delete().eq('id', id);
-                if (!error) setToDoItems(toDoItems.filter(i => i.id !== id));
+                if (error) console.error("Error deleting todo:", error);
             }}
             onBack={() => setView('dashboard')}
         />;
@@ -601,7 +615,7 @@ export const App: React.FC = () => {
                     }
                 }
             }}
-            onUpdateColor={(type, color) => setEventColors({ ...eventColors, [type]: color })}
+            onUpdateColor={handleUpdateColor}
             onDeleteEvent={onDeleteEvent}
             onEditEvent={(e) => { setEditingEvent(e); setIsAddModalOpen(true); }}
             onAddBaseEventClick={() => { setEditingEvent(null); setIsAddModalOpen(true); }}
