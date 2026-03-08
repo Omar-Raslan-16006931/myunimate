@@ -23,6 +23,8 @@ import SubscriptionPage from './components/SubscriptionPage';
 import UniversalGradeCalculator from './components/UniversalGradeCalculator';
 import PaymentPage from './components/PaymentPage';
 import CoursesView from './components/CoursesView';
+import MaterialsView from './components/MaterialsView';
+import { StudyGroupsView } from './components/StudyGroupsView';
 
 export const App: React.FC = () => {
   const [session, setSession] = useState<any>(null);
@@ -469,6 +471,12 @@ export const App: React.FC = () => {
                 if (!error) setFiles([...files, file]);
             }}
             onBack={() => setView('dashboard')}
+        />;
+      case 'study_groups':
+        return <StudyGroupsView 
+            onBack={() => setView('dashboard')}
+            userId={session?.user?.id}
+            username={profile?.username || 'Student'}
         />;
       case 'grades':
         if (selectedCourseId) {

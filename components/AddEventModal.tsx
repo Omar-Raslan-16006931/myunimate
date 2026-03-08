@@ -1,8 +1,10 @@
 
+import React, { useState, useEffect } from 'react';
 import { ScheduleEvent, EventColorMap, EventType, PeriodDefinition, CourseGrade } from '../types';
 import { parseNaturalLanguageEvent } from '../services/geminiService';
 import { styles, theme } from '../theme';
 import { getLocalISOString } from '../constants';
+import { X, Sparkles, Loader2, Wand2, BookOpen, ChevronRight, Calendar } from 'lucide-react';
 
 interface AddEventModalProps {
   isOpen: boolean;

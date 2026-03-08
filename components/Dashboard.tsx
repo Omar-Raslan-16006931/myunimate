@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { MapPin, ClipboardList, ArrowRight, Dumbbell, Calculator, Sparkles, Megaphone, X, CheckSquare, Plus, Lock } from 'lucide-react';
+import { MapPin, ClipboardList, ArrowRight, Dumbbell, Calculator, Sparkles, Megaphone, X, CheckSquare, Plus, Lock, Users } from 'lucide-react';
 import { ScheduleEvent, EventColorMap, PeriodDefinition, Announcement } from '../types';
 import { getLocalISOString } from '../constants';
 import { theme, styles } from '../theme';
@@ -379,6 +379,33 @@ export const Dashboard: React.FC<DashboardProps> = ({ events, eventColors, onNav
                     <div>
                         <h3 style={{margin: 0, fontSize: '0.8rem', fontWeight: 800, color: '#fff'}}>To-Do</h3>
                         <p style={{margin: 0, fontSize: '0.6rem', color: 'rgba(255,255,255,0.7)'}}>Task Manager</p>
+                    </div>
+                </div>
+
+                {/* Study Groups Entry Card */}
+                <div 
+                    onClick={() => onNavigate('study_groups')}
+                    style={{
+                        ...styles.card,
+                        margin: 0,
+                        padding: '10px',
+                        minHeight: '75px',
+                        background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.5), rgba(217, 119, 6, 0.3))',
+                        border: '1px solid rgba(251, 191, 36, 0.2)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        alignItems: 'flex-start',
+                        boxShadow: '0 8px 20px rgba(245, 158, 11, 0.3)'
+                    }}
+                >
+                    <div style={{background: 'rgba(255,255,255,0.15)', padding: '6px', borderRadius: '8px', marginBottom: '4px'}}>
+                        <Users size={16} color="#fff" />
+                    </div>
+                    <div>
+                        <h3 style={{margin: 0, fontSize: '0.8rem', fontWeight: 800, color: '#fff'}}>Groups</h3>
+                        <p style={{margin: 0, fontSize: '0.6rem', color: 'rgba(255,255,255,0.7)'}}>Study Together</p>
                     </div>
                 </div>
 

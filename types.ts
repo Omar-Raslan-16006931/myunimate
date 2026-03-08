@@ -149,7 +149,54 @@ export interface CourseGrade {
   categories: GradeCategory[];
 }
 
-export type ViewState = "dashboard" | "schedule" | "courses" | "materials" | "ai" | "settings" | "grades" | "gym" | "subscription" | "todo" | "referral";
+export type ViewState = "dashboard" | "schedule" | "courses" | "materials" | "ai" | "settings" | "grades" | "gym" | "subscription" | "todo" | "referral" | "study_groups";
+
+// --- STUDY GROUP TYPES ---
+
+export interface StudyGroup {
+  id: string;
+  name: string;
+  description?: string;
+  created_by: string;
+  created_at: string;
+}
+
+export interface StudyGroupMember {
+  group_id: string;
+  user_id: string;
+  role: string;
+  joined_at: string;
+}
+
+export interface StudyGroupMessage {
+  id: string;
+  group_id: string;
+  user_id: string;
+  message: string;
+  created_at: string;
+  username?: string;
+}
+
+export interface StudyGroupDocument {
+  id: string;
+  group_id: string;
+  user_id: string;
+  title: string;
+  url?: string;
+  file_data?: string;
+  mime_type?: string;
+  created_at: string;
+}
+
+export interface StudyGroupSession {
+  id: string;
+  group_id: string;
+  created_by: string;
+  title: string;
+  start_time: string;
+  duration_minutes: number;
+  created_at: string;
+}
 
 // Map event types to hex colors
 export type EventColorMap = Record<EventType, string>;
