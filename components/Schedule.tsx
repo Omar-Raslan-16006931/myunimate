@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, ChevronRight, MapPin, Plus, Brain, ChevronDown, X, RotateCcw } from 'lucide-react';
 import { ScheduleEvent, EventColorMap, ScheduleProfile, PeriodDefinition } from '../types';
 import { getLocalISOString } from '../constants';
@@ -30,6 +30,7 @@ const Schedule: React.FC<ScheduleProps> = ({
 }) => {
   const [expandedSlot, setExpandedSlot] = useState<ScheduleEvent[] | null>(null);
   const [draggedEventId, setDraggedEventId] = useState<string | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Helper to get the Saturday of the current week (Start of academic week)
   const getSaturdayOfWeek = (d: Date) => {
@@ -50,6 +51,56 @@ const Schedule: React.FC<ScheduleProps> = ({
   const [currentWeekStart, setCurrentWeekStart] = useState<Date>(() => {
     return getSaturdayOfWeek(new Date());
   });
+
+  useEffect(() => {
+    // Scroll to current time slot on mount
+    if (scrollContainerRef.current) {
+      const now = new Date();
+      const currentHour = now.getHours();
+      const currentMinute = now.getMinutes();
+      const currentTimeVal = currentHour + currentMinute / 60;
+
+      // Find the period that encompasses the current time, or the closest one
+      let targetPeriodIndex = 0;
+      for (let i = 0; i < periods.length; i++) {
+        const p = periods[i];
+        const [startH, startM] = p.startTime.split(':').map(Number);
+        const [endH, endM] = p.endTime.split(':').map(Number);
+        const startVal = startH + startM / 60;
+        const endVal = endH + endM / 60;
+
+        if (currentTimeVal >= startVal && currentTimeVal <= endVal) {
+          targetPeriodIndex = i;
+          break;
+        } else if (currentTimeVal < startVal) {
+          targetPeriodIndex = i;
+          break;
+        }
+      }
+
+      // Find current day index
+      // days = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+      const dayOfWeek = now.getDay(); // 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
+      const dayMap: Record<number, number> = { 6: 0, 0: 1, 1: 2, 2: 3, 3: 4, 4: 5, 5: 6 };
+      const targetDayIndex = dayMap[dayOfWeek];
+
+      // Calculate scroll position
+      const slotWidth = 90; // Approximate width of a period column
+      const slotHeight = 72; // Approximate height of a day row
+      const containerWidth = scrollContainerRef.current.clientWidth;
+      const containerHeight = scrollContainerRef.current.clientHeight;
+
+      // 54px is the width of the day column, 45px is the height of the header row
+      const scrollLeft = Math.max(0, (targetPeriodIndex * slotWidth) + 54 - (containerWidth / 2) + (slotWidth / 2));
+      const scrollTop = Math.max(0, (targetDayIndex * slotHeight) + 45 - (containerHeight / 2) + (slotHeight / 2));
+
+      scrollContainerRef.current.scrollTo({
+        left: scrollLeft,
+        top: scrollTop,
+        behavior: 'smooth'
+      });
+    }
+  }, [periods]);
 
   const actualCurrentWeekStart = getSaturdayOfWeek(new Date());
   const isCurrentWeek = currentWeekStart.getTime() === actualCurrentWeekStart.getTime();
@@ -242,7 +293,7 @@ const Schedule: React.FC<ScheduleProps> = ({
   const gridTemplateColumns = `54px ${periods.map(p => p.isBreak ? '13px' : '1fr').join(' ')}`;
 
   return (
-    <div style={{height: "100%", display: "flex", flexDirection: "column", padding: "18px 18px 100px 18px"}}>
+    <div style={{height: "100%", display: "flex", flexDirection: "column", padding: "18px 18px 100px 18px", overflowY: "auto"}}>
         <div style={styles.header}>
           <div>
              <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
@@ -290,7 +341,7 @@ const Schedule: React.FC<ScheduleProps> = ({
            </button>
         </div>
 
-        <div style={styles.scheduleWrapper}>
+        <div ref={scrollContainerRef} style={styles.scheduleWrapper}>
             <div style={{...styles.scheduleContainer, gridTemplateColumns: gridTemplateColumns, minWidth: periods.length * 90 + 'px'}}>
              <div style={styles.scheduleHeaderCell}></div>
              {periods.map((p, i) => (

@@ -1,7 +1,7 @@
 
 import React, { useRef, useState } from 'react';
 import { MaterialFile } from '../types';
-import { Folder, FileText, Download, MoreVertical, Search, Plus, Image, FileSpreadsheet, File, ArrowLeft, Eye, Edit2, Trash2, FolderPlus, CornerUpLeft } from 'lucide-react';
+import { Folder, FileText, Download, MoreVertical, Search, Plus, Image, FileSpreadsheet, File, ArrowLeft, Eye, Edit2, Trash2, FolderPlus, CornerUpLeft, X } from 'lucide-react';
 import { styles, theme } from '../theme';
 
 interface MaterialsViewProps {
@@ -22,6 +22,8 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
   const [editingFileId, setEditingFileId] = useState<string | null>(null);
   const [editFileName, setEditFileName] = useState('');
   const [movingFileId, setMovingFileId] = useState<string | null>(null);
+
+  const [viewingFile, setViewingFile] = useState<MaterialFile | null>(null);
 
   const getIcon = (type: string) => {
       switch(type) {
@@ -60,16 +62,7 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
           setCurrentFolderId(file.id);
           return;
       }
-      if (file.fileData) {
-          const win = window.open();
-          if (win) {
-              win.document.write(
-                  `<iframe src="${file.fileData}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`
-              );
-          }
-      } else if (file.webViewLink) {
-          window.open(file.webViewLink, '_blank');
-      }
+      setViewingFile(file);
   };
 
   const handleCreateFolder = () => {
@@ -265,6 +258,60 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
        >
           <Plus size={24} />
        </button>
+
+       {viewingFile && (
+           <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-200">
+               <div className="absolute top-4 right-4 flex gap-4 z-50">
+                   {viewingFile.fileData && (
+                       <a 
+                           href={viewingFile.fileData} 
+                           download={viewingFile.name}
+                           className="bg-white/10 hover:bg-white/20 text-white p-3 rounded-full transition-colors backdrop-blur-md"
+                       >
+                           <Download size={20} />
+                       </a>
+                   )}
+                   <button 
+                       onClick={() => setViewingFile(null)}
+                       className="bg-white/10 hover:bg-white/20 text-white p-3 rounded-full transition-colors backdrop-blur-md"
+                   >
+                       <X size={20} />
+                   </button>
+               </div>
+               
+               <div className="w-full h-full max-w-6xl max-h-[90vh] bg-[#130f1c] rounded-2xl overflow-hidden border border-white/10 shadow-2xl flex flex-col">
+                   <div className="p-4 border-b border-white/10 bg-black/20 flex items-center gap-3 shrink-0">
+                       {getIcon(viewingFile.type)}
+                       <div>
+                           <h2 className="text-white font-bold text-lg">{viewingFile.name}</h2>
+                           <p className="text-white/50 text-xs">{viewingFile.size} • {viewingFile.type.toUpperCase()}</p>
+                       </div>
+                   </div>
+                   
+                   <div className="flex-1 overflow-auto bg-black/40 relative flex items-center justify-center p-4">
+                       {viewingFile.fileData ? (
+                           viewingFile.type === 'image' ? (
+                               <img src={viewingFile.fileData} alt={viewingFile.name} className="max-w-full max-h-full object-contain rounded-lg" />
+                           ) : viewingFile.type === 'pdf' ? (
+                               <iframe src={`${viewingFile.fileData}#toolbar=0`} className="w-full h-full rounded-lg bg-white" title={viewingFile.name} />
+                           ) : (
+                               <iframe src={viewingFile.fileData} className="w-full h-full rounded-lg bg-white" title={viewingFile.name} />
+                           )
+                       ) : viewingFile.webViewLink ? (
+                           <iframe src={viewingFile.webViewLink} className="w-full h-full rounded-lg bg-white" title={viewingFile.name} />
+                       ) : (
+                           <div className="text-white/50 flex flex-col items-center gap-4">
+                               <File size={48} className="opacity-50" />
+                               <p>Preview not available for this file type.</p>
+                               {viewingFile.fileData && (
+                                   <a href={viewingFile.fileData} download={viewingFile.name} className="text-violet-400 hover:text-violet-300 underline">Download File</a>
+                               )}
+                           </div>
+                       )}
+                   </div>
+               </div>
+           </div>
+       )}
     </div>
   );
 };

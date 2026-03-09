@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { X, Clock, MapPin, BookOpen, Sparkles, Save, Trash2, Edit2 } from 'lucide-react';
+import React from 'react';
+import { X, Clock, MapPin, BookOpen, Sparkles, Trash2, Edit2 } from 'lucide-react';
 import { ScheduleEvent, EventColorMap } from '../types';
 
 interface EventDetailsModalProps {
@@ -7,29 +7,14 @@ interface EventDetailsModalProps {
   onClose: () => void;
   onStudyNow: (event: ScheduleEvent) => void;
   onDelete: (id: string) => void;
-  onUpdate: (event: ScheduleEvent) => void;
+  onEdit: (event: ScheduleEvent) => void;
   eventColors: EventColorMap;
 }
 
-const EventDetailsModal: React.FC<EventDetailsModalProps> = ({ event, onClose, onStudyNow, onDelete, onUpdate, eventColors }) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editForm, setEditForm] = useState<Partial<ScheduleEvent>>({});
-
-  useEffect(() => {
-    if (event) {
-      setEditForm(event);
-      setIsEditing(false);
-    }
-  }, [event]);
-
+const EventDetailsModal: React.FC<EventDetailsModalProps> = ({ event, onClose, onStudyNow, onDelete, onEdit, eventColors }) => {
   if (!event) return null;
 
   const color = eventColors[event.type] || '#64748b';
-
-  const handleSave = () => {
-    onUpdate({ ...event, ...editForm } as ScheduleEvent);
-    setIsEditing(false);
-  };
 
   const formatTimeDisplay = (time24?: string) => {
     if (!time24) return '--:--';
@@ -49,14 +34,12 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({ event, onClose, o
            <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/40" />
            
            <div className="absolute top-4 right-4 z-20 flex gap-2">
-             {!isEditing && (
                <button 
-                  onClick={() => setIsEditing(true)}
+                  onClick={() => onEdit(event)}
                   className="bg-black/30 text-white p-2 rounded-full backdrop-blur-md hover:bg-black/50 transition-colors"
                 >
                   <Edit2 size={16} />
                </button>
-             )}
              <button onClick={onClose} className="bg-black/30 text-white p-2 rounded-full backdrop-blur-md hover:bg-black/50 transition-colors">
               <X size={16} />
              </button>
@@ -76,31 +59,8 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({ event, onClose, o
                 {event.type}
               </span>
               
-              {isEditing ? (
-                <div className="space-y-3">
-                   <div>
-                     <label className="text-[10px] text-white/50 uppercase tracking-wider block mb-1">Title</label>
-                     <input 
-                       value={editForm.title || ''}
-                       onChange={e => setEditForm({...editForm, title: e.target.value})}
-                       className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white font-bold text-lg outline-none focus:border-violet-500/50"
-                     />
-                   </div>
-                   <div>
-                     <label className="text-[10px] text-white/50 uppercase tracking-wider block mb-1">Course Code</label>
-                     <input 
-                       value={editForm.code || ''}
-                       onChange={e => setEditForm({...editForm, code: e.target.value})}
-                       className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white/80 text-sm outline-none focus:border-violet-500/50"
-                     />
-                   </div>
-                </div>
-              ) : (
-                <>
-                  <h2 className="text-2xl font-bold text-white leading-tight mb-1">{event.title}</h2>
-                  <p className="text-white/50 text-sm font-medium">{event.code}</p>
-                </>
-              )}
+              <h2 className="text-2xl font-bold text-white leading-tight mb-1">{event.title}</h2>
+              <p className="text-white/50 text-sm font-medium">{event.code}</p>
            </div>
 
            {/* Info List */}
@@ -126,15 +86,7 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({ event, onClose, o
                  </div>
                  <div className="flex-1">
                     <p className="text-xs text-white/40 font-medium mb-0.5">Location</p>
-                    {isEditing ? (
-                       <input 
-                         value={editForm.location || ''}
-                         onChange={e => setEditForm({...editForm, location: e.target.value})}
-                         className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white outline-none focus:border-violet-500/50"
-                       />
-                    ) : (
-                      <p className="text-sm font-bold text-white">{event.location}</p>
-                    )}
+                    <p className="text-sm font-bold text-white">{event.location}</p>
                  </div>
               </div>
 
@@ -144,60 +96,32 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({ event, onClose, o
                  </div>
                  <div className="flex-1">
                     <p className="text-xs text-white/40 font-medium mb-0.5">Notes</p>
-                    {isEditing ? (
-                       <textarea 
-                         value={editForm.description || ''}
-                         onChange={e => setEditForm({...editForm, description: e.target.value})}
-                         placeholder="Add description..."
-                         className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-violet-500/50 min-h-[80px]"
-                       />
-                    ) : (
-                      <p className="text-sm text-white/80 leading-relaxed whitespace-pre-wrap">
-                        {event.description || <span className="text-white/20 italic">No notes.</span>}
-                      </p>
-                    )}
+                    <p className="text-sm text-white/80 leading-relaxed whitespace-pre-wrap">
+                      {event.description || <span className="text-white/20 italic">No notes.</span>}
+                    </p>
                  </div>
               </div>
            </div>
 
            {/* Action Buttons */}
            <div className="grid grid-cols-2 gap-3">
-              {isEditing ? (
-                 <>
-                   <button 
-                      onClick={() => setIsEditing(false)}
-                      className="py-3 rounded-xl bg-white/5 border border-white/10 text-white/70 hover:text-white hover:bg-white/10 transition-colors text-sm font-bold"
-                    >
-                      Cancel
-                    </button>
-                    <button 
-                      onClick={handleSave}
-                      className="py-3 rounded-xl bg-violet-600 text-white hover:bg-violet-500 transition-colors text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-violet-600/20"
-                    >
-                      <Save size={18} /> Save
-                    </button>
-                 </>
-              ) : (
-                 <>
-                    <button 
-                      onClick={() => {
-                        if (confirm('Delete event?')) {
-                          onDelete(event.id);
-                          onClose();
-                        }
-                      }}
-                      className="py-3 rounded-xl bg-white/5 border border-white/10 text-white/60 hover:text-red-400 hover:bg-white/10 transition-colors text-sm font-bold flex items-center justify-center gap-2"
-                    >
-                      <Trash2 size={18} /> Delete
-                    </button>
-                    <button 
-                      onClick={() => onStudyNow(event)}
-                      className="py-3 rounded-xl bg-white text-black hover:bg-gray-200 transition-colors text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-white/10"
-                    >
-                      <Sparkles size={18} className="text-violet-600" /> Study
-                    </button>
-                 </>
-              )}
+              <button 
+                onClick={() => {
+                  if (confirm('Delete event?')) {
+                    onDelete(event.id);
+                    onClose();
+                  }
+                }}
+                className="py-3 rounded-xl bg-white/5 border border-white/10 text-white/60 hover:text-red-400 hover:bg-white/10 transition-colors text-sm font-bold flex items-center justify-center gap-2"
+              >
+                <Trash2 size={18} /> Delete
+              </button>
+              <button 
+                onClick={() => onStudyNow(event)}
+                className="py-3 rounded-xl bg-white text-black hover:bg-gray-200 transition-colors text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-white/10"
+              >
+                <Sparkles size={18} className="text-violet-600" /> Study
+              </button>
            </div>
         </div>
 
