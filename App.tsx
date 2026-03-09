@@ -299,12 +299,94 @@ export const App: React.FC = () => {
     });
 
     if (!error) {
-        setEvents([...events, newEvent]);
+        setEvents(prev => [...prev, newEvent]);
         setIsAddModalOpen(false);
         setEditingEvent(null);
     } else {
         console.error('Error adding event:', error);
     }
+  };
+
+  const onAddEvents = async (eventsData: Partial<ScheduleEvent>[], targetProfileId: string, addToCourses: boolean) => {
+    if (!session?.user?.id) return;
+    
+    const newEvents: ScheduleEvent[] = eventsData.map(eventData => ({
+        id: eventData.id || crypto.randomUUID(),
+        scheduleId: targetProfileId,
+        title: eventData.title || 'New Event',
+        type: eventData.type || 'study',
+        startTime: eventData.startTime || '09:00',
+        durationMinutes: eventData.durationMinutes || 60,
+        isRecurring: eventData.isRecurring || false,
+        dayOfWeek: eventData.dayOfWeek,
+        date: eventData.date,
+        location: eventData.location,
+        description: eventData.description,
+        code: eventData.code,
+        group: eventData.group
+    }));
+
+    const dbEvents = newEvents.map(newEvent => ({
+        id: newEvent.id,
+        user_id: session.user.id,
+        schedule_id: newEvent.scheduleId,
+        title: newEvent.title,
+        type: newEvent.type,
+        start_time: newEvent.startTime,
+        duration_minutes: newEvent.durationMinutes,
+        is_recurring: newEvent.isRecurring,
+        day_of_week: newEvent.dayOfWeek,
+        date: newEvent.date,
+        location: newEvent.location,
+        description: newEvent.description,
+        code: newEvent.code,
+        "group": newEvent.group
+    }));
+
+    const { error } = await supabase.from('events').insert(dbEvents);
+
+    if (!error) {
+        setEvents(prev => [...prev, ...newEvents]);
+        
+        if (addToCourses) {
+            const distinctCourses = new Map();
+            newEvents.forEach(ev => {
+                if (ev.title && !distinctCourses.has(ev.title)) {
+                    distinctCourses.set(ev.title, ev.code);
+                }
+            });
+            
+            const newCourses = Array.from(distinctCourses.entries()).map(([title, code]) => ({
+                id: crypto.randomUUID(),
+                user_id: session.user.id,
+                title: title,
+                code: code,
+                target_grade: "95",
+                categories: []
+            }));
+            
+            if (newCourses.length > 0) {
+                const { error: coursesError } = await supabase.from('courses').insert(newCourses);
+                if (!coursesError) {
+                    setCourses(prev => [...prev, ...newCourses.map(c => ({ ...c, targetGrade: c.target_grade }))]);
+                }
+            }
+        }
+    } else {
+        console.error('Error adding events:', error);
+    }
+  };
+
+  const onClearSchedule = async (profileId: string) => {
+      if (!session?.user?.id) return;
+      if (!confirm("Are you sure you want to delete all events in this schedule? This cannot be undone.")) return;
+      
+      const { error } = await supabase.from('events').delete().eq('schedule_id', profileId);
+      if (!error) {
+          setEvents(prev => prev.filter(e => e.scheduleId !== profileId));
+      } else {
+          console.error("Error clearing schedule:", error);
+      }
   };
 
   const onUpdateEvent = async (updatedEvent: ScheduleEvent) => {
@@ -448,6 +530,7 @@ export const App: React.FC = () => {
             }}
             onAddEventClick={() => { setEditingEvent(null); setIsAddModalOpen(true); }}
             onSmartImportClick={() => setIsSmartImportModalOpen(true)}
+            onClearScheduleClick={() => onClearSchedule(activeProfileId)}
             onEventClick={setViewingEvent}
             onUpdateEvent={(updates) => {
                if (updates.id) {
@@ -788,24 +871,27 @@ export const App: React.FC = () => {
       {isSmartImportModalOpen && (
         <SmartImportModal 
           onClose={() => setIsSmartImportModalOpen(false)}
-          onImport={async (importedEvents, mode) => {
-            for (const evData of importedEvents) {
+          profiles={profiles}
+          activeProfileId={activeProfileId}
+          onImport={async (importedEvents, mode, targetProfileId, addToCourses) => {
+            const eventsToAdd = importedEvents.map(evData => {
               let finalEvent = { ...evData };
               
               if (mode === 'slots-only' && evData.period_number !== undefined) {
-                // Find the period in currentPeriods
-                const period = currentPeriods[evData.period_number - 1];
+                const targetProfile = profiles.find(p => p.id === targetProfileId);
+                const periods = targetProfile?.periods || INITIAL_PERIODS;
+                const period = periods[evData.period_number - 1];
                 if (period) {
                   finalEvent.startTime = period.startTime;
-                  // Calculate duration from period
                   const [sH, sM] = period.startTime.split(':').map(Number);
                   const [eH, eM] = period.endTime.split(':').map(Number);
                   finalEvent.durationMinutes = (eH * 60 + eM) - (sH * 60 + sM);
                 }
               }
-              
-              await onAddEvent(finalEvent);
-            }
+              return finalEvent;
+            });
+            
+            await onAddEvents(eventsToAdd, targetProfileId, addToCourses);
             alert(`Successfully imported ${importedEvents.length} courses!`);
           }}
         />

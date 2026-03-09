@@ -1,20 +1,24 @@
 
 import React, { useState } from 'react';
 import { X, Brain, Sparkles, Copy, Check, Info, AlertCircle, Calendar, Clock, MapPin } from 'lucide-react';
-import { ExtractedScheduleItem, ScheduleEvent, EventType } from '../types';
+import { ExtractedScheduleItem, ScheduleEvent, EventType, ScheduleProfile } from '../types';
 import { theme, styles } from '../theme';
 
 interface SmartImportModalProps {
   onClose: () => void;
-  onImport: (events: (Partial<ScheduleEvent> & { period_number?: number })[], importMode: 'full' | 'slots-only') => void;
+  onImport: (events: (Partial<ScheduleEvent> & { period_number?: number })[], importMode: 'full' | 'slots-only', targetProfileId: string, addToCourses: boolean) => void;
+  profiles: ScheduleProfile[];
+  activeProfileId: string;
 }
 
-const SmartImportModal: React.FC<SmartImportModalProps> = ({ onClose, onImport }) => {
+const SmartImportModal: React.FC<SmartImportModalProps> = ({ onClose, onImport, profiles, activeProfileId }) => {
   const [jsonInput, setJsonInput] = useState('');
   const [parsedItems, setParsedItems] = useState<ExtractedScheduleItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [importMode, setImportMode] = useState<'full' | 'slots-only'>('full');
   const [copied, setCopied] = useState(false);
+  const [selectedProfileId, setSelectedProfileId] = useState(activeProfileId);
+  const [addToCourses, setAddToCourses] = useState(true);
 
   const promptText = `I am sending you an image of my university schedule. Please extract all the courses and their details into a valid JSON array. Each object in the array should follow this structure:
 [
@@ -69,7 +73,7 @@ Return ONLY the JSON array.`;
       period_number: item.period_number
     }));
 
-    onImport(events, importMode);
+    onImport(events, importMode, selectedProfileId, addToCourses);
     onClose();
   };
 
@@ -258,6 +262,42 @@ Return ONLY the JSON array.`;
                 >
                   <Calendar size={14} /> Slots Only
                 </button>
+              </div>
+
+              {/* Import Settings */}
+              <div style={{display: 'flex', flexDirection: 'column', gap: '12px', background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)'}}>
+                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                  <label style={{fontSize: '0.85rem', fontWeight: 600, color: '#fff'}}>Import to Schedule</label>
+                  <select 
+                    value={selectedProfileId}
+                    onChange={(e) => setSelectedProfileId(e.target.value)}
+                    style={{
+                      background: 'rgba(255,255,255,0.05)', 
+                      border: '1px solid rgba(255,255,255,0.1)', 
+                      color: '#fff', 
+                      fontSize: '0.8rem', 
+                      padding: '8px 12px', 
+                      borderRadius: '10px', 
+                      outline: 'none', 
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {profiles.map(p => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                  <label style={{fontSize: '0.85rem', fontWeight: 600, color: '#fff', display: 'flex', alignItems: 'center', gap: '8px'}}>
+                    Add distinct courses to Grades section
+                  </label>
+                  <input 
+                    type="checkbox" 
+                    checked={addToCourses}
+                    onChange={(e) => setAddToCourses(e.target.checked)}
+                    style={{width: '18px', height: '18px', cursor: 'pointer', accentColor: theme.accent}}
+                  />
+                </div>
               </div>
 
               <div style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
