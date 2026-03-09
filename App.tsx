@@ -19,6 +19,7 @@ import ReferralProgram from './components/ReferralProgram';
 import AddEventModal from './components/AddEventModal';
 import EventDetailsModal from './components/EventDetailsModal';
 import ImageImportModal from './components/ImageImportModal';
+import SmartImportModal from './components/SmartImportModal';
 import SubscriptionPage from './components/SubscriptionPage';
 import UniversalGradeCalculator from './components/UniversalGradeCalculator';
 import PaymentPage from './components/PaymentPage';
@@ -60,6 +61,7 @@ export const App: React.FC = () => {
   const [editingEvent, setEditingEvent] = useState<ScheduleEvent | null>(null);
   const [viewingEvent, setViewingEvent] = useState<ScheduleEvent | null>(null);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isSmartImportModalOpen, setIsSmartImportModalOpen] = useState(false);
 
   // Gym Data
   const [gymSettings, setGymSettings] = useState<GymSettings>(DEFAULT_GYM_SETTINGS);
@@ -424,6 +426,7 @@ export const App: React.FC = () => {
             onNavigate={setView}
             onEventClick={setViewingEvent}
             onAddEventClick={() => { setEditingEvent(null); setIsAddModalOpen(true); }}
+            onSmartImportClick={() => setIsSmartImportModalOpen(true)}
             periods={currentPeriods}
             announcement={announcement}
             username={profile?.username}
@@ -444,6 +447,7 @@ export const App: React.FC = () => {
                 }
             }}
             onAddEventClick={() => { setEditingEvent(null); setIsAddModalOpen(true); }}
+            onSmartImportClick={() => setIsSmartImportModalOpen(true)}
             onEventClick={setViewingEvent}
             onUpdateEvent={(updates) => {
                if (updates.id) {
@@ -780,6 +784,32 @@ export const App: React.FC = () => {
             console.log("Imported", extracted);
         }}
       />
+
+      {isSmartImportModalOpen && (
+        <SmartImportModal 
+          onClose={() => setIsSmartImportModalOpen(false)}
+          onImport={async (importedEvents, mode) => {
+            for (const evData of importedEvents) {
+              let finalEvent = { ...evData };
+              
+              if (mode === 'slots-only' && evData.period_number !== undefined) {
+                // Find the period in currentPeriods
+                const period = currentPeriods[evData.period_number - 1];
+                if (period) {
+                  finalEvent.startTime = period.startTime;
+                  // Calculate duration from period
+                  const [sH, sM] = period.startTime.split(':').map(Number);
+                  const [eH, eM] = period.endTime.split(':').map(Number);
+                  finalEvent.durationMinutes = (eH * 60 + eM) - (sH * 60 + sM);
+                }
+              }
+              
+              await onAddEvent(finalEvent);
+            }
+            alert(`Successfully imported ${importedEvents.length} courses!`);
+          }}
+        />
+      )}
     </div>
   );
 };
