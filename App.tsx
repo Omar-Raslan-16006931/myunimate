@@ -339,7 +339,27 @@ export const App: React.FC = () => {
 
   const handleGymUpdate = (updates: Partial<ActiveGymState>) => setActiveGymState({ ...activeGymState, ...updates });
 
-  if (loading) return <div style={{...styles.container, justifyContent: 'center', alignItems: 'center'}}>Loading...</div>;
+  if (loading) return (
+    <div style={{...styles.container, justifyContent: 'center', alignItems: 'center', background: 'var(--bg-gradient)'}}>
+      <div className="flex flex-col items-center gap-6 animate-pulse">
+        <div className="relative">
+          <div className="w-20 h-20 border-4 border-violet-500/20 rounded-full animate-ping absolute inset-0"></div>
+          <div className="w-20 h-20 border-4 border-t-violet-500 border-r-transparent border-b-transparent border-l-transparent rounded-full animate-spin"></div>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="text-3xl">🎓</span>
+          </div>
+        </div>
+        <div className="flex flex-col items-center gap-2">
+          <h2 className="text-white font-bold text-xl tracking-wider">UNIMATE</h2>
+          <div className="flex gap-1">
+            <div className="w-2 h-2 bg-violet-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+            <div className="w-2 h-2 bg-violet-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+            <div className="w-2 h-2 bg-violet-500 rounded-full animate-bounce"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 
   if (!session) {
     if (showAuth) return <Auth />;
@@ -509,8 +529,14 @@ export const App: React.FC = () => {
                 if (updates.name !== undefined) dbUpdates.name = updates.name;
                 if (updates.parentId !== undefined) dbUpdates.parent_id = updates.parentId;
                 
-                setFiles(files.map(f => f.id === id ? { ...f, ...updates } : f));
-                await supabase.from('materials').update(dbUpdates).eq('id', id);
+                // Optimistic update
+                setFiles(prevFiles => prevFiles.map(f => f.id === id ? { ...f, ...updates } : f));
+                
+                const { error } = await supabase.from('materials').update(dbUpdates).eq('id', id);
+                if (error) {
+                    console.error("Error updating file:", error);
+                    // Rollback if needed, but usually we just log it for now
+                }
             }}
             onDeleteFile={async (id) => {
                 setFiles(files.filter(f => f.id !== id && f.parentId !== id));

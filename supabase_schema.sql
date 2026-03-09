@@ -36,6 +36,7 @@ create table if not exists public.materials (
   date_added text, -- YYYY-MM-DD
   file_data text, -- Base64 string (Note: Supabase has limits on row size, consider Storage for large files)
   mime_type text,
+  parent_id uuid references public.materials(id) on delete cascade,
   created_at timestamp with time zone default timezone('utc'::text, now())
 );
 
@@ -46,6 +47,9 @@ on public.materials for select using (auth.uid() = user_id);
 
 create policy "Users can insert their own materials" 
 on public.materials for insert with check (auth.uid() = user_id);
+
+create policy "Users can update their own materials" 
+on public.materials for update using (auth.uid() = user_id);
 
 create policy "Users can delete their own materials" 
 on public.materials for delete using (auth.uid() = user_id);

@@ -263,13 +263,25 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-200">
                <div className="absolute top-4 right-4 flex gap-4 z-50">
                    {viewingFile.fileData && (
-                       <a 
-                           href={viewingFile.fileData} 
-                           download={viewingFile.name}
-                           className="bg-white/10 hover:bg-white/20 text-white p-3 rounded-full transition-colors backdrop-blur-md"
-                       >
-                           <Download size={20} />
-                       </a>
+                       <>
+                           <a 
+                               href={viewingFile.fileData} 
+                               target="_blank"
+                               rel="noopener noreferrer"
+                               className="bg-white/10 hover:bg-white/20 text-white p-3 rounded-full transition-colors backdrop-blur-md"
+                               title="Open in New Tab"
+                           >
+                               <Eye size={20} />
+                           </a>
+                           <a 
+                               href={viewingFile.fileData} 
+                               download={viewingFile.name}
+                               className="bg-white/10 hover:bg-white/20 text-white p-3 rounded-full transition-colors backdrop-blur-md"
+                               title="Download"
+                           >
+                               <Download size={20} />
+                           </a>
+                       </>
                    )}
                    <button 
                        onClick={() => setViewingFile(null)}
@@ -293,7 +305,7 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
                            viewingFile.type === 'image' ? (
                                <img src={viewingFile.fileData} alt={viewingFile.name} className="max-w-full max-h-full object-contain rounded-lg" />
                            ) : viewingFile.type === 'pdf' ? (
-                               <iframe src={`${viewingFile.fileData}#toolbar=0`} className="w-full h-full rounded-lg bg-white" title={viewingFile.name} />
+                               <iframe src={viewingFile.fileData} className="w-full h-full rounded-lg bg-white" title={viewingFile.name} />
                            ) : (
                                <iframe src={viewingFile.fileData} className="w-full h-full rounded-lg bg-white" title={viewingFile.name} />
                            )
