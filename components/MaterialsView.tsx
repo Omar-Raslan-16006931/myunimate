@@ -1,7 +1,7 @@
 
 import React, { useRef, useState } from 'react';
 import { MaterialFile } from '../types';
-import { Folder, FileText, Download, MoreVertical, Search, Plus, Image, FileSpreadsheet, File, ArrowLeft, Eye, Edit2, Trash2, FolderPlus, CornerUpLeft, X } from 'lucide-react';
+import { Folder, FileText, Download, MoreVertical, Search, Plus, Image, FileSpreadsheet, File, ArrowLeft, Eye, Edit2, Trash2, FolderPlus, CornerUpLeft, X, Minus, RotateCcw } from 'lucide-react';
 import { styles, theme } from '../theme';
 
 interface MaterialsViewProps {
@@ -24,6 +24,11 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
   const [movingFileId, setMovingFileId] = useState<string | null>(null);
 
   const [viewingFile, setViewingFile] = useState<MaterialFile | null>(null);
+  const [zoom, setZoom] = useState(1);
+
+  const handleZoomIn = () => setZoom(prev => Math.min(prev + 0.25, 3));
+  const handleZoomOut = () => setZoom(prev => Math.max(prev - 0.25, 0.5));
+  const resetZoom = () => setZoom(1);
 
   const getIcon = (type: string) => {
       switch(type) {
@@ -227,7 +232,7 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
        </div>
 
        {movingFileId && (
-           <div style={{position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 200, display: 'flex', alignItems: 'center', justifyCenter: 'center', padding: '20px'}} onClick={() => setMovingFileId(null)}>
+           <div style={{position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'}} onClick={() => setMovingFileId(null)}>
                <div style={{background: '#1e1e24', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '400px', border: '1px solid rgba(255,255,255,0.1)'}} onClick={e => e.stopPropagation()}>
                    <h3 style={{color: '#fff', fontSize: '1.2rem', fontWeight: 700, marginBottom: '16px'}}>Move File</h3>
                    <div style={{maxHeight: '300px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px'}}>
@@ -263,28 +268,17 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-200">
                <div className="absolute top-4 right-4 flex gap-4 z-50">
                    {viewingFile.fileData && (
-                       <>
-                           <a 
-                               href={viewingFile.fileData} 
-                               target="_blank"
-                               rel="noopener noreferrer"
-                               className="bg-white/10 hover:bg-white/20 text-white p-3 rounded-full transition-colors backdrop-blur-md"
-                               title="Open in New Tab"
-                           >
-                               <Eye size={20} />
-                           </a>
-                           <a 
-                               href={viewingFile.fileData} 
-                               download={viewingFile.name}
-                               className="bg-white/10 hover:bg-white/20 text-white p-3 rounded-full transition-colors backdrop-blur-md"
-                               title="Download"
-                           >
-                               <Download size={20} />
-                           </a>
-                       </>
+                       <a 
+                           href={viewingFile.fileData} 
+                           download={viewingFile.name}
+                           className="bg-white/10 hover:bg-white/20 text-white p-3 rounded-full transition-colors backdrop-blur-md"
+                           title="Download"
+                       >
+                           <Download size={20} />
+                       </a>
                    )}
                    <button 
-                       onClick={() => setViewingFile(null)}
+                       onClick={() => { setViewingFile(null); resetZoom(); }}
                        className="bg-white/10 hover:bg-white/20 text-white p-3 rounded-full transition-colors backdrop-blur-md"
                    >
                        <X size={20} />
@@ -292,18 +286,40 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
                </div>
                
                <div className="w-full h-full max-w-6xl max-h-[90vh] bg-[#130f1c] rounded-2xl overflow-hidden border border-white/10 shadow-2xl flex flex-col">
-                   <div className="p-4 border-b border-white/10 bg-black/20 flex items-center gap-3 shrink-0">
-                       {getIcon(viewingFile.type)}
-                       <div>
-                           <h2 className="text-white font-bold text-lg">{viewingFile.name}</h2>
-                           <p className="text-white/50 text-xs">{viewingFile.size} • {viewingFile.type.toUpperCase()}</p>
+                   <div className="p-4 border-b border-white/10 bg-black/20 flex items-center justify-between shrink-0">
+                       <div className="flex items-center gap-3">
+                           {getIcon(viewingFile.type)}
+                           <div>
+                               <h2 className="text-white font-bold text-lg">{viewingFile.name}</h2>
+                               <p className="text-white/50 text-xs">{viewingFile.size} • {viewingFile.type.toUpperCase()}</p>
+                           </div>
                        </div>
+
+                       {viewingFile.type === 'image' && viewingFile.fileData && (
+                           <div className="flex items-center gap-2 bg-white/5 p-1 rounded-xl border border-white/10">
+                               <button onClick={handleZoomOut} className="p-2 hover:bg-white/10 rounded-lg text-white/70 transition-colors"><Minus size={16} /></button>
+                               <span className="text-xs font-mono text-white/50 min-w-[40px] text-center">{Math.round(zoom * 100)}%</span>
+                               <button onClick={handleZoomIn} className="p-2 hover:bg-white/10 rounded-lg text-white/70 transition-colors"><Plus size={16} /></button>
+                               <button onClick={resetZoom} className="p-2 hover:bg-white/10 rounded-lg text-white/70 transition-colors ml-1"><RotateCcw size={14} /></button>
+                           </div>
+                       )}
                    </div>
                    
                    <div className="flex-1 overflow-auto bg-black/40 relative flex items-center justify-center p-4">
                        {viewingFile.fileData ? (
                            viewingFile.type === 'image' ? (
-                               <img src={viewingFile.fileData} alt={viewingFile.name} className="max-w-full max-h-full object-contain rounded-lg" />
+                               <div className="w-full h-full overflow-auto flex items-center justify-center">
+                                   <img 
+                                       src={viewingFile.fileData} 
+                                       alt={viewingFile.name} 
+                                       style={{ 
+                                           transform: `scale(${zoom})`,
+                                           transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                           transformOrigin: 'center center'
+                                       }}
+                                       className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" 
+                                   />
+                               </div>
                            ) : viewingFile.type === 'pdf' ? (
                                <iframe src={viewingFile.fileData} className="w-full h-full rounded-lg bg-white" title={viewingFile.name} />
                            ) : (

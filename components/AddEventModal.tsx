@@ -133,7 +133,7 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ isOpen, onClose, onSave, 
 
             {/* Magic Autofill Section */}
             {!formData.id && (
-                <div style={{background: `linear-gradient(135deg, ${theme.accent}22 0%, rgba(0,0,0,0) 100%)`, borderRadius: '20px', padding: '18px', border: '1px solid rgba(139, 92, 246, 0.3)', marginBottom: '24px', boxShadow: '0 8px 32px rgba(0,0,0,0.2)'}}>
+                <div style={{background: `linear-gradient(135deg, ${theme.accent}22 0%, rgba(0,0,0,0) 100%)`, borderRadius: '20px', padding: '18px', border: '1px solid rgba(139, 92, 246, 0.3)', marginBottom: '24px', boxShadow: '0 8px 32px rgba(0,0,0,0.2)', boxSizing: 'border-box'}}>
                     <div style={{display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px'}}>
                         <Sparkles size={16} color={theme.accent} />
                         <span style={{fontSize: '0.9rem', fontWeight: 700, color: theme.accent}}>Magic Autofill</span>
@@ -214,7 +214,7 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ isOpen, onClose, onSave, 
 
                 {/* Add to Grades Checkbox */}
                 {!formData.id && (
-                    <div style={{background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '12px', border: theme.glassBorder}}>
+                    <div style={{background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '12px', border: theme.glassBorder, boxSizing: 'border-box'}}>
                        <label style={{...styles.label, marginBottom: 0, textTransform: 'none', display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', fontSize: '0.9rem', color: '#fff', width: '100%'}}>
                          <div style={{position: 'relative', display: 'flex', alignItems: 'center'}}>
                              <input type="checkbox" checked={addToGrades} onChange={e => setAddToGrades(e.target.checked)} style={{width: '20px', height: '20px', accentColor: theme.accent, cursor: 'pointer'}} /> 
@@ -245,12 +245,12 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ isOpen, onClose, onSave, 
                             </div>
                          </div>
                      ) : (
-                         <input type="date" style={{...styles.input, width: "100%", boxSizing: 'border-box', padding: '12px'}} value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} />
+                         <input type="date" style={{...styles.input, width: "100%", boxSizing: 'border-box', padding: '12px 8px 12px 12px'}} value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} />
                      )}
                 </div>
 
                 {/* 3. Recurring Checkbox (Moved Below Date) */}
-                <div style={{background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '12px', border: theme.glassBorder}}>
+                <div style={{background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '12px', border: theme.glassBorder, boxSizing: 'border-box'}}>
                    <label style={{...styles.label, marginBottom: 0, textTransform: 'none', display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', fontSize: '0.9rem', color: '#fff', width: '100%'}}>
                      <div style={{position: 'relative', display: 'flex', alignItems: 'center'}}>
                          <input type="checkbox" checked={formData.isRecurring} onChange={e => setFormData({...formData, isRecurring: e.target.checked})} style={{width: '20px', height: '20px', accentColor: theme.accent, cursor: 'pointer'}} /> 
@@ -260,7 +260,7 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ isOpen, onClose, onSave, 
                 </div>
 
                 {/* 4. Time Selection Section */}
-                <div style={{background: 'rgba(255,255,255,0.03)', borderRadius: '20px', padding: '20px', border: theme.glassBorder}}>
+                <div style={{background: 'rgba(255,255,255,0.03)', borderRadius: '20px', padding: '20px', border: theme.glassBorder, boxSizing: 'border-box'}}>
                     <label style={{...styles.label, marginBottom: '12px', color: '#fff', fontSize: '0.75rem'}}>Time & Duration <RequiredMark /></label>
                     
                     <div style={{display: 'flex', gap: '8px', marginBottom: '16px', background: 'rgba(0,0,0,0.2)', padding: '4px', borderRadius: '12px'}}>
