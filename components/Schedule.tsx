@@ -297,8 +297,8 @@ const Schedule: React.FC<ScheduleProps> = ({
   const gridTemplateColumns = `54px ${periods.map(p => p.isBreak ? '13px' : '1fr').join(' ')}`;
 
   return (
-    <div style={{height: "100%", display: "flex", flexDirection: "column", padding: "18px 18px 100px 18px", overflowY: "auto"}}>
-        <div style={styles.header}>
+    <div style={{height: "100%", display: "flex", flexDirection: "column", padding: "10px 10px 100px 10px", overflowY: "auto"}}>
+        <div style={{...styles.header, marginBottom: '10px'}}>
           <div>
              <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
                 <h1 style={styles.title}>Schedule</h1>
@@ -340,15 +340,15 @@ const Schedule: React.FC<ScheduleProps> = ({
                  )}
              </div>
           </div>
-           <div style={{display: 'flex', gap: '10px'}}>
+           <div style={{display: 'flex', gap: '8px'}}>
                <button 
                 onClick={onClearScheduleClick}
                 style={{
                     background: 'rgba(239, 68, 68, 0.15)', 
                     border: '1px solid rgba(239, 68, 68, 0.3)', 
                     borderRadius: '50%', 
-                    width: '44px', 
-                    height: '44px', 
+                    width: '36px', 
+                    height: '36px', 
                     padding: 0, 
                     justifyContent: 'center', 
                     display: 'flex',
@@ -360,7 +360,7 @@ const Schedule: React.FC<ScheduleProps> = ({
                 }}
                 title="Clear Schedule"
                >
-                <Trash2 size={20} />
+                <Trash2 size={16} />
                </button>
                <button 
                 onClick={onSmartImportClick}
@@ -368,8 +368,8 @@ const Schedule: React.FC<ScheduleProps> = ({
                     background: 'rgba(139, 92, 246, 0.15)', 
                     border: '1px solid rgba(139, 92, 246, 0.3)', 
                     borderRadius: '50%', 
-                    width: '44px', 
-                    height: '44px', 
+                    width: '36px', 
+                    height: '36px', 
                     padding: 0, 
                     justifyContent: 'center', 
                     display: 'flex',
@@ -381,16 +381,16 @@ const Schedule: React.FC<ScheduleProps> = ({
                 }}
                 title="Smart Import"
                >
-                <Brain size={22} />
+                <Brain size={16} />
                </button>
-               <button style={{...styles.button, borderRadius: '50%', width: '44px', height: '44px', padding: 0, justifyContent: 'center', boxShadow: '0 5px 15px rgba(0,0,0,0.3)'}} onClick={onAddEventClick}>
-                <Plus size={22} />
+               <button style={{...styles.button, borderRadius: '50%', width: '36px', height: '36px', padding: 0, justifyContent: 'center', boxShadow: '0 5px 15px rgba(0,0,0,0.3)'}} onClick={onAddEventClick}>
+                <Plus size={16} />
                </button>
            </div>
         </div>
 
-        <div ref={scrollContainerRef} style={styles.scheduleWrapper}>
-            <div style={{...styles.scheduleContainer, gridTemplateColumns: gridTemplateColumns, minWidth: periods.length * 90 + 'px'}}>
+        <div ref={scrollContainerRef} style={{...styles.scheduleWrapper, maxHeight: 'calc(100vh - 150px)', borderRadius: '16px'}}>
+            <div style={{...styles.scheduleContainer, gridTemplateColumns: gridTemplateColumns, minWidth: periods.length * 80 + 'px'}}>
              <div style={styles.scheduleHeaderCell}></div>
              {periods.map((p, i) => (
                p.isBreak ? <div key={p.id} style={styles.scheduleBreakHeader}>{p.label}</div> : 
