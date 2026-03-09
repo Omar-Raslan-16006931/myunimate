@@ -12,6 +12,7 @@ interface ScheduleProps {
   eventColors: EventColorMap;
   onProfileChange: (id: string) => void;
   onAddEventClick: () => void;
+  onSmartImportClick: () => void;
   onEventClick: (event: ScheduleEvent) => void;
   onUpdateEvent?: (event: Partial<ScheduleEvent>) => void;
   periods: PeriodDefinition[];
@@ -24,6 +25,7 @@ const Schedule: React.FC<ScheduleProps> = ({
   eventColors,
   onProfileChange, 
   onAddEventClick,
+  onSmartImportClick,
   onEventClick,
   onUpdateEvent,
   periods
@@ -336,9 +338,32 @@ const Schedule: React.FC<ScheduleProps> = ({
                  )}
              </div>
           </div>
-           <button style={{...styles.button, borderRadius: '50%', width: '44px', height: '44px', padding: 0, justifyContent: 'center', boxShadow: '0 5px 15px rgba(0,0,0,0.3)'}} onClick={onAddEventClick}>
-            <Plus size={22} />
-           </button>
+           <div style={{display: 'flex', gap: '10px'}}>
+               <button 
+                onClick={onSmartImportClick}
+                style={{
+                    background: 'rgba(139, 92, 246, 0.15)', 
+                    border: '1px solid rgba(139, 92, 246, 0.3)', 
+                    borderRadius: '50%', 
+                    width: '44px', 
+                    height: '44px', 
+                    padding: 0, 
+                    justifyContent: 'center', 
+                    display: 'flex',
+                    alignItems: 'center',
+                    color: theme.accent,
+                    cursor: 'pointer',
+                    boxShadow: '0 5px 15px rgba(0,0,0,0.2)',
+                    transition: 'all 0.2s'
+                }}
+                title="Smart Import"
+               >
+                <Brain size={22} />
+               </button>
+               <button style={{...styles.button, borderRadius: '50%', width: '44px', height: '44px', padding: 0, justifyContent: 'center', boxShadow: '0 5px 15px rgba(0,0,0,0.3)'}} onClick={onAddEventClick}>
+                <Plus size={22} />
+               </button>
+           </div>
         </div>
 
         <div ref={scrollContainerRef} style={styles.scheduleWrapper}>
