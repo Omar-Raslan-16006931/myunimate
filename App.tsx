@@ -40,9 +40,9 @@ export const App: React.FC = () => {
   const [selectedPlanPrice, setSelectedPlanPrice] = useState(0);
 
   // Schedule Data
-  const [events, setEvents] = useState<ScheduleEvent[]>(INITIAL_EVENTS);
-  const [profiles, setProfiles] = useState<ScheduleProfile[]>(INITIAL_PROFILES);
-  const [activeProfileId, setActiveProfileId] = useState<string>(INITIAL_PROFILES[0].id);
+  const [events, setEvents] = useState<ScheduleEvent[]>([]);
+  const [profiles, setProfiles] = useState<ScheduleProfile[]>([]);
+  const [activeProfileId, setActiveProfileId] = useState<string>('');
   const [eventColors, setEventColors] = useState<EventColorMap>(INITIAL_COLORS);
   const [announcement, setAnnouncement] = useState<Announcement | null>(null);
 
@@ -79,25 +79,39 @@ export const App: React.FC = () => {
   const [files, setFiles] = useState<MaterialFile[]>(INITIAL_FILES);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const initialize = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
       setSession(session);
       if (session) {
-          fetchProfile(session.user.id);
-          fetchUserData(session.user.id);
+          await Promise.all([
+              fetchProfile(session.user.id),
+              fetchUserData(session.user.id)
+          ]);
+      } else {
+          setEvents(INITIAL_EVENTS);
+          setProfiles(INITIAL_PROFILES);
+          setActiveProfileId(INITIAL_PROFILES[0].id);
       }
       setLoading(false);
-    });
+    };
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    initialize();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
       if (session) {
-          fetchProfile(session.user.id);
-          fetchUserData(session.user.id);
+          setLoading(true);
+          await Promise.all([
+              fetchProfile(session.user.id),
+              fetchUserData(session.user.id)
+          ]);
+          setLoading(false);
       }
       else {
           setProfile(null);
           setEvents(INITIAL_EVENTS);
           setProfiles(INITIAL_PROFILES);
+          setActiveProfileId(INITIAL_PROFILES[0].id);
           setCourses([]);
           setToDoItems([]);
           setFiles(INITIAL_FILES);
@@ -723,7 +737,11 @@ export const App: React.FC = () => {
         onClose={() => setViewingEvent(null)}
         onStudyNow={() => {}}
         onDelete={onDeleteEvent}
-        onUpdate={onUpdateEvent}
+        onEdit={(event) => {
+          setViewingEvent(null);
+          setEditingEvent(event);
+          setIsAddModalOpen(true);
+        }}
         eventColors={eventColors}
       />
 

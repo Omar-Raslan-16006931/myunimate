@@ -30,6 +30,7 @@ export const INITIAL_PERIODS: PeriodDefinition[] = [
 
 export const INITIAL_PROFILES: ScheduleProfile[] = [
   { id: 'main', name: 'Main Schedule', periods: INITIAL_PERIODS },
+  { id: 'template', name: 'Student Template', periods: INITIAL_PERIODS },
 ];
 
 export const INITIAL_EVENTS: ScheduleEvent[] = [
@@ -39,7 +40,14 @@ export const INITIAL_EVENTS: ScheduleEvent[] = [
   { id: "4", scheduleId: "main", title: "Prog III Tut", code: "3INF & CS T021", group: "T021", isRecurring: true, dayOfWeek: "Monday", startTime: "13:45", durationMinutes: 90, type: "tutorial", location: "A2.208" },
   { id: "5", scheduleId: "main", title: "OS Lab", code: "3INF & CS P016", group: "P016", isRecurring: true, dayOfWeek: "Tuesday", startTime: "08:30", durationMinutes: 90, type: "lab", location: "Lab 3" },
   { id: "6", scheduleId: "main", title: "OS Quiz 1", code: "3INF & CS Q1", group: "Q1", isRecurring: false, date: todayStr, startTime: "10:15", durationMinutes: 45, type: "quiz", location: "M1.105", description: "First quiz covering chapters 1-3. Bring calculator." },
-  { id: "7", scheduleId: "main", title: "DB Assignment", code: "3INF & CS A1", group: "A1", isRecurring: false, date: getLocalISOString(addDays(new Date(), 2)), startTime: "23:59", durationMinutes: 0, type: "assignment", location: "Online", description: "Submit the ERD diagram and normalization steps via the portal." }
+  { id: "7", scheduleId: "main", title: "DB Assignment", code: "3INF & CS A1", group: "A1", isRecurring: false, date: getLocalISOString(addDays(new Date(), 2)), startTime: "23:59", durationMinutes: 0, type: "assignment", location: "Online", description: "Submit the ERD diagram and normalization steps via the portal." },
+  
+  // Template Events
+  { id: "t1", scheduleId: "template", title: "Software Engineering", code: "SE-301", group: "G1", isRecurring: true, dayOfWeek: "Monday", startTime: "08:30", durationMinutes: 90, type: "lecture", location: "Hall A" },
+  { id: "t2", scheduleId: "template", title: "Computer Networks", code: "CN-302", group: "G2", isRecurring: true, dayOfWeek: "Monday", startTime: "12:00", durationMinutes: 90, type: "lecture", location: "Hall B" },
+  { id: "t3", scheduleId: "template", title: "AI & ML", code: "AI-303", group: "G1", isRecurring: true, dayOfWeek: "Tuesday", startTime: "10:15", durationMinutes: 90, type: "lecture", location: "Hall C" },
+  { id: "t4", scheduleId: "template", title: "Network Lab", code: "CN-302-L", group: "L1", isRecurring: true, dayOfWeek: "Wednesday", startTime: "08:30", durationMinutes: 180, type: "lab", location: "Lab 5" },
+  { id: "t5", scheduleId: "template", title: "SE Tutorial", code: "SE-301-T", group: "T1", isRecurring: true, dayOfWeek: "Thursday", startTime: "13:45", durationMinutes: 90, type: "tutorial", location: "Room 102" },
 ];
 
 export const INITIAL_FILES: MaterialFile[] = [
