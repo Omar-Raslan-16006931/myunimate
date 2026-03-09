@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, ChevronRight, MapPin, Plus, Brain, ChevronDown, X, RotateCcw } from 'lucide-react';
+import { ChevronLeft, ChevronRight, MapPin, Plus, Brain, ChevronDown, X, RotateCcw, Trash2 } from 'lucide-react';
 import { ScheduleEvent, EventColorMap, ScheduleProfile, PeriodDefinition } from '../types';
 import { getLocalISOString } from '../constants';
 import { theme, styles } from '../theme';
@@ -13,6 +13,7 @@ interface ScheduleProps {
   onProfileChange: (id: string) => void;
   onAddEventClick: () => void;
   onSmartImportClick: () => void;
+  onClearScheduleClick: () => void;
   onEventClick: (event: ScheduleEvent) => void;
   onUpdateEvent?: (event: Partial<ScheduleEvent>) => void;
   periods: PeriodDefinition[];
@@ -26,6 +27,7 @@ const Schedule: React.FC<ScheduleProps> = ({
   onProfileChange, 
   onAddEventClick,
   onSmartImportClick,
+  onClearScheduleClick,
   onEventClick,
   onUpdateEvent,
   periods
@@ -339,6 +341,27 @@ const Schedule: React.FC<ScheduleProps> = ({
              </div>
           </div>
            <div style={{display: 'flex', gap: '10px'}}>
+               <button 
+                onClick={onClearScheduleClick}
+                style={{
+                    background: 'rgba(239, 68, 68, 0.15)', 
+                    border: '1px solid rgba(239, 68, 68, 0.3)', 
+                    borderRadius: '50%', 
+                    width: '44px', 
+                    height: '44px', 
+                    padding: 0, 
+                    justifyContent: 'center', 
+                    display: 'flex',
+                    alignItems: 'center',
+                    color: theme.danger,
+                    cursor: 'pointer',
+                    boxShadow: '0 5px 15px rgba(0,0,0,0.2)',
+                    transition: 'all 0.2s'
+                }}
+                title="Clear Schedule"
+               >
+                <Trash2 size={20} />
+               </button>
                <button 
                 onClick={onSmartImportClick}
                 style={{
