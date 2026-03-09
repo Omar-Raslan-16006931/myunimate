@@ -118,7 +118,8 @@ export const styles: { [key: string]: React.CSSProperties } = {
     marginBottom: "14px",
     position: "relative",
     overflow: "hidden",
-    color: "var(--text-primary)"
+    color: "var(--text-primary)",
+    boxSizing: "border-box"
   },
   // Schedule Grid - Scaled Down
   scheduleWrapper: {
@@ -304,12 +305,14 @@ export const styles: { [key: string]: React.CSSProperties } = {
     maxWidth: "360px",
     maxHeight: "80vh",
     overflowY: "auto",
+    overflowX: "hidden",
     border: "1px solid rgba(255,255,255,0.1)",
     boxShadow: "0 40px 80px rgba(0,0,0,0.5)",
     animation: "popIn 0.6s cubic-bezier(0.16, 1, 0.3, 1)", // Premium bezier curve
     color: "var(--text-primary)",
     display: "flex",
-    flexDirection: "column"
+    flexDirection: "column",
+    boxSizing: "border-box"
   },
   formGroup: {
     marginBottom: "16px",
