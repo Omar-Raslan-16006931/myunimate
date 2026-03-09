@@ -155,7 +155,7 @@ export const App: React.FC = () => {
 
       // Fetch Materials
       const { data: materialsData } = await supabase.from('materials').select('*').eq('user_id', userId);
-      if (materialsData) setFiles(materialsData.map((m: any) => ({...m, dateAdded: m.date_added, fileData: m.file_data, mimeType: m.mime_type})));
+      if (materialsData) setFiles(materialsData.map((m: any) => ({...m, dateAdded: m.date_added, fileData: m.file_data, mimeType: m.mime_type, parentId: m.parent_id})));
   };
 
   const fetchProfile = async (userId: string) => {
@@ -400,7 +400,15 @@ export const App: React.FC = () => {
             profiles={profiles}
             activeProfileId={activeProfileId}
             eventColors={eventColors}
-            onProfileChange={setActiveProfileId}
+            onProfileChange={async (id) => {
+                setActiveProfileId(id);
+                if (session?.user?.id) {
+                    // Set all profiles to inactive
+                    await supabase.from('schedule_profiles').update({ is_active: false }).eq('user_id', session.user.id);
+                    // Set the selected profile to active
+                    await supabase.from('schedule_profiles').update({ is_active: true }).eq('id', id);
+                }
+            }}
             onAddEventClick={() => { setEditingEvent(null); setIsAddModalOpen(true); }}
             onEventClick={setViewingEvent}
             onUpdateEvent={(updates) => {
@@ -476,10 +484,24 @@ export const App: React.FC = () => {
                     size: file.size,
                     date_added: file.dateAdded,
                     file_data: file.fileData,
-                    mime_type: file.mimeType
+                    mime_type: file.mimeType,
+                    parent_id: file.parentId
                 };
                 const { error } = await supabase.from('materials').insert(newFile);
                 if (!error) setFiles([...files, file]);
+            }}
+            onUpdateFile={async (id, updates) => {
+                const dbUpdates: any = {};
+                if (updates.name !== undefined) dbUpdates.name = updates.name;
+                if (updates.parentId !== undefined) dbUpdates.parent_id = updates.parentId;
+                
+                setFiles(files.map(f => f.id === id ? { ...f, ...updates } : f));
+                await supabase.from('materials').update(dbUpdates).eq('id', id);
+            }}
+            onDeleteFile={async (id) => {
+                setFiles(files.filter(f => f.id !== id && f.parentId !== id));
+                await supabase.from('materials').delete().eq('id', id);
+                await supabase.from('materials').delete().eq('parent_id', id);
             }}
             onBack={() => setView('dashboard')}
         />;
@@ -605,13 +627,27 @@ export const App: React.FC = () => {
                 const { error } = await supabase.from('schedule_profiles').insert(newProfile);
                 if (!error) setProfiles([...profiles, newProfile]);
             }}
-            onSwitchProfile={setActiveProfileId}
+            onSwitchProfile={async (id) => {
+                setActiveProfileId(id);
+                if (session?.user?.id) {
+                    await supabase.from('schedule_profiles').update({ is_active: false }).eq('user_id', session.user.id);
+                    await supabase.from('schedule_profiles').update({ is_active: true }).eq('id', id);
+                }
+            }}
             onDeleteProfile={async (id) => {
                 if (profiles.length > 1) {
                     const { error } = await supabase.from('schedule_profiles').delete().eq('id', id);
                     if (!error) {
                         setProfiles(profiles.filter(p => p.id !== id));
-                        if (activeProfileId === id) setActiveProfileId(profiles[0].id);
+                        if (activeProfileId === id) {
+                            const nextProfileId = profiles.find(p => p.id !== id)?.id;
+                            if (nextProfileId) {
+                                setActiveProfileId(nextProfileId);
+                                if (session?.user?.id) {
+                                    await supabase.from('schedule_profiles').update({ is_active: true }).eq('id', nextProfileId);
+                                }
+                            }
+                        }
                     }
                 }
             }}

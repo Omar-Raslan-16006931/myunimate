@@ -249,6 +249,37 @@ interface SettingsProps {
   onNavigate: (view: ViewState) => void;
 }
 
+// --- REFINED STYLE HELPERS ---
+const SectionHeader = ({ icon: Icon, color, title, isExpanded, onToggle, rightElement }: any) => {
+    return (
+      <div 
+        onClick={onToggle}
+        className="flex items-center justify-between cursor-pointer p-4 group"
+      >
+          <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-300 group-hover:scale-110" style={{ background: `${color}15`, color: color }}>
+                  <Icon size={20} />
+              </div>
+              <h3 className="text-[15px] font-bold text-white tracking-tight">{title}</h3>
+          </div>
+          <div className="flex items-center gap-3">
+              {rightElement}
+              <div className={`text-white/20 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
+                  <ChevronDown size={18} />
+              </div>
+          </div>
+      </div>
+    );
+};
+
+const GroupCard = ({ children, className = "" }: any) => {
+    return (
+      <div className={`bg-white/[0.03] backdrop-blur-xl border border-white/[0.05] rounded-[28px] overflow-hidden shadow-2xl ${className}`}>
+          {children}
+      </div>
+    );
+};
+
 const Settings: React.FC<SettingsProps> = ({
   profiles, activeProfileId, eventColors, baseEvents, onAddProfile, onSwitchProfile, onDeleteProfile, onUpdateColor, onDeleteEvent, onEditEvent, onAddBaseEventClick, onImageUpload, isAnalyzing, onResetApp, onSignOut, periods, setPeriods, accountInfo, onUpdateAccount, themeMode, setThemeMode, onImpersonate, onNavigate
 }) => {
@@ -355,33 +386,6 @@ const Settings: React.FC<SettingsProps> = ({
   const canEditUsername = !accountInfo?.lastUsernameChange || (new Date().getTime() - new Date(accountInfo.lastUsernameChange).getTime()) > 14 * 24 * 60 * 60 * 1000;
   const isSaveDisabled = isCheckingUsername || (usernameAvailable === false && editForm.username !== accountInfo?.username) || (editForm.username && editForm.username.length < 4);
   const days = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-
-  // --- REFINED STYLE HELPERS ---
-  const SectionHeader = ({ icon: Icon, color, title, isExpanded, onToggle, rightElement }: any) => (
-      <div 
-        onClick={onToggle}
-        className="flex items-center justify-between cursor-pointer p-4 group"
-      >
-          <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-300 group-hover:scale-110" style={{ background: `${color}15`, color: color }}>
-                  <Icon size={20} />
-              </div>
-              <h3 className="text-[15px] font-bold text-white tracking-tight">{title}</h3>
-          </div>
-          <div className="flex items-center gap-3">
-              {rightElement}
-              <div className={`text-white/20 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
-                  <ChevronDown size={18} />
-              </div>
-          </div>
-      </div>
-  );
-
-  const GroupCard = ({ children, className = "" }: any) => (
-      <div className={`bg-white/[0.03] backdrop-blur-xl border border-white/[0.05] rounded-[28px] overflow-hidden shadow-2xl ${className}`}>
-          {children}
-      </div>
-  );
 
   return (
     <div style={styles.scrollableContent} className="animate-in fade-in duration-700">
