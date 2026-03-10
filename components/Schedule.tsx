@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, ChevronRight, MapPin, Plus, Brain, ChevronDown, X, RotateCcw, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, MapPin, Plus, Brain, ChevronDown, X, RotateCcw, Trash2, GripVertical } from 'lucide-react';
 import { ScheduleEvent, EventColorMap, ScheduleProfile, PeriodDefinition } from '../types';
 import { getLocalISOString } from '../constants';
 import { theme, styles } from '../theme';
@@ -34,6 +34,7 @@ const Schedule: React.FC<ScheduleProps> = ({
 }) => {
   const [expandedSlot, setExpandedSlot] = useState<ScheduleEvent[] | null>(null);
   const [draggedEventId, setDraggedEventId] = useState<string | null>(null);
+  const [draggedOverCell, setDraggedOverCell] = useState<{ day: string, periodIdx: number } | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Helper to get the Saturday of the current week (Start of academic week)
@@ -165,16 +166,30 @@ const Schedule: React.FC<ScheduleProps> = ({
     setDraggedEventId(event.id);
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', event.id);
+    
+    // Set a drag image or just let it be
+    if (e.dataTransfer.setDragImage && e.currentTarget instanceof HTMLElement) {
+        // Optional: customize drag image
+    }
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleDragEnd = () => {
+    setDraggedEventId(null);
+    setDraggedOverCell(null);
+  };
+
+  const handleDragOver = (e: React.DragEvent, day: string, periodIdx: number) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
+    if (draggedOverCell?.day !== day || draggedOverCell?.periodIdx !== periodIdx) {
+        setDraggedOverCell({ day, periodIdx });
+    }
   };
 
   const handleDrop = (e: React.DragEvent, dayName: string, dateStr: string, periodIndex: number) => {
     e.preventDefault();
     setDraggedEventId(null);
+    setDraggedOverCell(null);
     const eventId = e.dataTransfer.getData('text/plain');
     
     // Find valid period time
@@ -203,6 +218,7 @@ const Schedule: React.FC<ScheduleProps> = ({
          key={ev.id} 
          draggable={true}
          onDragStart={(e) => handleDragStart(e, ev)}
+         onDragEnd={handleDragEnd}
          onClick={() => onEventClick(ev)} 
          style={{
            ...styles.eventCard, 
@@ -216,8 +232,12 @@ const Schedule: React.FC<ScheduleProps> = ({
            flexDirection: 'column',
            position: 'relative',
            justifyContent: 'flex-start',
-           opacity: isDragging ? 0.5 : 1,
-           cursor: isSmall ? 'pointer' : 'grab'
+           opacity: isDragging ? 0.4 : 1,
+           cursor: isDragging ? 'grabbing' : (isSmall ? 'pointer' : 'grab'),
+           transform: isDragging ? 'scale(0.95)' : 'scale(1)',
+           transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+           boxShadow: isDragging ? '0 10px 25px rgba(0,0,0,0.4)' : '0 4px 12px rgba(0,0,0,0.15)',
+           zIndex: isDragging ? 50 : 1
          }}
        >
          {/* Title (Course Name) */}
@@ -426,11 +446,18 @@ const Schedule: React.FC<ScheduleProps> = ({
                          return false;
                       });
 
+                      const isDraggedOver = draggedOverCell?.day === dayName && draggedOverCell?.periodIdx === pIdx;
+                      const cellHighlightStyle = isDraggedOver ? { 
+                          backgroundColor: 'rgba(139, 92, 246, 0.2)',
+                          boxShadow: 'inset 0 0 0 2px rgba(139, 92, 246, 0.5)',
+                          zIndex: 10
+                      } : {};
+
                       return (
                         <div 
                             key={`${dayName}-${p.id}`} 
-                            style={{...styles.scheduleContentCell, ...rowStyle}}
-                            onDragOver={handleDragOver}
+                            style={{...styles.scheduleContentCell, ...rowStyle, ...cellHighlightStyle, transition: 'all 0.2s'}}
+                            onDragOver={(e) => handleDragOver(e, dayName, pIdx)}
                             onDrop={(e) => handleDrop(e, dayName, rowDateStr, pIdx)}
                         >
                            {cellEvents.length > 0 && (

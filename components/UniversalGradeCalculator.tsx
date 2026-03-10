@@ -310,12 +310,28 @@ const UniversalGradeCalculator: React.FC<UniversalGradeCalculatorProps> = ({ cou
                     >
                         <ArrowLeft size={18} />
                     </button>
-                    <input 
-                        value={course.title}
-                        onChange={(e) => updateCourse({ title: e.target.value })}
-                        className="bg-transparent border-none text-xl font-bold text-white focus:text-white outline-none w-full focus:ring-0 truncate"
-                        placeholder="Course Name"
-                    />
+                    <div className="flex flex-col gap-1 flex-1 min-w-0">
+                        <input 
+                            value={course.title}
+                            onChange={(e) => updateCourse({ title: e.target.value })}
+                            className="bg-transparent border-none text-xl font-bold text-white focus:text-white outline-none w-full focus:ring-0 truncate"
+                            placeholder="Course Name"
+                        />
+                        <div className="flex gap-2">
+                            <input 
+                                value={course.code || ''}
+                                onChange={(e) => updateCourse({ code: e.target.value })}
+                                className="bg-white/5 border border-white/10 rounded px-2 py-0.5 text-[10px] font-bold text-white/60 focus:text-white focus:border-indigo-500/50 outline-none w-24"
+                                placeholder="CODE"
+                            />
+                            <input 
+                                value={course.group || ''}
+                                onChange={(e) => updateCourse({ group: e.target.value })}
+                                className="bg-white/5 border border-white/10 rounded px-2 py-0.5 text-[10px] font-bold text-white/60 focus:text-white focus:border-indigo-500/50 outline-none w-24"
+                                placeholder="GROUP"
+                            />
+                        </div>
+                    </div>
                 </div>
                 <div className="flex gap-2">
                     {onDelete && (

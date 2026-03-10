@@ -646,6 +646,7 @@ export const App: React.FC = () => {
                     setCourses(courses.map(c => c.id === updated.id ? updated : c));
                     const { error } = await supabase.from('courses').update({
                         title: updated.title,
+                        code: updated.code,
                         target_grade: updated.targetGrade,
                         categories: updated.categories
                     }).eq('id', updated.id);
