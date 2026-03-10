@@ -77,8 +77,8 @@ const SYSTEMS: Record<string, GradingSystem> = {
     }
 };
 
-// --- HELPER TO CALCULATE COURSE PERCENTAGE ---
-const calculateCoursePercentage = (course: CourseGrade): number => {
+// --- HELPER TO CALCULATE COURSE STATS ---
+const calculateCourseStats = (course: CourseGrade) => {
     let accumulatedPoints = 0;
     let weightCompleted = 0;
 
@@ -107,7 +107,8 @@ const calculateCoursePercentage = (course: CourseGrade): number => {
         }
     });
 
-    return weightCompleted > 0 ? (accumulatedPoints / weightCompleted) * 100 : 0;
+    const performance = weightCompleted > 0 ? (accumulatedPoints / weightCompleted) * 100 : 0;
+    return { accumulatedPoints, performance, weightCompleted };
 };
 
 // --- SCHEMA EDITOR MODAL ---
@@ -469,7 +470,8 @@ const GPACalculator = ({ courses, onBack }: { courses: CourseGrade[], onBack: ()
         const newGPACourses: GPACourse[] = selectedIds.map(id => {
             const original = courses.find(c => c.id === id);
             if (!original) return null;
-            const pct = calculateCoursePercentage(original);
+            const stats = calculateCourseStats(original);
+            const pct = stats.performance;
             const grade = currentSystem.scale.find(g => pct >= g.min) || currentSystem.scale[currentSystem.scale.length - 1];
             return {
                 id: crypto.randomUUID(),
@@ -699,21 +701,12 @@ const CoursesView: React.FC<CoursesViewProps> = ({ courses, onSelectCourse, onAd
 
   // Calculate Absolute Grade
   const getCourseStats = (course: CourseGrade) => {
-      // ... logic reused ...
-      const grade = calculateCoursePercentage(course);
+      const stats = calculateCourseStats(course);
       
-      // Calculate completed weight
-      let weightCompleted = 0;
-      course.categories.forEach(cat => {
-          const weight = parseFloat(cat.weight) || 0;
-          const usableItems = cat.items.filter(i => i.active !== false && i.score !== '' && i.total !== '' && parseFloat(i.total) > 0);
-          if (usableItems.length > 0) weightCompleted += weight;
-      });
-
       return {
-          grade, // Already calculated percentage
-          completed: weightCompleted,
-          relative: grade // For color mapping
+          grade: stats.accumulatedPoints, // Current obtained grade
+          completed: stats.weightCompleted,
+          relative: stats.performance // Average performance
       };
   };
 
@@ -822,7 +815,7 @@ const CoursesView: React.FC<CoursesViewProps> = ({ courses, onSelectCourse, onAd
                             <>
                                 <div className="w-px h-2 bg-white/10"></div>
                                 <div className="text-[10px] font-bold text-white/40">
-                                    <span className={gradeColor}>{relative.toFixed(1)}%</span> Perf
+                                    <span className={gradeColor}>{relative.toFixed(1)}%</span> Avg. Perf
                                 </div>
                             </>
                         )}

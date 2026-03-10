@@ -1,8 +1,10 @@
 
 import React, { useRef, useState } from 'react';
 import { MaterialFile } from '../types';
-import { Folder, FileText, Download, MoreVertical, Search, Plus, Image, FileSpreadsheet, File, ArrowLeft, Eye, Edit2, Trash2, FolderPlus, CornerUpLeft, X, Minus, RotateCcw } from 'lucide-react';
+import { Folder, FileText, Download, MoreVertical, Search, Plus, Image, FileSpreadsheet, File, ArrowLeft, Eye, Edit2, Trash2, FolderPlus, CornerUpLeft, X, Minus, RotateCcw, Move, MousePointer2 } from 'lucide-react';
 import { styles, theme } from '../theme';
+import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
+import { PdfViewer } from './PdfViewer';
 
 interface MaterialsViewProps {
   files: MaterialFile[];
@@ -24,41 +26,6 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
   const [movingFileId, setMovingFileId] = useState<string | null>(null);
 
   const [viewingFile, setViewingFile] = useState<MaterialFile | null>(null);
-  const [zoom, setZoom] = useState(1);
-  const [lastTouchDistance, setLastTouchDistance] = useState<number | null>(null);
-
-  const handleZoomIn = () => setZoom(prev => Math.min(prev + 0.25, 3));
-  const handleZoomOut = () => setZoom(prev => Math.max(prev - 0.25, 0.5));
-  const resetZoom = () => setZoom(1);
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (e.touches.length === 2) {
-      const distance = Math.hypot(
-        e.touches[0].pageX - e.touches[1].pageX,
-        e.touches[0].pageY - e.touches[1].pageY
-      );
-      setLastTouchDistance(distance);
-    }
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (e.touches.length === 2 && lastTouchDistance !== null) {
-      const distance = Math.hypot(
-        e.touches[0].pageX - e.touches[1].pageX,
-        e.touches[0].pageY - e.touches[1].pageY
-      );
-      
-      const delta = distance - lastTouchDistance;
-      const zoomFactor = delta * 0.01;
-      
-      setZoom(prev => Math.min(Math.max(prev + zoomFactor, 0.5), 5));
-      setLastTouchDistance(distance);
-    }
-  };
-
-  const handleTouchEnd = () => {
-    setLastTouchDistance(null);
-  };
 
   const getIcon = (type: string) => {
       switch(type) {
@@ -307,13 +274,6 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
                        </div>
 
                        <div className="flex items-center gap-2">
-                           {viewingFile.type === 'image' && viewingFile.fileData && (
-                               <div className="flex items-center gap-2 bg-white/5 p-1 rounded-xl border border-white/10 mr-2">
-                                   <span className="text-xs font-mono text-white/50 px-2 text-center">{Math.round(zoom * 100)}%</span>
-                                   <button onClick={resetZoom} className="p-2 hover:bg-white/10 rounded-lg text-white/70 transition-colors" title="Reset Zoom"><RotateCcw size={14} /></button>
-                               </div>
-                           )}
-                           
                            {viewingFile.fileData && (
                                <a 
                                    href={viewingFile.fileData} 
@@ -326,7 +286,7 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
                            )}
                            
                            <button 
-                               onClick={() => { setViewingFile(null); resetZoom(); }}
+                               onClick={() => { setViewingFile(null); }}
                                className="bg-white/10 hover:bg-white/20 text-white p-2 rounded-lg transition-colors border border-white/10"
                                title="Close"
                            >
@@ -335,33 +295,31 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
                        </div>
                    </div>
                    
-                   <div 
-                       className="flex-1 overflow-auto bg-black/40 relative flex items-center justify-center p-4"
-                       onTouchStart={handleTouchStart}
-                       onTouchMove={handleTouchMove}
-                       onTouchEnd={handleTouchEnd}
-                   >
+                   <div className="flex-1 overflow-hidden bg-black/40 relative flex items-center justify-center p-4">
                        {viewingFile.fileData ? (
-                           viewingFile.type === 'image' ? (
-                               <div className="w-full h-full overflow-auto flex items-center justify-center">
-                                   <img 
-                                       src={viewingFile.fileData} 
-                                       alt={viewingFile.name} 
-                                       style={{ 
-                                           transform: `scale(${zoom})`,
-                                           transition: lastTouchDistance ? 'none' : 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                                           transformOrigin: 'center center'
-                                       }}
-                                       className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" 
-                                   />
-                               </div>
-                           ) : viewingFile.type === 'pdf' ? (
-                               <iframe src={viewingFile.fileData} className="w-full h-full rounded-lg bg-white" title={viewingFile.name} />
-                           ) : (
-                               <iframe src={viewingFile.fileData} className="w-full h-full rounded-lg bg-white" title={viewingFile.name} />
-                           )
+                                                       viewingFile.type === 'image' ? (
+                                <TransformWrapper
+                                    initialScale={1}
+                                    minScale={0.5}
+                                    maxScale={5}
+                                    centerOnInit
+                                    wheel={{ step: 0.1 }}
+                                >
+                                    <TransformComponent wrapperClass="!w-full !h-full" contentClass="!w-full !h-full flex items-center justify-center">
+                                        <img 
+                                            src={viewingFile.fileData} 
+                                            alt={viewingFile.name} 
+                                            className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" 
+                                        />
+                                    </TransformComponent>
+                                </TransformWrapper>
+                            ) : viewingFile.type === 'pdf' ? (
+                                <PdfViewer file={viewingFile.fileData} />
+                            ) : (
+                                <iframe src={viewingFile.fileData} className="w-full h-full rounded-lg bg-white shadow-2xl border-0" title={viewingFile.name} />
+                            )
                        ) : viewingFile.webViewLink ? (
-                           <iframe src={viewingFile.webViewLink} className="w-full h-full rounded-lg bg-white" title={viewingFile.name} />
+                           <iframe src={viewingFile.webViewLink} className="w-full h-full rounded-lg bg-white shadow-2xl" title={viewingFile.name} />
                        ) : (
                            <div className="text-white/50 flex flex-col items-center gap-4">
                                <File size={48} className="opacity-50" />

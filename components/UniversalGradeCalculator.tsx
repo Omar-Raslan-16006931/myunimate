@@ -290,6 +290,14 @@ const UniversalGradeCalculator: React.FC<UniversalGradeCalculatorProps> = ({ cou
         return 'text-red-400';
     };
 
+    const getBgColor = (score: number) => {
+        if (score >= 90) return 'bg-emerald-500';
+        if (score >= 80) return 'bg-blue-500';
+        if (score >= 70) return 'bg-yellow-500';
+        if (score >= 60) return 'bg-orange-500';
+        return 'bg-red-500';
+    };
+
     return (
         <div className="flex flex-col h-full bg-[#0f0f12] relative">
             {/* Top Navigation */}
@@ -324,56 +332,45 @@ const UniversalGradeCalculator: React.FC<UniversalGradeCalculatorProps> = ({ cou
 
             <div className="flex-1 overflow-y-auto px-4 pb-32">
                 
-                {/* Hero Dashboard */}
-                <div className="bg-[#1c1c1e] border border-white/5 rounded-2xl p-5 mb-5 shadow-xl">
-                    <div className="flex items-center justify-between mb-5">
-                        {/* Main Grade */}
+                {/* Hero Dashboard (Compact) */}
+                <div className="bg-[#1c1c1e] border border-white/5 rounded-2xl p-4 mb-4 shadow-sm">
+                    <div className="flex items-center justify-between mb-4">
                         <div>
-                            <div className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1.5">Current Grade</div>
-                            <div className={`text-6xl font-black tracking-tight leading-none ${getScoreColor(currentPerformance)}`}>
-                                {totalPointsAccumulated.toFixed(1)}<span className="text-3xl opacity-50">%</span>
+                            <div className="text-[10px] font-bold text-white/40 uppercase tracking-wider mb-1">Current Grade</div>
+                            <div className={`text-4xl font-black tracking-tight ${getScoreColor(currentPerformance)}`}>
+                                {totalPointsAccumulated.toFixed(1)}<span className="text-lg opacity-50 font-bold ml-1">pts</span>
                             </div>
                         </div>
-
-                        {/* Stats Grid */}
-                        <div className="flex flex-col gap-3 items-end">
-                            <div className="flex items-center gap-2 bg-white/5 pl-4 pr-3 py-2 rounded-xl border border-white/5">
-                                <Target size={16} className="text-white/40" />
-                                <div className="flex flex-col items-end">
-                                    <span className="text-[8px] font-bold text-white/30 uppercase leading-none mb-0.5">Target</span>
-                                    <div className="flex items-center">
-                                        <input 
-                                            value={course.targetGrade}
-                                            onChange={(e) => updateCourse({ targetGrade: e.target.value })}
-                                            className="w-8 bg-transparent text-right text-white font-bold text-lg outline-none focus:text-indigo-400 p-0"
-                                        />
-                                        <span className="text-xs text-white/40 font-bold ml-0.5">%</span>
-                                    </div>
+                        <div className="flex items-center gap-3 text-right">
+                            <div>
+                                <div className="text-[10px] font-bold text-white/40 uppercase tracking-wider mb-1">Target</div>
+                                <div className="flex items-center justify-end">
+                                    <input 
+                                        value={course.targetGrade}
+                                        onChange={(e) => updateCourse({ targetGrade: e.target.value })}
+                                        className="w-10 bg-transparent text-white font-bold text-lg outline-none focus:text-indigo-400 p-0 text-right"
+                                    />
+                                    <span className="text-sm text-white/40 font-bold">%</span>
                                 </div>
                             </div>
-                            
-                            <div className="flex items-center gap-4 text-right">
-                                <div>
-                                    <div className="text-[8px] font-bold text-white/30 uppercase leading-none mb-0.5">Max Possible</div>
-                                    <div className="text-base font-bold text-white">{maxPossible.toFixed(1)}%</div>
-                                </div>
-                                <div className="w-px h-8 bg-white/10"></div>
-                                <div>
-                                    <div className="text-[8px] font-bold text-white/30 uppercase leading-none mb-0.5">Perf.</div>
-                                    <div className={`text-base font-bold ${getScoreColor(currentPerformance)}`}>{currentPerformance.toFixed(1)}%</div>
-                                </div>
+                            <div className="w-px h-8 bg-white/10 mx-1"></div>
+                            <div>
+                                <div className="text-[10px] font-bold text-white/40 uppercase tracking-wider mb-1">Max</div>
+                                <div className="text-lg font-bold text-white/80">{maxPossible.toFixed(1)}%</div>
                             </div>
                         </div>
                     </div>
 
                     {/* Progress Bar */}
-                    <div className="relative h-2 w-full bg-white/10 rounded-full overflow-hidden">
-                        <div className="absolute top-0 left-0 h-full bg-white/20" style={{ width: `${Math.min(weightCompleted, 100)}%` }} />
-                        <div className={`absolute top-0 left-0 h-full ${getScoreColor(currentPerformance)}`} style={{ width: `${Math.min(totalPointsAccumulated, 100)}%` }} />
-                    </div>
-                    <div className="flex justify-between mt-2 text-[10px] font-bold text-white/30 uppercase tracking-wider">
-                        <span>{totalPointsAccumulated.toFixed(1)} Pts Earned</span>
-                        <span>{weightCompleted.toFixed(0)}% Completed</span>
+                    <div>
+                        <div className="flex justify-between mb-1.5 text-[10px] font-bold uppercase tracking-wider">
+                            <span className="text-white/40">Progress</span>
+                            <span className="text-white/40">{weightCompleted.toFixed(0)}% Completed</span>
+                        </div>
+                        <div className="relative h-2 w-full bg-black/40 rounded-full overflow-hidden border border-white/5">
+                            <div className="absolute top-0 left-0 h-full bg-white/10 transition-all duration-500" style={{ width: `${Math.min(weightCompleted, 100)}%` }} />
+                            <div className={`absolute top-0 left-0 h-full transition-all duration-500 ${getBgColor(currentPerformance)}`} style={{ width: `${Math.min(totalPointsAccumulated, 100)}%` }} />
+                        </div>
                     </div>
                 </div>
 
