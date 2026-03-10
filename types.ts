@@ -145,6 +145,7 @@ export interface CourseGrade {
   id: string;
   title: string;
   code?: string;
+  group?: string;
   targetGrade: string;
   categories: GradeCategory[];
 }
