@@ -99,17 +99,15 @@ export const App: React.FC = () => {
 
     initialize();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setSession(session);
-      if (session) {
-          setLoading(true);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, currentSession) => {
+      setSession(currentSession);
+      if (_event === 'SIGNED_IN') {
           await Promise.all([
-              fetchProfile(session.user.id),
-              fetchUserData(session.user.id)
+              fetchProfile(currentSession.user.id),
+              fetchUserData(currentSession.user.id)
           ]);
-          setLoading(false);
       }
-      else {
+      else if (_event === 'SIGNED_OUT') {
           setProfile(null);
           setEvents(INITIAL_EVENTS);
           setProfiles(INITIAL_PROFILES);
@@ -880,7 +878,8 @@ export const App: React.FC = () => {
               if (mode === 'slots-only' && evData.period_number !== undefined) {
                 const targetProfile = profiles.find(p => p.id === targetProfileId);
                 const periods = targetProfile?.periods || INITIAL_PERIODS;
-                const period = periods[evData.period_number - 1];
+                const nonBreakPeriods = periods.filter(p => !p.isBreak);
+                const period = nonBreakPeriods[evData.period_number - 1];
                 if (period) {
                   finalEvent.startTime = period.startTime;
                   const [sH, sM] = period.startTime.split(':').map(Number);

@@ -9,20 +9,22 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
-    "lucide-react": "^0.554.0",
     "@google/genai": "^1.30.0",
     "@supabase/supabase-js": "^2.39.7",
-    "recharts": "^2.12.0",
     "clsx": "^2.1.0",
+    "lucide-react": "^0.554.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-pdf": "^10.4.1",
+    "react-zoom-pan-pinch": "^3.7.0",
+    "recharts": "^2.12.0",
     "tailwind-merge": "^2.2.1"
   },
   "devDependencies": {
-    "typescript": "^5.2.2",
-    "vite": "^5.1.4",
-    "@vitejs/plugin-react": "^4.2.1",
     "@types/react": "^19.0.8",
-    "@types/react-dom": "^19.0.3"
+    "@types/react-dom": "^19.0.3",
+    "@vitejs/plugin-react": "^4.2.1",
+    "typescript": "^5.2.2",
+    "vite": "^5.1.4"
   }
 }
