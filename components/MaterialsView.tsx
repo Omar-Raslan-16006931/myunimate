@@ -213,7 +213,7 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
                 <div style={{width: '42px', height: '42px', borderRadius: '10px', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
                    {getIcon(file.type)}
                 </div>
-                <div style={{flex: 1, cursor: 'pointer'}} onClick={() => openFile(file)}>
+                <div style={{flex: 1, cursor: 'pointer', minWidth: 0}} onClick={() => openFile(file)}>
                    {editingFileId === file.id ? (
                        <input 
                            autoFocus

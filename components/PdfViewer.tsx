@@ -31,22 +31,22 @@ export const PdfViewer = ({ file }: { file: string }) => {
           wheelPanning: false // We want wheel to zoom or scroll naturally
         }}
         wheel={{ 
-          step: 0.1,
-          smoothStep: 0.01
+          step: 0.2,
+          smoothStep: 0.02
         }}
-        pinch={{ step: 5 }}
+        pinch={{ step: 10 }}
         doubleClick={{ 
           mode: "toggle",
-          step: 2
+          step: 3
         }}
         alignmentAnimation={{
-          size: 0.3,
-          velocityAlignmentTime: 400
+          size: 0.2,
+          velocityAlignmentTime: 300
         }}
       >
         <TransformComponent 
           wrapperClass="!w-full !h-full cursor-grab active:cursor-grabbing" 
-          contentClass="min-h-full w-full flex flex-col items-center gap-4 py-12"
+          contentClass="min-h-full w-full flex flex-col items-center gap-2 py-8"
         >
           <Document 
             file={file} 
