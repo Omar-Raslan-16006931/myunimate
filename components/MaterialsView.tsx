@@ -83,7 +83,26 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
 
   const handleRename = (id: string) => {
       if (!editFileName.trim()) return;
-      onUpdateFile(id, { name: editFileName.trim() });
+      const file = files.find(f => f.id === id);
+      if (!file) return;
+
+      let newName = editFileName.trim();
+      
+      // If it's a file (not a folder), preserve the extension
+      if (file.type !== 'folder' && file.name.includes('.')) {
+          const originalExt = file.name.split('.').pop();
+          const newExt = newName.split('.').pop();
+          
+          if (originalExt && originalExt.toLowerCase() !== newExt?.toLowerCase()) {
+              // If the user tried to change the extension, append the original one
+              // Unless they completely removed the extension, then we add it back
+              if (!newName.toLowerCase().endsWith(`.${originalExt.toLowerCase()}`)) {
+                  newName = `${newName}.${originalExt}`;
+              }
+          }
+      }
+
+      onUpdateFile(id, { name: newName });
       setEditingFileId(null);
       setEditFileName('');
   };
@@ -264,16 +283,16 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
        {viewingFile && (
            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-200">
                <div className="w-full h-full max-w-6xl max-h-[90vh] bg-[#130f1c] rounded-2xl overflow-hidden border border-white/10 shadow-2xl flex flex-col">
-                   <div className="p-4 border-b border-white/10 bg-black/20 flex items-center justify-between shrink-0">
-                       <div className="flex items-center gap-3">
+                   <div className="p-4 border-b border-white/10 bg-black/20 flex items-center justify-between shrink-0 gap-4">
+                       <div className="flex items-center gap-3 min-w-0">
                            {getIcon(viewingFile.type)}
-                           <div>
-                               <h2 className="text-white font-bold text-lg">{viewingFile.name}</h2>
-                               <p className="text-white/50 text-xs">{viewingFile.size} • {viewingFile.type.toUpperCase()}</p>
+                           <div className="min-w-0">
+                               <h2 className="text-white font-bold text-lg truncate" title={viewingFile.name}>{viewingFile.name}</h2>
+                               <p className="text-white/50 text-xs truncate">{viewingFile.size} • {viewingFile.type.toUpperCase()}</p>
                            </div>
                        </div>
 
-                       <div className="flex items-center gap-2">
+                       <div className="flex items-center gap-2 shrink-0">
                            {viewingFile.fileData && (
                                <a 
                                    href={viewingFile.fileData} 
