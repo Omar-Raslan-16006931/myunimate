@@ -12,9 +12,10 @@ interface MaterialsViewProps {
   onUpdateFile: (id: string, updates: Partial<MaterialFile>) => void;
   onDeleteFile: (id: string) => void;
   onBack: () => void;
+  onFileViewChange?: (isViewing: boolean) => void;
 }
 
-const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdateFile, onDeleteFile, onBack }) => {
+const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdateFile, onDeleteFile, onBack, onFileViewChange }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -65,6 +66,7 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
           return;
       }
       setViewingFile(file);
+      onFileViewChange?.(true);
   };
 
   const handleCreateFolder = () => {
@@ -223,7 +225,7 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
                            style={{width: '100%', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', fontSize: '0.9rem', padding: '2px 4px', borderRadius: '4px'}}
                        />
                    ) : (
-                       <h4 style={{margin: 0, fontSize: '0.9rem', fontWeight: 600, color: '#fff'}}>{file.name}</h4>
+                       <h4 style={{margin: 0, fontSize: '0.9rem', fontWeight: 600, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}} title={file.name}>{file.name}</h4>
                    )}
                    <p style={{margin: 0, fontSize: '0.7rem', color: theme.textMuted}}>{file.size} • {file.dateAdded}</p>
                 </div>
@@ -281,9 +283,9 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
        </button>
 
        {viewingFile && (
-           <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-200">
-               <div className="w-full h-full max-w-6xl max-h-[90vh] bg-[#130f1c] rounded-2xl overflow-hidden border border-white/10 shadow-2xl flex flex-col">
-                   <div className="p-4 border-b border-white/10 bg-black/20 flex items-center justify-between shrink-0 gap-4">
+           <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/95 backdrop-blur-xl animate-in fade-in duration-300">
+               <div className="w-full h-full max-w-6xl bg-[#0a0a0c] overflow-hidden flex flex-col shadow-[0_0_50px_rgba(0,0,0,0.5)]">
+                   <div className="p-3 border-b border-white/5 bg-black/40 flex items-center justify-between shrink-0 gap-4">
                        <div className="flex items-center gap-3 min-w-0">
                            {getIcon(viewingFile.type)}
                            <div className="min-w-0">
@@ -305,7 +307,7 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
                            )}
                            
                            <button 
-                               onClick={() => { setViewingFile(null); }}
+                               onClick={() => { setViewingFile(null); onFileViewChange?.(false); }}
                                className="bg-white/10 hover:bg-white/20 text-white p-2 rounded-lg transition-colors border border-white/10"
                                title="Close"
                            >

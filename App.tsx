@@ -34,6 +34,7 @@ export const App: React.FC = () => {
   const [profile, setProfile] = useState<any>(null);
   const [view, setView] = useState<ViewState>('dashboard');
   const [themeMode, setThemeMode] = useState<ThemeMode>('dark');
+  const [isViewingFile, setIsViewingFile] = useState(false);
 
   // Onboarding State
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -629,6 +630,7 @@ export const App: React.FC = () => {
                 await supabase.from('materials').delete().eq('parent_id', id);
             }}
             onBack={() => setView('dashboard')}
+            onFileViewChange={setIsViewingFile}
         />;
       case 'study_groups':
         return <StudyGroupsView 
@@ -813,7 +815,7 @@ export const App: React.FC = () => {
     <div style={styles.container} className={themeMode}>
       {renderContent()}
       
-      {view !== 'gym' && (
+      {view !== 'gym' && !isViewingFile && (
           <Navigation currentView={view} onNavigate={setView} />
       )}
 
