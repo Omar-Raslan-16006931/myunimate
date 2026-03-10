@@ -295,7 +295,7 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
                        </div>
                    </div>
                    
-                   <div className="flex-1 overflow-hidden bg-black/40 relative flex items-center justify-center p-4">
+                    <div className="flex-1 overflow-hidden bg-black relative flex items-center justify-center">
                        {viewingFile.fileData ? (
                                                        viewingFile.type === 'image' ? (
                                 <TransformWrapper

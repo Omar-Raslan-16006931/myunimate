@@ -17,35 +17,62 @@ export const PdfViewer = ({ file }: { file: string }) => {
   }
 
   return (
-    <div className="w-full h-full overflow-auto custom-scrollbar">
-        <TransformWrapper
-            initialScale={1}
-            minScale={0.5}
-            maxScale={5}
-            centerOnInit
-            wheel={{ step: 0.1 }}
-            panning={{ velocityDisabled: true }}
+    <div className="w-full h-full bg-zinc-950 overflow-hidden select-none">
+      <TransformWrapper
+        initialScale={1}
+        minScale={1}
+        maxScale={8}
+        centerOnInit
+        panning={{ 
+          velocityDisabled: false,
+          allowLeftClickPan: true,
+          allowRightClickPan: true,
+          allowMiddleClickPan: true,
+          wheelPanning: false // We want wheel to zoom or scroll naturally
+        }}
+        wheel={{ 
+          step: 0.1,
+          smoothStep: 0.01
+        }}
+        pinch={{ step: 5 }}
+        doubleClick={{ 
+          mode: "toggle",
+          step: 2
+        }}
+        alignmentAnimation={{
+          size: 0.3,
+          velocityAlignmentTime: 400
+        }}
+      >
+        <TransformComponent 
+          wrapperClass="!w-full !h-full cursor-grab active:cursor-grabbing" 
+          contentClass="min-h-full w-full flex flex-col items-center gap-4 py-12"
         >
-            <TransformComponent wrapperClass="!w-full !h-auto" contentClass="!w-full !h-auto flex flex-col items-center gap-4 py-4">
-                <Document 
-                    file={file} 
-                    onLoadSuccess={onDocumentLoadSuccess}
-                    className="flex flex-col gap-4 items-center"
-                    loading={<div className="text-white">Loading PDF...</div>}
-                >
-                    {Array.from(new Array(numPages), (el, index) => (
-                        <Page 
-                            key={`page_${index + 1}`} 
-                            pageNumber={index + 1} 
-                            className="shadow-xl bg-white"
-                            renderTextLayer={false}
-                            renderAnnotationLayer={false}
-                            width={Math.min(window.innerWidth - 32, 800)}
-                        />
-                    ))}
-                </Document>
-            </TransformComponent>
-        </TransformWrapper>
+          <Document 
+            file={file} 
+            onLoadSuccess={onDocumentLoadSuccess}
+            className="flex flex-col gap-6 items-center"
+            loading={
+              <div className="flex flex-col items-center gap-4 mt-20">
+                <div className="w-8 h-8 border-2 border-violet-500 border-t-transparent rounded-full animate-spin"></div>
+                <div className="text-zinc-400 text-sm font-medium">Preparing document...</div>
+              </div>
+            }
+          >
+            {Array.from(new Array(numPages), (el, index) => (
+              <Page 
+                key={`page_${index + 1}`} 
+                pageNumber={index + 1} 
+                className="shadow-2xl bg-white transition-transform duration-300"
+                renderTextLayer={false}
+                renderAnnotationLayer={false}
+                width={Math.min(window.innerWidth * 0.95, 1000)}
+                loading={<div className="w-[800px] h-[1100px] bg-zinc-800 animate-pulse rounded-sm" />}
+              />
+            ))}
+          </Document>
+        </TransformComponent>
+      </TransformWrapper>
     </div>
   );
 };
