@@ -110,7 +110,7 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
   };
 
   const handleMove = (fileId: string, targetFolderId: string | null) => {
-      onUpdateFile(fileId, { parentId: targetFolderId || undefined });
+      onUpdateFile(fileId, { parentId: targetFolderId || null });
       setMovingFileId(null);
       setActiveMenuId(null);
   };
