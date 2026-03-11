@@ -5,6 +5,7 @@ import { Folder, FileText, Download, MoreVertical, Search, Plus, Image, FileSpre
 import { styles, theme } from '../theme';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 import { PdfViewer } from './PdfViewer';
+import { generateId } from '../constants';
 
 interface MaterialsViewProps {
   files: MaterialFile[];
@@ -46,7 +47,7 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
       reader.onload = (event) => {
           const base64 = event.target?.result as string;
           const newFile: MaterialFile = {
-              id: crypto.randomUUID(),
+              id: generateId(),
               name: file.name,
               type: file.type.includes('pdf') ? 'pdf' : file.type.includes('image') ? 'image' : 'other',
               size: (file.size / 1024 / 1024).toFixed(2) + ' MB',
@@ -72,7 +73,7 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
   const handleCreateFolder = () => {
       if (!newFolderName.trim()) return;
       const newFolder: MaterialFile = {
-          id: crypto.randomUUID(),
+          id: generateId(),
           name: newFolderName.trim(),
           type: 'folder',
           dateAdded: new Date().toISOString().split('T')[0],

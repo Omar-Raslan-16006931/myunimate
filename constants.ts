@@ -8,6 +8,16 @@ export const getLocalISOString = (date: Date = new Date()) => {
   return new Date(date.getTime() - offset).toISOString().split('T')[0];
 };
 
+export const generateId = () => {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        return crypto.randomUUID();
+    }
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+};
+
 const todayStr = getLocalISOString();
 const addDays = (date: Date, days: number) => {
   const result = new Date(date);

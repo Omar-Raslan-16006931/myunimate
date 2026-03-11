@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './lib/supabase';
 import { ViewState, ScheduleEvent, ScheduleProfile, EventColorMap, EventType, PeriodDefinition, Announcement, ThemeMode, FoodItem, WaterLog, WorkoutSession, WorkoutRoutine, ExerciseDefinition, GymSettings, ActiveGymState, CourseGrade, ToDoItem, MaterialFile } from './types';
-import { INITIAL_EVENTS, INITIAL_PROFILES, INITIAL_COLORS, INITIAL_PERIODS, DEFAULT_GYM_SETTINGS, DEFAULT_ROUTINES, DEFAULT_EXERCISES, INITIAL_FILES } from './constants';
+import { INITIAL_EVENTS, INITIAL_PROFILES, INITIAL_COLORS, INITIAL_PERIODS, DEFAULT_GYM_SETTINGS, DEFAULT_ROUTINES, DEFAULT_EXERCISES, INITIAL_FILES, generateId } from './constants';
 import { styles, theme } from './theme';
 
 import Auth from './components/Auth';
@@ -146,7 +146,7 @@ export const App: React.FC = () => {
       } else {
           // Insert default profiles
           const defaultProfiles = INITIAL_PROFILES.map((p, index) => ({
-              id: crypto.randomUUID(),
+              id: generateId(),
               user_id: userId,
               name: p.name,
               is_active: index === 0,
@@ -265,7 +265,7 @@ export const App: React.FC = () => {
   const onAddEvent = async (eventData: Partial<ScheduleEvent>) => {
     if (!session?.user?.id) return;
     const newEvent: ScheduleEvent = {
-        id: eventData.id || crypto.randomUUID(),
+        id: eventData.id || generateId(),
         scheduleId: activeProfileId,
         title: eventData.title || 'New Event',
         type: eventData.type || 'study',
@@ -311,7 +311,7 @@ export const App: React.FC = () => {
     if (!session?.user?.id) return;
     
     const newEvents: ScheduleEvent[] = eventsData.map(eventData => ({
-        id: eventData.id || crypto.randomUUID(),
+        id: eventData.id || generateId(),
         scheduleId: targetProfileId,
         title: eventData.title || 'New Event',
         type: eventData.type || 'study',
@@ -357,7 +357,7 @@ export const App: React.FC = () => {
             });
             
             const newCourses = Array.from(distinctCourses.entries()).map(([title, code]) => ({
-                id: crypto.randomUUID(),
+                id: generateId(),
                 user_id: session.user.id,
                 title: title,
                 code: code,
@@ -576,7 +576,7 @@ export const App: React.FC = () => {
             onAddCourse={async () => {
                 if (!session?.user?.id) return;
                 const newCourse = {
-                    id: crypto.randomUUID(),
+                    id: generateId(),
                     user_id: session.user.id,
                     title: "New Course",
                     target_grade: "95",
@@ -603,14 +603,18 @@ export const App: React.FC = () => {
                     user_id: session.user.id,
                     name: file.name,
                     type: file.type,
-                    size: file.size,
+                    size: file.size || '0 KB',
                     date_added: file.dateAdded,
-                    file_data: file.fileData,
-                    mime_type: file.mimeType,
-                    parent_id: file.parentId
+                    file_data: file.fileData || null,
+                    mime_type: file.mimeType || null,
+                    parent_id: file.parentId || null
                 };
                 const { error } = await supabase.from('materials').insert(newFile);
-                if (!error) setFiles([...files, file]);
+                if (!error) {
+                    setFiles([...files, file]);
+                } else {
+                    console.error("Error adding file:", error);
+                }
             }}
             onUpdateFile={async (id, updates) => {
                 const dbUpdates: any = {};
@@ -674,7 +678,7 @@ export const App: React.FC = () => {
             onAddCourse={async () => {
                 if (!session?.user?.id) return;
                 const newCourse = {
-                    id: crypto.randomUUID(),
+                    id: generateId(),
                     user_id: session.user.id,
                     title: "New Course",
                     target_grade: "95",
@@ -697,7 +701,7 @@ export const App: React.FC = () => {
             onAdd={async (text, priority) => {
                 if (!session?.user?.id) return;
                 const newItem = {
-                    id: crypto.randomUUID(),
+                    id: generateId(),
                     user_id: session.user.id,
                     text,
                     completed: false,
@@ -750,7 +754,7 @@ export const App: React.FC = () => {
             onAddProfile={async (name) => {
                 if (!session?.user?.id) return;
                 const newProfile = { 
-                    id: crypto.randomUUID(), 
+                    id: generateId(), 
                     name, 
                     periods: INITIAL_PERIODS,
                     user_id: session.user.id,
@@ -832,7 +836,7 @@ export const App: React.FC = () => {
 
             if (addToGrades && data.title && session?.user?.id) {
                 const newCourse = {
-                    id: crypto.randomUUID(),
+                    id: generateId(),
                     user_id: session.user.id,
                     title: data.title,
                     code: data.code,

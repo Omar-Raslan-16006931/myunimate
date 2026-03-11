@@ -4,6 +4,7 @@ import { ArrowLeft, Share2, UserPlus, DollarSign, Copy, CheckCircle2, Wallet, Cr
 import { theme, styles } from '../theme';
 import { supabase } from '../lib/supabase';
 import { WalletTransaction } from '../types';
+import { generateId } from '../constants';
 import ReferralTermsModal from './ReferralTermsModal';
 
 interface ReferralProgramProps {
@@ -121,7 +122,7 @@ const ReferralProgram: React.FC<ReferralProgramProps> = ({
 
           // 3. Register the unique code
           // Explicitly generating UUID for ID to prevent issues if default isn't set on DB
-          const newId = crypto.randomUUID();
+          const newId = generateId();
           
           const { error: insertError } = await supabase.from('referral_codes').insert({
               id: newId,
@@ -195,7 +196,7 @@ const ReferralProgram: React.FC<ReferralProgramProps> = ({
           const { error: ledgerError } = await supabase
               .from('wallet_ledger')
               .insert({
-                  id: crypto.randomUUID(),
+                  id: generateId(),
                   user_id: userId,
                   amount: -5.99,
                   balance_after: newBalance,
@@ -258,7 +259,7 @@ const ReferralProgram: React.FC<ReferralProgramProps> = ({
           const { error: ledgerError } = await supabase
               .from('wallet_ledger')
               .insert({
-                  id: crypto.randomUUID(),
+                  id: generateId(),
                   user_id: userId,
                   amount: -amount,
                   balance_after: newBalance,
