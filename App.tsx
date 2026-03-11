@@ -303,6 +303,7 @@ export const App: React.FC = () => {
         setEditingEvent(null);
     } else {
         console.error('Error adding event:', error);
+        throw new Error(error.message);
     }
   };
 
@@ -408,6 +409,7 @@ export const App: React.FC = () => {
 
     if (error) {
         console.error("Error updating event:", error);
+        throw new Error(error.message);
     }
   };
 
@@ -613,7 +615,9 @@ export const App: React.FC = () => {
             onUpdateFile={async (id, updates) => {
                 const dbUpdates: any = {};
                 if (updates.name !== undefined) dbUpdates.name = updates.name;
-                if (updates.parentId !== undefined) dbUpdates.parent_id = updates.parentId;
+                if ('parentId' in updates) dbUpdates.parent_id = updates.parentId;
+                
+                console.log("Updating file", id, "with", dbUpdates);
                 
                 // Optimistic update
                 setFiles(prevFiles => prevFiles.map(f => f.id === id ? { ...f, ...updates } : f));

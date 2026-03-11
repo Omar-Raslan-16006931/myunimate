@@ -32,7 +32,7 @@ export interface MaterialFile {
   type: "pdf" | "folder" | "image" | "google-doc" | "google-sheet" | "google-slide" | "other";
   size?: string;
   dateAdded: string;
-  parentId?: string;
+  parentId?: string | null;
   content?: string; 
   source?: "local" | "drive";
   webViewLink?: string;

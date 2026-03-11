@@ -30,6 +30,8 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ isOpen, onClose, onSave, 
   const [timeMode, setTimeMode] = useState<'time' | 'slot'>('time');
   const [showCoursePicker, setShowCoursePicker] = useState(false);
   const [addToGrades, setAddToGrades] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     if (initialData) {
@@ -224,100 +226,94 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ isOpen, onClose, onSave, 
                     </div>
                 )}
 
-                {/* 1. Type Selection (Moved to Top of Time section) */}
-                <div>
-                    <label style={{...styles.label, fontSize: '0.75rem'}}>Type <RequiredMark /></label>
-                    <select style={{...styles.select, padding: '12px'}} value={formData.type} onChange={e => setFormData({...formData, type: e.target.value as EventType})}>
-                        {Object.keys(eventColors).map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
-                    </select>
+                {/* Type, Date & Recurring Row */}
+                <div style={{display: "flex", flexWrap: "wrap", gap: "12px", background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '16px', border: theme.glassBorder}}>
+                    <div style={{flex: '1 1 120px'}}>
+                        <label style={{...styles.label, fontSize: '0.7rem', marginBottom: '4px'}}>Type <RequiredMark /></label>
+                        <select style={{...styles.select, padding: '10px', fontSize: '0.85rem'}} value={formData.type} onChange={e => setFormData({...formData, type: e.target.value as EventType})}>
+                            {Object.keys(eventColors).map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
+                        </select>
+                    </div>
+
+                    <div style={{flex: '1 1 140px'}}>
+                         <label style={{...styles.label, fontSize: '0.7rem', marginBottom: '4px'}}>{formData.isRecurring ? 'Weekly Day' : 'Date'} <RequiredMark /></label>
+                         {formData.isRecurring ? (
+                             <div style={{position: 'relative'}}>
+                                <select style={{...styles.select, padding: '10px', fontSize: '0.85rem'}} value={formData.dayOfWeek} onChange={e => setFormData({...formData, dayOfWeek: e.target.value})}>
+                                    {["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"].map(d => <option key={d} value={d}>{d}</option>)}
+                                </select>
+                                <div style={{position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none'}}>
+                                    <Calendar size={14} color={theme.textMuted} />
+                                </div>
+                             </div>
+                         ) : (
+                             <input type="date" style={{...styles.input, width: "100%", boxSizing: 'border-box', padding: '10px', fontSize: '0.85rem'}} value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} />
+                         )}
+                    </div>
+
+                    <div style={{flex: '1 1 100%', display: 'flex', alignItems: 'center', marginTop: '4px'}}>
+                       <label style={{...styles.label, marginBottom: 0, textTransform: 'none', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.85rem', color: '#fff'}}>
+                         <input type="checkbox" checked={formData.isRecurring} onChange={e => setFormData({...formData, isRecurring: e.target.checked})} style={{width: '16px', height: '16px', accentColor: theme.accent, cursor: 'pointer'}} /> 
+                         <span>Repeat Weekly</span>
+                       </label>
+                    </div>
                 </div>
 
-                {/* 2. Date/Day Selection */}
-                <div>
-                     <label style={{...styles.label, fontSize: '0.75rem'}}>{formData.isRecurring ? 'Weekly Day' : 'Date'} <RequiredMark /></label>
-                     {formData.isRecurring ? (
-                         <div style={{position: 'relative'}}>
-                            <select style={{...styles.select, padding: '12px'}} value={formData.dayOfWeek} onChange={e => setFormData({...formData, dayOfWeek: e.target.value})}>
-                                {["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"].map(d => <option key={d} value={d}>{d}</option>)}
-                            </select>
-                            <div style={{position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none'}}>
-                                <Calendar size={16} color={theme.textMuted} />
-                            </div>
-                         </div>
-                     ) : (
-                         <input type="date" style={{...styles.input, width: "100%", boxSizing: 'border-box', padding: '12px 8px 12px 12px'}} value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} />
-                     )}
-                </div>
-
-                {/* 3. Recurring Checkbox (Moved Below Date) */}
-                <div style={{background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '12px', border: theme.glassBorder, boxSizing: 'border-box'}}>
-                   <label style={{...styles.label, marginBottom: 0, textTransform: 'none', display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', fontSize: '0.9rem', color: '#fff', width: '100%'}}>
-                     <div style={{position: 'relative', display: 'flex', alignItems: 'center'}}>
-                         <input type="checkbox" checked={formData.isRecurring} onChange={e => setFormData({...formData, isRecurring: e.target.checked})} style={{width: '20px', height: '20px', accentColor: theme.accent, cursor: 'pointer'}} /> 
-                     </div>
-                     <span>Repeat Weekly (Base Schedule)</span>
-                   </label>
-                </div>
-
-                {/* 4. Time Selection Section */}
-                <div style={{background: 'rgba(255,255,255,0.03)', borderRadius: '20px', padding: '20px', border: theme.glassBorder, boxSizing: 'border-box'}}>
-                    <label style={{...styles.label, marginBottom: '12px', color: '#fff', fontSize: '0.75rem'}}>Time & Duration <RequiredMark /></label>
-                    
-                    <div style={{display: 'flex', gap: '8px', marginBottom: '16px', background: 'rgba(0,0,0,0.2)', padding: '4px', borderRadius: '12px'}}>
-                        <button 
-                            onClick={() => setTimeMode('time')} 
-                            style={{
-                                flex: 1,
-                                padding: '8px 10px', 
-                                borderRadius: '10px',
-                                border: 'none',
-                                background: timeMode === 'time' ? theme.accent : 'transparent', 
-                                color: timeMode === 'time' ? '#fff' : theme.textMuted,
-                                fontWeight: 700,
-                                fontSize: '0.8rem',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s',
-                            }}
-                        >
-                            Specific Time
-                        </button>
-                        <button 
-                            onClick={() => setTimeMode('slot')} 
-                            style={{
-                                flex: 1,
-                                padding: '8px 10px', 
-                                borderRadius: '10px',
-                                border: 'none',
-                                background: timeMode === 'slot' ? theme.accent : 'transparent', 
-                                color: timeMode === 'slot' ? '#fff' : theme.textMuted,
-                                fontWeight: 700,
-                                fontSize: '0.8rem',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s',
-                            }}
-                        >
-                            Select Slot
-                        </button>
+                {/* Time Selection Section */}
+                <div style={{background: 'rgba(255,255,255,0.02)', borderRadius: '16px', padding: '12px', border: theme.glassBorder, boxSizing: 'border-box'}}>
+                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px'}}>
+                        <label style={{...styles.label, marginBottom: 0, color: '#fff', fontSize: '0.75rem'}}>Time & Duration <RequiredMark /></label>
+                        <div style={{display: 'flex', background: 'rgba(0,0,0,0.3)', borderRadius: '8px', padding: '2px'}}>
+                            <button 
+                                onClick={() => setTimeMode('time')} 
+                                style={{
+                                    padding: '4px 8px', 
+                                    borderRadius: '6px',
+                                    border: 'none',
+                                    background: timeMode === 'time' ? theme.accent : 'transparent', 
+                                    color: timeMode === 'time' ? '#fff' : theme.textMuted,
+                                    fontWeight: 600,
+                                    fontSize: '0.7rem',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s',
+                                }}
+                            >
+                                Custom
+                            </button>
+                            <button 
+                                onClick={() => setTimeMode('slot')} 
+                                style={{
+                                    padding: '4px 8px', 
+                                    borderRadius: '6px',
+                                    border: 'none',
+                                    background: timeMode === 'slot' ? theme.accent : 'transparent', 
+                                    color: timeMode === 'slot' ? '#fff' : theme.textMuted,
+                                    fontWeight: 600,
+                                    fontSize: '0.7rem',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s',
+                                }}
+                            >
+                                Slot
+                            </button>
+                        </div>
                     </div>
 
                     {timeMode === 'time' ? (
                         <div style={{display: "flex", flexWrap: "wrap", gap: "12px", animation: "fadeIn 0.2s"}}>
                             <div style={{flex: '1 1 120px'}}>
-                                <label style={{...styles.label, fontSize: '0.7rem'}}>Starts At</label>
-                                <div style={{position: 'relative'}}>
-                                    <input type="time" style={{...styles.input, width: "100%", boxSizing: 'border-box', padding: '10px'}} value={formData.startTime} onChange={e => setFormData({...formData, startTime: e.target.value})} />
-                                </div>
+                                <label style={{...styles.label, fontSize: '0.7rem', marginBottom: '4px'}}>Starts At</label>
+                                <input type="time" style={{...styles.input, width: "100%", boxSizing: 'border-box', padding: '10px', fontSize: '0.85rem'}} value={formData.startTime} onChange={e => setFormData({...formData, startTime: e.target.value})} />
                             </div>
                             <div style={{flex: '1 1 120px'}}>
-                                <label style={{...styles.label, fontSize: '0.7rem'}}>Duration (Min)</label>
-                                <input type="number" style={{...styles.input, width: "100%", boxSizing: 'border-box', padding: '10px'}} value={formData.durationMinutes} onChange={e => setFormData({...formData, durationMinutes: parseInt(e.target.value) || 0})} />
+                                <label style={{...styles.label, fontSize: '0.7rem', marginBottom: '4px'}}>Duration (Min)</label>
+                                <input type="number" style={{...styles.input, width: "100%", boxSizing: 'border-box', padding: '10px', fontSize: '0.85rem'}} value={formData.durationMinutes} onChange={e => setFormData({...formData, durationMinutes: parseInt(e.target.value) || 0})} />
                             </div>
                         </div>
                     ) : (
                         <div style={{animation: "fadeIn 0.2s"}}>
-                            <label style={{...styles.label, fontSize: '0.7rem'}}>Available Slots</label>
                             <select 
-                                style={{...styles.select, padding: '10px'}} 
+                                style={{...styles.select, padding: '10px', fontSize: '0.85rem'}} 
                                 onChange={handleSlotChange}
                                 defaultValue=""
                             >
@@ -343,13 +339,40 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ isOpen, onClose, onSave, 
                     <label style={styles.label}>Description</label>
                     <textarea style={{...styles.input, width: "100%", boxSizing: 'border-box', minHeight: '100px', resize: 'none', lineHeight: '1.5'}} placeholder="Details about the event..." value={formData.description || ''} onChange={e => setFormData({...formData, description: e.target.value})} />
                 </div>
+                
+                {saveError && (
+                    <div style={{color: theme.danger, fontSize: '0.85rem', marginTop: '8px', textAlign: 'center', background: 'rgba(239, 68, 68, 0.1)', padding: '8px', borderRadius: '8px'}}>
+                        {saveError}
+                    </div>
+                )}
             </div>
 
             <button 
-                style={{...styles.button, width: "100%", justifyContent: "center", marginTop: "32px", padding: "18px", fontSize: '1.1rem', boxShadow: '0 8px 25px rgba(139, 92, 246, 0.4)'}} 
-                onClick={() => onSave(formData, addToGrades)}
+                style={{
+                    ...styles.button, 
+                    width: "100%", 
+                    justifyContent: "center", 
+                    marginTop: "32px", 
+                    padding: "18px", 
+                    fontSize: '1.1rem', 
+                    boxShadow: '0 8px 25px rgba(139, 92, 246, 0.4)',
+                    opacity: isSaving ? 0.7 : 1,
+                    cursor: isSaving ? 'not-allowed' : 'pointer'
+                }} 
+                disabled={isSaving}
+                onClick={async () => {
+                    setIsSaving(true);
+                    setSaveError(null);
+                    try {
+                        await onSave(formData, addToGrades);
+                    } catch (err: any) {
+                        setSaveError(err.message || "Failed to save event. Please try again.");
+                    } finally {
+                        setIsSaving(false);
+                    }
+                }}
             >
-                {formData.id ? "Update Event" : "Add to Schedule"}
+                {isSaving ? <Loader2 size={20} className="spin" style={{animation: "spin 1s linear infinite"}} /> : (formData.id ? "Update Event" : "Add to Schedule")}
             </button>
         </div>
         <style>{`
