@@ -3,6 +3,7 @@ import { Users, Plus, MessageSquare, FileText, Calendar, ArrowLeft, Send, Link a
 import { supabase } from '../lib/supabase';
 import { StudyGroup, StudyGroupMessage, StudyGroupDocument, StudyGroupSession } from '../types';
 import { theme, styles } from '../theme';
+import { generateId } from '../constants';
 
 interface StudyGroupsViewProps {
   onBack: () => void;
@@ -115,7 +116,7 @@ export const StudyGroupsView: React.FC<StudyGroupsViewProps> = ({ onBack, userId
     if (!newGroupName.trim()) return;
     
     const newGroup = {
-      id: crypto.randomUUID(),
+      id: generateId(),
       name: newGroupName,
       description: newGroupDesc,
       created_by: userId
@@ -157,7 +158,7 @@ export const StudyGroupsView: React.FC<StudyGroupsViewProps> = ({ onBack, userId
     if (!newMessage.trim() || !activeGroup) return;
     
     const msg = {
-      id: crypto.randomUUID(),
+      id: generateId(),
       group_id: activeGroup.id,
       user_id: userId,
       message: newMessage
@@ -179,7 +180,7 @@ export const StudyGroupsView: React.FC<StudyGroupsViewProps> = ({ onBack, userId
       if (!url) return;
 
       const doc = {
-          id: crypto.randomUUID(),
+          id: generateId(),
           group_id: activeGroup.id,
           user_id: userId,
           title,
@@ -200,7 +201,7 @@ export const StudyGroupsView: React.FC<StudyGroupsViewProps> = ({ onBack, userId
       const duration = prompt("Duration (minutes):", "60");
       
       const session = {
-          id: crypto.randomUUID(),
+          id: generateId(),
           group_id: activeGroup.id,
           created_by: userId,
           title,

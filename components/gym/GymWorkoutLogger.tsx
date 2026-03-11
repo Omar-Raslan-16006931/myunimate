@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { WorkoutSession, WorkoutExercise, MuscleGroup, WorkoutRoutine, ExerciseDefinition, Equipment, GymSettings, ExerciseSet, ActiveGymState } from '../../types';
 import { theme } from '../../theme';
+import { generateId } from '../../constants';
 
 // --- HELPERS ---
 
@@ -330,8 +331,8 @@ export const GymWorkoutLogger: React.FC<WorkoutLoggerProps> = ({
         // Keep reps/weight/time from previous session as targets (Pre-filled)
         initialExercises = previousSession.exercises.map(ex => ({
             ...ex,
-            id: crypto.randomUUID(),
-            sets: ex.sets.map(s => ({ ...s, id: crypto.randomUUID(), completed: false }))
+            id: generateId(),
+            sets: ex.sets.map(s => ({ ...s, id: generateId(), completed: false }))
         }));
     } else if (routine) {
         sessionName = routine.name;
@@ -342,15 +343,15 @@ export const GymWorkoutLogger: React.FC<WorkoutLoggerProps> = ({
             if (lastSets) newLastValues[ex.name] = lastSets;
 
             return {
-                id: crypto.randomUUID(), name: ex.name, muscleGroup: ex.muscleGroup,
-                sets: [{ id: crypto.randomUUID(), weight: 0, reps: 0, completed: false }], 
+                id: generateId(), name: ex.name, muscleGroup: ex.muscleGroup,
+                sets: [{ id: generateId(), weight: 0, reps: 0, completed: false }], 
                 restTime: ex.restTime 
             };
         });
     }
 
     const newSession: WorkoutSession = {
-      id: crypto.randomUUID(), name: sessionName, 
+      id: generateId(), name: sessionName, 
       startTime: Date.now(), endTime: 0, exercises: initialExercises, routineId: routineId
     };
 
@@ -402,12 +403,12 @@ export const GymWorkoutLogger: React.FC<WorkoutLoggerProps> = ({
     } else if (updateRoutineChecked && !activeSession.routineId) {
         // Save as NEW routine
         const newRoutine: WorkoutRoutine = {
-            id: crypto.randomUUID(),
+            id: generateId(),
             name: activeSession.name,
             exercises: activeSession.exercises.map(ex => {
                 const originalDef = exercises.find(e => e.name === ex.name);
                 return {
-                    id: crypto.randomUUID(),
+                    id: generateId(),
                     name: ex.name,
                     muscleGroup: ex.muscleGroup as MuscleGroup,
                     equipment: originalDef?.equipment || 'Other',
@@ -435,8 +436,8 @@ export const GymWorkoutLogger: React.FC<WorkoutLoggerProps> = ({
       }
 
       const newEx: WorkoutExercise = {
-          id: crypto.randomUUID(), name: exDef.name, muscleGroup: exDef.muscleGroup,
-          sets: [{ id: crypto.randomUUID(), weight: 0, reps: 0, completed: false }], 
+          id: generateId(), name: exDef.name, muscleGroup: exDef.muscleGroup,
+          sets: [{ id: generateId(), weight: 0, reps: 0, completed: false }], 
           restTime: exDef.restTime
       };
       
@@ -522,7 +523,7 @@ export const GymWorkoutLogger: React.FC<WorkoutLoggerProps> = ({
       if (!activeSession) return;
       const newExs = [...activeSession.exercises];
       const prev = newExs[exIdx].sets[newExs[exIdx].sets.length - 1];
-      newExs[exIdx].sets.push({ id: crypto.randomUUID(), weight: prev?.weight || 0, reps: prev?.reps || 0, completed: false });
+      newExs[exIdx].sets.push({ id: generateId(), weight: prev?.weight || 0, reps: prev?.reps || 0, completed: false });
       onUpdateActiveGymState({ ...activeGymState, session: { ...activeSession, exercises: newExs } });
   };
 

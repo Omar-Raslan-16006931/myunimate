@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { CourseGrade } from '../types';
+import { generateId } from '../constants';
 import { Plus, GraduationCap, BookOpen, Trash2, AlertTriangle, X, Calculator, ArrowLeft, Save, CheckCircle2, RotateCcw, ChevronDown, Check } from 'lucide-react';
 import { styles } from '../theme';
 
@@ -413,7 +414,7 @@ const GPACalculator = ({ courses, onBack }: { courses: CourseGrade[], onBack: ()
 
     const addSemester = () => {
         setSemesters([...semesters, { 
-            id: crypto.randomUUID(), 
+            id: generateId(), 
             name: `Semester ${semesters.length + 1}`, 
             courses: [] 
         }]);
@@ -425,7 +426,7 @@ const GPACalculator = ({ courses, onBack }: { courses: CourseGrade[], onBack: ()
                 return {
                     ...sem,
                     courses: [...sem.courses, { 
-                        id: crypto.randomUUID(), 
+                        id: generateId(), 
                         name: 'New Course', 
                         credits: 3, 
                         gradePoint: currentSystem.scale[0].value, 
@@ -474,7 +475,7 @@ const GPACalculator = ({ courses, onBack }: { courses: CourseGrade[], onBack: ()
             const pct = stats.performance;
             const grade = currentSystem.scale.find(g => pct >= g.min) || currentSystem.scale[currentSystem.scale.length - 1];
             return {
-                id: crypto.randomUUID(),
+                id: generateId(),
                 name: original.title,
                 credits: 3, // Default credit
                 gradePoint: grade.value,
@@ -485,7 +486,7 @@ const GPACalculator = ({ courses, onBack }: { courses: CourseGrade[], onBack: ()
 
         if (targetSemesterId === 'new') {
             const newSem: Semester = {
-                id: crypto.randomUUID(),
+                id: generateId(),
                 name: `Imported Semester`,
                 courses: newGPACourses
             };
