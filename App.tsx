@@ -134,6 +134,8 @@ export const App: React.FC = () => {
               isRecurring: e.is_recurring,
               dayOfWeek: e.day_of_week
           })));
+      } else {
+          setEvents([]);
       }
 
       // Fetch Profiles
@@ -393,7 +395,8 @@ export const App: React.FC = () => {
     if (!session?.user?.id) return;
     setEvents(events.map(e => e.id === updatedEvent.id ? updatedEvent : e));
     setViewingEvent(null);
-    const { error } = await supabase.from('events').update({
+    
+    const updatePayload = {
         title: updatedEvent.title,
         type: updatedEvent.type,
         start_time: updatedEvent.startTime,
@@ -405,10 +408,15 @@ export const App: React.FC = () => {
         description: updatedEvent.description,
         code: updatedEvent.code,
         "group": updatedEvent.group
-    }).eq('id', updatedEvent.id);
+    };
+    
+    console.log("Updating event in DB:", updatedEvent.id, updatePayload);
+    
+    const { error } = await supabase.from('events').update(updatePayload).eq('id', updatedEvent.id);
 
     if (error) {
         console.error("Error updating event:", error);
+        alert("Error updating event: " + error.message);
         throw new Error(error.message);
     }
   };

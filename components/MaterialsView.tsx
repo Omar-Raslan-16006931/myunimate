@@ -116,6 +116,44 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
       setActiveMenuId(null);
   };
 
+  const handleDownload = (file: MaterialFile) => {
+      if (!file.fileData) return;
+      
+      try {
+          // Try converting base64 to blob for more reliable downloading
+          if (file.fileData.startsWith('data:')) {
+              const arr = file.fileData.split(',');
+              const mime = arr[0].match(/:(.*?);/)?.[1] || 'application/octet-stream';
+              const bstr = atob(arr[1]);
+              let n = bstr.length;
+              const u8arr = new Uint8Array(n);
+              while(n--){
+                  u8arr[n] = bstr.charCodeAt(n);
+              }
+              const blob = new Blob([u8arr], {type: mime});
+              const url = URL.createObjectURL(blob);
+              const link = document.createElement('a');
+              link.href = url;
+              link.download = file.name;
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              setTimeout(() => URL.revokeObjectURL(url), 1000);
+              return;
+          }
+      } catch (e) {
+          console.warn("Blob conversion failed, falling back to direct link", e);
+      }
+
+      // Fallback
+      const link = document.createElement('a');
+      link.href = file.fileData;
+      link.download = file.name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+  };
+
   const displayedFiles = files.filter(f => {
       if (searchQuery) return f.name.toLowerCase().includes(searchQuery.toLowerCase());
       if (currentFolderId) return f.parentId === currentFolderId;
@@ -297,14 +335,13 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
 
                        <div className="flex items-center gap-2 shrink-0">
                            {viewingFile.fileData && (
-                               <a 
-                                   href={viewingFile.fileData} 
-                                   download={viewingFile.name}
+                               <button 
+                                   onClick={() => handleDownload(viewingFile)}
                                    className="bg-white/10 hover:bg-white/20 text-white p-2 rounded-lg transition-colors border border-white/10"
                                    title="Download"
                                >
                                    <Download size={18} />
-                               </a>
+                               </button>
                            )}
                            
                            <button 
@@ -347,7 +384,7 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
                                <File size={48} className="opacity-50" />
                                <p>Preview not available for this file type.</p>
                                {viewingFile.fileData && (
-                                   <a href={viewingFile.fileData} download={viewingFile.name} className="text-violet-400 hover:text-violet-300 underline">Download File</a>
+                                   <button onClick={() => handleDownload(viewingFile)} className="text-violet-400 hover:text-violet-300 underline">Download File</button>
                                )}
                            </div>
                        )}
