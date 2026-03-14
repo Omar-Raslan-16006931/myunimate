@@ -132,8 +132,7 @@ export const App: React.FC = () => {
               startTime: e.start_time,
               durationMinutes: e.duration_minutes,
               isRecurring: e.is_recurring,
-              dayOfWeek: e.day_of_week,
-              date: e.date
+              dayOfWeek: e.day_of_week
           })));
       } else {
           setEvents([]);
