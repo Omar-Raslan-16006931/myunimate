@@ -49,26 +49,37 @@ export const Dashboard: React.FC<DashboardProps> = ({ events, eventColors, onNav
   };
 
   const getEndTime = (start: string, duration: number) => {
-    const [h, m] = start.split(':').map(Number);
-    const d = new Date();
-    d.setHours(h, m, 0, 0);
-    d.setMinutes(d.getMinutes() + duration);
-    return d.toLocaleTimeString('en-GB', {hour: '2-digit', minute:'2-digit'});
+    if (!start || typeof start !== 'string' || !start.includes(':')) return "00:00";
+    try {
+        const [h, m] = start.split(':').map(Number);
+        if (isNaN(h) || isNaN(m)) return "00:00";
+        const d = new Date();
+        d.setHours(h, m, 0, 0);
+        d.setMinutes(d.getMinutes() + (duration || 0));
+        return d.toLocaleTimeString('en-GB', {hour: '2-digit', minute:'2-digit'});
+    } catch (e) {
+        return "00:00";
+    }
   };
 
   const getSlotName = (startTime: string) => {
-    if (!startTime) return "";
+    if (!startTime || typeof startTime !== 'string' || !startTime.includes(':')) return "";
     const strictMatch = periods.find(p => p.startTime === startTime);
     if (strictMatch) return `${strictMatch.label}`;
     
     // Fuzzy matching
-    const [h, m] = startTime.split(':').map(Number);
-    const val = h + m/60;
-    const found = periods.find(p => {
-        if (p.isBreak || !p.startVal) return false;
-        return Math.abs(val - p.startVal) < 0.01;
-    });
-    return found ? `${found.label}` : "";
+    try {
+        const [h, m] = startTime.split(':').map(Number);
+        if (isNaN(h) || isNaN(m)) return "";
+        const val = h + m/60;
+        const found = periods.find(p => {
+            if (p.isBreak || !p.startVal) return false;
+            return Math.abs(val - p.startVal) < 0.01;
+        });
+        return found ? `${found.label}` : "";
+    } catch (e) {
+        return "";
+    }
   };
 
   const handleDismissAnnouncement = () => {
@@ -90,14 +101,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ events, eventColors, onNav
     .sort((a, b) => a.startTime.localeCompare(b.startTime));
 
   const currentEvent = todayEvents.find(e => {
+    if (!e.startTime || typeof e.startTime !== 'string' || !e.startTime.includes(':')) return false;
     const [h, m] = e.startTime.split(':').map(Number);
+    if (isNaN(h) || isNaN(m)) return false;
     const startVal = h + m / 60;
-    const endVal = startVal + (e.durationMinutes / 60);
+    const endVal = startVal + ((e.durationMinutes || 0) / 60);
     return currentTimeVal >= startVal && currentTimeVal < endVal;
   });
 
   const nextEvent = todayEvents.find(e => {
+    if (!e.startTime || typeof e.startTime !== 'string' || !e.startTime.includes(':')) return false;
     const [h, m] = e.startTime.split(':').map(Number);
+    if (isNaN(h) || isNaN(m)) return false;
     const startVal = h + m / 60;
     return startVal > currentTimeVal;
   });
