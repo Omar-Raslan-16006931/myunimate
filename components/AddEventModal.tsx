@@ -252,7 +252,17 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ isOpen, onClose, onSave, 
                                 </div>
                              </div>
                          ) : (
-                             <input type="date" style={{...styles.input, width: "100%", boxSizing: 'border-box', padding: '10px', fontSize: '0.85rem'}} value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} />
+                             <input type="date" style={{...styles.input, width: "100%", boxSizing: 'border-box', padding: '10px', fontSize: '0.85rem'}} value={formData.date} onChange={e => {
+                                 const newDate = e.target.value;
+                                 let newDay = formData.dayOfWeek;
+                                 if (newDate) {
+                                     const [y, m, d] = newDate.split('-').map(Number);
+                                     const dateObj = new Date(y, m - 1, d);
+                                     const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+                                     newDay = days[dateObj.getDay()];
+                                 }
+                                 setFormData({...formData, date: newDate, dayOfWeek: newDay});
+                             }} />
                          )}
                     </div>
 
