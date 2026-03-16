@@ -132,7 +132,8 @@ export const App: React.FC = () => {
               startTime: e.start_time,
               durationMinutes: e.duration_minutes,
               isRecurring: e.is_recurring,
-              dayOfWeek: e.day_of_week
+              dayOfWeek: e.day_of_week,
+              date: e.date
           })));
       } else {
           setEvents([]);
@@ -288,15 +289,15 @@ export const App: React.FC = () => {
         schedule_id: newEvent.scheduleId,
         title: newEvent.title,
         type: newEvent.type,
-        start_time: newEvent.startTime,
-        duration_minutes: newEvent.durationMinutes,
+        start_time: newEvent.startTime || '09:00',
+        duration_minutes: newEvent.durationMinutes || 60,
         is_recurring: newEvent.isRecurring,
-        day_of_week: newEvent.dayOfWeek,
-        date: newEvent.date,
-        location: newEvent.location,
-        description: newEvent.description,
-        code: newEvent.code,
-        "group": newEvent.group
+        day_of_week: newEvent.isRecurring ? (newEvent.dayOfWeek || null) : null,
+        date: newEvent.isRecurring ? null : (newEvent.date || null),
+        location: newEvent.location || null,
+        description: newEvent.description || null,
+        code: newEvent.code || null,
+        "group": newEvent.group || null
     });
 
     if (!error) {
@@ -334,15 +335,15 @@ export const App: React.FC = () => {
         schedule_id: newEvent.scheduleId,
         title: newEvent.title,
         type: newEvent.type,
-        start_time: newEvent.startTime,
-        duration_minutes: newEvent.durationMinutes,
+        start_time: newEvent.startTime || '09:00',
+        duration_minutes: newEvent.durationMinutes || 60,
         is_recurring: newEvent.isRecurring,
-        day_of_week: newEvent.dayOfWeek,
-        date: newEvent.date,
-        location: newEvent.location,
-        description: newEvent.description,
-        code: newEvent.code,
-        "group": newEvent.group
+        day_of_week: newEvent.isRecurring ? (newEvent.dayOfWeek || null) : null,
+        date: newEvent.isRecurring ? null : (newEvent.date || null),
+        location: newEvent.location || null,
+        description: newEvent.description || null,
+        code: newEvent.code || null,
+        "group": newEvent.group || null
     }));
 
     const { error } = await supabase.from('events').insert(dbEvents);
@@ -399,15 +400,15 @@ export const App: React.FC = () => {
     const updatePayload = {
         title: updatedEvent.title,
         type: updatedEvent.type,
-        start_time: updatedEvent.startTime,
-        duration_minutes: updatedEvent.durationMinutes,
+        start_time: updatedEvent.startTime || '09:00',
+        duration_minutes: updatedEvent.durationMinutes || 60,
         is_recurring: updatedEvent.isRecurring,
-        day_of_week: updatedEvent.dayOfWeek,
-        date: updatedEvent.date,
-        location: updatedEvent.location,
-        description: updatedEvent.description,
-        code: updatedEvent.code,
-        "group": updatedEvent.group
+        day_of_week: updatedEvent.isRecurring ? (updatedEvent.dayOfWeek || null) : null,
+        date: updatedEvent.isRecurring ? null : (updatedEvent.date || null),
+        location: updatedEvent.location || null,
+        description: updatedEvent.description || null,
+        code: updatedEvent.code || null,
+        "group": updatedEvent.group || null
     };
     
     console.log("Updating event in DB:", updatedEvent.id, updatePayload);

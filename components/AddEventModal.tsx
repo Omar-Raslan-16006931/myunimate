@@ -35,7 +35,12 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ isOpen, onClose, onSave, 
 
   useEffect(() => {
     if (initialData) {
-        setFormData({ ...formData, ...initialData });
+        setFormData({ 
+            ...formData, 
+            ...initialData,
+            dayOfWeek: initialData.dayOfWeek || "Saturday",
+            date: initialData.date || getLocalISOString()
+        });
         // Auto-detect mode if editing
         if (initialData.startTime) {
              const isSlot = periods.some(p => p.startTime === initialData.startTime);
