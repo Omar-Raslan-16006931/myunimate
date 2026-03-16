@@ -83,30 +83,39 @@ export const App: React.FC = () => {
 
   useEffect(() => {
     const initialize = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
-      if (session) {
-          await Promise.all([
-              fetchProfile(session.user.id),
-              fetchUserData(session.user.id)
-          ]);
-      } else {
-          setEvents(INITIAL_EVENTS);
-          setProfiles(INITIAL_PROFILES);
-          setActiveProfileId(INITIAL_PROFILES[0].id);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        setSession(session);
+        if (session) {
+            await Promise.all([
+                fetchProfile(session.user.id),
+                fetchUserData(session.user.id)
+            ]);
+        } else {
+            setEvents(INITIAL_EVENTS);
+            setProfiles(INITIAL_PROFILES);
+            setActiveProfileId(INITIAL_PROFILES[0].id);
+        }
+      } catch (error) {
+        console.error("Initialization error:", error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     initialize();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, currentSession) => {
       setSession(currentSession);
-      if (_event === 'SIGNED_IN') {
-          await Promise.all([
-              fetchProfile(currentSession.user.id),
-              fetchUserData(currentSession.user.id)
-          ]);
+      if (_event === 'SIGNED_IN' && currentSession) {
+          try {
+            await Promise.all([
+                fetchProfile(currentSession.user.id),
+                fetchUserData(currentSession.user.id)
+            ]);
+          } catch (error) {
+            console.error("Auth change error:", error);
+          }
       }
       else if (_event === 'SIGNED_OUT') {
           setProfile(null);
@@ -283,6 +292,14 @@ export const App: React.FC = () => {
         group: eventData.group
     };
     
+    // Ensure dayOfWeek is set for non-recurring events if date is provided
+    if (!newEvent.isRecurring && newEvent.date && !newEvent.dayOfWeek) {
+        const [y, m, d] = newEvent.date.split('-').map(Number);
+        const dateObj = new Date(y, m - 1, d);
+        const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+        newEvent.dayOfWeek = days[dateObj.getDay()];
+    }
+
     const insertPayload = {
         id: newEvent.id,
         user_id: session.user.id,
@@ -317,21 +334,35 @@ export const App: React.FC = () => {
   const onAddEvents = async (eventsData: Partial<ScheduleEvent>[], targetProfileId: string, addToCourses: boolean) => {
     if (!session?.user?.id) return;
     
-    const newEvents: ScheduleEvent[] = eventsData.map(eventData => ({
-        id: eventData.id || generateId(),
-        scheduleId: targetProfileId,
-        title: eventData.title || 'New Event',
-        type: eventData.type || 'study',
-        startTime: eventData.startTime || '09:00',
-        durationMinutes: eventData.durationMinutes || 60,
-        isRecurring: eventData.isRecurring || false,
-        dayOfWeek: eventData.dayOfWeek || null,
-        date: eventData.isRecurring ? null : (eventData.date || null),
-        location: eventData.location,
-        description: eventData.description,
-        code: eventData.code,
-        group: eventData.group
-    }));
+    const newEvents: ScheduleEvent[] = eventsData.map(eventData => {
+        const isRecurring = eventData.isRecurring || false;
+        const date = isRecurring ? null : (eventData.date || null);
+        let dayOfWeek = eventData.dayOfWeek || null;
+        
+        // Ensure dayOfWeek is set for non-recurring events if date is provided
+        if (!isRecurring && date && !dayOfWeek) {
+            const [y, m, d] = date.split('-').map(Number);
+            const dateObj = new Date(y, m - 1, d);
+            const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+            dayOfWeek = days[dateObj.getDay()];
+        }
+
+        return {
+            id: eventData.id || generateId(),
+            scheduleId: targetProfileId,
+            title: eventData.title || 'New Event',
+            type: eventData.type || 'study',
+            startTime: eventData.startTime || '09:00',
+            durationMinutes: eventData.durationMinutes || 60,
+            isRecurring,
+            dayOfWeek,
+            date,
+            location: eventData.location,
+            description: eventData.description,
+            code: eventData.code,
+            group: eventData.group
+        };
+    });
 
     const dbEvents = newEvents.map(newEvent => ({
         id: newEvent.id,
@@ -406,6 +437,14 @@ export const App: React.FC = () => {
         dayOfWeek: updatedEvent.dayOfWeek || null,
         date: updatedEvent.isRecurring ? null : (updatedEvent.date || null)
     };
+
+    // Ensure dayOfWeek is set for non-recurring events if date is provided
+    if (!finalEvent.isRecurring && finalEvent.date && !finalEvent.dayOfWeek) {
+        const [y, m, d] = finalEvent.date.split('-').map(Number);
+        const dateObj = new Date(y, m - 1, d);
+        const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+        finalEvent.dayOfWeek = days[dateObj.getDay()];
+    }
 
     setEvents(events.map(e => e.id === finalEvent.id ? finalEvent : e));
     setViewingEvent(null);
