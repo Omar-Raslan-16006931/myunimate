@@ -99,6 +99,13 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
       const file = e.target.files?.[0];
       if (!file) return;
 
+      // Supabase row size limit is typically ~1-2MB for free tier base64 strings
+      if (file.size > 2 * 1024 * 1024) {
+          alert("File is too large. Please upload files smaller than 2MB.");
+          if (fileInputRef.current) fileInputRef.current.value = '';
+          return;
+      }
+
       const reader = new FileReader();
       reader.onload = (event) => {
           const base64 = event.target?.result as string;
@@ -121,6 +128,11 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
               parentId: currentFolderId || undefined
           };
           onAddFile(newFile);
+          
+          // Reset input so the same file can be selected again
+          if (fileInputRef.current) {
+              fileInputRef.current.value = '';
+          }
       };
       reader.readAsDataURL(file);
   };

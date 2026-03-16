@@ -719,11 +719,16 @@ export const App: React.FC = () => {
                     mime_type: file.mimeType || null,
                     parent_id: file.parentId || null
                 };
+                
+                // Optimistic update
+                setFiles(prev => [...prev, file]);
+                
                 const { error } = await supabase.from('materials').insert(newFile);
-                if (!error) {
-                    setFiles([...files, file]);
-                } else {
+                if (error) {
                     console.error("Error adding file:", error);
+                    alert("Failed to save file. It might be too large.");
+                    // Rollback on error
+                    setFiles(prev => prev.filter(f => f.id !== file.id));
                 }
             }}
             onUpdateFile={async (id, updates) => {
@@ -743,7 +748,8 @@ export const App: React.FC = () => {
                 }
             }}
             onDeleteFile={async (id) => {
-                setFiles(files.filter(f => f.id !== id && f.parentId !== id));
+                // Optimistic update
+                setFiles(prev => prev.filter(f => f.id !== id && f.parentId !== id));
                 await supabase.from('materials').delete().eq('id', id);
                 await supabase.from('materials').delete().eq('parent_id', id);
             }}
