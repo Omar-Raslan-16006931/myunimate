@@ -413,9 +413,16 @@ const GPACalculator = ({ courses, onBack }: { courses: CourseGrade[], onBack: ()
     };
 
     const addSemester = () => {
+        let baseName = "Semester";
+        let name = `${baseName} ${semesters.length + 1}`;
+        let counter = semesters.length + 1;
+        while (semesters.some(s => s.name.toLowerCase() === name.toLowerCase())) {
+            counter++;
+            name = `${baseName} ${counter}`;
+        }
         setSemesters([...semesters, { 
             id: generateId(), 
-            name: `Semester ${semesters.length + 1}`, 
+            name: name, 
             courses: [] 
         }]);
     };
@@ -423,11 +430,18 @@ const GPACalculator = ({ courses, onBack }: { courses: CourseGrade[], onBack: ()
     const addCourse = (semesterId: string) => {
         setSemesters(semesters.map(sem => {
             if (sem.id === semesterId) {
+                let baseName = "New Course";
+                let name = baseName;
+                let counter = 1;
+                while (sem.courses.some(c => c.name.toLowerCase() === name.toLowerCase())) {
+                    name = `${baseName} (${counter})`;
+                    counter++;
+                }
                 return {
                     ...sem,
                     courses: [...sem.courses, { 
                         id: generateId(), 
-                        name: 'New Course', 
+                        name: name, 
                         credits: 3, 
                         gradePoint: currentSystem.scale[0].value, 
                         percent: '95', 
