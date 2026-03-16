@@ -439,7 +439,10 @@ export const App: React.FC = () => {
             const distinctCourses = new Map();
             newEvents.forEach(ev => {
                 if (ev.title && !distinctCourses.has(ev.title)) {
-                    distinctCourses.set(ev.title, ev.code);
+                    const exists = courses.some(c => c.title.toLowerCase() === ev.title.toLowerCase());
+                    if (!exists) {
+                        distinctCourses.set(ev.title, ev.code);
+                    }
                 }
             });
             
@@ -685,10 +688,19 @@ export const App: React.FC = () => {
             onSelectCourse={setSelectedCourseId}
             onAddCourse={async () => {
                 if (!session?.user?.id) return;
+                
+                let baseTitle = "New Course";
+                let title = baseTitle;
+                let counter = 1;
+                while (courses.some(c => c.title.toLowerCase() === title.toLowerCase())) {
+                    title = `${baseTitle} (${counter})`;
+                    counter++;
+                }
+
                 const newCourse = {
                     id: generateId(),
                     user_id: session.user.id,
-                    title: "New Course",
+                    title: title,
                     target_grade: "95",
                     categories: []
                 };
@@ -793,10 +805,19 @@ export const App: React.FC = () => {
             onSelectCourse={setSelectedCourseId}
             onAddCourse={async () => {
                 if (!session?.user?.id) return;
+                
+                let baseTitle = "New Course";
+                let title = baseTitle;
+                let counter = 1;
+                while (courses.some(c => c.title.toLowerCase() === title.toLowerCase())) {
+                    title = `${baseTitle} (${counter})`;
+                    counter++;
+                }
+
                 const newCourse = {
                     id: generateId(),
                     user_id: session.user.id,
-                    title: "New Course",
+                    title: title,
                     target_grade: "95",
                     categories: []
                 };
@@ -953,16 +974,19 @@ export const App: React.FC = () => {
             else await onAddEvent(data);
 
             if (addToGrades && data.title && session?.user?.id) {
-                const newCourse = {
-                    id: generateId(),
-                    user_id: session.user.id,
-                    title: data.title,
-                    code: data.code,
-                    target_grade: "95",
-                    categories: []
-                };
-                const { error } = await supabase.from('courses').insert(newCourse);
-                if (!error) setCourses([...courses, { ...newCourse, targetGrade: newCourse.target_grade }]);
+                const exists = courses.some(c => c.title.toLowerCase() === data.title.toLowerCase());
+                if (!exists) {
+                    const newCourse = {
+                        id: generateId(),
+                        user_id: session.user.id,
+                        title: data.title,
+                        code: data.code,
+                        target_grade: "95",
+                        categories: []
+                    };
+                    const { error } = await supabase.from('courses').insert(newCourse);
+                    if (!error) setCourses([...courses, { ...newCourse, targetGrade: newCourse.target_grade }]);
+                }
             }
             setIsAddModalOpen(false);
         }}

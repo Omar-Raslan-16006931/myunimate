@@ -238,7 +238,14 @@ const UniversalGradeCalculator: React.FC<UniversalGradeCalculatorProps> = ({ cou
     const updateCourse = (updates: Partial<CourseGrade>) => onUpdate({ ...course, ...updates });
     
     const addCategory = () => {
-        const newCat: GradeCategory = { id: generateId(), name: "New Category", weight: "20", dropLowest: "0", items: [] };
+        let baseName = "New Category";
+        let name = baseName;
+        let counter = 1;
+        while (course.categories.some(c => c.name.toLowerCase() === name.toLowerCase())) {
+            name = `${baseName} (${counter})`;
+            counter++;
+        }
+        const newCat: GradeCategory = { id: generateId(), name: name, weight: "20", dropLowest: "0", items: [] };
         updateCourse({ categories: [...course.categories, newCat] });
     };
 
@@ -253,7 +260,19 @@ const UniversalGradeCalculator: React.FC<UniversalGradeCalculatorProps> = ({ cou
     };
 
     const addItem = (catId: string) => {
-        const newCats = course.categories.map(c => c.id === catId ? { ...c, items: [...c.items, { id: generateId(), name: "", score: "", total: "100", active: true }] } : c);
+        const newCats = course.categories.map(c => {
+            if (c.id === catId) {
+                let baseName = "New Item";
+                let name = baseName;
+                let counter = 1;
+                while (c.items.some(i => (i.name || "").toLowerCase() === name.toLowerCase())) {
+                    name = `${baseName} (${counter})`;
+                    counter++;
+                }
+                return { ...c, items: [...c.items, { id: generateId(), name: name, score: "", total: "100", active: true }] };
+            }
+            return c;
+        });
         updateCourse({ categories: newCats });
     };
 
