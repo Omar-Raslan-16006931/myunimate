@@ -54,6 +54,9 @@ Return ONLY the JSON array. Ensure the date is in YYYY-MM-DD format.`;
 
   const promptText = importType === 'weekly' ? weeklyPrompt : examPrompt;
 
+  const [isImporting, setIsImporting] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+
   const handleCopyPrompt = () => {
     navigator.clipboard.writeText(promptText);
     setCopied(true);
@@ -78,22 +81,31 @@ Return ONLY the JSON array. Ensure the date is in YYYY-MM-DD format.`;
     }
   };
 
-  const handleFinalImport = () => {
-    const events: (Partial<ScheduleEvent> & { period_number?: number })[] = parsedItems.map(item => ({
-      title: item.course_name,
-      code: item.course_code,
-      location: item.room,
-      type: (item.type?.toLowerCase() as EventType) || (importType === 'exam' ? 'exam' : 'lecture'),
-      dayOfWeek: item.day,
-      date: item.date || null,
-      startTime: item.time_start,
-      durationMinutes: calculateDuration(item.time_start, item.time_end),
-      isRecurring: importType === 'weekly',
-      period_number: item.period_number
-    }));
+  const handleFinalImport = async () => {
+    setIsImporting(true);
+    setImportError(null);
+    try {
+      const events: (Partial<ScheduleEvent> & { period_number?: number })[] = parsedItems.map(item => ({
+        title: item.course_name,
+        code: item.course_code,
+        location: item.room,
+        type: (item.type?.toLowerCase() as EventType) || (importType === 'exam' ? 'exam' : 'lecture'),
+        dayOfWeek: item.day,
+        date: item.date || null,
+        startTime: item.time_start,
+        durationMinutes: calculateDuration(item.time_start, item.time_end),
+        isRecurring: importType === 'weekly',
+        period_number: item.period_number
+      }));
 
-    onImport(events, importMode, selectedProfileId, addToCourses);
-    onClose();
+      await onImport(events, importMode, selectedProfileId, addToCourses);
+      onClose();
+    } catch (err: any) {
+      console.error("Import error:", err);
+      setImportError(err.message || "An error occurred during import.");
+    } finally {
+      setIsImporting(false);
+    }
   };
 
   const calculateDuration = (start: string, end: string) => {
@@ -466,12 +478,19 @@ Return ONLY the JSON array. Ensure the date is in YYYY-MM-DD format.`;
                 ))}
               </div>
 
-              <button 
-                onClick={handleFinalImport}
-                style={{...styles.button, width: '100%', marginTop: '10px'}}
-              >
-                Finalize Import
-              </button>
+            {importError && (
+              <div style={{color: theme.danger, fontSize: '0.85rem', marginTop: '10px', padding: '12px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '12px', textAlign: 'center'}}>
+                {importError}
+              </div>
+            )}
+
+            <button 
+              onClick={handleFinalImport}
+              disabled={isImporting}
+              style={{...styles.button, width: '100%', marginTop: '10px', opacity: isImporting ? 0.7 : 1, justifyContent: 'center'}}
+            >
+              {isImporting ? <Loader2 size={20} className="spin" style={{animation: "spin 1s linear infinite"}} /> : `Finalize Import (${parsedItems.length} items)`}
+            </button>
             </div>
           )}
         </div>

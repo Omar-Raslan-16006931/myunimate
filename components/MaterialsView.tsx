@@ -1,7 +1,8 @@
 
 import React, { useRef, useState } from 'react';
 import { MaterialFile } from '../types';
-import { Folder, FileText, Download, MoreVertical, Search, Plus, Image, FileSpreadsheet, File, ArrowLeft, Eye, Edit2, Trash2, FolderPlus, CornerUpLeft, X, Minus, RotateCcw, Move, MousePointer2 } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import { Folder, FileText, Download, MoreVertical, Search, Plus, Image, FileSpreadsheet, File, ArrowLeft, Eye, Edit2, Trash2, FolderPlus, CornerUpLeft, X, Minus, RotateCcw, Move, MousePointer2, FileType } from 'lucide-react';
 import { styles, theme } from '../theme';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 import { PdfViewer } from './PdfViewer';
@@ -15,6 +16,58 @@ interface MaterialsViewProps {
   onBack: () => void;
   onFileViewChange?: (isViewing: boolean) => void;
 }
+
+const ExcelViewer: React.FC<{ data: string }> = ({ data }) => {
+    const [sheets, setSheets] = useState<{ name: string, data: any[][] }[]>([]);
+    const [activeSheet, setActiveSheet] = useState(0);
+
+    React.useEffect(() => {
+        try {
+            const base64Data = data.split(',')[1];
+            const workbook = XLSX.read(base64Data, { type: 'base64' });
+            const result = workbook.SheetNames.map(name => ({
+                name,
+                data: XLSX.utils.sheet_to_json(workbook.Sheets[name], { header: 1 }) as any[][]
+            }));
+            setSheets(result);
+        } catch (e) {
+            console.error("Excel parsing error:", e);
+        }
+    }, [data]);
+
+    if (sheets.length === 0) return <div className="text-white p-4">Loading Excel data...</div>;
+
+    return (
+        <div className="w-full h-full flex flex-col bg-white overflow-hidden">
+            <div className="flex bg-gray-100 border-b overflow-x-auto shrink-0">
+                {sheets.map((sheet, i) => (
+                    <button
+                        key={i}
+                        onClick={() => setActiveSheet(i)}
+                        className={`px-4 py-2 text-xs font-bold border-r whitespace-nowrap ${activeSheet === i ? 'bg-white text-emerald-600 border-b-2 border-b-emerald-500' : 'text-gray-500 hover:bg-gray-200'}`}
+                    >
+                        {sheet.name}
+                    </button>
+                ))}
+            </div>
+            <div className="flex-1 overflow-auto p-4">
+                <table className="border-collapse w-full text-xs text-gray-800">
+                    <tbody>
+                        {sheets[activeSheet].data.map((row, i) => (
+                            <tr key={i}>
+                                {row.map((cell, j) => (
+                                    <td key={j} className="border border-gray-300 p-2 min-w-[80px]">
+                                        {cell?.toString() || ''}
+                                    </td>
+                                ))}
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+};
 
 const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdateFile, onDeleteFile, onBack, onFileViewChange }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -34,7 +87,9 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
           case 'folder': return <Folder size={32} className="text-yellow-400" fill="currentColor" fillOpacity={0.2} />;
           case 'pdf': return <FileText size={20} className="text-red-400" />;
           case 'image': return <Image size={20} className="text-blue-400" />;
-          case 'google-sheet': return <FileSpreadsheet size={20} className="text-emerald-400" />;
+          case 'excel': return <FileSpreadsheet size={20} className="text-emerald-400" />;
+          case 'powerpoint': return <FileType size={20} className="text-orange-400" />;
+          case 'word': return <FileText size={20} className="text-blue-500" />;
           default: return <File size={20} className="text-slate-400" />;
       }
   };
@@ -46,10 +101,18 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
       const reader = new FileReader();
       reader.onload = (event) => {
           const base64 = event.target?.result as string;
+          
+          let type = 'other';
+          if (file.type.includes('pdf')) type = 'pdf';
+          else if (file.type.includes('image')) type = 'image';
+          else if (file.type.includes('sheet') || file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) type = 'excel';
+          else if (file.type.includes('presentation') || file.name.endsWith('.pptx') || file.name.endsWith('.ppt')) type = 'powerpoint';
+          else if (file.type.includes('word') || file.name.endsWith('.docx') || file.name.endsWith('.doc')) type = 'word';
+
           const newFile: MaterialFile = {
               id: generateId(),
               name: file.name,
-              type: file.type.includes('pdf') ? 'pdf' : file.type.includes('image') ? 'image' : 'other',
+              type: type as any,
               size: (file.size / 1024 / 1024).toFixed(2) + ' MB',
               dateAdded: new Date().toISOString().split('T')[0],
               fileData: base64,
@@ -372,11 +435,13 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
                                         />
                                     </TransformComponent>
                                 </TransformWrapper>
-                            ) : viewingFile.type === 'pdf' ? (
-                                <PdfViewer file={viewingFile.fileData} />
-                            ) : (
-                                <iframe src={viewingFile.fileData} className="w-full h-full rounded-lg bg-white shadow-2xl border-0" title={viewingFile.name} />
-                            )
+                             ) : viewingFile.type === 'pdf' ? (
+                                 <PdfViewer file={viewingFile.fileData} />
+                             ) : viewingFile.type === 'excel' ? (
+                                 <ExcelViewer data={viewingFile.fileData} />
+                             ) : (
+                                 <iframe src={viewingFile.fileData} className="w-full h-full rounded-lg bg-white shadow-2xl border-0" title={viewingFile.name} />
+                             )
                        ) : viewingFile.webViewLink ? (
                            <iframe src={viewingFile.webViewLink} className="w-full h-full rounded-lg bg-white shadow-2xl" title={viewingFile.name} />
                        ) : (
