@@ -12,6 +12,7 @@ interface SmartImportModalProps {
 }
 
 const SmartImportModal: React.FC<SmartImportModalProps> = ({ onClose, onImport, profiles, activeProfileId }) => {
+  const [importType, setImportType] = useState<'weekly' | 'exam'>('weekly');
   const [jsonInput, setJsonInput] = useState('');
   const [parsedItems, setParsedItems] = useState<ExtractedScheduleItem[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -20,7 +21,7 @@ const SmartImportModal: React.FC<SmartImportModalProps> = ({ onClose, onImport, 
   const [selectedProfileId, setSelectedProfileId] = useState(activeProfileId);
   const [addToCourses, setAddToCourses] = useState(true);
 
-  const promptText = `I am sending you an image of my university schedule. Please extract all the courses and their details into a valid JSON array. Each object in the array should follow this structure:
+  const weeklyPrompt = `I am sending you an image of my university schedule. Please extract all the courses and their details into a valid JSON array. Each object in the array should follow this structure:
 [
   {
     "day": "Monday",
@@ -35,6 +36,23 @@ const SmartImportModal: React.FC<SmartImportModalProps> = ({ onClose, onImport, 
 ]
 Valid types: lecture, tutorial, lab, quiz, assignment, exam, study, other.
 Return ONLY the JSON array.`;
+
+  const examPrompt = `I am sending you an image of my exam schedule. Please extract all the exams and their details into a valid JSON array. Each object in the array should follow this structure:
+[
+  {
+    "date": "2026-05-15",
+    "day": "Friday",
+    "time_start": "09:00",
+    "time_end": "12:00",
+    "course_name": "Information Security",
+    "course_code": "INCS407",
+    "room": "A3.228",
+    "type": "exam"
+  }
+]
+Return ONLY the JSON array. Ensure the date is in YYYY-MM-DD format.`;
+
+  const promptText = importType === 'weekly' ? weeklyPrompt : examPrompt;
 
   const handleCopyPrompt = () => {
     navigator.clipboard.writeText(promptText);
@@ -65,11 +83,12 @@ Return ONLY the JSON array.`;
       title: item.course_name,
       code: item.course_code,
       location: item.room,
-      type: (item.type?.toLowerCase() as EventType) || 'lecture',
+      type: (item.type?.toLowerCase() as EventType) || (importType === 'exam' ? 'exam' : 'lecture'),
       dayOfWeek: item.day,
+      date: item.date || null,
       startTime: item.time_start,
       durationMinutes: calculateDuration(item.time_start, item.time_end),
-      isRecurring: true,
+      isRecurring: importType === 'weekly',
       period_number: item.period_number
     }));
 
@@ -126,13 +145,59 @@ Return ONLY the JSON array.`;
         <div style={{flex: 1, overflowY: 'auto', padding: '20px'}}>
           {parsedItems.length === 0 ? (
             <div style={{display: 'flex', flexDirection: 'column', gap: '24px'}}>
+              {/* Import Type Toggle */}
+              <div style={{background: 'rgba(255,255,255,0.03)', padding: '4px', borderRadius: '14px', display: 'flex', border: '1px solid rgba(255,255,255,0.05)'}}>
+                <button 
+                  onClick={() => setImportType('weekly')}
+                  style={{
+                    flex: 1,
+                    padding: '10px',
+                    borderRadius: '10px',
+                    border: 'none',
+                    background: importType === 'weekly' ? theme.accent : 'transparent',
+                    color: '#fff',
+                    fontSize: '0.8rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <Calendar size={14} /> Weekly Schedule
+                </button>
+                <button 
+                  onClick={() => setImportType('exam')}
+                  style={{
+                    flex: 1,
+                    padding: '10px',
+                    borderRadius: '10px',
+                    border: 'none',
+                    background: importType === 'exam' ? theme.accent : 'transparent',
+                    color: '#fff',
+                    fontSize: '0.8rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <Sparkles size={14} /> Exam Schedule
+                </button>
+              </div>
+
               {/* Instructions */}
               <div style={{background: 'rgba(139, 92, 246, 0.1)', border: '1px solid rgba(139, 92, 246, 0.2)', borderRadius: '20px', padding: '20px'}}>
                 <h3 style={{margin: '0 0 12px 0', fontSize: '0.9rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: theme.accent}}>
                   <Info size={16} /> How it works
                 </h3>
                 <ol style={{margin: 0, paddingLeft: '20px', fontSize: '0.85rem', color: 'rgba(255,255,255,0.8)', display: 'flex', flexDirection: 'column', gap: '8px'}}>
-                  <li>Take a clear photo or screenshot of your schedule.</li>
+                  <li>Take a clear photo or screenshot of your {importType === 'weekly' ? 'weekly' : 'exam'} schedule.</li>
                   <li>Copy the AI Prompt below.</li>
                   <li>Send the photo and the prompt to ChatGPT, Gemini, or Claude.</li>
                   <li>Paste the JSON response from the AI into the box below.</li>
@@ -328,19 +393,32 @@ Return ONLY the JSON array.`;
                       <div style={{display: 'flex', flexWrap: 'wrap', gap: '12px', fontSize: '0.75rem', color: theme.textMuted}}>
                         <div style={{display: 'flex', alignItems: 'center', gap: '4px'}}>
                           <Calendar size={12} />
-                          <select 
-                            value={item.day}
-                            onChange={e => {
-                              const newItems = [...parsedItems];
-                              newItems[idx].day = e.target.value;
-                              setParsedItems(newItems);
-                            }}
-                            style={{background: 'transparent', border: 'none', color: theme.textMuted, fontSize: '0.75rem', outline: 'none', cursor: 'pointer'}}
-                          >
-                            {['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].map(d => (
-                              <option key={d} value={d}>{d}</option>
-                            ))}
-                          </select>
+                          {importType === 'exam' ? (
+                            <input 
+                              type="date"
+                              value={item.date || ''}
+                              onChange={e => {
+                                const newItems = [...parsedItems];
+                                newItems[idx].date = e.target.value;
+                                setParsedItems(newItems);
+                              }}
+                              style={{background: 'transparent', border: 'none', color: theme.textMuted, fontSize: '0.75rem', outline: 'none', cursor: 'pointer'}}
+                            />
+                          ) : (
+                            <select 
+                              value={item.day}
+                              onChange={e => {
+                                const newItems = [...parsedItems];
+                                newItems[idx].day = e.target.value;
+                                setParsedItems(newItems);
+                              }}
+                              style={{background: 'transparent', border: 'none', color: theme.textMuted, fontSize: '0.75rem', outline: 'none', cursor: 'pointer'}}
+                            >
+                              {['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].map(d => (
+                                <option key={d} value={d}>{d}</option>
+                              ))}
+                            </select>
+                          )}
                         </div>
                         {importMode === 'full' && (
                           <div style={{display: 'flex', alignItems: 'center', gap: '4px'}}>

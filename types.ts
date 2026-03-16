@@ -55,6 +55,7 @@ export interface ChatMessage {
 
 export interface ExtractedScheduleItem {
     day: string;
+    date?: string; // YYYY-MM-DD for exams
     period_number: number;
     time_start: string;
     time_end: string;

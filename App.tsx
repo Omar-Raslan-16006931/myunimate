@@ -283,7 +283,7 @@ export const App: React.FC = () => {
         group: eventData.group
     };
     
-    const { error } = await supabase.from('events').insert({
+    const insertPayload = {
         id: newEvent.id,
         user_id: session.user.id,
         schedule_id: newEvent.scheduleId,
@@ -298,7 +298,11 @@ export const App: React.FC = () => {
         description: newEvent.description || null,
         code: newEvent.code || null,
         "group": newEvent.group || null
-    });
+    };
+    
+    console.log("Adding event to DB:", insertPayload);
+    
+    const { error } = await supabase.from('events').insert(insertPayload);
 
     if (!error) {
         setEvents(prev => [...prev, newEvent]);
