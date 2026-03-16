@@ -22,8 +22,9 @@ const ExcelViewer: React.FC<{ data: string }> = ({ data }) => {
     const [activeSheet, setActiveSheet] = useState(0);
 
     React.useEffect(() => {
+        if (!data) return;
         try {
-            const base64Data = data.split(',')[1];
+            const base64Data = data.includes(',') ? data.split(',')[1] : data;
             const workbook = XLSX.read(base64Data, { type: 'base64' });
             const result = workbook.SheetNames.map(name => ({
                 name,
@@ -439,6 +440,22 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
                                  <PdfViewer file={viewingFile.fileData} />
                              ) : viewingFile.type === 'excel' ? (
                                  <ExcelViewer data={viewingFile.fileData} />
+                             ) : viewingFile.type === 'powerpoint' || viewingFile.type === 'word' ? (
+                                 <div className="text-white/50 flex flex-col items-center gap-4">
+                                     <div className="w-20 h-20 bg-white/5 rounded-2xl flex items-center justify-center mb-2">
+                                         {getIcon(viewingFile.type)}
+                                     </div>
+                                     <div className="text-center">
+                                         <p className="text-white font-bold mb-1">Preview not available</p>
+                                         <p className="text-sm opacity-60">Direct preview for {viewingFile.type === 'powerpoint' ? 'PowerPoint' : 'Word'} files is not supported in browser.</p>
+                                     </div>
+                                     <button 
+                                         onClick={() => handleDownload(viewingFile)} 
+                                         className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-2 rounded-xl font-bold transition-all flex items-center gap-2 shadow-lg shadow-emerald-500/20"
+                                     >
+                                         <Download size={18} /> Download to View
+                                     </button>
+                                 </div>
                              ) : (
                                  <iframe src={viewingFile.fileData} className="w-full h-full rounded-lg bg-white shadow-2xl border-0" title={viewingFile.name} />
                              )

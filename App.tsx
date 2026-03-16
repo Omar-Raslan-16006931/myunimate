@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { AlertCircle, RefreshCw } from 'lucide-react';
 import { supabase } from './lib/supabase';
 import { ViewState, ScheduleEvent, ScheduleProfile, EventColorMap, EventType, PeriodDefinition, Announcement, ThemeMode, FoodItem, WaterLog, WorkoutSession, WorkoutRoutine, ExerciseDefinition, GymSettings, ActiveGymState, CourseGrade, ToDoItem, MaterialFile } from './types';
 import { INITIAL_EVENTS, INITIAL_PROFILES, INITIAL_COLORS, INITIAL_PERIODS, DEFAULT_GYM_SETTINGS, DEFAULT_ROUTINES, DEFAULT_EXERCISES, INITIAL_FILES, generateId } from './constants';
@@ -26,6 +27,54 @@ import PaymentPage from './components/PaymentPage';
 import CoursesView from './components/CoursesView';
 import MaterialsView from './components/MaterialsView';
 import { StudyGroupsView } from './components/StudyGroupsView';
+
+// Error Boundary Component
+class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean, error: Error | null}> {
+  constructor(props: {children: React.ReactNode}) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error("App Crash:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center p-6">
+          <div className="max-w-md w-full bg-white/5 border border-white/10 rounded-3xl p-8 text-center backdrop-blur-xl">
+            <div className="w-16 h-16 bg-red-500/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
+              <AlertCircle className="text-red-500" size={32} />
+            </div>
+            <h1 className="text-2xl font-bold text-white mb-2">Something went wrong</h1>
+            <p className="text-white/60 mb-8 text-sm">
+              The application encountered an unexpected error. This usually happens when data is malformed.
+            </p>
+            <div className="bg-black/20 rounded-xl p-4 mb-8 text-left overflow-auto max-h-32">
+              <code className="text-xs text-red-400 font-mono">
+                {this.state.error?.message || "Unknown error"}
+              </code>
+            </div>
+            <button 
+              onClick={() => window.location.reload()}
+              className="w-full bg-white text-black py-4 rounded-2xl font-bold hover:bg-white/90 transition-all flex items-center justify-center gap-2"
+            >
+              <RefreshCw size={20} />
+              Restart Application
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 export const App: React.FC = () => {
   const [session, setSession] = useState<any>(null);
@@ -882,7 +931,9 @@ export const App: React.FC = () => {
 
   return (
     <div style={styles.container} className={themeMode}>
-      {renderContent()}
+      <ErrorBoundary>
+        {renderContent()}
+      </ErrorBoundary>
       
       {view !== 'gym' && !isViewingFile && (
           <Navigation currentView={view} onNavigate={setView} />

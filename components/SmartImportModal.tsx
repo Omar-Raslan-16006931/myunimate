@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { X, Brain, Sparkles, Copy, Check, Info, AlertCircle, Calendar, Clock, MapPin } from 'lucide-react';
+import { X, Brain, Sparkles, Copy, Check, Info, AlertCircle, Calendar, Clock, MapPin, Loader2 } from 'lucide-react';
 import { ExtractedScheduleItem, ScheduleEvent, EventType, ScheduleProfile } from '../types';
 import { theme, styles } from '../theme';
 

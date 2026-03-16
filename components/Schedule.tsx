@@ -126,11 +126,16 @@ const Schedule: React.FC<ScheduleProps> = ({
   };
 
   const to12h = (time24: string) => {
-    if (!time24) return "";
-    const [h, m] = time24.split(":").map(Number);
-    const period = h >= 12 ? "PM" : "AM";
-    const h12 = h % 12 || 12;
-    return `${h12}:${m.toString().padStart(2, "0")} ${period}`;
+    if (!time24 || typeof time24 !== 'string' || !time24.includes(':')) return "";
+    try {
+        const [h, m] = time24.split(":").map(Number);
+        if (isNaN(h) || isNaN(m)) return "";
+        const period = h >= 12 ? "PM" : "AM";
+        const h12 = h % 12 || 12;
+        return `${h12}:${m.toString().padStart(2, "0")} ${period}`;
+    } catch (e) {
+        return "";
+    }
   };
 
   const formatDate = (date: Date) => {
@@ -138,18 +143,24 @@ const Schedule: React.FC<ScheduleProps> = ({
   };
 
   const getEventPeriodIndex = (timeStr: string): number => {
-    const [h, m] = timeStr.split(':').map(Number);
-    const val = h + m/60;
-    let closestIdx = -1;
-    let minDiff = 100;
-    periods.forEach((p, idx) => {
-      if (p.isBreak) return;
-      // Default to 0 if startVal is undefined (fallback)
-      const pVal = p.startVal || 0;
-      const diff = Math.abs(val - pVal);
-      if (diff < minDiff) { minDiff = diff; closestIdx = idx; }
-    });
-    return closestIdx;
+    if (!timeStr || typeof timeStr !== 'string' || !timeStr.includes(':')) return -1;
+    try {
+        const [h, m] = timeStr.split(':').map(Number);
+        if (isNaN(h) || isNaN(m)) return -1;
+        const val = h + m/60;
+        let closestIdx = -1;
+        let minDiff = 100;
+        periods.forEach((p, idx) => {
+          if (p.isBreak) return;
+          // Default to 0 if startVal is undefined (fallback)
+          const pVal = p.startVal || 0;
+          const diff = Math.abs(val - pVal);
+          if (diff < minDiff) { minDiff = diff; closestIdx = idx; }
+        });
+        return closestIdx;
+    } catch (e) {
+        return -1;
+    }
   };
 
   const getContrastColor = (hex: string) => {
