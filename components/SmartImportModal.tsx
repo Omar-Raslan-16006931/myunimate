@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { X, Brain, Sparkles, Copy, Check, Info, AlertCircle, Calendar, Clock, MapPin, Loader2 } from 'lucide-react';
 import { ExtractedScheduleItem, ScheduleEvent, EventType, ScheduleProfile } from '../types';
 import { theme, styles } from '../theme';
+import { logger } from '../utils/logger';
 
 interface SmartImportModalProps {
   onClose: () => void;
@@ -77,7 +78,7 @@ Return ONLY the JSON array. Ensure the date is in YYYY-MM-DD format.`;
       setParsedItems(parsed);
     } catch (err) {
       setError('Invalid JSON format. Please make sure you copied the entire array correctly.');
-      console.error(err);
+      logger.error('Error analyzing image:', err);
     }
   };
 
@@ -101,7 +102,7 @@ Return ONLY the JSON array. Ensure the date is in YYYY-MM-DD format.`;
       await onImport(events, importMode, selectedProfileId, addToCourses);
       onClose();
     } catch (err: any) {
-      console.error("Import error:", err);
+      logger.error("Import error:", err);
       setImportError(err.message || "An error occurred during import.");
     } finally {
       setIsImporting(false);

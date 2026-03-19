@@ -1,9 +1,11 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, ChevronRight, MapPin, Plus, Brain, ChevronDown, X, RotateCcw, Trash2, GripVertical } from 'lucide-react';
+import { ChevronLeft, ChevronRight, MapPin, Plus, Brain, ChevronDown, X, RotateCcw, Trash2, GripVertical, Download } from 'lucide-react';
 import { ScheduleEvent, EventColorMap, ScheduleProfile, PeriodDefinition } from '../types';
 import { getLocalISOString } from '../constants';
 import { theme, styles } from '../theme';
+import { generateICS, downloadICS } from '../utils/ics';
+import SyncCalendarModal from './SyncCalendarModal';
 
 interface ScheduleProps {
   events: ScheduleEvent[];
@@ -12,7 +14,6 @@ interface ScheduleProps {
   eventColors: EventColorMap;
   onProfileChange: (id: string) => void;
   onAddEventClick: () => void;
-  onSmartImportClick: () => void;
   onClearScheduleClick: () => void;
   onEventClick: (event: ScheduleEvent) => void;
   onUpdateEvent?: (event: Partial<ScheduleEvent>) => void;
@@ -26,7 +27,6 @@ const Schedule: React.FC<ScheduleProps> = ({
   eventColors,
   onProfileChange, 
   onAddEventClick,
-  onSmartImportClick,
   onClearScheduleClick,
   onEventClick,
   onUpdateEvent,
@@ -35,6 +35,7 @@ const Schedule: React.FC<ScheduleProps> = ({
   const [expandedSlot, setExpandedSlot] = useState<ScheduleEvent[] | null>(null);
   const [draggedEventId, setDraggedEventId] = useState<string | null>(null);
   const [draggedOverCell, setDraggedOverCell] = useState<{ day: string, periodIdx: number } | null>(null);
+  const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Helper to get the Saturday of the current week (Start of academic week)
@@ -394,10 +395,10 @@ const Schedule: React.FC<ScheduleProps> = ({
                 <Trash2 size={16} />
                </button>
                <button 
-                onClick={onSmartImportClick}
+                onClick={() => setIsSyncModalOpen(true)}
                 style={{
-                    background: 'rgba(139, 92, 246, 0.15)', 
-                    border: '1px solid rgba(139, 92, 246, 0.3)', 
+                    background: 'rgba(16, 185, 129, 0.15)', 
+                    border: '1px solid rgba(16, 185, 129, 0.3)', 
                     borderRadius: '50%', 
                     width: '36px', 
                     height: '36px', 
@@ -405,14 +406,14 @@ const Schedule: React.FC<ScheduleProps> = ({
                     justifyContent: 'center', 
                     display: 'flex',
                     alignItems: 'center',
-                    color: theme.accent,
+                    color: '#10b981',
                     cursor: 'pointer',
                     boxShadow: '0 5px 15px rgba(0,0,0,0.2)',
                     transition: 'all 0.2s'
                 }}
-                title="Smart Import"
+                title="Export to Calendar (ICS)"
                >
-                <Brain size={16} />
+                <Download size={16} />
                </button>
                <button style={{...styles.button, borderRadius: '50%', width: '36px', height: '36px', padding: 0, justifyContent: 'center', boxShadow: '0 5px 15px rgba(0,0,0,0.3)'}} onClick={onAddEventClick}>
                 <Plus size={16} />
@@ -555,6 +556,12 @@ const Schedule: React.FC<ScheduleProps> = ({
                 </div>
             </div>
         )}
+
+        <SyncCalendarModal 
+            isOpen={isSyncModalOpen} 
+            onClose={() => setIsSyncModalOpen(false)} 
+            events={events} 
+        />
     </div>
   );
 };

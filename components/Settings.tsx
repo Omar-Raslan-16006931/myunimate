@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../lib/supabase';
+import { logger } from '../utils/logger';
 // Added Crown to the lucide-react imports to fix 'Cannot find name Crown' error
 import { Plus, Trash2, CalendarDays, Palette, Layers, Pencil, Upload, ImageIcon, Loader2, LogOut, ChevronDown, ChevronUp, Columns, AlertTriangle, User, GraduationCap, Calendar, Building, Users, Moon, Sun, Check, X, Shield, Search, Ban, MessageSquare, Sparkles, Clock, ChevronRight, Ticket, Send, ArrowLeft, CheckCircle2, DollarSign, Heart, ExternalLink, Crown } from 'lucide-react';
 import { ScheduleProfile, EventColorMap, EventType, ScheduleEvent, PeriodDefinition, ThemeMode, ReferralCode, AppFeedback, FeedbackReply, ViewState } from '../types';
@@ -106,7 +107,7 @@ const SupportHistoryModal = ({ isOpen, onClose, userId }: { isOpen: boolean, onC
             await supabase.from('app_feedback').update({ status: 'unread' }).eq('id', activeTicket.id);
             setReplyText('');
         } catch (error) {
-            console.error(error);
+            logger.error('Error updating settings:', error);
             alert('Failed to send reply');
         } finally {
             setSendingReply(false);
@@ -333,7 +334,7 @@ const Settings: React.FC<SettingsProps> = ({
           } else query = query.limit(20);
           const { data } = await query;
           if (data) setUsers(data.map((u: any) => ({ ...u, email: u.settings?.account?.email || 'No Email', usage: u.settings?.usage || { total: 0, today: 0, features: {} } })));
-      } catch (err) { console.error(err); } finally { setIsLoadingUsers(false); }
+      } catch (err) { logger.error('Error loading users:', err); } finally { setIsLoadingUsers(false); }
   }, [debouncedSearch, isUserMgmtExpanded]);
 
   useEffect(() => { if (isUserMgmtExpanded) fetchUsers(); }, [fetchUsers, isUserMgmtExpanded]);
@@ -366,7 +367,7 @@ const Settings: React.FC<SettingsProps> = ({
           const { data, error } = await supabase.from('referral_codes').insert({ code: newReferralCode.trim().toUpperCase(), is_active: true, usage_count: 0, subscription_tier: newReferralTier }).select().single();
           if (data) { setReferralCodes([data, ...referralCodes]); setIsCreatingReferral(false); setNewReferralCode(''); }
           if (error) throw error;
-      } catch (err) { console.error(err); }
+      } catch (err) { logger.error('Error updating user role:', err); }
   };
 
   const toggleReferralCode = async (id: string, currentState: boolean) => { const { error } = await supabase.from('referral_codes').update({ is_active: !currentState }).eq('id', id); if (!error) setReferralCodes(referralCodes.map(c => c.id === id ? { ...c, is_active: !currentState } : c)); };
@@ -378,7 +379,7 @@ const Settings: React.FC<SettingsProps> = ({
         try {
             const { data } = await supabase.from('profiles').select('username').ilike('username', editForm.username.trim()).neq('id', accountInfo?.id || '').maybeSingle();
             setUsernameAvailable(!data);
-        } catch (err) { console.error(err); } finally { setIsCheckingUsername(false); }
+        } catch (err) { logger.error('Error checking username:', err); } finally { setIsCheckingUsername(false); }
     }, 500);
     return () => clearTimeout(timer);
   }, [editForm.username, isEditingAccount, accountInfo]);
@@ -506,20 +507,6 @@ const Settings: React.FC<SettingsProps> = ({
                     )}
 
                     {/* Appearance */}
-                    <div className="border-b border-white/[0.05] last:border-0">
-                        <div className="flex items-center justify-between p-4 px-5">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-2xl bg-white/5 flex items-center justify-center text-white/60">
-                                    {themeMode === 'dark' ? <Moon size={20} /> : <Sun size={20} />}
-                                </div>
-                                <h3 className="text-[15px] font-bold text-white tracking-tight">Appearance</h3>
-                            </div>
-                            <div className="bg-black/40 p-1 rounded-xl flex gap-1 border border-white/5">
-                                <button onClick={() => setThemeMode('light')} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${themeMode === 'light' ? 'bg-white text-black' : 'text-white/40'}`}>Light</button>
-                                <button onClick={() => setThemeMode('dark')} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${themeMode === 'dark' ? 'bg-white text-black' : 'text-white/40'}`}>Dark</button>
-                            </div>
-                        </div>
-                    </div>
                 </GroupCard>
 
                 {/* --- ACADEMIC ENGINE GROUP --- */}
@@ -629,27 +616,6 @@ const Settings: React.FC<SettingsProps> = ({
                     </div>
 
                     {/* AI Import */}
-                    <div className="p-5">
-                        <div className="flex items-center gap-3 mb-4">
-                            <div className="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center"><ImageIcon size={18} /></div>
-                            <h3 className="text-sm font-bold text-white">Smart Import</h3>
-                        </div>
-                        <div className="bg-black/40 border-2 border-dashed border-white/10 rounded-[24px] p-8 text-center cursor-pointer hover:border-violet-500/50 hover:bg-violet-500/5 transition-all group" onClick={() => fileInputRef.current?.click()}>
-                            {isAnalyzing ? (
-                                <div className="flex flex-col items-center gap-3">
-                                    <Loader2 size={32} className="animate-spin text-violet-400" />
-                                    <p className="text-xs font-bold text-violet-200">Processing Timetable...</p>
-                                </div>
-                            ) : (
-                                <div className="flex flex-col items-center gap-3">
-                                    <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center text-white/30 group-hover:text-violet-400 group-hover:scale-110 transition-all"><Upload size={24} /></div>
-                                    <p className="text-xs font-medium text-white/40">Upload Screenshot to Sync Schedule</p>
-                                </div>
-                            )}
-                            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={e => { if (e.target.files?.[0]) onImageUpload(e.target.files[0]); e.target.value = ''; }} />
-                        </div>
-                    </div>
-
                     <div className="h-px bg-white/[0.05] mx-5" />
 
                     {/* Support Buttons */}

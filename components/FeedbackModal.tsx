@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { X, Send, Loader2, MessageSquare, CheckCircle2, ChevronDown, Bug, Lightbulb, HelpCircle, AlertTriangle } from 'lucide-react';
 import { theme } from '../theme';
+import { logger } from '../utils/logger';
 
 interface FeedbackModalProps {
   isOpen: boolean;
@@ -38,7 +39,7 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose, userId }
       setMessage('');
       setCategory('Bug');
     } catch (err) {
-      console.error("Error sending feedback:", err);
+      logger.error("Error sending feedback:", err);
       alert("Failed to send feedback. Please try again.");
     } finally {
       setIsSubmitting(false);

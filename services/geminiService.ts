@@ -2,6 +2,7 @@
 import { GoogleGenAI, Type, FunctionDeclaration } from "@google/genai";
 import { ScheduleEvent, EventType, Macros, PeriodDefinition } from "../types";
 import { supabase } from "../lib/supabase";
+import { logger } from "../utils/logger";
 
 const MODEL_NAME = 'gemini-3-flash-preview';
 
@@ -50,7 +51,7 @@ const trackUsage = async (feature: string) => {
     }
   } catch (err) {
     // Silent fail to not disrupt user experience
-    console.warn("Failed to track AI usage", err);
+    logger.warn("Failed to track AI usage", err);
   }
 };
 
@@ -116,7 +117,7 @@ export const analyzeFoodText = async (description: string): Promise<Macros & { n
       fat: data.fat
     };
   } catch (error) {
-    console.error("Gemini Text Analysis Error:", error);
+    logger.error("Gemini Text Analysis Error:", error);
     throw error;
   }
 };
@@ -162,7 +163,7 @@ export const analyzeFoodImage = async (base64Image: string): Promise<Macros & { 
       fat: data.fat
     };
   } catch (error) {
-    console.error("Gemini Image Analysis Error:", error);
+    logger.error("Gemini Image Analysis Error:", error);
     throw error;
   }
 };
@@ -206,7 +207,7 @@ export const parseNaturalLanguageEvent = async (input: string, periods: PeriodDe
     if (!text) return null;
     return JSON.parse(text) as Partial<ScheduleEvent>;
   } catch (error) {
-    console.error("Autofill error:", error);
+    logger.error("Autofill error:", error);
     return null;
   }
 };
@@ -280,7 +281,7 @@ export const parseScheduleImage = async (base64Data: string): Promise<any[]> => 
     );
 
   } catch (error) {
-    console.error("Image Parse Error:", error);
+    logger.error("Image Parse Error:", error);
     return [];
   }
 };
@@ -358,7 +359,7 @@ export const getChatResponse = async (
 
         return { text: finalText, eventData };
     } catch (error) {
-        console.error("Chat Error:", error);
+        logger.error("Chat Error:", error);
         return { text: "I'm having trouble thinking right now." };
     }
 };
