@@ -4,7 +4,6 @@ import { supabase } from '../lib/supabase';
 import { StudyGroup, StudyGroupMessage, StudyGroupDocument, StudyGroupSession } from '../types';
 import { theme, styles } from '../theme';
 import { generateId } from '../constants';
-import { logger } from '../utils/logger';
 
 interface StudyGroupsViewProps {
   onBack: () => void;
@@ -68,7 +67,7 @@ export const StudyGroupsView: React.FC<StudyGroupsViewProps> = ({ onBack, userId
       if (error.code === '42P01') {
         setDbError('The Study Groups tables have not been created in your Supabase database yet. Please run the SQL script provided to create them.');
       } else {
-        logger.error('Error fetching groups:', error);
+        console.error('Error fetching groups:', error);
       }
     } else if (data) {
       setGroups(data);

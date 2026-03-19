@@ -1,7 +1,6 @@
 
 import React, { useState, memo, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { logger } from '../utils/logger';
 import { styles } from '../theme';
 import { Loader2, Mail, Lock, Sparkles, ArrowRight, User, GraduationCap, Calendar, Building, Users, LogIn, Check, AlertCircle, X, Ticket } from 'lucide-react';
 
@@ -71,7 +70,7 @@ function Auth({ onEnterTestMode }: AuthProps) {
              setUsernameAvailable(true);
           }
         } catch (err) {
-           logger.error("Error checking username:", err);
+           console.error("Error checking username:", err);
         } finally {
            setIsCheckingUsername(false);
         }
@@ -99,7 +98,7 @@ function Auth({ onEnterTestMode }: AuthProps) {
                   
                   setIsReferralValid(!!data);
               } catch (e) {
-                  logger.error("Error signing in with Google:", e);
+                  console.error(e);
               } finally {
                   setIsCheckingReferral(false);
               }
@@ -196,7 +195,7 @@ function Auth({ onEnterTestMode }: AuthProps) {
                      }
                  }
              } catch (updateError) {
-                 logger.warn("Failed to increment referral code count:", updateError);
+                 console.warn("Failed to increment referral code count:", updateError);
              }
         }
 
@@ -210,7 +209,7 @@ function Auth({ onEnterTestMode }: AuthProps) {
                         .update({ referred_by: verifiedReferralCode })
                         .eq('id', signUpData.user!.id);
                 } catch (err) {
-                    logger.warn("Manual profile update failed", err);
+                    console.warn("Manual profile update failed", err);
                 }
             }, 1000);
         }

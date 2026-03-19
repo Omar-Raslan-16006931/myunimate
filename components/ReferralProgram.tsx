@@ -6,7 +6,6 @@ import { supabase } from '../lib/supabase';
 import { WalletTransaction } from '../types';
 import { generateId } from '../constants';
 import ReferralTermsModal from './ReferralTermsModal';
-import { logger } from '../utils/logger';
 
 interface ReferralProgramProps {
   onBack: () => void;
@@ -149,7 +148,7 @@ const ReferralProgram: React.FC<ReferralProgramProps> = ({
           setReferralCode(uniqueCode);
 
       } catch (err: any) {
-          logger.error("Error creating code:", err.message || err);
+          console.error("Error creating code:", err.message || err);
           setCodeError(true);
       } finally {
           setIsRegisteringCode(false);
@@ -214,7 +213,7 @@ const ReferralProgram: React.FC<ReferralProgramProps> = ({
           setTimeout(() => setSuccessMessage(null), 3000);
 
       } catch (err: any) {
-          logger.error(err);
+          console.error(err);
           setErrorMessage(err.message || "Transaction failed");
       } finally {
           setIsProcessing(false);
@@ -280,7 +279,7 @@ const ReferralProgram: React.FC<ReferralProgramProps> = ({
           setTimeout(() => setSuccessMessage(null), 3000);
 
       } catch (err: any) {
-          logger.error(err);
+          console.error(err);
           setErrorMessage(err.message || "Cashout failed");
       } finally {
           setIsProcessing(false);
