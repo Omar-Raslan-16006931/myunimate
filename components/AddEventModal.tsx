@@ -5,6 +5,7 @@ import { parseNaturalLanguageEvent } from '../services/geminiService';
 import { styles, theme } from '../theme';
 import { getLocalISOString } from '../constants';
 import { X, Sparkles, Loader2, Wand2, BookOpen, ChevronRight, Calendar } from 'lucide-react';
+import { logger } from '../utils/logger';
 
 interface AddEventModalProps {
   isOpen: boolean;
@@ -77,7 +78,7 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ isOpen, onClose, onSave, 
         }
       }
     } catch (e) {
-      console.error(e);
+      logger.error('Error saving event:', e);
     } finally {
       setIsMagicLoading(false);
     }

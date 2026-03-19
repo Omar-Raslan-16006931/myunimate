@@ -11,13 +11,12 @@ interface DashboardProps {
   onNavigate: (view: any) => void;
   onEventClick: (event: ScheduleEvent) => void;
   onAddEventClick: () => void;
-  onSmartImportClick: () => void;
   periods: PeriodDefinition[];
   announcement: Announcement | null;
   username?: string;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ events, eventColors, onNavigate, onEventClick, onAddEventClick, onSmartImportClick, periods, announcement, username }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ events, eventColors, onNavigate, onEventClick, onAddEventClick, periods, announcement, username }) => {
   const [greeting, setGreeting] = useState("Good Morning");
   const [currentTime, setCurrentTime] = useState("");
   const [currentDate, setCurrentDate] = useState("");
@@ -426,54 +425,27 @@ export const Dashboard: React.FC<DashboardProps> = ({ events, eventColors, onNav
                 </div>
 
                 {/* Add Event Card */}
-                <div style={{display: 'flex', gap: '8px'}}>
-                    <div 
-                        onClick={onAddEventClick}
-                        style={{
-                            ...styles.card,
-                            flex: 1,
-                            margin: 0,
-                            padding: '10px',
-                            minHeight: '75px',
-                            background: 'rgba(255,255,255,0.03)',
-                            border: '1px dashed rgba(255,255,255,0.1)',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            justifyContent: 'center',
-                            alignItems: 'center',
-                            textAlign: 'center'
-                        }}
-                    >
-                        <div style={{background: 'rgba(139, 92, 246, 0.1)', padding: '8px', borderRadius: '50%', marginBottom: '4px'}}>
-                            <Plus size={16} color={theme.accent} />
-                        </div>
-                        <span style={{fontSize: '0.7rem', fontWeight: 700, color: theme.textMuted}}>Add Event</span>
+                <div 
+                    onClick={onAddEventClick}
+                    style={{
+                        ...styles.card,
+                        margin: 0,
+                        padding: '10px',
+                        minHeight: '75px',
+                        background: 'rgba(255,255,255,0.03)',
+                        border: '1px dashed rgba(255,255,255,0.1)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        textAlign: 'center'
+                    }}
+                >
+                    <div style={{background: 'rgba(139, 92, 246, 0.1)', padding: '8px', borderRadius: '50%', marginBottom: '4px'}}>
+                        <Plus size={16} color={theme.accent} />
                     </div>
-
-                    <div 
-                        onClick={onSmartImportClick}
-                        style={{
-                            ...styles.card,
-                            flex: 1,
-                            margin: 0,
-                            padding: '10px',
-                            minHeight: '75px',
-                            background: 'rgba(139, 92, 246, 0.05)',
-                            border: '1px solid rgba(139, 92, 246, 0.1)',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            justifyContent: 'center',
-                            alignItems: 'center',
-                            textAlign: 'center'
-                        }}
-                    >
-                        <div style={{background: 'rgba(139, 92, 246, 0.2)', padding: '8px', borderRadius: '50%', marginBottom: '4px'}}>
-                            <Brain size={16} color={theme.accent} />
-                        </div>
-                        <span style={{fontSize: '0.7rem', fontWeight: 700, color: theme.accent}}>Smart Import</span>
-                    </div>
+                    <span style={{fontSize: '0.7rem', fontWeight: 700, color: theme.textMuted}}>Add Event</span>
                 </div>
             </div>
 

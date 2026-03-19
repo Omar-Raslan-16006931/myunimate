@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { ArrowLeft, Check, Sparkles, Zap, Shield, Crown, CreditCard, Loader2, Calendar, AlertTriangle, XCircle, ChevronRight, Star } from 'lucide-react';
 import { theme, styles } from '../theme';
+import { logger } from '../utils/logger';
 
 interface SubscriptionPageProps {
   subscriptionTier: number;
@@ -34,7 +35,7 @@ const SubscriptionPage: React.FC<SubscriptionPageProps> = ({
         await onDowngrade();
       }
     } catch (e) {
-      console.error(e);
+      logger.error('Error checking referral:', e);
       alert("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
