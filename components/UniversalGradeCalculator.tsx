@@ -2,16 +2,13 @@
 import React, { useState } from 'react';
 import { 
     Plus, Trash2, ArrowLeft, Target, 
-    X, ChevronDown, ChevronUp, Calculator, AlertTriangle, TrendingUp, Award, Calendar, Clock, MapPin, Info
+    X, ChevronDown, ChevronUp, Calculator, AlertTriangle, TrendingUp, Award
 } from 'lucide-react';
-import { CourseGrade, GradeCategory, GradeItem, ScheduleEvent } from '../types';
+import { CourseGrade, GradeCategory, GradeItem } from '../types';
 import { generateId } from '../constants';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { logger } from '../utils/logger';
 
 interface UniversalGradeCalculatorProps {
     course: CourseGrade;
-    events?: ScheduleEvent[];
     onUpdate: (updatedCourse: CourseGrade) => void;
     onBack: () => void;
     onDelete?: () => void;
@@ -196,9 +193,8 @@ const CategorySection = ({ cat, updateCategory, deleteCategory, addItem, updateI
 };
 
 // --- Main Calculator ---
-const UniversalGradeCalculator: React.FC<UniversalGradeCalculatorProps> = ({ course, events = [], onUpdate, onBack, onDelete }) => {
+const UniversalGradeCalculator: React.FC<UniversalGradeCalculatorProps> = ({ course, onUpdate, onBack, onDelete }) => {
     const [showDeleteModal, setShowDeleteModal] = useState(false);
-    const [activeTab, setActiveTab] = useState<'grades' | 'info'>('grades');
 
     // --- Logic ---
     let totalPointsAccumulated = 0;
@@ -238,36 +234,10 @@ const UniversalGradeCalculator: React.FC<UniversalGradeCalculatorProps> = ({ cou
     const currentPerformance = weightCompleted > 0 ? (totalPointsAccumulated/weightCompleted)*100 : 0;
     const maxPossible = totalPointsAccumulated + remainingWeight;
 
-    // --- Chart Data ---
-    const chartData = course.categories.map(cat => {
-        const validItems = cat.items.filter(i => i.active !== false && i.score !== '' && i.total !== '' && parseFloat(i.total) > 0);
-        let catPercentage = 0;
-        if (validItems.length > 0) {
-            const sumScore = validItems.reduce((acc, i) => acc + parseFloat(i.score), 0);
-            const sumTotal = validItems.reduce((acc, i) => acc + parseFloat(i.total), 0);
-            catPercentage = (sumScore / sumTotal) * 100;
-        }
-        return {
-            name: cat.name,
-            score: parseFloat(catPercentage.toFixed(1)),
-            weight: parseFloat(cat.weight) || 0
-        };
-    });
-
-    // --- Schedule Events ---
-    const courseEvents = events.filter(e => 
-        (course.code && e.code?.toLowerCase() === course.code.toLowerCase()) || 
-        (course.title && e.title.toLowerCase().includes(course.title.toLowerCase()))
-    );
-
     // --- State Updates ---
-    const updateCourse = (updates: Partial<CourseGrade>) => {
-        logger.debug('Updating course', updates);
-        onUpdate({ ...course, ...updates });
-    };
+    const updateCourse = (updates: Partial<CourseGrade>) => onUpdate({ ...course, ...updates });
     
     const addCategory = () => {
-        logger.info('Adding category to course', { courseId: course.id });
         let baseName = "New Category";
         let name = baseName;
         let counter = 1;
@@ -285,13 +255,11 @@ const UniversalGradeCalculator: React.FC<UniversalGradeCalculatorProps> = ({ cou
     };
 
     const deleteCategory = (catId: string) => {
-        logger.info('Deleting category from course', { courseId: course.id, catId });
         const newCats = course.categories.filter(c => c.id !== catId);
         updateCourse({ categories: newCats });
     };
 
     const addItem = (catId: string) => {
-        logger.info('Adding item to category', { courseId: course.id, catId });
         const newCats = course.categories.map(c => {
             if (c.id === catId) {
                 let baseName = "New Item";
@@ -317,13 +285,11 @@ const UniversalGradeCalculator: React.FC<UniversalGradeCalculatorProps> = ({ cou
     };
 
     const deleteItem = (catId: string, itemId: string) => {
-        logger.info('Deleting item from category', { courseId: course.id, catId, itemId });
         const newCats = course.categories.map(c => c.id === catId ? { ...c, items: c.items.filter(i => i.id !== itemId) } : c);
         updateCourse({ categories: newCats });
     };
 
     const handleDeleteCourse = () => {
-        logger.info('Deleting course', { courseId: course.id });
         if(onDelete) {
             onDelete();
         }
@@ -394,26 +360,9 @@ const UniversalGradeCalculator: React.FC<UniversalGradeCalculatorProps> = ({ cou
             </div>
 
             <div className="flex-1 overflow-y-auto px-4 pb-32">
-                {/* Tabs */}
-                <div className="flex border-b border-white/10 mb-4">
-                    <button
-                        onClick={() => setActiveTab('grades')}
-                        className={`flex-1 py-3 text-sm font-bold border-b-2 transition-colors ${activeTab === 'grades' ? 'border-indigo-500 text-indigo-400' : 'border-transparent text-white/40 hover:text-white/70'}`}
-                    >
-                        Grades
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('info')}
-                        className={`flex-1 py-3 text-sm font-bold border-b-2 transition-colors ${activeTab === 'info' ? 'border-indigo-500 text-indigo-400' : 'border-transparent text-white/40 hover:text-white/70'}`}
-                    >
-                        Info & Schedule
-                    </button>
-                </div>
-
-                {activeTab === 'grades' && (
-                    <>
-                        {/* Hero Dashboard (Compact) */}
-                        <div className="bg-[#1c1c1e] border border-white/5 rounded-2xl p-4 mb-4 shadow-sm">
+                
+                {/* Hero Dashboard (Compact) */}
+                <div className="bg-[#1c1c1e] border border-white/5 rounded-2xl p-4 mb-4 shadow-sm">
                     <div className="flex items-center justify-between mb-4">
                         <div>
                             <div className="text-[10px] font-bold text-white/40 uppercase tracking-wider mb-1">Current Grade</div>
@@ -507,80 +456,6 @@ const UniversalGradeCalculator: React.FC<UniversalGradeCalculatorProps> = ({ cou
                         />
                     ))}
                 </div>
-                </>
-                )}
-
-                {activeTab === 'info' && (
-                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
-                        {/* Grade Distribution Chart */}
-                        <div className="bg-[#1c1c1e] border border-white/5 rounded-2xl p-4 shadow-sm">
-                            <h3 className="text-xs font-bold text-white/40 uppercase tracking-widest flex items-center gap-2 mb-4">
-                                <TrendingUp size={14} /> Grade Distribution
-                            </h3>
-                            {chartData.length > 0 ? (
-                                <div className="h-48 w-full">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                                            <XAxis dataKey="name" stroke="#ffffff40" fontSize={10} tickLine={false} axisLine={false} />
-                                            <YAxis stroke="#ffffff40" fontSize={10} tickLine={false} axisLine={false} domain={[0, 100]} />
-                                            <Tooltip 
-                                                cursor={{ fill: '#ffffff05' }}
-                                                contentStyle={{ backgroundColor: '#1c1c1e', border: '1px solid #ffffff10', borderRadius: '8px', fontSize: '12px', color: '#fff' }}
-                                                formatter={(value: number) => [`${value}%`, 'Score']}
-                                            />
-                                            <Bar dataKey="score" radius={[4, 4, 0, 0]}>
-                                                {chartData.map((entry, index) => (
-                                                    <Cell key={`cell-${index}`} fill={entry.score >= 90 ? '#34d399' : entry.score >= 80 ? '#60a5fa' : entry.score >= 70 ? '#fbbf24' : entry.score >= 60 ? '#fb923c' : '#f87171'} />
-                                                ))}
-                                            </Bar>
-                                        </BarChart>
-                                    </ResponsiveContainer>
-                                </div>
-                            ) : (
-                                <div className="text-center py-8 border-2 border-dashed border-white/10 rounded-xl">
-                                    <p className="text-white/30 text-sm font-medium">No grade data available.</p>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Course Schedule */}
-                        <div className="bg-[#1c1c1e] border border-white/5 rounded-2xl p-4 shadow-sm">
-                            <h3 className="text-xs font-bold text-white/40 uppercase tracking-widest flex items-center gap-2 mb-4">
-                                <Calendar size={14} /> Course Schedule
-                            </h3>
-                            {courseEvents.length > 0 ? (
-                                <div className="space-y-3">
-                                    {courseEvents.map(event => (
-                                        <div key={event.id} className="bg-white/5 border border-white/5 rounded-xl p-3 flex flex-col gap-2">
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-sm font-bold text-white">{event.title}</span>
-                                                <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300">
-                                                    {event.type}
-                                                </span>
-                                            </div>
-                                            <div className="flex items-center gap-4 text-xs text-white/60">
-                                                <div className="flex items-center gap-1.5">
-                                                    <Clock size={12} className="text-white/40" />
-                                                    {event.dayOfWeek ? event.dayOfWeek.substring(0, 3) : ''} {event.startTime} ({event.durationMinutes}m)
-                                                </div>
-                                                {event.location && (
-                                                    <div className="flex items-center gap-1.5">
-                                                        <MapPin size={12} className="text-white/40" />
-                                                        {event.location}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="text-center py-8 border-2 border-dashed border-white/10 rounded-xl">
-                                    <p className="text-white/30 text-sm font-medium">No schedule events found for this course.</p>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                )}
             </div>
 
             {/* Custom Modal for Course Deletion */}

@@ -1,7 +1,6 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from '../lib/supabase';
-import { logger } from '../utils/logger';
 import { AppFeedback, FeedbackReply } from '../types';
 import { Check, User, Loader2, Inbox, RefreshCw, Trash2, X, MessageSquare, Send, AlertTriangle, Search, ChevronLeft, Filter, Sparkles, MoreHorizontal, Copy } from 'lucide-react';
 import { theme } from '../theme';
@@ -28,7 +27,7 @@ const AdminInbox: React.FC = () => {
       if (error) throw error;
       setFeedbackItems(data || []);
     } catch (err) {
-      logger.error("Error fetching feedback:", err);
+      console.error("Error fetching feedback:", err);
     } finally {
       setLoading(false);
     }
@@ -87,7 +86,7 @@ const AdminInbox: React.FC = () => {
     try {
       await supabase.from('app_feedback').update({ status: newStatus }).eq('id', id);
     } catch (err: any) {
-      logger.error("Error updating status:", err);
+      console.error("Error updating status:", err);
       fetchFeedback(); // Revert on error
     }
   };
@@ -101,7 +100,7 @@ const AdminInbox: React.FC = () => {
       const { error } = await supabase.from('app_feedback').delete().eq('id', id);
       if (error) throw error;
     } catch (err: any) {
-      logger.error("Error deleting message:", err);
+      console.error("Error deleting message:", err);
       alert(`Failed to delete: ${err.message}`);
       fetchFeedback();
     }
@@ -131,7 +130,7 @@ const AdminInbox: React.FC = () => {
 
           setReplyText('');
       } catch (err: any) {
-          logger.error("Error sending reply:", err);
+          console.error("Error sending reply:", err);
           alert(`Failed: ${err.message}`);
       } finally {
           setIsSendingReply(false);

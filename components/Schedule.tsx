@@ -14,6 +14,7 @@ interface ScheduleProps {
   eventColors: EventColorMap;
   onProfileChange: (id: string) => void;
   onAddEventClick: () => void;
+  onSmartImportClick: () => void;
   onClearScheduleClick: () => void;
   onEventClick: (event: ScheduleEvent) => void;
   onUpdateEvent?: (event: Partial<ScheduleEvent>) => void;
@@ -27,6 +28,7 @@ const Schedule: React.FC<ScheduleProps> = ({
   eventColors,
   onProfileChange, 
   onAddEventClick,
+  onSmartImportClick,
   onClearScheduleClick,
   onEventClick,
   onUpdateEvent,
@@ -393,6 +395,27 @@ const Schedule: React.FC<ScheduleProps> = ({
                 title="Clear Schedule"
                >
                 <Trash2 size={16} />
+               </button>
+               <button 
+                onClick={onSmartImportClick}
+                style={{
+                    background: 'rgba(139, 92, 246, 0.15)', 
+                    border: '1px solid rgba(139, 92, 246, 0.3)', 
+                    borderRadius: '50%', 
+                    width: '36px', 
+                    height: '36px', 
+                    padding: 0, 
+                    justifyContent: 'center', 
+                    display: 'flex',
+                    alignItems: 'center',
+                    color: theme.accent,
+                    cursor: 'pointer',
+                    boxShadow: '0 5px 15px rgba(0,0,0,0.2)',
+                    transition: 'all 0.2s'
+                }}
+                title="Smart Import"
+               >
+                <Brain size={16} />
                </button>
                <button 
                 onClick={() => setIsSyncModalOpen(true)}

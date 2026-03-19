@@ -5,7 +5,6 @@ import { supabase } from './lib/supabase';
 import { ViewState, ScheduleEvent, ScheduleProfile, EventColorMap, EventType, PeriodDefinition, Announcement, ThemeMode, FoodItem, WaterLog, WorkoutSession, WorkoutRoutine, ExerciseDefinition, GymSettings, ActiveGymState, CourseGrade, ToDoItem, MaterialFile } from './types';
 import { INITIAL_EVENTS, INITIAL_PROFILES, INITIAL_COLORS, INITIAL_PERIODS, DEFAULT_GYM_SETTINGS, DEFAULT_ROUTINES, DEFAULT_EXERCISES, INITIAL_FILES, generateId } from './constants';
 import { styles, theme } from './theme';
-import { logger } from './utils/logger';
 
 import Auth from './components/Auth';
 import LandingPage from './components/LandingPage';
@@ -41,7 +40,7 @@ class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasErr
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    logger.error("App Crash:", { error, errorInfo });
+    console.error("App Crash:", error, errorInfo);
   }
 
   render() {
@@ -104,7 +103,7 @@ export const App: React.FC = () => {
       if (!session?.user?.id) return;
       setProfiles(profiles.map(p => p.id === activeProfileId ? { ...p, periods: newPeriods } : p));
       const { error } = await supabase.from('schedule_profiles').update({ periods: newPeriods }).eq('id', activeProfileId);
-      if (error) logger.error("Error updating periods:", error);
+      if (error) console.error("Error updating periods:", error);
   };
 
   // Modals
@@ -147,7 +146,7 @@ export const App: React.FC = () => {
             setActiveProfileId(INITIAL_PROFILES[0].id);
         }
       } catch (error) {
-        logger.error("Initialization error:", error);
+        console.error("Initialization error:", error);
       } finally {
         setLoading(false);
       }
@@ -164,7 +163,7 @@ export const App: React.FC = () => {
                 fetchUserData(currentSession.user.id)
             ]);
           } catch (error) {
-            logger.error("Auth change error:", error);
+            console.error("Auth change error:", error);
           }
       }
       else if (_event === 'SIGNED_OUT') {
@@ -180,55 +179,6 @@ export const App: React.FC = () => {
 
     return () => subscription.unsubscribe();
   }, []);
-
-  useEffect(() => {
-    if (!session?.user?.id) return;
-
-    const materialsSubscription = supabase
-      .channel('materials_changes')
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'materials', filter: `user_id=eq.${session.user.id}` }, 
-        (payload) => {
-          logger.info('Materials change received!', payload);
-          if (payload.eventType === 'INSERT') {
-            const newFile = payload.new;
-            setFiles(prev => {
-              if (prev.find(f => f.id === newFile.id)) return prev;
-              return [...prev, {
-                id: newFile.id,
-                name: newFile.name,
-                type: newFile.type,
-                size: newFile.size,
-                dateAdded: newFile.date_added,
-                fileData: newFile.file_data,
-                mimeType: newFile.mime_type,
-                parentId: newFile.parent_id
-              }];
-            });
-          } else if (payload.eventType === 'UPDATE') {
-            const updatedFile = payload.new;
-            setFiles(prev => prev.map(f => f.id === updatedFile.id ? {
-                ...f,
-                name: updatedFile.name,
-                type: updatedFile.type,
-                size: updatedFile.size,
-                dateAdded: updatedFile.date_added,
-                fileData: updatedFile.file_data,
-                mimeType: updatedFile.mime_type,
-                parentId: updatedFile.parent_id
-            } : f));
-          } else if (payload.eventType === 'DELETE') {
-            const deletedFile = payload.old;
-            setFiles(prev => prev.filter(f => f.id !== deletedFile.id));
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(materialsSubscription);
-    };
-  }, [session?.user?.id]);
 
   const fetchUserData = async (userId: string) => {
       // Fetch Events
@@ -361,7 +311,7 @@ export const App: React.FC = () => {
           
           if (!showOnboarding) alert("Upgrade Successful! Welcome to Pro.");
       } catch (err) {
-          logger.error("Upgrade failed", err);
+          console.error("Upgrade failed", err);
           alert("Upgrade failed. Please try again.");
       }
   };
@@ -416,7 +366,7 @@ export const App: React.FC = () => {
         "group": newEvent.group || null
     };
     
-    logger.info("Adding event to DB:", insertPayload);
+    console.log("Adding event to DB:", insertPayload);
     
     const { error } = await supabase.from('events').insert(insertPayload);
 
@@ -425,7 +375,7 @@ export const App: React.FC = () => {
         setIsAddModalOpen(false);
         setEditingEvent(null);
     } else {
-        logger.error('Error adding event:', error);
+        console.error('Error adding event:', error);
         throw new Error(error.message);
     }
   };
@@ -513,7 +463,7 @@ export const App: React.FC = () => {
             }
         }
     } else {
-        logger.error('Error adding events:', error);
+        console.error('Error adding events:', error);
     }
   };
 
@@ -525,7 +475,7 @@ export const App: React.FC = () => {
       if (!error) {
           setEvents(prev => prev.filter(e => e.scheduleId !== profileId));
       } else {
-          logger.error("Error clearing schedule:", error);
+          console.error("Error clearing schedule:", error);
       }
   };
 
@@ -565,12 +515,12 @@ export const App: React.FC = () => {
         "group": finalEvent.group || null
     };
     
-    logger.info("Updating event in DB:", { id: finalEvent.id, payload: updatePayload });
+    console.log("Updating event in DB:", finalEvent.id, updatePayload);
     
     const { error } = await supabase.from('events').update(updatePayload).eq('id', finalEvent.id);
 
     if (error) {
-        logger.error("Error updating event:", error);
+        console.error("Error updating event:", error);
         alert("Error updating event: " + error.message);
         throw new Error(error.message);
     }
@@ -672,6 +622,7 @@ export const App: React.FC = () => {
             onNavigate={setView}
             onEventClick={setViewingEvent}
             onAddEventClick={() => { setEditingEvent(null); setIsAddModalOpen(true); }}
+            onSmartImportClick={() => setIsSmartImportModalOpen(true)}
             periods={currentPeriods}
             announcement={announcement}
             username={profile?.username}
@@ -692,6 +643,7 @@ export const App: React.FC = () => {
                 }
             }}
             onAddEventClick={() => { setEditingEvent(null); setIsAddModalOpen(true); }}
+            onSmartImportClick={() => setIsSmartImportModalOpen(true)}
             onClearScheduleClick={() => onClearSchedule(activeProfileId)}
             onEventClick={setViewingEvent}
             onUpdateEvent={(updates) => {
@@ -785,7 +737,7 @@ export const App: React.FC = () => {
                 
                 const { error } = await supabase.from('materials').insert(newFile);
                 if (error) {
-                    logger.error("Error adding file:", error);
+                    console.error("Error adding file:", error);
                     alert("Failed to save file. It might be too large.");
                     // Rollback on error
                     setFiles(prev => prev.filter(f => f.id !== file.id));
@@ -796,14 +748,14 @@ export const App: React.FC = () => {
                 if (updates.name !== undefined) dbUpdates.name = updates.name;
                 if ('parentId' in updates) dbUpdates.parent_id = updates.parentId;
                 
-                logger.info("Updating file", { id, updates: dbUpdates });
+                console.log("Updating file", id, "with", dbUpdates);
                 
                 // Optimistic update
                 setFiles(prevFiles => prevFiles.map(f => f.id === id ? { ...f, ...updates } : f));
                 
                 const { error } = await supabase.from('materials').update(dbUpdates).eq('id', id);
                 if (error) {
-                    logger.error("Error updating file:", error);
+                    console.error("Error updating file:", error);
                     // Rollback if needed, but usually we just log it for now
                 }
             }}
@@ -828,7 +780,6 @@ export const App: React.FC = () => {
             if (!course) return <div>Course not found</div>;
             return <UniversalGradeCalculator 
                 course={course}
-                events={events}
                 onUpdate={async (updated) => {
                     setCourses(courses.map(c => c.id === updated.id ? updated : c));
                     const { error } = await supabase.from('courses').update({
@@ -837,7 +788,7 @@ export const App: React.FC = () => {
                         target_grade: updated.targetGrade,
                         categories: updated.categories
                     }).eq('id', updated.id);
-                    if (error) logger.error("Error updating course:", error);
+                    if (error) console.error("Error updating course:", error);
                 }}
                 onBack={() => setSelectedCourseId(null)}
                 onDelete={async () => {
@@ -902,13 +853,13 @@ export const App: React.FC = () => {
                 if (item) {
                     setToDoItems(toDoItems.map(i => i.id === id ? { ...i, completed: !i.completed } : i));
                     const { error } = await supabase.from('todos').update({ completed: !item.completed }).eq('id', id);
-                    if (error) logger.error("Error toggling todo:", error);
+                    if (error) console.error("Error toggling todo:", error);
                 }
             }}
             onDelete={async (id) => {
                 setToDoItems(toDoItems.filter(i => i.id !== id));
                 const { error } = await supabase.from('todos').delete().eq('id', id);
-                if (error) logger.error("Error deleting todo:", error);
+                if (error) console.error("Error deleting todo:", error);
             }}
             onBack={() => setView('dashboard')}
         />;
@@ -1064,7 +1015,7 @@ export const App: React.FC = () => {
         onImport={(extracted) => {
             // Logic to convert extracted items to ScheduleEvents
             // Simplified for demo
-            logger.info("Imported", extracted);
+            console.log("Imported", extracted);
         }}
       />
 

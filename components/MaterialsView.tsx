@@ -7,7 +7,6 @@ import { styles, theme } from '../theme';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 import { PdfViewer } from './PdfViewer';
 import { generateId } from '../constants';
-import { logger } from '../utils/logger';
 
 interface MaterialsViewProps {
   files: MaterialFile[];
@@ -33,7 +32,7 @@ const ExcelViewer: React.FC<{ data: string }> = ({ data }) => {
             }));
             setSheets(result);
         } catch (e) {
-            logger.error("Excel parsing error:", e);
+            console.error("Excel parsing error:", e);
         }
     }, [data]);
 
@@ -219,7 +218,7 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
               return;
           }
       } catch (e) {
-          logger.warn("Blob conversion failed, falling back to direct link", e);
+          console.warn("Blob conversion failed, falling back to direct link", e);
       }
 
       // Fallback
