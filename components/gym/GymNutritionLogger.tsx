@@ -160,7 +160,7 @@ export const GymNutritionLogger: React.FC<NutritionLoggerProps> = ({ logs, water
   return (
     <div className="pb-24 space-y-4 relative">
       {showManualEntry && (
-          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-slate-900/90 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="fixed inset-0 z-[2000] flex items-end sm:items-center justify-center p-4 bg-slate-900/90 backdrop-blur-sm animate-in fade-in duration-200">
               <div className="bg-slate-800 w-full max-w-sm rounded-2xl p-6 border border-slate-700 shadow-2xl animate-in slide-in-from-bottom-10">
                   <div className="flex justify-between items-center mb-4">
                       <h3 className="text-lg font-bold text-white">{editingId ? 'Edit Food' : 'Manual Food Entry'}</h3>

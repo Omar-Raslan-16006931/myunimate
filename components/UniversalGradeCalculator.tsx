@@ -460,7 +460,7 @@ const UniversalGradeCalculator: React.FC<UniversalGradeCalculatorProps> = ({ cou
 
             {/* Custom Modal for Course Deletion */}
             {showDeleteModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+                <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
                     <div 
                         className="bg-[#1c1c1e] border border-white/10 rounded-3xl w-full max-w-sm p-6 shadow-2xl relative animate-in zoom-in-95"
                         onClick={(e) => e.stopPropagation()}
