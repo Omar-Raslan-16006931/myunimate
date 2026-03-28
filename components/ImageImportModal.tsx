@@ -51,9 +51,9 @@ const ImageImportModal: React.FC<ImageImportModalProps> = ({ isOpen, onClose, on
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={onClose} />
-      <div className="relative bg-[#1e0a45] w-full max-w-sm rounded-3xl border border-white/10 shadow-2xl p-6 text-center animate-scale-in">
+      <div className="relative bg-[#1e0a45] w-full max-w-sm rounded-3xl border border-white/10 shadow-2xl p-6 text-center animate-scale-in overflow-y-auto max-h-[90vh] custom-scrollbar">
         
         <button onClick={onClose} className="absolute top-4 right-4 text-white/50 hover:text-white">
           <X size={24} />

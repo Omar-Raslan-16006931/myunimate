@@ -104,9 +104,9 @@ const RestTimerInput = ({ value, onChange }: { value: number, onChange: (val: nu
 
             {isOpen && (
                 <>
-                    <div className="fixed inset-0 z-[60]" onClick={(e) => { e.stopPropagation(); setIsOpen(false); }} />
+                    <div className="fixed inset-0 z-[2000]" onClick={(e) => { e.stopPropagation(); setIsOpen(false); }} />
                     <div 
-                        className="fixed bg-[#1c1c1e] border border-white/10 rounded-xl shadow-2xl z-[70] overflow-hidden flex flex-col py-1 w-32 animate-in fade-in zoom-in-95 duration-100"
+                        className="fixed bg-[#1c1c1e] border border-white/10 rounded-xl shadow-2xl z-[2001] overflow-hidden flex flex-col py-1 w-32 animate-in fade-in zoom-in-95 duration-100"
                         style={{ top: position.top, left: position.left }}
                     >
                         <div className="px-3 py-1.5 text-[10px] font-bold text-white/40 uppercase tracking-wider">Presets</div>
@@ -627,7 +627,7 @@ export const GymWorkoutLogger: React.FC<WorkoutLoggerProps> = ({
 
               {/* --- FINISH MODAL --- */}
               {finishModalOpen && (
-                  <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+                  <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
                       <div className="bg-[#1c1c1e] border border-white/10 rounded-2xl p-6 max-w-sm w-full shadow-2xl animate-in zoom-in-95">
                           <h3 className="text-lg font-bold text-white mb-4">Workout Complete!</h3>
                           
@@ -658,7 +658,7 @@ export const GymWorkoutLogger: React.FC<WorkoutLoggerProps> = ({
 
               {/* --- CONFIRMATION MODAL --- */}
               {confirmation && confirmation.isOpen && (
-                  <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+                  <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
                       <div className="bg-[#1c1c1e] border border-white/10 rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl animate-in zoom-in-95" onClick={e => e.stopPropagation()}>
                           <div className="w-12 h-12 rounded-full bg-red-500/20 text-red-500 flex items-center justify-center mx-auto mb-4">
                               <AlertTriangle size={24} />
@@ -782,7 +782,7 @@ export const GymWorkoutLogger: React.FC<WorkoutLoggerProps> = ({
               </div>
 
               {isExerciseModalOpen && (
-                  <div className="fixed inset-0 z-[60] bg-[#0f172a]/95 backdrop-blur-xl flex flex-col animate-in slide-in-from-bottom-10">
+                  <div className="fixed inset-0 z-[2000] bg-[#0f172a]/95 backdrop-blur-xl flex flex-col animate-in slide-in-from-bottom-10">
                       <div className="p-4 border-b border-white/10 bg-[#1e0a45]/50 flex items-center gap-4">
                           <button onClick={() => setIsExerciseModalOpen(false)} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/50 hover:text-white transition"><ArrowLeft size={20} /></button>
                           <div className="flex-1 relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" size={16} /><input autoFocus value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Find exercise..." className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-10 pr-4 text-white placeholder-white/30 focus:outline-none focus:border-cyan-500/50 transition-all" /></div>
@@ -807,7 +807,7 @@ export const GymWorkoutLogger: React.FC<WorkoutLoggerProps> = ({
           
           {/* CONFIRMATION MODAL - Added here to ensure visibility in HUB view if needed, though mostly used in active */}
           {confirmation && confirmation.isOpen && (
-              <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+              <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
                   <div className="bg-[#1c1c1e] border border-white/10 rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl animate-in zoom-in-95" onClick={e => e.stopPropagation()}>
                       <div className="w-12 h-12 rounded-full bg-red-500/20 text-red-500 flex items-center justify-center mx-auto mb-4">
                           <AlertTriangle size={24} />
@@ -824,7 +824,7 @@ export const GymWorkoutLogger: React.FC<WorkoutLoggerProps> = ({
 
           {/* HISTORY DETAILS MODAL */}
           {viewingHistorySession && (
-              <div className="fixed inset-0 z-[100] bg-[#0f172a] overflow-hidden flex flex-col animate-in slide-in-from-right-10">
+              <div className="fixed inset-0 z-[2000] bg-[#0f172a] overflow-hidden flex flex-col animate-in slide-in-from-right-10">
                   <div className="p-4 border-b border-white/10 bg-[#130f1c] flex items-center justify-between">
                       <div className="flex items-center gap-3">
                           <button onClick={() => setViewingHistorySession(null)} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition"><ArrowLeft size={20} className="text-white" /></button>
@@ -897,7 +897,7 @@ export const GymWorkoutLogger: React.FC<WorkoutLoggerProps> = ({
           )}
 
           {showLibrary && (
-              <div className="fixed inset-0 z-[100] bg-[#0f172a] overflow-hidden flex flex-col animate-in slide-in-from-bottom-5">
+              <div className="fixed inset-0 z-[2000] bg-[#0f172a] overflow-hidden flex flex-col animate-in slide-in-from-bottom-5">
                   <div className="p-4 border-b border-white/10 flex items-center justify-between bg-[#130f1c]">
                       <div className="flex items-center gap-3">
                           <button onClick={() => setShowLibrary(false)} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition"><ArrowLeft size={20} className="text-white" /></button>

@@ -23,7 +23,7 @@ export const Banner: React.FC<BannerProps> = ({ show, action, onHide }) => {
 
   return (
     <div 
-      className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-auto max-w-[95vw] transition-all duration-700 cubic-bezier(0.19, 1, 0.22, 1) ${
+      className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-[2000] w-auto max-w-[95vw] transition-all duration-700 cubic-bezier(0.19, 1, 0.22, 1) ${
         isHidden ? 'translate-y-[150%] opacity-0 scale-90' : 'translate-y-0 opacity-100 scale-100'
       }`}
     >

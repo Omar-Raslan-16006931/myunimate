@@ -25,9 +25,9 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({ event, onClose, o
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/80 backdrop-blur-lg" onClick={onClose} />
-      <div className="relative bg-[#1e1b2e] w-full max-w-sm rounded-3xl border border-white/10 shadow-2xl overflow-hidden animate-scale-in">
+      <div className="relative bg-[#1e1b2e] w-full max-w-sm rounded-3xl border border-white/10 shadow-2xl overflow-y-auto overflow-x-hidden max-h-[90vh] animate-scale-in custom-scrollbar">
         
         {/* Header Band */}
         <div className="h-24 w-full flex items-center justify-center relative" style={{ backgroundColor: color }}>
