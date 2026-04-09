@@ -101,7 +101,7 @@ const AdminInbox: React.FC = () => {
       if (error) throw error;
     } catch (err: any) {
       console.error("Error deleting message:", err);
-      alert(`Failed to delete: ${err.message}`);
+      console.error(`Failed to delete: ${err.message}`);
       fetchFeedback();
     }
   };
@@ -131,7 +131,7 @@ const AdminInbox: React.FC = () => {
           setReplyText('');
       } catch (err: any) {
           console.error("Error sending reply:", err);
-          alert(`Failed: ${err.message}`);
+          console.error(`Failed: ${err.message}`);
       } finally {
           setIsSendingReply(false);
       }

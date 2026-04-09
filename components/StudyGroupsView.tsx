@@ -150,7 +150,7 @@ export const StudyGroupsView: React.FC<StudyGroupsViewProps> = ({ onBack, userId
       setIsJoiningGroup(false);
       setJoinGroupId('');
     } else {
-      alert("Could not join group. Check the ID.");
+      console.error("Could not join group. Check the ID.");
     }
   };
 

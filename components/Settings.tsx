@@ -107,7 +107,7 @@ const SupportHistoryModal = ({ isOpen, onClose, userId }: { isOpen: boolean, onC
             setReplyText('');
         } catch (error) {
             console.error(error);
-            alert('Failed to send reply');
+            console.error('Failed to send reply');
         } finally {
             setSendingReply(false);
         }
