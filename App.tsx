@@ -309,10 +309,10 @@ export const App: React.FC = () => {
               }
           }
           
-          if (!showOnboarding) alert("Upgrade Successful! Welcome to Pro.");
+          if (!showOnboarding) console.log("Upgrade Successful! Welcome to Pro.");
       } catch (err) {
           console.error("Upgrade failed", err);
-          alert("Upgrade failed. Please try again.");
+          console.error("Upgrade failed. Please try again.");
       }
   };
 
@@ -320,7 +320,7 @@ export const App: React.FC = () => {
       if (!session?.user?.id) return;
       await supabase.from('profiles').update({ subscription_tier: 0 }).eq('id', session.user.id);
       setProfile({...profile, subscription_tier: 0});
-      alert("Plan cancelled.");
+      console.log("Plan cancelled.");
   };
 
   const onAddEvent = async (eventData: Partial<ScheduleEvent>) => {
@@ -439,7 +439,7 @@ export const App: React.FC = () => {
             const distinctCourses = new Map();
             newEvents.forEach(ev => {
                 if (ev.title && !distinctCourses.has(ev.title)) {
-                    const exists = courses.some(c => c.title.toLowerCase() === ev.title.toLowerCase());
+                    const exists = courses.some(c => c.title?.toLowerCase() === ev.title?.toLowerCase());
                     if (!exists) {
                         distinctCourses.set(ev.title, ev.code);
                     }
@@ -521,7 +521,7 @@ export const App: React.FC = () => {
 
     if (error) {
         console.error("Error updating event:", error);
-        alert("Error updating event: " + error.message);
+        console.error("Error updating event: " + error.message);
         throw new Error(error.message);
     }
   };
@@ -738,7 +738,7 @@ export const App: React.FC = () => {
                 const { error } = await supabase.from('materials').insert(newFile);
                 if (error) {
                     console.error("Error adding file:", error);
-                    alert("Failed to save file. It might be too large.");
+                    console.error("Failed to save file. It might be too large.");
                     // Rollback on error
                     setFiles(prev => prev.filter(f => f.id !== file.id));
                 }
@@ -1044,7 +1044,6 @@ export const App: React.FC = () => {
             });
             
             await onAddEvents(eventsToAdd, targetProfileId, addToCourses);
-            alert(`Successfully imported ${importedEvents.length} courses!`);
           }}
         />
       )}

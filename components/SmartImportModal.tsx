@@ -63,6 +63,18 @@ Return ONLY the JSON array. Ensure the date is in YYYY-MM-DD format.`;
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const formatTime24 = (timeStr: string) => {
+    if (!timeStr) return "";
+    const match = timeStr.match(/(\d+):(\d+)\s*(AM|PM)?/i);
+    if (!match) return timeStr;
+    let h = parseInt(match[1], 10);
+    const m = match[2];
+    const ampm = match[3]?.toUpperCase();
+    if (ampm === 'PM' && h < 12) h += 12;
+    if (ampm === 'AM' && h === 12) h = 0;
+    return `${h.toString().padStart(2, '0')}:${m}`;
+  };
+
   const handleParse = () => {
     try {
       setError(null);
@@ -74,7 +86,13 @@ Return ONLY the JSON array. Ensure the date is in YYYY-MM-DD format.`;
         throw new Error('Input must be a JSON array of objects.');
       }
       
-      setParsedItems(parsed);
+      const formattedItems = parsed.map(item => ({
+        ...item,
+        time_start: formatTime24(item.time_start),
+        time_end: formatTime24(item.time_end)
+      }));
+
+      setParsedItems(formattedItems);
     } catch (err) {
       setError('Invalid JSON format. Please make sure you copied the entire array correctly.');
       console.error(err);
@@ -113,7 +131,8 @@ Return ONLY the JSON array. Ensure the date is in YYYY-MM-DD format.`;
     try {
       const [sH, sM] = start.split(':').map(Number);
       const [eH, eM] = end.split(':').map(Number);
-      return (eH * 60 + eM) - (sH * 60 + sM);
+      const duration = (eH * 60 + eM) - (sH * 60 + sM);
+      return isNaN(duration) || duration <= 0 ? 60 : duration;
     } catch {
       return 60;
     }

@@ -39,7 +39,7 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose, userId }
       setCategory('Bug');
     } catch (err) {
       console.error("Error sending feedback:", err);
-      alert("Failed to send feedback. Please try again.");
+      console.error("Failed to send feedback. Please try again.");
     } finally {
       setIsSubmitting(false);
     }

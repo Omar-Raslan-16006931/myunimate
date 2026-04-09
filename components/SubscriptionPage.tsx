@@ -35,7 +35,7 @@ const SubscriptionPage: React.FC<SubscriptionPageProps> = ({
       }
     } catch (e) {
       console.error(e);
-      alert("Something went wrong. Please try again.");
+      console.error("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
