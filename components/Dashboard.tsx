@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { MapPin, ClipboardList, ArrowRight, Dumbbell, Calculator, Sparkles, Megaphone, X, CheckSquare, Plus, Lock, Users, Brain } from 'lucide-react';
+import { MapPin, ClipboardList, ArrowRight, Dumbbell, Calculator, Sparkles, Megaphone, X, CheckSquare, Plus, Lock, Users, Brain, StickyNote } from 'lucide-react';
 import { ScheduleEvent, EventColorMap, PeriodDefinition, Announcement } from '../types';
 import { getLocalISOString } from '../constants';
 import { theme, styles } from '../theme';
@@ -22,6 +22,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ events, eventColors, onNav
   const [currentTime, setCurrentTime] = useState("");
   const [currentDate, setCurrentDate] = useState("");
   const [dismissedAnnouncementId, setDismissedAnnouncementId] = useState(() => localStorage.getItem('dismissed_announcement_id'));
+  const [quickNotes, setQuickNotes] = useState(() => localStorage.getItem('quick_notes') || '');
+
+  const handleNotesChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const val = e.target.value;
+      setQuickNotes(val);
+      localStorage.setItem('quick_notes', val);
+  };
 
   useEffect(() => {
     const tick = () => {
@@ -474,6 +481,33 @@ export const Dashboard: React.FC<DashboardProps> = ({ events, eventColors, onNav
                         </div>
                         <span style={{fontSize: '0.7rem', fontWeight: 700, color: theme.accent}}>Smart Import</span>
                     </div>
+                </div>
+            </div>
+
+            {/* Quick Notes Section */}
+            <div>
+                <div style={{display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px', paddingLeft: '4px'}}>
+                    <StickyNote size={14} color={theme.accent} />
+                    <h3 style={{margin: 0, fontSize: '0.85rem', fontWeight: 700}}>Quick Notes</h3>
+                </div>
+                <div style={{...styles.card, margin: 0, padding: 0, overflow: 'hidden', background: 'rgba(30,30,40,0.6)'}}>
+                    <textarea
+                        value={quickNotes}
+                        onChange={handleNotesChange}
+                        placeholder="Jot down quick reminders here..."
+                        style={{
+                            width: '100%',
+                            minHeight: '80px',
+                            background: 'transparent',
+                            border: 'none',
+                            color: '#fff',
+                            padding: '12px',
+                            fontSize: '0.8rem',
+                            resize: 'vertical',
+                            outline: 'none',
+                            fontFamily: 'inherit'
+                        }}
+                    />
                 </div>
             </div>
 
