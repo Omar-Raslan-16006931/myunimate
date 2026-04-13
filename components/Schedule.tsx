@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, ChevronRight, MapPin, Plus, Brain, ChevronDown, X, RotateCcw, Trash2, GripVertical, Download } from 'lucide-react';
+import { ChevronLeft, ChevronRight, MapPin, Plus, Brain, ChevronDown, X, RotateCcw, Trash2, GripVertical, Download, MoreHorizontal } from 'lucide-react';
 import { ScheduleEvent, EventColorMap, ScheduleProfile, PeriodDefinition } from '../types';
 import { getLocalISOString } from '../constants';
 import { theme, styles } from '../theme';
@@ -38,6 +38,7 @@ const Schedule: React.FC<ScheduleProps> = ({
   const [draggedEventId, setDraggedEventId] = useState<string | null>(null);
   const [draggedOverCell, setDraggedOverCell] = useState<{ day: string, periodIdx: number } | null>(null);
   const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
+  const [isActionsMenuOpen, setIsActionsMenuOpen] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Helper to get the Saturday of the current week (Start of academic week)
@@ -331,7 +332,7 @@ const Schedule: React.FC<ScheduleProps> = ({
   const gridTemplateColumns = `54px ${periods.map(p => p.isBreak ? '13px' : '1fr').join(' ')}`;
 
   return (
-    <div style={{height: "100%", display: "flex", flexDirection: "column", padding: "10px 10px 100px 10px", overflowY: "auto"}}>
+    <div style={{height: "100%", display: "flex", flexDirection: "column", padding: "10px 10px 100px 10px", overflow: "hidden"}}>
         <div style={{...styles.header, marginBottom: '10px'}}>
           <div>
              <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
@@ -373,13 +374,13 @@ const Schedule: React.FC<ScheduleProps> = ({
                     </button>
                  )}
              </div>
-          </div>
-           <div style={{display: 'flex', gap: '8px'}}>
+           </div>
+           <div style={{position: 'relative'}}>
                <button 
-                onClick={onClearScheduleClick}
+                onClick={() => setIsActionsMenuOpen(!isActionsMenuOpen)}
                 style={{
-                    background: 'rgba(239, 68, 68, 0.15)', 
-                    border: '1px solid rgba(239, 68, 68, 0.3)', 
+                    background: 'rgba(255,255,255,0.1)', 
+                    border: '1px solid rgba(255,255,255,0.2)', 
                     borderRadius: '50%', 
                     width: '36px', 
                     height: '36px', 
@@ -387,64 +388,52 @@ const Schedule: React.FC<ScheduleProps> = ({
                     justifyContent: 'center', 
                     display: 'flex',
                     alignItems: 'center',
-                    color: theme.danger,
+                    color: '#fff',
                     cursor: 'pointer',
                     boxShadow: '0 5px 15px rgba(0,0,0,0.2)',
                     transition: 'all 0.2s'
                 }}
-                title="Clear Schedule"
+                title="Actions"
                >
-                <Trash2 size={16} />
+                <MoreHorizontal size={18} />
                </button>
-               <button 
-                onClick={onSmartImportClick}
-                style={{
-                    background: 'rgba(139, 92, 246, 0.15)', 
-                    border: '1px solid rgba(139, 92, 246, 0.3)', 
-                    borderRadius: '50%', 
-                    width: '36px', 
-                    height: '36px', 
-                    padding: 0, 
-                    justifyContent: 'center', 
-                    display: 'flex',
-                    alignItems: 'center',
-                    color: theme.accent,
-                    cursor: 'pointer',
-                    boxShadow: '0 5px 15px rgba(0,0,0,0.2)',
-                    transition: 'all 0.2s'
-                }}
-                title="Smart Import"
-               >
-                <Brain size={16} />
-               </button>
-               <button 
-                onClick={() => setIsSyncModalOpen(true)}
-                style={{
-                    background: 'rgba(16, 185, 129, 0.15)', 
-                    border: '1px solid rgba(16, 185, 129, 0.3)', 
-                    borderRadius: '50%', 
-                    width: '36px', 
-                    height: '36px', 
-                    padding: 0, 
-                    justifyContent: 'center', 
-                    display: 'flex',
-                    alignItems: 'center',
-                    color: '#10b981',
-                    cursor: 'pointer',
-                    boxShadow: '0 5px 15px rgba(0,0,0,0.2)',
-                    transition: 'all 0.2s'
-                }}
-                title="Export to Calendar (ICS)"
-               >
-                <Download size={16} />
-               </button>
-               <button style={{...styles.button, borderRadius: '50%', width: '36px', height: '36px', padding: 0, justifyContent: 'center', boxShadow: '0 5px 15px rgba(0,0,0,0.3)'}} onClick={onAddEventClick}>
-                <Plus size={16} />
-               </button>
+
+               {isActionsMenuOpen && (
+                   <>
+                       <div className="fixed inset-0 z-[1999]" onClick={() => setIsActionsMenuOpen(false)} />
+                       <div className="absolute right-0 mt-2 w-48 bg-[#1e0a45] border border-white/10 rounded-xl shadow-2xl z-[2000] overflow-hidden py-1 animate-in fade-in slide-in-from-top-2">
+                           <button 
+                               onClick={() => { onAddEventClick(); setIsActionsMenuOpen(false); }}
+                               className="w-full px-4 py-3 text-left text-sm font-semibold text-white hover:bg-white/10 flex items-center gap-3 transition-colors"
+                           >
+                               <Plus size={16} className="text-white" /> Add Event
+                           </button>
+                           <button 
+                               onClick={() => { onSmartImportClick(); setIsActionsMenuOpen(false); }}
+                               className="w-full px-4 py-3 text-left text-sm font-semibold text-white hover:bg-white/10 flex items-center gap-3 transition-colors"
+                           >
+                               <Brain size={16} className="text-violet-400" /> Smart Import
+                           </button>
+                           <button 
+                               onClick={() => { setIsSyncModalOpen(true); setIsActionsMenuOpen(false); }}
+                               className="w-full px-4 py-3 text-left text-sm font-semibold text-white hover:bg-white/10 flex items-center gap-3 transition-colors"
+                           >
+                               <Download size={16} className="text-emerald-400" /> Export (ICS)
+                           </button>
+                           <div className="h-px bg-white/10 my-1"></div>
+                           <button 
+                               onClick={() => { onClearScheduleClick(); setIsActionsMenuOpen(false); }}
+                               className="w-full px-4 py-3 text-left text-sm font-semibold text-red-400 hover:bg-white/10 flex items-center gap-3 transition-colors"
+                           >
+                               <Trash2 size={16} /> Clear Schedule
+                           </button>
+                       </div>
+                   </>
+               )}
            </div>
         </div>
 
-        <div ref={scrollContainerRef} style={{...styles.scheduleWrapper, maxHeight: 'calc(100vh - 150px)', borderRadius: '16px'}}>
+        <div ref={scrollContainerRef} style={{...styles.scheduleWrapper, borderRadius: '16px'}}>
             <div style={{...styles.scheduleContainer, gridTemplateColumns: gridTemplateColumns, minWidth: periods.length * 80 + 'px'}}>
              <div style={styles.scheduleHeaderCell}></div>
              {periods.map((p, i) => (
