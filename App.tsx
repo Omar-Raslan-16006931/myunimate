@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { AlertCircle, RefreshCw } from 'lucide-react';
 import { supabase } from './lib/supabase';
 import { ViewState, ScheduleEvent, ScheduleProfile, EventColorMap, EventType, PeriodDefinition, Announcement, ThemeMode, FoodItem, WaterLog, WorkoutSession, WorkoutRoutine, ExerciseDefinition, GymSettings, ActiveGymState, CourseGrade, ToDoItem, MaterialFile } from './types';
@@ -127,6 +127,26 @@ export const App: React.FC = () => {
   // Grades, Courses & ToDo
   const [courses, setCourses] = useState<CourseGrade[]>([]);
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
+  const courseUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleUpdateCourse = (updated: CourseGrade) => {
+      setCourses(prev => prev.map(c => c.id === updated.id ? updated : c));
+      
+      if (courseUpdateTimeoutRef.current) {
+          clearTimeout(courseUpdateTimeoutRef.current);
+      }
+      
+      courseUpdateTimeoutRef.current = setTimeout(async () => {
+          const { error } = await supabase.from('courses').update({
+              title: updated.title,
+              code: updated.code,
+              target_grade: updated.targetGrade,
+              categories: updated.categories
+          }).eq('id', updated.id);
+          if (error) console.error("Error updating course:", error);
+      }, 500);
+  };
+
   const [toDoItems, setToDoItems] = useState<ToDoItem[]>([]);
   const [files, setFiles] = useState<MaterialFile[]>(INITIAL_FILES);
 
@@ -349,6 +369,11 @@ export const App: React.FC = () => {
         newEvent.dayOfWeek = days[dateObj.getDay()];
     }
 
+    // Optimistic UI update
+    setEvents(prev => [...prev, newEvent]);
+    setIsAddModalOpen(false);
+    setEditingEvent(null);
+
     const insertPayload = {
         id: newEvent.id,
         user_id: session.user.id,
@@ -370,12 +395,10 @@ export const App: React.FC = () => {
     
     const { error } = await supabase.from('events').insert(insertPayload);
 
-    if (!error) {
-        setEvents(prev => [...prev, newEvent]);
-        setIsAddModalOpen(false);
-        setEditingEvent(null);
-    } else {
+    if (error) {
         console.error('Error adding event:', error);
+        // Rollback on error
+        setEvents(prev => prev.filter(e => e.id !== newEvent.id));
         throw new Error(error.message);
     }
   };
@@ -528,10 +551,11 @@ export const App: React.FC = () => {
 
   const onDeleteEvent = async (id: string) => {
     if (!session?.user?.id) return;
+    setEvents(prev => prev.filter(e => e.id !== id));
+    setViewingEvent(null);
     const { error } = await supabase.from('events').delete().eq('id', id);
-    if (!error) {
-        setEvents(events.filter(e => e.id !== id));
-        setViewingEvent(null);
+    if (error) {
+        console.error("Error deleting event:", error);
     }
   };
 
@@ -704,15 +728,21 @@ export const App: React.FC = () => {
                     target_grade: "95",
                     categories: []
                 };
+                const optimisticCourse = { ...newCourse, targetGrade: newCourse.target_grade };
+                setCourses(prev => [...prev, optimisticCourse]);
+                setSelectedCourseId(newCourse.id);
+                
                 const { error } = await supabase.from('courses').insert(newCourse);
-                if (!error) {
-                    setCourses([...courses, { ...newCourse, targetGrade: newCourse.target_grade }]);
-                    setSelectedCourseId(newCourse.id);
+                if (error) {
+                    console.error("Error adding course:", error);
+                    setCourses(prev => prev.filter(c => c.id !== newCourse.id));
+                    setSelectedCourseId(null);
                 }
             }}
             onDeleteCourse={async (id) => {
+                setCourses(prev => prev.filter(c => c.id !== id));
                 const { error } = await supabase.from('courses').delete().eq('id', id);
-                if (!error) setCourses(courses.filter(c => c.id !== id));
+                if (error) console.error("Error deleting course:", error);
             }}
         />;
       case 'materials':
@@ -780,22 +810,16 @@ export const App: React.FC = () => {
             if (!course) return <div>Course not found</div>;
             return <UniversalGradeCalculator 
                 course={course}
-                onUpdate={async (updated) => {
-                    setCourses(courses.map(c => c.id === updated.id ? updated : c));
-                    const { error } = await supabase.from('courses').update({
-                        title: updated.title,
-                        code: updated.code,
-                        target_grade: updated.targetGrade,
-                        categories: updated.categories
-                    }).eq('id', updated.id);
-                    if (error) console.error("Error updating course:", error);
-                }}
+                onUpdate={handleUpdateCourse}
                 onBack={() => setSelectedCourseId(null)}
                 onDelete={async () => {
-                    const { error } = await supabase.from('courses').delete().eq('id', selectedCourseId);
-                    if (!error) {
-                        setCourses(courses.filter(c => c.id !== selectedCourseId));
-                        setSelectedCourseId(null);
+                    const idToDelete = selectedCourseId;
+                    setCourses(courses.filter(c => c.id !== idToDelete));
+                    setSelectedCourseId(null);
+                    const { error } = await supabase.from('courses').delete().eq('id', idToDelete);
+                    if (error) {
+                        console.error("Error deleting course:", error);
+                        // Rollback could be implemented here, but for now just log
                     }
                 }}
             />;
@@ -821,15 +845,21 @@ export const App: React.FC = () => {
                     target_grade: "95",
                     categories: []
                 };
+                const optimisticCourse = { ...newCourse, targetGrade: newCourse.target_grade };
+                setCourses(prev => [...prev, optimisticCourse]);
+                setSelectedCourseId(newCourse.id);
+                
                 const { error } = await supabase.from('courses').insert(newCourse);
-                if (!error) {
-                    setCourses([...courses, { ...newCourse, targetGrade: newCourse.target_grade }]);
-                    setSelectedCourseId(newCourse.id);
+                if (error) {
+                    console.error("Error adding course:", error);
+                    setCourses(prev => prev.filter(c => c.id !== newCourse.id));
+                    setSelectedCourseId(null);
                 }
             }}
             onDeleteCourse={async (id) => {
+                setCourses(prev => prev.filter(c => c.id !== id));
                 const { error } = await supabase.from('courses').delete().eq('id', id);
-                if (!error) setCourses(courses.filter(c => c.id !== id));
+                if (error) console.error("Error deleting course:", error);
             }}
         />;
       case 'todo':
@@ -845,8 +875,13 @@ export const App: React.FC = () => {
                     priority,
                     created_at: Date.now()
                 };
+                const optimisticItem = { ...newItem, createdAt: newItem.created_at };
+                setToDoItems(prev => [...prev, optimisticItem]);
                 const { error } = await supabase.from('todos').insert(newItem);
-                if (!error) setToDoItems([...toDoItems, { ...newItem, createdAt: newItem.created_at }]);
+                if (error) {
+                    console.error("Error adding todo:", error);
+                    setToDoItems(prev => prev.filter(i => i.id !== newItem.id));
+                }
             }}
             onToggle={async (id) => {
                 const item = toDoItems.find(i => i.id === id);
@@ -974,7 +1009,7 @@ export const App: React.FC = () => {
             else await onAddEvent(data);
 
             if (addToGrades && data.title && session?.user?.id) {
-                const exists = courses.some(c => c.title.toLowerCase() === data.title.toLowerCase());
+                const exists = courses.some(c => c.title?.toLowerCase() === data.title?.toLowerCase());
                 if (!exists) {
                     const newCourse = {
                         id: generateId(),

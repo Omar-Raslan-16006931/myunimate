@@ -104,7 +104,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ events, eventColors, onNav
   const currentTimeVal = now.getHours() + now.getMinutes() / 60;
 
   const todayEvents = events
-    .filter(e => e.dayOfWeek === todayName || e.date === todayStr)
+    .filter(e => {
+        if (e.isRecurring) {
+            return e.dayOfWeek === todayName;
+        } else {
+            return e.date === todayStr;
+        }
+    })
     .sort((a, b) => a.startTime.localeCompare(b.startTime));
 
   const currentEvent = todayEvents.find(e => {
