@@ -3,7 +3,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { AlertCircle, RefreshCw } from 'lucide-react';
 import { Toaster, toast } from 'react-hot-toast';
 import { supabase } from './lib/supabase';
-import { cacheData, getCachedData } from './lib/cache';
 import { ViewState, ScheduleEvent, ScheduleProfile, EventColorMap, EventType, PeriodDefinition, Announcement, ThemeMode, FoodItem, WaterLog, WorkoutSession, WorkoutRoutine, ExerciseDefinition, GymSettings, ActiveGymState, CourseGrade, ToDoItem, MaterialFile } from './types';
 import { INITIAL_EVENTS, INITIAL_PROFILES, INITIAL_COLORS, INITIAL_PERIODS, DEFAULT_GYM_SETTINGS, DEFAULT_ROUTINES, DEFAULT_EXERCISES, INITIAL_FILES, generateId } from './constants';
 import { styles, theme } from './theme';
@@ -567,7 +566,7 @@ export const App: React.FC = () => {
 
   const handleGymUpdate = (updates: Partial<ActiveGymState>) => setActiveGymState({ ...activeGymState, ...updates });
 
-  const isAppReady = !loading && splashReady;
+  const isAppReady = !loading;
 
   if (!isAppReady) return (
     <div style={{...styles.container, justifyContent: 'center', alignItems: 'center', background: 'var(--bg-gradient)'}} className="transition-opacity duration-500 ease-in-out">
@@ -586,7 +585,6 @@ export const App: React.FC = () => {
             <div className="w-2 h-2 bg-violet-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
             <div className="w-2 h-2 bg-violet-500 rounded-full animate-bounce"></div>
           </div>
-          {/* Offline warning removed */}
         </div>
       </div>
     </div>
