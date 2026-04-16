@@ -151,43 +151,9 @@ export const App: React.FC = () => {
   const [toDoItems, setToDoItems] = useState<ToDoItem[]>([]);
   const [files, setFiles] = useState<MaterialFile[]>(INITIAL_FILES);
 
-  const [splashReady, setSplashReady] = useState(false);
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
-
-  useEffect(() => {
-    const handleOnline = () => { setIsOnline(true); toast.success("Back Online - Syncing changes!"); };
-    const handleOffline = () => { setIsOnline(false); toast.error("You are offline. Changes will save locally."); };
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    // Minimum splash screen duration (2.5s)
-    const timer = setTimeout(() => {
-      setSplashReady(true);
-    }, 2500);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-      clearTimeout(timer);
-    };
-  }, []);
-
   useEffect(() => {
     const initialize = async () => {
       try {
-        // Load from cache first for immediate offline availability
-        const cachedEvents = getCachedData('events');
-        const cachedProfiles = getCachedData('profiles');
-        const cachedCourses = getCachedData('courses');
-        const cachedTodos = getCachedData('todos');
-        const cachedFiles = getCachedData('files');
-        
-        if (cachedEvents) setEvents(cachedEvents);
-        if (cachedProfiles) setProfiles(cachedProfiles);
-        if (cachedCourses) setCourses(cachedCourses);
-        if (cachedTodos) setToDoItems(cachedTodos);
-        if (cachedFiles) setFiles(cachedFiles);
-
         const { data: { session } } = await supabase.auth.getSession();
         setSession(session);
         if (session) {
@@ -196,17 +162,9 @@ export const App: React.FC = () => {
                 fetchUserData(session.user.id)
             ]);
         } else {
-            // Fallback to initial if nothing in cache
-            if (!cachedEvents) {
-                setEvents(INITIAL_EVENTS);
-                cacheData('events', INITIAL_EVENTS);
-            }
-            if (!cachedProfiles) {
-                setProfiles(INITIAL_PROFILES);
-                cacheData('profiles', INITIAL_PROFILES);
-                setActiveProfileId(INITIAL_PROFILES[0].id);
-                cacheData('activeProfileId', INITIAL_PROFILES[0].id);
-            }
+            setEvents(INITIAL_EVENTS);
+            setProfiles(INITIAL_PROFILES);
+            setActiveProfileId(INITIAL_PROFILES[0].id);
         }
       } catch (error) {
         console.error("Initialization error:", error);
@@ -246,7 +204,8 @@ export const App: React.FC = () => {
   const fetchUserData = async (userId: string) => {
       // Fetch Events
       const { data: eventsData } = await supabase.from('events').select('*').eq('user_id', userId);
-      const processedEvents = eventsData ? eventsData.map((e: any) => ({
+      if (eventsData && eventsData.length > 0) {
+          setEvents(eventsData.map((e: any) => ({
               ...e,
               scheduleId: e.schedule_id,
               startTime: e.start_time,
@@ -254,15 +213,15 @@ export const App: React.FC = () => {
               isRecurring: e.is_recurring,
               dayOfWeek: e.day_of_week,
               date: e.date
-          })) : [];
-      setEvents(processedEvents);
-      cacheData('events', processedEvents);
+          })));
+      } else {
+          setEvents([]);
+      }
 
       // Fetch Profiles
       const { data: profilesData } = await supabase.from('schedule_profiles').select('*').eq('user_id', userId);
       if (profilesData && profilesData.length > 0) {
           setProfiles(profilesData);
-          cacheData('profiles', profilesData);
           const active = profilesData.find((p: any) => p.is_active);
           if (active) setActiveProfileId(active.id);
           else setActiveProfileId(profilesData[0].id);
@@ -279,28 +238,21 @@ export const App: React.FC = () => {
           const { error } = await supabase.from('schedule_profiles').insert(defaultProfiles);
           if (!error) {
               setProfiles(defaultProfiles);
-              cacheData('profiles', defaultProfiles);
               setActiveProfileId(defaultProfiles[0].id);
           }
       }
 
       // Fetch Courses
       const { data: coursesData } = await supabase.from('courses').select('*').eq('user_id', userId);
-      const processedCourses = coursesData ? coursesData.map((c: any) => ({ ...c, targetGrade: c.target_grade })) : [];
-      setCourses(processedCourses);
-      cacheData('courses', processedCourses);
+      if (coursesData) setCourses(coursesData.map((c: any) => ({ ...c, targetGrade: c.target_grade })));
 
       // Fetch Todos
       const { data: todosData } = await supabase.from('todos').select('*').eq('user_id', userId);
-      const processedTodos = todosData ? todosData.map((t: any) => ({...t, createdAt: t.created_at})) : [];
-      setToDoItems(processedTodos);
-      cacheData('todos', processedTodos);
+      if (todosData) setToDoItems(todosData.map((t: any) => ({...t, createdAt: t.created_at})));
 
       // Fetch Materials
       const { data: materialsData } = await supabase.from('materials').select('*').eq('user_id', userId);
-      const processedFiles = materialsData ? materialsData.map((m: any) => ({...m, dateAdded: m.date_added, fileData: m.file_data, mimeType: m.mime_type, parentId: m.parent_id})) : [];
-      setFiles(processedFiles);
-      cacheData('files', processedFiles);
+      if (materialsData) setFiles(materialsData.map((m: any) => ({...m, dateAdded: m.date_added, fileData: m.file_data, mimeType: m.mime_type, parentId: m.parent_id})));
   };
 
   const fetchProfile = async (userId: string) => {
@@ -601,20 +553,13 @@ export const App: React.FC = () => {
   const onDeleteEvent = async (id: string) => {
     if (!session?.user?.id) return;
     const backup = events.find(e => e.id === id);
-    const updatedEvents = events.filter(e => e.id !== id);
-    setEvents(updatedEvents);
-    cacheData('events', updatedEvents);
-    
+    setEvents(prev => prev.filter(e => e.id !== id));
     setViewingEvent(null);
     const { error } = await supabase.from('events').delete().eq('id', id);
     if (error) {
         console.error("Error deleting event:", error);
         toast.error("Failed to delete event. Please check your connection.");
-        if (backup) {
-            const restoredEvents = [...updatedEvents, backup];
-            setEvents(restoredEvents);
-            cacheData('events', restoredEvents);
-        }
+        if (backup) setEvents(prev => [...prev, backup]);
     } else {
         toast.success("Event deleted");
     }
@@ -641,7 +586,7 @@ export const App: React.FC = () => {
             <div className="w-2 h-2 bg-violet-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
             <div className="w-2 h-2 bg-violet-500 rounded-full animate-bounce"></div>
           </div>
-          {(!isOnline && loading) && <p className="text-white/50 text-sm mt-2 font-medium animate-pulse">Connecting offline...</p>}
+          {/* Offline warning removed */}
         </div>
       </div>
     </div>
@@ -1168,11 +1113,6 @@ export const App: React.FC = () => {
         />
       )}
       <Toaster position="bottom-right" toastOptions={{ style: { background: '#1e293b', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' } }} />
-      {!isOnline && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-red-500/90 text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg backdrop-blur-md z-[9999] flex items-center gap-2 animate-fade-in-up">
-           <AlertCircle size={14} /> Offline Mode - Local Changes
-        </div>
-      )}
     </div>
   );
 };
