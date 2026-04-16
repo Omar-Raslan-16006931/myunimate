@@ -46,13 +46,10 @@ const Schedule: React.FC<ScheduleProps> = ({
     if (!scheduleRef.current) return;
     try {
         const { toPng } = await import('html-to-image');
-        // Ensure webfonts load and rendering isn't clipped
         const dataUrl = await toPng(scheduleRef.current, { 
             backgroundColor: '#0f172a',
-            pixelRatio: 2, // higher resolution
-            style: {
-                overflow: 'visible'
-            }
+            pixelRatio: 2,
+            style: { overflow: 'visible' }
         });
         const link = document.createElement('a');
         link.download = 'unimate-schedule.png';
@@ -461,8 +458,8 @@ const Schedule: React.FC<ScheduleProps> = ({
            </div>
         </div>
 
-        <div ref={scrollContainerRef} className="hide-scroll" style={{...styles.scheduleWrapper, borderRadius: '16px'}}>
-            <div ref={scheduleRef} style={{...styles.scheduleContainer, gridTemplateColumns: gridTemplateColumns, minWidth: periods.length * 80 + 'px', padding: '16px'}}>
+        <div ref={scrollContainerRef} style={{...styles.scheduleWrapper, borderRadius: '16px'}}>
+            <div ref={scheduleRef} style={{...styles.scheduleContainer, gridTemplateColumns: gridTemplateColumns, minWidth: periods.length * 80 + 'px'}}>
              <div style={styles.scheduleHeaderCell}></div>
              {periods.map((p, i) => (
                p.isBreak ? <div key={p.id} style={styles.scheduleBreakHeader}>{p.label}</div> : 
