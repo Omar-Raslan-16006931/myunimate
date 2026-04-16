@@ -4,12 +4,14 @@ import { CourseGrade } from '../types';
 import { generateId } from '../constants';
 import { Plus, GraduationCap, BookOpen, Trash2, AlertTriangle, X, Calculator, ArrowLeft, Save, CheckCircle2, RotateCcw, ChevronDown, Check } from 'lucide-react';
 import { styles } from '../theme';
+import AcademicHub from './AcademicHub';
 
 interface CoursesViewProps {
   courses: CourseGrade[];
   onSelectCourse: (id: string) => void;
   onAddCourse: () => void;
   onDeleteCourse: (id: string) => void;
+  onUpdateCourse: (course: CourseGrade) => void;
 }
 
 // --- GPA TYPES ---
@@ -710,9 +712,22 @@ const GPACalculator = ({ courses, onBack }: { courses: CourseGrade[], onBack: ()
 };
 
 // --- MAIN COURSES VIEW ---
-const CoursesView: React.FC<CoursesViewProps> = ({ courses, onSelectCourse, onAddCourse, onDeleteCourse }) => {
+const CoursesView: React.FC<CoursesViewProps> = ({ courses, onSelectCourse, onAddCourse, onDeleteCourse, onUpdateCourse }) => {
+  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
+  const selectedCourse = courses.find(c => c.id === selectedCourseId);
   const [courseToDelete, setCourseToDelete] = useState<CourseGrade | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'gpa'>('list');
+
+  // If a course is selected, show Academic Hub View
+  if (selectedCourse) {
+      return (
+          <AcademicHub 
+              course={selectedCourse}
+              onUpdate={onUpdateCourse}
+              onBack={() => setSelectedCourseId(null)}
+          />
+      );
+  }
 
   // Calculate Absolute Grade
   const getCourseStats = (course: CourseGrade) => {
@@ -786,7 +801,7 @@ const CoursesView: React.FC<CoursesViewProps> = ({ courses, onSelectCourse, onAd
           return (
             <div 
                 key={course.id} 
-                onClick={() => onSelectCourse(course.id)}
+                onClick={() => setSelectedCourseId(course.id)}
                 className="group relative bg-[#1c1c1e] border border-white/5 rounded-2xl p-4 cursor-pointer hover:bg-white/10 transition-all active:scale-[0.99] overflow-hidden shadow-sm hover:shadow-md"
             >
                 <div className="flex justify-between items-start mb-3">
