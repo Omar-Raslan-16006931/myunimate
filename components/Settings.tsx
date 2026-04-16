@@ -505,21 +505,7 @@ const Settings: React.FC<SettingsProps> = ({
                       </div>
                     )}
 
-                    {/* Appearance */}
-                    <div className="border-b border-white/[0.05] last:border-0">
-                        <div className="flex items-center justify-between p-4 px-5">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-2xl bg-white/5 flex items-center justify-center text-white/60">
-                                    {themeMode === 'dark' ? <Moon size={20} /> : <Sun size={20} />}
-                                </div>
-                                <h3 className="text-[15px] font-bold text-white tracking-tight">Appearance</h3>
-                            </div>
-                            <div className="bg-black/40 p-1 rounded-xl flex gap-1 border border-white/5">
-                                <button onClick={() => setThemeMode('light')} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${themeMode === 'light' ? 'bg-white text-black' : 'text-white/40'}`}>Light</button>
-                                <button onClick={() => setThemeMode('dark')} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${themeMode === 'dark' ? 'bg-white text-black' : 'text-white/40'}`}>Dark</button>
-                            </div>
-                        </div>
-                    </div>
+
                 </GroupCard>
 
                 {/* --- ACADEMIC ENGINE GROUP --- */}
@@ -583,41 +569,7 @@ const Settings: React.FC<SettingsProps> = ({
                         )}
                     </div>
 
-                    {/* Base Schedule */}
-                    <div className="border-b border-white/[0.05] last:border-0">
-                        <SectionHeader icon={CalendarDays} color="#10b981" title="Academic Baseline" isExpanded={isBaseScheduleExpanded} onToggle={() => setIsBaseScheduleExpanded(!isBaseScheduleExpanded)} />
-                        {isBaseScheduleExpanded && (
-                            <div className="px-5 pb-6 pt-2 animate-in slide-in-from-top-2 duration-300">
-                                <button onClick={onAddBaseEventClick} className="w-full py-3 bg-emerald-600/10 border border-emerald-500/20 rounded-xl text-emerald-400 text-xs font-black uppercase tracking-widest mb-4 hover:bg-emerald-600/20 transition-all flex items-center justify-center gap-2"><Plus size={14} /> Add Recurrent Class</button>
-                                <div className="space-y-4">
-                                    {days.map(day => {
-                                        const dayEvents = baseEvents.filter(e => e.dayOfWeek === day).sort((a,b) => a.startTime.localeCompare(b.startTime));
-                                        if (dayEvents.length === 0) return null;
-                                        return (
-                                            <div key={day} className="space-y-2">
-                                                <p className="text-[10px] font-black text-white/20 uppercase tracking-widest ml-1">{day}</p>
-                                                {dayEvents.map(e => (
-                                                    <div key={e.id} className="bg-black/40 p-3 rounded-2xl border border-white/[0.03] flex items-center justify-between group">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="w-1.5 h-6 rounded-full" style={{ background: eventColors[e.type] }} />
-                                                            <div>
-                                                                <p className="text-sm font-bold text-white leading-none mb-1">{e.title}</p>
-                                                                <p className="text-[10px] font-bold text-white/30 uppercase">{to12h(e.startTime)} • {e.type}</p>
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                            <button onClick={() => onEditEvent(e)} className="p-2 text-white/40 hover:text-white"><Pencil size={14} /></button>
-                                                            <button onClick={() => onDeleteEvent(e.id)} className="p-2 text-white/40 hover:text-red-400"><Trash2 size={14} /></button>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        )}
-                    </div>
+
                 </GroupCard>
 
                 {/* --- UTILITIES & SUPPORT GROUP --- */}
@@ -628,29 +580,7 @@ const Settings: React.FC<SettingsProps> = ({
                         </div>
                     </div>
 
-                    {/* AI Import */}
-                    <div className="p-5">
-                        <div className="flex items-center gap-3 mb-4">
-                            <div className="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center"><ImageIcon size={18} /></div>
-                            <h3 className="text-sm font-bold text-white">Smart Import</h3>
-                        </div>
-                        <div className="bg-black/40 border-2 border-dashed border-white/10 rounded-[24px] p-8 text-center cursor-pointer hover:border-violet-500/50 hover:bg-violet-500/5 transition-all group" onClick={() => fileInputRef.current?.click()}>
-                            {isAnalyzing ? (
-                                <div className="flex flex-col items-center gap-3">
-                                    <Loader2 size={32} className="animate-spin text-violet-400" />
-                                    <p className="text-xs font-bold text-violet-200">Processing Timetable...</p>
-                                </div>
-                            ) : (
-                                <div className="flex flex-col items-center gap-3">
-                                    <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center text-white/30 group-hover:text-violet-400 group-hover:scale-110 transition-all"><Upload size={24} /></div>
-                                    <p className="text-xs font-medium text-white/40">Upload Screenshot to Sync Schedule</p>
-                                </div>
-                            )}
-                            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={e => { if (e.target.files?.[0]) onImageUpload(e.target.files[0]); e.target.value = ''; }} />
-                        </div>
-                    </div>
 
-                    <div className="h-px bg-white/[0.05] mx-5" />
 
                     {/* Support Buttons */}
                     <div className="p-4 px-5 space-y-2">

@@ -96,6 +96,7 @@ const CategorySection = ({ cat, updateCategory, deleteCategory, addItem, updateI
                             <input 
                                 value={cat.name}
                                 onChange={(e) => updateCategory(cat.id, { name: e.target.value })}
+                                maxLength={30}
                                 className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500/50"
                             />
                         </div>
@@ -134,6 +135,7 @@ const CategorySection = ({ cat, updateCategory, deleteCategory, addItem, updateI
                                     value={item.name}
                                     onChange={(e) => updateItem(cat.id, item.id, 'name', e.target.value)}
                                     placeholder="Assignment Name"
+                                    maxLength={40}
                                     className="flex-1 bg-transparent border-none py-1 text-sm font-medium text-white placeholder-white/20 focus:outline-none"
                                 />
                                 <div className="flex items-center gap-2 w-28 justify-end">
@@ -327,6 +329,7 @@ const UniversalGradeCalculator: React.FC<UniversalGradeCalculatorProps> = ({ cou
                         <input 
                             value={course.title}
                             onChange={(e) => updateCourse({ title: e.target.value })}
+                            maxLength={50}
                             className="bg-transparent border-none text-xl font-bold text-white focus:text-white outline-none w-full focus:ring-0 truncate"
                             placeholder="Course Name"
                         />
@@ -334,12 +337,14 @@ const UniversalGradeCalculator: React.FC<UniversalGradeCalculatorProps> = ({ cou
                             <input 
                                 value={course.code || ''}
                                 onChange={(e) => updateCourse({ code: e.target.value })}
+                                maxLength={20}
                                 className="bg-white/5 border border-white/10 rounded px-2 py-0.5 text-[10px] font-bold text-white/60 focus:text-white focus:border-indigo-500/50 outline-none w-24"
                                 placeholder="CODE"
                             />
                             <input 
                                 value={course.group || ''}
                                 onChange={(e) => updateCourse({ group: e.target.value })}
+                                maxLength={20}
                                 className="bg-white/5 border border-white/10 rounded px-2 py-0.5 text-[10px] font-bold text-white/60 focus:text-white focus:border-indigo-500/50 outline-none w-24"
                                 placeholder="GROUP"
                             />

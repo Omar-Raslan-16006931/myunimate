@@ -40,6 +40,28 @@ const Schedule: React.FC<ScheduleProps> = ({
   const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
   const [isActionsMenuOpen, setIsActionsMenuOpen] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const scheduleRef = useRef<HTMLDivElement>(null);
+
+  const handleExportImage = async () => {
+    if (!scheduleRef.current) return;
+    try {
+        const { toPng } = await import('html-to-image');
+        // Ensure webfonts load and rendering isn't clipped
+        const dataUrl = await toPng(scheduleRef.current, { 
+            backgroundColor: '#0f172a',
+            pixelRatio: 2, // higher resolution
+            style: {
+                overflow: 'visible'
+            }
+        });
+        const link = document.createElement('a');
+        link.download = 'unimate-schedule.png';
+        link.href = dataUrl;
+        link.click();
+    } catch (err) {
+        console.error("Export to image failed:", err);
+    }
+  };
 
   // Helper to get the Saturday of the current week (Start of academic week)
   const getSaturdayOfWeek = (d: Date) => {
@@ -420,6 +442,12 @@ const Schedule: React.FC<ScheduleProps> = ({
                            >
                                <Download size={16} className="text-emerald-400" /> Export (ICS)
                            </button>
+                           <button 
+                               onClick={() => { handleExportImage(); setIsActionsMenuOpen(false); }}
+                               className="w-full px-4 py-3 text-left text-sm font-semibold text-white hover:bg-white/10 flex items-center gap-3 transition-colors"
+                           >
+                               <Download size={16} className="text-blue-400" /> Export (Image)
+                           </button>
                            <div className="h-px bg-white/10 my-1"></div>
                            <button 
                                onClick={() => { onClearScheduleClick(); setIsActionsMenuOpen(false); }}
@@ -433,8 +461,8 @@ const Schedule: React.FC<ScheduleProps> = ({
            </div>
         </div>
 
-        <div ref={scrollContainerRef} style={{...styles.scheduleWrapper, borderRadius: '16px'}}>
-            <div style={{...styles.scheduleContainer, gridTemplateColumns: gridTemplateColumns, minWidth: periods.length * 80 + 'px'}}>
+        <div ref={scrollContainerRef} className="hide-scroll" style={{...styles.scheduleWrapper, borderRadius: '16px'}}>
+            <div ref={scheduleRef} style={{...styles.scheduleContainer, gridTemplateColumns: gridTemplateColumns, minWidth: periods.length * 80 + 'px', padding: '16px'}}>
              <div style={styles.scheduleHeaderCell}></div>
              {periods.map((p, i) => (
                p.isBreak ? <div key={p.id} style={styles.scheduleBreakHeader}>{p.label}</div> : 

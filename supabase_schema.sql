@@ -1,6 +1,13 @@
 -- Enable UUID extension if not already enabled
 create extension if not exists "uuid-ossp";
 
+-- ==============================================================================
+-- UNIVERSAL ROW LEVEL SECURITY (RLS) POLICIES
+-- Strict Security: Users can ONLY insert, update, select, and delete their
+-- OWN records based on auth.uid() matching user_id. 
+-- NO access to other users' data is permitted.
+-- ==============================================================================
+
 -- 1. ToDo Items Table
 create table if not exists public.todos (
   id uuid default uuid_generate_v4() primary key,
@@ -20,7 +27,7 @@ create policy "Users can insert their own todos"
 on public.todos for insert with check (auth.uid() = user_id);
 
 create policy "Users can update their own todos" 
-on public.todos for update using (auth.uid() = user_id);
+on public.todos for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 create policy "Users can delete their own todos" 
 on public.todos for delete using (auth.uid() = user_id);
@@ -49,7 +56,7 @@ create policy "Users can insert their own materials"
 on public.materials for insert with check (auth.uid() = user_id);
 
 create policy "Users can update their own materials" 
-on public.materials for update using (auth.uid() = user_id);
+on public.materials for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 create policy "Users can delete their own materials" 
 on public.materials for delete using (auth.uid() = user_id);
@@ -75,7 +82,7 @@ create policy "Users can insert their own courses"
 on public.courses for insert with check (auth.uid() = user_id);
 
 create policy "Users can update their own courses" 
-on public.courses for update using (auth.uid() = user_id);
+on public.courses for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 create policy "Users can delete their own courses" 
 on public.courses for delete using (auth.uid() = user_id);
@@ -100,7 +107,7 @@ create policy "Users can insert their own schedule profiles"
 on public.schedule_profiles for insert with check (auth.uid() = user_id);
 
 create policy "Users can update their own schedule profiles" 
-on public.schedule_profiles for update using (auth.uid() = user_id);
+on public.schedule_profiles for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 create policy "Users can delete their own schedule profiles" 
 on public.schedule_profiles for delete using (auth.uid() = user_id);
@@ -134,7 +141,7 @@ create policy "Users can insert their own events"
 on public.events for insert with check (auth.uid() = user_id);
 
 create policy "Users can update their own events" 
-on public.events for update using (auth.uid() = user_id);
+on public.events for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 create policy "Users can delete their own events" 
 on public.events for delete using (auth.uid() = user_id);

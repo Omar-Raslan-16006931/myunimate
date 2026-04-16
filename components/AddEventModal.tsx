@@ -199,6 +199,7 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ isOpen, onClose, onSave, 
                         list="course-suggestions"
                         style={{...styles.input, width: "100%", boxSizing: 'border-box', fontSize: '1.1rem', fontWeight: 600}} 
                         placeholder="Event Title" 
+                        maxLength={50}
                         value={formData.title || ''} 
                         onChange={handleTitleChange} 
                     />
@@ -211,11 +212,11 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ isOpen, onClose, onSave, 
                 <div style={{display: "flex", flexWrap: "wrap", gap: "16px"}}>
                     <div style={{flex: '1 1 140px'}}>
                         <label style={styles.label}>Code</label>
-                        <input style={{...styles.input, width: "100%", boxSizing: 'border-box'}} placeholder="CS101" value={formData.code || ''} onChange={e => setFormData({...formData, code: e.target.value})} />
+                        <input style={{...styles.input, width: "100%", boxSizing: 'border-box'}} maxLength={15} placeholder="CS101" value={formData.code || ''} onChange={e => setFormData({...formData, code: e.target.value})} />
                     </div>
                     <div style={{flex: '1 1 140px'}}>
                         <label style={styles.label}>Group</label>
-                        <input style={{...styles.input, width: "100%", boxSizing: 'border-box'}} placeholder="A1" value={formData.group || ''} onChange={e => setFormData({...formData, group: e.target.value})} />
+                        <input style={{...styles.input, width: "100%", boxSizing: 'border-box'}} maxLength={15} placeholder="A1" value={formData.group || ''} onChange={e => setFormData({...formData, group: e.target.value})} />
                     </div>
                 </div>
 
