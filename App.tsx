@@ -27,7 +27,6 @@ import UniversalGradeCalculator from './components/UniversalGradeCalculator';
 import PaymentPage from './components/PaymentPage';
 import CoursesView from './components/CoursesView';
 import MaterialsView from './components/MaterialsView';
-import { StudyGroupsView } from './components/StudyGroupsView';
 
 // Error Boundary Component
 class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean, error: Error | null}> {
