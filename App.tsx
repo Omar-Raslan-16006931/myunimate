@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { AlertCircle, RefreshCw } from 'lucide-react';
 import { Toaster, toast } from 'react-hot-toast';
 import { supabase } from './lib/supabase';
+import { cacheData, getCachedData } from './lib/cache';
 import { ViewState, ScheduleEvent, ScheduleProfile, EventColorMap, EventType, PeriodDefinition, Announcement, ThemeMode, FoodItem, WaterLog, WorkoutSession, WorkoutRoutine, ExerciseDefinition, GymSettings, ActiveGymState, CourseGrade, ToDoItem, MaterialFile } from './types';
 import { INITIAL_EVENTS, INITIAL_PROFILES, INITIAL_COLORS, INITIAL_PERIODS, DEFAULT_GYM_SETTINGS, DEFAULT_ROUTINES, DEFAULT_EXERCISES, INITIAL_FILES, generateId } from './constants';
 import { styles, theme } from './theme';
@@ -174,6 +175,19 @@ export const App: React.FC = () => {
   useEffect(() => {
     const initialize = async () => {
       try {
+        // Load from cache first for immediate offline availability
+        const cachedEvents = getCachedData('events');
+        const cachedProfiles = getCachedData('profiles');
+        const cachedCourses = getCachedData('courses');
+        const cachedTodos = getCachedData('todos');
+        const cachedFiles = getCachedData('files');
+        
+        if (cachedEvents) setEvents(cachedEvents);
+        if (cachedProfiles) setProfiles(cachedProfiles);
+        if (cachedCourses) setCourses(cachedCourses);
+        if (cachedTodos) setToDoItems(cachedTodos);
+        if (cachedFiles) setFiles(cachedFiles);
+
         const { data: { session } } = await supabase.auth.getSession();
         setSession(session);
         if (session) {
@@ -182,9 +196,12 @@ export const App: React.FC = () => {
                 fetchUserData(session.user.id)
             ]);
         } else {
-            setEvents(INITIAL_EVENTS);
-            setProfiles(INITIAL_PROFILES);
-            setActiveProfileId(INITIAL_PROFILES[0].id);
+            // Fallback to initial if nothing in cache
+            if (!cachedEvents) setEvents(INITIAL_EVENTS);
+            if (!cachedProfiles) {
+                setProfiles(INITIAL_PROFILES);
+                setActiveProfileId(INITIAL_PROFILES[0].id);
+            }
         }
       } catch (error) {
         console.error("Initialization error:", error);
@@ -224,8 +241,7 @@ export const App: React.FC = () => {
   const fetchUserData = async (userId: string) => {
       // Fetch Events
       const { data: eventsData } = await supabase.from('events').select('*').eq('user_id', userId);
-      if (eventsData && eventsData.length > 0) {
-          setEvents(eventsData.map((e: any) => ({
+      const processedEvents = eventsData ? eventsData.map((e: any) => ({
               ...e,
               scheduleId: e.schedule_id,
               startTime: e.start_time,
@@ -233,20 +249,20 @@ export const App: React.FC = () => {
               isRecurring: e.is_recurring,
               dayOfWeek: e.day_of_week,
               date: e.date
-          })));
-      } else {
-          setEvents([]);
-      }
+          })) : [];
+      setEvents(processedEvents);
+      cacheData('events', processedEvents);
 
       // Fetch Profiles
       const { data: profilesData } = await supabase.from('schedule_profiles').select('*').eq('user_id', userId);
       if (profilesData && profilesData.length > 0) {
           setProfiles(profilesData);
+          cacheData('profiles', profilesData);
           const active = profilesData.find((p: any) => p.is_active);
           if (active) setActiveProfileId(active.id);
           else setActiveProfileId(profilesData[0].id);
       } else {
-          // Insert default profiles
+          // Insert default profiles (omit caching here, let it be handled when persisted)
           const defaultProfiles = INITIAL_PROFILES.map((p, index) => ({
               id: generateId(),
               user_id: userId,
@@ -258,21 +274,28 @@ export const App: React.FC = () => {
           const { error } = await supabase.from('schedule_profiles').insert(defaultProfiles);
           if (!error) {
               setProfiles(defaultProfiles);
+              cacheData('profiles', defaultProfiles);
               setActiveProfileId(defaultProfiles[0].id);
           }
       }
 
       // Fetch Courses
       const { data: coursesData } = await supabase.from('courses').select('*').eq('user_id', userId);
-      if (coursesData) setCourses(coursesData.map((c: any) => ({ ...c, targetGrade: c.target_grade })));
+      const processedCourses = coursesData ? coursesData.map((c: any) => ({ ...c, targetGrade: c.target_grade })) : [];
+      setCourses(processedCourses);
+      cacheData('courses', processedCourses);
 
       // Fetch Todos
       const { data: todosData } = await supabase.from('todos').select('*').eq('user_id', userId);
-      if (todosData) setToDoItems(todosData.map((t: any) => ({...t, createdAt: t.created_at})));
+      const processedTodos = todosData ? todosData.map((t: any) => ({...t, createdAt: t.created_at})) : [];
+      setToDoItems(processedTodos);
+      cacheData('todos', processedTodos);
 
       // Fetch Materials
       const { data: materialsData } = await supabase.from('materials').select('*').eq('user_id', userId);
-      if (materialsData) setFiles(materialsData.map((m: any) => ({...m, dateAdded: m.date_added, fileData: m.file_data, mimeType: m.mime_type, parentId: m.parent_id})));
+      const processedFiles = materialsData ? materialsData.map((m: any) => ({...m, dateAdded: m.date_added, fileData: m.file_data, mimeType: m.mime_type, parentId: m.parent_id})) : [];
+      setFiles(processedFiles);
+      cacheData('files', processedFiles);
   };
 
   const fetchProfile = async (userId: string) => {
@@ -573,13 +596,20 @@ export const App: React.FC = () => {
   const onDeleteEvent = async (id: string) => {
     if (!session?.user?.id) return;
     const backup = events.find(e => e.id === id);
-    setEvents(prev => prev.filter(e => e.id !== id));
+    const updatedEvents = events.filter(e => e.id !== id);
+    setEvents(updatedEvents);
+    cacheData('events', updatedEvents);
+    
     setViewingEvent(null);
     const { error } = await supabase.from('events').delete().eq('id', id);
     if (error) {
         console.error("Error deleting event:", error);
         toast.error("Failed to delete event. Please check your connection.");
-        if (backup) setEvents(prev => [...prev, backup]);
+        if (backup) {
+            const restoredEvents = [...updatedEvents, backup];
+            setEvents(restoredEvents);
+            cacheData('events', restoredEvents);
+        }
     } else {
         toast.success("Event deleted");
     }
