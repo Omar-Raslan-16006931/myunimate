@@ -717,6 +717,7 @@ export const App: React.FC = () => {
         return <CoursesView 
             courses={courses}
             onSelectCourse={setSelectedCourseId}
+            onUpdateCourse={handleUpdateCourse}
             onAddCourse={async () => {
                 if (!session?.user?.id) return;
                 
