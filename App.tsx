@@ -197,10 +197,15 @@ export const App: React.FC = () => {
             ]);
         } else {
             // Fallback to initial if nothing in cache
-            if (!cachedEvents) setEvents(INITIAL_EVENTS);
+            if (!cachedEvents) {
+                setEvents(INITIAL_EVENTS);
+                cacheData('events', INITIAL_EVENTS);
+            }
             if (!cachedProfiles) {
                 setProfiles(INITIAL_PROFILES);
+                cacheData('profiles', INITIAL_PROFILES);
                 setActiveProfileId(INITIAL_PROFILES[0].id);
+                cacheData('activeProfileId', INITIAL_PROFILES[0].id);
             }
         }
       } catch (error) {
