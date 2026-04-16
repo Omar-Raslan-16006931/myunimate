@@ -99,9 +99,16 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
       const file = e.target.files?.[0];
       if (!file) return;
 
-      // Supabase row size limit is typically ~1-2MB for free tier base64 strings
-      if (file.size > 2 * 1024 * 1024) {
-          console.error("File is too large. Please upload files smaller than 2MB.");
+      const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/msword'];
+      if (!allowedTypes.includes(file.type)) {
+          alert('Invalid file format. Please upload PDF, JPG, PNG, or DOCX files.');
+          if (fileInputRef.current) fileInputRef.current.value = '';
+          return;
+      }
+
+      // Max 10MB limit
+      if (file.size > 10 * 1024 * 1024) {
+          alert("File is too large. Please upload files smaller than 10MB.");
           if (fileInputRef.current) fileInputRef.current.value = '';
           return;
       }

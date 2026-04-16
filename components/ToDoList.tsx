@@ -67,6 +67,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ items, onAdd, onToggle, onDelete, o
               style={{...styles.input, width: '100%', borderRadius: '16px'}}
               placeholder="Add a new task..."
               value={newItemText}
+              maxLength={150}
               onChange={(e) => setNewItemText(e.target.value)}
               autoFocus
             />

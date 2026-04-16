@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { AlertCircle, RefreshCw } from 'lucide-react';
+import { Toaster, toast } from 'react-hot-toast';
 import { supabase } from './lib/supabase';
 import { ViewState, ScheduleEvent, ScheduleProfile, EventColorMap, EventType, PeriodDefinition, Announcement, ThemeMode, FoodItem, WaterLog, WorkoutSession, WorkoutRoutine, ExerciseDefinition, GymSettings, ActiveGymState, CourseGrade, ToDoItem, MaterialFile } from './types';
 import { INITIAL_EVENTS, INITIAL_PROFILES, INITIAL_COLORS, INITIAL_PERIODS, DEFAULT_GYM_SETTINGS, DEFAULT_ROUTINES, DEFAULT_EXERCISES, INITIAL_FILES, generateId } from './constants';
@@ -149,6 +150,27 @@ export const App: React.FC = () => {
 
   const [toDoItems, setToDoItems] = useState<ToDoItem[]>([]);
   const [files, setFiles] = useState<MaterialFile[]>(INITIAL_FILES);
+
+  const [splashReady, setSplashReady] = useState(false);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  useEffect(() => {
+    const handleOnline = () => { setIsOnline(true); toast.success("Back Online - Syncing changes!"); };
+    const handleOffline = () => { setIsOnline(false); toast.error("You are offline. Changes will save locally."); };
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    // Minimum splash screen duration (2.5s)
+    const timer = setTimeout(() => {
+      setSplashReady(true);
+    }, 2500);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      clearTimeout(timer);
+    };
+  }, []);
 
   useEffect(() => {
     const initialize = async () => {
@@ -551,18 +573,25 @@ export const App: React.FC = () => {
 
   const onDeleteEvent = async (id: string) => {
     if (!session?.user?.id) return;
+    const backup = events.find(e => e.id === id);
     setEvents(prev => prev.filter(e => e.id !== id));
     setViewingEvent(null);
     const { error } = await supabase.from('events').delete().eq('id', id);
     if (error) {
         console.error("Error deleting event:", error);
+        toast.error("Failed to delete event. Please check your connection.");
+        if (backup) setEvents(prev => [...prev, backup]);
+    } else {
+        toast.success("Event deleted");
     }
   };
 
   const handleGymUpdate = (updates: Partial<ActiveGymState>) => setActiveGymState({ ...activeGymState, ...updates });
 
-  if (loading) return (
-    <div style={{...styles.container, justifyContent: 'center', alignItems: 'center', background: 'var(--bg-gradient)'}}>
+  const isAppReady = !loading && splashReady;
+
+  if (!isAppReady) return (
+    <div style={{...styles.container, justifyContent: 'center', alignItems: 'center', background: 'var(--bg-gradient)'}} className="transition-opacity duration-500 ease-in-out">
       <div className="flex flex-col items-center gap-6 animate-pulse">
         <div className="relative">
           <div className="w-20 h-20 border-4 border-violet-500/20 rounded-full animate-ping absolute inset-0"></div>
@@ -578,6 +607,7 @@ export const App: React.FC = () => {
             <div className="w-2 h-2 bg-violet-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
             <div className="w-2 h-2 bg-violet-500 rounded-full animate-bounce"></div>
           </div>
+          {(!isOnline && loading) && <p className="text-white/50 text-sm mt-2 font-medium animate-pulse">Connecting offline...</p>}
         </div>
       </div>
     </div>
@@ -735,14 +765,24 @@ export const App: React.FC = () => {
                 const { error } = await supabase.from('courses').insert(newCourse);
                 if (error) {
                     console.error("Error adding course:", error);
+                    toast.error("Failed to add course.");
                     setCourses(prev => prev.filter(c => c.id !== newCourse.id));
                     setSelectedCourseId(null);
+                } else {
+                    toast.success("Course added");
                 }
             }}
             onDeleteCourse={async (id) => {
+                const backup = courses.find(c => c.id === id);
                 setCourses(prev => prev.filter(c => c.id !== id));
                 const { error } = await supabase.from('courses').delete().eq('id', id);
-                if (error) console.error("Error deleting course:", error);
+                if (error) {
+                    console.error("Error deleting course:", error);
+                    toast.error("Failed to delete course.");
+                    if(backup) setCourses(prev=>[...prev, backup]);
+                } else {
+                    toast.success("Course deleted");
+                }
             }}
         />;
       case 'materials':
@@ -852,14 +892,24 @@ export const App: React.FC = () => {
                 const { error } = await supabase.from('courses').insert(newCourse);
                 if (error) {
                     console.error("Error adding course:", error);
+                    toast.error("Failed to add course.");
                     setCourses(prev => prev.filter(c => c.id !== newCourse.id));
                     setSelectedCourseId(null);
+                } else {
+                    toast.success("Course added");
                 }
             }}
             onDeleteCourse={async (id) => {
+                const backup = courses.find(c => c.id === id);
                 setCourses(prev => prev.filter(c => c.id !== id));
                 const { error } = await supabase.from('courses').delete().eq('id', id);
-                if (error) console.error("Error deleting course:", error);
+                if (error) {
+                    console.error("Error deleting course:", error);
+                    toast.error("Failed to delete course.");
+                    if(backup) setCourses(prev=>[...prev, backup]);
+                } else {
+                    toast.success("Course deleted");
+                }
             }}
         />;
       case 'todo':
@@ -880,6 +930,7 @@ export const App: React.FC = () => {
                 const { error } = await supabase.from('todos').insert(newItem);
                 if (error) {
                     console.error("Error adding todo:", error);
+                    toast.error("Failed to add task. Please check your connection.");
                     setToDoItems(prev => prev.filter(i => i.id !== newItem.id));
                 }
             }}
@@ -1081,6 +1132,12 @@ export const App: React.FC = () => {
             await onAddEvents(eventsToAdd, targetProfileId, addToCourses);
           }}
         />
+      )}
+      <Toaster position="bottom-right" toastOptions={{ style: { background: '#1e293b', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' } }} />
+      {!isOnline && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-red-500/90 text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg backdrop-blur-md z-[9999] flex items-center gap-2 animate-fade-in-up">
+           <AlertCircle size={14} /> Offline Mode - Local Changes
+        </div>
       )}
     </div>
   );
