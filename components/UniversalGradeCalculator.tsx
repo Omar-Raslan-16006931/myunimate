@@ -4,6 +4,7 @@ import {
     Plus, Trash2, ArrowLeft, Target, 
     X, ChevronDown, ChevronUp, Calculator, AlertTriangle, TrendingUp, Award
 } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { CourseGrade, GradeCategory, GradeItem } from '../types';
 import { generateId } from '../constants';
 
@@ -404,6 +405,42 @@ const UniversalGradeCalculator: React.FC<UniversalGradeCalculatorProps> = ({ cou
                         <div className="relative h-2 w-full bg-black/40 rounded-full overflow-hidden border border-white/5">
                             <div className="absolute top-0 left-0 h-full bg-white/10 transition-all duration-500" style={{ width: `${Math.min(weightCompleted, 100)}%` }} />
                             <div className={`absolute top-0 left-0 h-full transition-all duration-500 ${getBgColor(currentPerformance)}`} style={{ width: `${Math.min(totalPointsAccumulated, 100)}%` }} />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Academic Tracking & What-If Planning */}
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-6 mb-8">
+                    <p className="text-white/40 text-xs font-bold uppercase tracking-widest mb-6 text-center">Grade Breakdown</p>
+                    <div className="h-48">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie
+                                    data={course.categories.map(cat => ({ name: cat.name, value: parseFloat(cat.weight) || 0 }))}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={50}
+                                    outerRadius={70}
+                                    paddingAngle={5}
+                                    dataKey="value"
+                                >
+                                    {course.categories.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={`hsl(${(index * 45) % 360}, 70%, 60%)`} />
+                                    ))}
+                                </Pie>
+                                <Tooltip />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </div>
+                    
+                    {/* What-If Planning */}
+                    <div className="mt-6 pt-6 border-t border-white/5">
+                        <p className="text-white/40 text-xs font-bold uppercase tracking-widest mb-4">What-If Calculator</p>
+                        <div className="flex items-center gap-2">
+                             <span className="text-white/60 text-xs">If I get</span>
+                             <input type="number" className="bg-white/10 rounded-lg p-2 text-white w-20 text-center" defaultValue="90" />
+                             <span className="text-white/60 text-xs">on remaining work, my final grade will be</span>
+                             <span className="text-white font-bold text-lg">X%</span>
                         </div>
                     </div>
                 </div>
