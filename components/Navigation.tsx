@@ -12,7 +12,6 @@ const Navigation: React.FC<NavigationProps> = ({ currentView, onNavigate }) => {
   const navItems: { view: ViewState; icon: React.ElementType; label: string }[] = [
     { view: 'dashboard', icon: LayoutDashboard, label: 'Home' },
     { view: 'schedule', icon: CalendarIcon, label: 'Schedule' },
-    { view: 'courses', icon: BookOpen, label: 'Classes' },
     { view: 'materials', icon: Folder, label: 'Files' },
     { view: 'settings', icon: Settings, label: 'Settings' },
   ];
