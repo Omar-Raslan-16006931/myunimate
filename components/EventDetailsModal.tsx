@@ -12,6 +12,7 @@ interface EventDetailsModalProps {
 }
 
 const EventDetailsModal: React.FC<EventDetailsModalProps> = ({ event, onClose, onStudyNow, onDelete, onEdit, eventColors }) => {
+  const [showConfirmDelete, setShowConfirmDelete] = React.useState(false);
   if (!event) return null;
 
   const color = eventColors[event.type] || '#64748b';
@@ -105,23 +106,40 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({ event, onClose, o
 
            {/* Action Buttons */}
            <div className="grid grid-cols-2 gap-3">
-              <button 
-                onClick={() => {
-                  if (confirm('Delete event?')) {
-                    onDelete(event.id);
-                    onClose();
-                  }
-                }}
-                className="py-3 rounded-xl bg-white/5 border border-white/10 text-white/60 hover:text-red-400 hover:bg-white/10 transition-colors text-sm font-bold flex items-center justify-center gap-2"
-              >
-                <Trash2 size={18} /> Delete
-              </button>
-              <button 
-                onClick={() => onStudyNow(event)}
-                className="py-3 rounded-xl bg-white text-black hover:bg-gray-200 transition-colors text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-white/10"
-              >
-                <Sparkles size={18} className="text-violet-600" /> Study
-              </button>
+              {showConfirmDelete ? (
+                <>
+                  <button 
+                    onClick={() => setShowConfirmDelete(false)}
+                    className="py-3 rounded-xl bg-white/5 border border-white/10 text-white font-bold text-sm"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    onClick={() => {
+                      onDelete(event.id);
+                      onClose();
+                    }}
+                    className="py-3 rounded-xl bg-red-600 text-white font-bold text-sm shadow-lg shadow-red-900/20"
+                  >
+                    Confirm Delete
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button 
+                    onClick={() => setShowConfirmDelete(true)}
+                    className="py-3 rounded-xl bg-white/5 border border-white/10 text-white/60 hover:text-red-400 hover:bg-white/10 transition-colors text-sm font-bold flex items-center justify-center gap-2"
+                  >
+                    <Trash2 size={18} /> Delete
+                  </button>
+                  <button 
+                    onClick={() => onStudyNow(event)}
+                    className="py-3 rounded-xl bg-white text-black hover:bg-gray-200 transition-colors text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-white/10"
+                  >
+                    <Sparkles size={18} className="text-violet-600" /> Study
+                  </button>
+                </>
+              )}
            </div>
         </div>
 

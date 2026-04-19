@@ -1,8 +1,9 @@
 
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
     Plus, Trash2, ArrowLeft, Target, 
-    X, ChevronDown, ChevronUp, Calculator, AlertTriangle, TrendingUp, Award, Save
+    X, ChevronDown, ChevronUp, Calculator, AlertTriangle, TrendingUp, Award, Save, Check
 } from 'lucide-react';
 import { CourseGrade, GradeCategory, GradeItem } from '../types';
 import { generateId } from '../constants';
@@ -197,6 +198,7 @@ const CategorySection = ({ cat, updateCategory, deleteCategory, addItem, updateI
 // --- Main Calculator ---
 const UniversalGradeCalculator: React.FC<UniversalGradeCalculatorProps> = ({ course, onUpdate, onBack, onDelete }) => {
     const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [saveStatus, setSaveStatus] = useState<'idle' | 'loading' | 'success'>('idle');
 
     // --- Logic ---
     let totalPointsAccumulated = 0;
@@ -352,13 +354,63 @@ const UniversalGradeCalculator: React.FC<UniversalGradeCalculatorProps> = ({ cou
                     </div>
                 </div>
                 <div className="flex gap-2">
-                    <button
-                        onClick={() => onUpdate(course)}
-                        className="w-8 h-8 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-400 hover:bg-indigo-500/20 transition-colors"
+                    <motion.button
+                        layout
+                        initial={false}
+                        onClick={async () => {
+                            if (saveStatus !== 'idle') return;
+                            setSaveStatus('loading');
+                            try {
+                                await onUpdate(course);
+                                setSaveStatus('success');
+                                setTimeout(() => setSaveStatus('idle'), 2500);
+                            } catch (err) {
+                                setSaveStatus('idle');
+                            }
+                        }}
+                        className={`
+                            relative flex items-center justify-center
+                            w-[28px] h-[28px] rounded-full transition-all duration-500
+                            ${saveStatus === 'success' ? 'bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.4)]' : 
+                              saveStatus === 'loading' ? 'bg-white/10 ring-2 ring-white/10' : 'bg-indigo-500/10 hover:bg-indigo-500/20'}
+                            border border-white/10 cursor-pointer overflow-hidden
+                        `}
+                        whileTap={{ scale: 0.9 }}
+                        whileHover={saveStatus === 'idle' ? { scale: 1.05 } : {}}
+                        disabled={saveStatus !== 'idle'}
                         title="Save Changes"
                     >
-                        <Save size={18} />
-                    </button>
+                        <AnimatePresence mode="wait">
+                            {saveStatus === 'loading' ? (
+                                <motion.div
+                                    key="loading"
+                                    initial={{ opacity: 0, scale: 0.8 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 0.8 }}
+                                    className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin"
+                                />
+                            ) : saveStatus === 'success' ? (
+                                <motion.div
+                                    key="success"
+                                    initial={{ opacity: 0, y: 10, scale: 0.5 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 0.5 }}
+                                    transition={{ type: "spring", damping: 15 }}
+                                >
+                                    <Check size={14} color="#fff" strokeWidth={3} />
+                                </motion.div>
+                            ) : (
+                                <motion.div
+                                    key="idle"
+                                    initial={{ opacity: 0, scale: 0.8 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 0.8 }}
+                                >
+                                    <Save size={14} className="text-indigo-400" />
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </motion.button>
                     {onDelete && (
                         <button 
                             type="button"
