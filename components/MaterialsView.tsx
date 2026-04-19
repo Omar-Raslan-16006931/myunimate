@@ -89,8 +89,8 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
   const [isPlusMenuOpen, setIsPlusMenuOpen] = useState(false);
 
   useEffect(() => {
-    onFileViewChange?.(isEditingNote);
-  }, [isEditingNote, onFileViewChange]);
+    onFileViewChange?.(isEditingNote || !!viewingFile);
+  }, [isEditingNote, viewingFile, onFileViewChange]);
 
   const getIcon = (type: string) => {
       switch(type) {
@@ -169,7 +169,6 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
       }
 
       setViewingFile(file);
-      onFileViewChange?.(true);
   };
 
   const handleSaveNote = () => {
