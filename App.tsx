@@ -399,7 +399,9 @@ export const App: React.FC = () => {
         console.error('Error adding event:', error);
         // Rollback on error
         setEvents(prev => prev.filter(e => e.id !== newEvent.id));
-        throw new Error(error.message);
+        toast.error("Failed to add event.");
+    } else {
+        toast.success("Event created successfully!");
     }
   };
 

@@ -4,7 +4,7 @@ import { CourseGrade } from '../types';
 import { generateId } from '../constants';
 import { Plus, GraduationCap, BookOpen, Trash2, AlertTriangle, X, Calculator, ArrowLeft, Save, CheckCircle2, RotateCcw, ChevronDown, Check } from 'lucide-react';
 import { styles } from '../theme';
-import AcademicHub from './AcademicHub';
+import UniversalGradeCalculator from './UniversalGradeCalculator';
 
 interface CoursesViewProps {
   courses: CourseGrade[];
@@ -718,10 +718,10 @@ const CoursesView: React.FC<CoursesViewProps> = ({ courses, onSelectCourse, onAd
   const [courseToDelete, setCourseToDelete] = useState<CourseGrade | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'gpa'>('list');
 
-  // If a course is selected, show Academic Hub View
+  // If a course is selected, show UniversalGradeCalculator
   if (selectedCourse) {
       return (
-          <AcademicHub 
+          <UniversalGradeCalculator 
               course={selectedCourse}
               onUpdate={onUpdateCourse}
               onBack={() => setSelectedCourseId(null)}
