@@ -163,7 +163,7 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
       if (file.type === 'txt') {
           setActiveNoteId(file.id);
           setNoteName(file.name);
-          setNoteContent(file.content || '');
+          setNoteContent(file.content || file.fileData || '');
           setIsEditingNote(true);
           return;
       }
@@ -184,7 +184,7 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
         const size = (new Blob([noteContent]).size / 1024).toFixed(1) + ' KB';
         onUpdateFile(activeNoteId, { 
             name: fileName, 
-            content: noteContent,
+            fileData: noteContent,
             size: size
         });
     } else {
@@ -194,7 +194,7 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
             type: 'txt',
             size: (new Blob([noteContent]).size / 1024).toFixed(1) + ' KB',
             dateAdded: new Date().toISOString().split('T')[0],
-            content: noteContent,
+            fileData: noteContent,
             parentId: currentFolderId || undefined
         };
         onAddFile(newFile);
