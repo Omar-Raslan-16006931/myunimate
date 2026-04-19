@@ -838,8 +838,7 @@ export const App: React.FC = () => {
                     date_added: file.dateAdded,
                     file_data: file.fileData || null,
                     mime_type: file.mimeType || null,
-                    parent_id: file.parentId || null,
-                    content: file.content || null
+                    parent_id: file.parentId || null
                 };
                 
                 // Optimistic update
@@ -857,7 +856,7 @@ export const App: React.FC = () => {
                 const dbUpdates: any = {};
                 if (updates.name !== undefined) dbUpdates.name = updates.name;
                 if ('parentId' in updates) dbUpdates.parent_id = updates.parentId;
-                if (updates.content !== undefined) dbUpdates.content = updates.content;
+                if (updates.fileData !== undefined) dbUpdates.file_data = updates.fileData;
                 
                 console.log("Updating file", id, "with", dbUpdates);
                 
