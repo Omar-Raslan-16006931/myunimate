@@ -277,7 +277,7 @@ export const App: React.FC = () => {
           if (todosRes.data) setToDoItems(todosRes.data.map((t: any) => ({...t, createdAt: t.created_at})));
 
           // Process Materials
-          if (materialsRes.data) setFiles(materialsRes.data.map((m: any) => ({...m, dateAdded: m.date_added, file_data: m.file_data, mimeType: m.mime_type, parentId: m.parent_id})));
+          if (materialsRes.data) setFiles(materialsRes.data.map((m: any) => ({...m, dateAdded: m.date_added, fileData: m.file_data, mimeType: m.mime_type, parentId: m.parent_id})));
       } catch (err) {
           console.error("Error fetching user data:", err);
       }
