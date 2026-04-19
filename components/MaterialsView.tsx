@@ -2,7 +2,7 @@
 import React, { useRef, useState } from 'react';
 import { MaterialFile } from '../types';
 import * as XLSX from 'xlsx';
-import { Folder, FileText, Download, MoreVertical, Search, Plus, Image, FileSpreadsheet, File, ArrowLeft, Eye, Edit2, Trash2, FolderPlus, CornerUpLeft, X, Minus, RotateCcw, Move, MousePointer2, FileType } from 'lucide-react';
+import { Folder, FileText, Download, MoreVertical, Search, Plus, Image, FileSpreadsheet, File, ArrowLeft, Eye, Edit2, Trash2, FolderPlus, CornerUpLeft, X, Minus, RotateCcw, Move, MousePointer2, FileType, Save, FilePlus } from 'lucide-react';
 import { styles, theme } from '../theme';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 import { PdfViewer } from './PdfViewer';
@@ -82,6 +82,11 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
   const [movingFileId, setMovingFileId] = useState<string | null>(null);
 
   const [viewingFile, setViewingFile] = useState<MaterialFile | null>(null);
+  const [isEditingNote, setIsEditingNote] = useState(false);
+  const [noteContent, setNoteContent] = useState('');
+  const [noteName, setNoteName] = useState('');
+  const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
+  const [isPlusMenuOpen, setIsPlusMenuOpen] = useState(false);
 
   const getIcon = (type: string) => {
       switch(type) {
@@ -91,6 +96,7 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
           case 'excel': return <FileSpreadsheet size={20} className="text-emerald-400" />;
           case 'powerpoint': return <FileType size={20} className="text-orange-400" />;
           case 'word': return <FileText size={20} className="text-blue-500" />;
+          case 'txt': return <FileText size={20} className="text-slate-300" />;
           default: return <File size={20} className="text-slate-400" />;
       }
   };
@@ -149,8 +155,52 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
           setCurrentFolderId(file.id);
           return;
       }
+      
+      if (file.type === 'txt') {
+          setActiveNoteId(file.id);
+          setNoteName(file.name);
+          setNoteContent(file.content || '');
+          setIsEditingNote(true);
+          return;
+      }
+
       setViewingFile(file);
       onFileViewChange?.(true);
+  };
+
+  const handleSaveNote = () => {
+    if (!noteName.trim()) {
+        alert("Please enter a file name");
+        return;
+    }
+
+    const fileName = noteName.endsWith('.txt') ? noteName : `${noteName}.txt`;
+
+    if (activeNoteId) {
+        // Find the file to update its size based on new content
+        const size = (new Blob([noteContent]).size / 1024).toFixed(1) + ' KB';
+        onUpdateFile(activeNoteId, { 
+            name: fileName, 
+            content: noteContent,
+            size: size
+        });
+    } else {
+        const newFile: MaterialFile = {
+            id: generateId(),
+            name: fileName,
+            type: 'txt',
+            size: (new Blob([noteContent]).size / 1024).toFixed(1) + ' KB',
+            dateAdded: new Date().toISOString().split('T')[0],
+            content: noteContent,
+            parentId: currentFolderId || undefined
+        };
+        onAddFile(newFile);
+    }
+    
+    setIsEditingNote(false);
+    setActiveNoteId(null);
+    setNoteName('');
+    setNoteContent('');
   };
 
   const handleCreateFolder = () => {
@@ -248,7 +298,7 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
   const allFolders = files.filter(f => f.type === 'folder');
 
   return (
-    <div style={styles.scrollableContent} onClick={() => setActiveMenuId(null)}>
+    <div style={styles.scrollableContent} onClick={() => { setActiveMenuId(null); setIsPlusMenuOpen(false); }}>
        <div style={{marginBottom: '20px', paddingTop: '8px', display: 'flex', alignItems: 'center', gap: '12px'}}>
           <button onClick={() => currentFolderId ? setCurrentFolderId(null) : onBack()} style={{background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', padding: 0}}>
               <ArrowLeft size={24} />
@@ -257,9 +307,6 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
               <h1 style={styles.title}>{currentFolderId ? files.find(f => f.id === currentFolderId)?.name : 'Materials'}</h1>
               <p style={styles.subtitle}>{currentFolderId ? 'Folder Contents' : 'Documents & Resources'}</p>
           </div>
-          <button onClick={() => setIsCreatingFolder(true)} style={{background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', cursor: 'pointer', padding: '8px 12px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 600}}>
-              <FolderPlus size={16} /> New Folder
-          </button>
        </div>
 
        {isCreatingFolder && (
@@ -397,12 +444,98 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
            onChange={handleFileChange}
            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
        />
-       <button 
-           onClick={() => fileInputRef.current?.click()}
-           style={{...styles.button, position: 'fixed', bottom: '100px', right: '20px', width: '56px', height: '56px', borderRadius: '50%', padding: 0, justifyContent: 'center', boxShadow: '0 8px 30px rgba(139, 92, 246, 0.4)', zIndex: 100}}
-       >
-          <Plus size={24} />
-       </button>
+       <div style={{position: 'fixed', bottom: '100px', right: '20px', zIndex: 100}}>
+           {isPlusMenuOpen && (
+               <div 
+                   className="absolute bottom-16 right-0 bg-[#1e1e24] border border-white/10 rounded-2xl p-2 shadow-2xl min-w-[160px] flex flex-col gap-1 animate-in fade-in slide-in-from-bottom-4 duration-200"
+                   onClick={e => e.stopPropagation()}
+               >
+                   <button 
+                       onClick={() => { setIsPlusMenuOpen(false); fileInputRef.current?.click(); }}
+                       className="flex items-center gap-3 w-full px-4 py-3 hover:bg-white/5 rounded-xl text-white text-sm font-semibold transition-colors"
+                   >
+                       <Plus size={18} className="text-violet-400" />
+                       Upload File
+                   </button>
+                   <button 
+                       onClick={() => { setIsPlusMenuOpen(false); setIsCreatingFolder(true); }}
+                       className="flex items-center gap-3 w-full px-4 py-3 hover:bg-white/5 rounded-xl text-white text-sm font-semibold transition-colors"
+                   >
+                       <FolderPlus size={18} className="text-yellow-400" />
+                       New Folder
+                   </button>
+                   <button 
+                       onClick={() => { setIsPlusMenuOpen(false); setNoteName(''); setNoteContent(''); setActiveNoteId(null); setIsEditingNote(true); }}
+                       className="flex items-center gap-3 w-full px-4 py-3 hover:bg-white/5 rounded-xl text-white text-sm font-semibold transition-colors"
+                   >
+                       <FilePlus size={18} className="text-blue-400" />
+                       New Note
+                   </button>
+               </div>
+           )}
+           <button 
+               onClick={(e) => { e.stopPropagation(); setIsPlusMenuOpen(!isPlusMenuOpen); }}
+               style={{...styles.button, width: '56px', height: '56px', borderRadius: '50%', padding: 0, justifyContent: 'center', boxShadow: '0 8px 30px rgba(139, 92, 246, 0.4)', marginBottom: 0}}
+           >
+              <Plus size={24} className={`transition-transform duration-300 ${isPlusMenuOpen ? 'rotate-45' : ''}`} />
+           </button>
+       </div>
+
+       {isEditingNote && (
+           <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/80 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setIsEditingNote(false)}>
+               <div 
+                   className="w-[90%] h-[85%] md:w-[80%] md:h-[80%] max-w-4xl bg-[#0a0a0c] overflow-hidden flex flex-col shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-3xl border border-white/10 animate-in zoom-in-95 duration-300"
+                   onClick={e => e.stopPropagation()}
+               >
+                   <div className="p-4 border-b border-white/5 bg-white/5 flex items-center justify-between shrink-0 gap-4">
+                       <div className="flex items-center gap-3 flex-1">
+                           <div className="w-10 h-10 bg-violet-500/20 rounded-xl flex items-center justify-center">
+                               <FileText className="text-violet-400" size={20} />
+                           </div>
+                           <input 
+                               value={noteName}
+                               onChange={e => setNoteName(e.target.value)}
+                               placeholder="Note Title..."
+                               className="bg-transparent border-none text-white font-bold text-lg focus:outline-none flex-1 placeholder:text-white/20"
+                               autoFocus
+                           />
+                       </div>
+
+                       <div className="flex items-center gap-2">
+                           <button 
+                               onClick={handleSaveNote}
+                               className="bg-violet-600 hover:bg-violet-500 text-white px-4 py-2 rounded-xl transition-all flex items-center gap-2 font-bold shadow-lg shadow-violet-600/20 active:scale-95"
+                           >
+                               <Save size={18} /> Save
+                           </button>
+                           <button 
+                               onClick={() => { setIsEditingNote(false); setActiveNoteId(null); setNoteName(''); setNoteContent(''); }}
+                               className="bg-white/5 hover:bg-white/10 text-white p-2 rounded-xl transition-colors border border-white/10 active:scale-95"
+                           >
+                               <X size={20} />
+                           </button>
+                       </div>
+                   </div>
+
+                   <div className="flex-1 relative overflow-hidden flex flex-col">
+                       <textarea 
+                           value={noteContent}
+                           onChange={e => setNoteContent(e.target.value)}
+                           placeholder="Start typing your note here..."
+                           className="flex-1 w-full p-6 bg-transparent text-white/90 text-lg leading-relaxed resize-none focus:outline-none placeholder:text-white/10 font-medium"
+                           spellCheck={false}
+                       />
+                       <div className="px-6 py-3 border-t border-white/5 bg-black/40 flex items-center justify-between text-[10px] uppercase tracking-widest font-bold text-white/30">
+                           <div className="flex gap-4">
+                               <span>{noteContent.length} characters</span>
+                               <span>{noteContent.trim() ? noteContent.trim().split(/\s+/).length : 0} words</span>
+                           </div>
+                           <span>Text File (.txt)</span>
+                       </div>
+                   </div>
+               </div>
+           </div>
+       )}
 
        {viewingFile && (
            <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/95 backdrop-blur-xl animate-in fade-in duration-300">

@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { MapPin, ClipboardList, ArrowRight, Dumbbell, Calculator, Sparkles, Megaphone, X, CheckSquare, Plus, Lock, Users, Brain, StickyNote } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { MapPin, ClipboardList, ArrowRight, Dumbbell, Calculator, Sparkles, Megaphone, X, CheckSquare, Plus, Lock, Users, Brain, StickyNote, Save, Check } from 'lucide-react';
 import { ScheduleEvent, EventColorMap, PeriodDefinition, Announcement } from '../types';
 import { getLocalISOString } from '../constants';
 import { theme, styles } from '../theme';
@@ -15,9 +16,11 @@ interface DashboardProps {
   periods: PeriodDefinition[];
   announcement: Announcement | null;
   username?: string;
+  onSync?: () => Promise<boolean>;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ events, eventColors, onNavigate, onEventClick, onAddEventClick, onSmartImportClick, periods, announcement, username }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ events, eventColors, onNavigate, onEventClick, onAddEventClick, onSmartImportClick, periods, announcement, username, onSync }) => {
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'loading' | 'success'>('idle');
   const [greeting, setGreeting] = useState("Good Morning");
   const [currentTime, setCurrentTime] = useState("");
   const [currentDate, setCurrentDate] = useState("");
@@ -263,28 +266,79 @@ export const Dashboard: React.FC<DashboardProps> = ({ events, eventColors, onNav
                 {greeting}, <span style={{color: '#fff'}}>{username || 'Student'}</span>
              </p>
 
-             {/* AI Button */}
-             <button 
-                onClick={() => onNavigate('ai')}
-                style={{
-                    position: 'absolute',
-                    top: '4px',
-                    right: '0',
-                    background: 'linear-gradient(135deg, #8b5cf6, #d946ef)',
-                    border: 'none',
-                    borderRadius: '10px',
-                    width: '32px',
-                    height: '32px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: '0 4px 15px rgba(139, 92, 246, 0.4)',
-                    cursor: 'pointer',
-                    zIndex: 10
-                }}
-             >
-                <Sparkles size={16} color="#fff" />
-             </button>
+              {/* AI Button */}
+              <div className="absolute top-1 right-0 flex items-center gap-2 z-20">
+                  {onSync && (
+                      <motion.button
+                        layout
+                        initial={false}
+                        onClick={async () => {
+                           if (syncStatus !== 'idle') return;
+                           setSyncStatus('loading');
+                           const success = await onSync();
+                           if (success) {
+                               setSyncStatus('success');
+                               setTimeout(() => setSyncStatus('idle'), 2500);
+                           } else {
+                               setSyncStatus('idle');
+                           }
+                        }}
+                        className={`
+                            relative flex items-center justify-center
+                            w-[28px] h-[28px] rounded-full transition-all duration-500
+                            ${syncStatus === 'success' ? 'bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.4)]' : 
+                              syncStatus === 'loading' ? 'bg-white/10 ring-2 ring-white/10' : 'bg-white/5 hover:bg-white/10'}
+                            border border-white/10 cursor-pointer overflow-hidden
+                        `}
+                        whileTap={{ scale: 0.9 }}
+                        whileHover={syncStatus === 'idle' ? { scale: 1.05 } : {}}
+                        disabled={syncStatus !== 'idle'}
+                      >
+                        <AnimatePresence mode="wait">
+                            {syncStatus === 'loading' ? (
+                                <motion.div
+                                    key="loading"
+                                    initial={{ opacity: 0, scale: 0.8 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 0.8 }}
+                                    className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin"
+                                />
+                            ) : syncStatus === 'success' ? (
+                                <motion.div
+                                    key="success"
+                                    initial={{ opacity: 0, y: 10, scale: 0.5 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 0.5 }}
+                                    transition={{ type: "spring", damping: 15 }}
+                                >
+                                    <Check size={14} color="#fff" strokeWidth={3} />
+                                </motion.div>
+                            ) : (
+                                <motion.div
+                                    key="idle"
+                                    initial={{ opacity: 0, scale: 0.8 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 0.8 }}
+                                >
+                                    <Save size={14} color="#fff" />
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                      </motion.button>
+                  )}
+                  <motion.button 
+                    whileTap={{ scale: 0.9 }}
+                    whileHover={{ scale: 1.05 }}
+                    onClick={() => onNavigate('ai')}
+                    className="w-7 h-7 rounded-full flex items-center justify-center shadow-lg cursor-pointer"
+                    style={{
+                        background: 'linear-gradient(135deg, #8b5cf6, #d946ef)',
+                        boxShadow: '0 4px 12px rgba(139, 92, 246, 0.3)',
+                    }}
+                  >
+                    <Sparkles size={14} color="#fff" />
+                  </motion.button>
+              </div>
         </div>
 
         <div style={{display: "flex", flexDirection: "column", gap: "12px"}}>

@@ -128,22 +128,33 @@ export const App: React.FC = () => {
   const [courses, setCourses] = useState<CourseGrade[]>([]);
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const courseUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const pendingCourseUpdatesRef = useRef<Map<string, CourseGrade>>(new Map());
+
+  const forceSaveCourse = async (course: CourseGrade) => {
+      const { error } = await supabase.from('courses').update({
+          title: course.title,
+          code: course.code,
+          target_grade: course.targetGrade,
+          categories: course.categories
+      }).eq('id', course.id);
+      
+      if (!error) {
+          pendingCourseUpdatesRef.current.delete(course.id);
+      } else {
+          console.error("Error updating course:", error);
+      }
+  };
 
   const handleUpdateCourse = (updated: CourseGrade) => {
       setCourses(prev => prev.map(c => c.id === updated.id ? updated : c));
+      pendingCourseUpdatesRef.current.set(updated.id, updated);
       
       if (courseUpdateTimeoutRef.current) {
           clearTimeout(courseUpdateTimeoutRef.current);
       }
       
       courseUpdateTimeoutRef.current = setTimeout(async () => {
-          const { error } = await supabase.from('courses').update({
-              title: updated.title,
-              code: updated.code,
-              target_grade: updated.targetGrade,
-              categories: updated.categories
-          }).eq('id', updated.id);
-          if (error) console.error("Error updating course:", error);
+          await forceSaveCourse(updated);
       }, 500);
   };
 
@@ -151,24 +162,41 @@ export const App: React.FC = () => {
   const [files, setFiles] = useState<MaterialFile[]>(INITIAL_FILES);
 
   useEffect(() => {
+    // Fallback: If EVERYTHING hangs for 8 seconds, force it to stop
+    const loadingTimeout = setTimeout(() => {
+       setLoading(false);
+    }, 8000);
+
     const initialize = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        // Step 1: Check session immediately (most important for "logged in" state)
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) {
+            console.error("Session error:", sessionError);
+        }
+        
         setSession(session);
+        
+        // Step 2: Stop blocking the UI as soon as we know the auth state
+        // This makes the app feel "instant"
+        setLoading(false);
+        clearTimeout(loadingTimeout);
+
         if (session) {
-            await Promise.all([
-                fetchProfile(session.user.id),
-                fetchUserData(session.user.id)
-            ]);
+            // Step 3: Fetch profile and data in the background
+            // We don't await them here so the main loading screen disappears immediately
+            fetchProfile(session.user.id);
+            fetchUserData(session.user.id);
         } else {
+            // Default states for non-logged in users
             setEvents(INITIAL_EVENTS);
             setProfiles(INITIAL_PROFILES);
             setActiveProfileId(INITIAL_PROFILES[0].id);
         }
       } catch (error) {
         console.error("Initialization error:", error);
-      } finally {
         setLoading(false);
+        clearTimeout(loadingTimeout);
       }
     };
 
@@ -176,15 +204,9 @@ export const App: React.FC = () => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, currentSession) => {
       setSession(currentSession);
-      if (_event === 'SIGNED_IN' && currentSession) {
-          try {
-            await Promise.all([
-                fetchProfile(currentSession.user.id),
-                fetchUserData(currentSession.user.id)
-            ]);
-          } catch (error) {
-            console.error("Auth change error:", error);
-          }
+      if ((_event === 'SIGNED_IN' || _event === 'INITIAL_SESSION') && currentSession) {
+          fetchProfile(currentSession.user.id);
+          fetchUserData(currentSession.user.id);
       }
       else if (_event === 'SIGNED_OUT') {
           setProfile(null);
@@ -201,57 +223,93 @@ export const App: React.FC = () => {
   }, []);
 
   const fetchUserData = async (userId: string) => {
-      // Fetch Events
-      const { data: eventsData } = await supabase.from('events').select('*').eq('user_id', userId);
-      if (eventsData && eventsData.length > 0) {
-          setEvents(eventsData.map((e: any) => ({
-              ...e,
-              scheduleId: e.schedule_id,
-              startTime: e.start_time,
-              durationMinutes: e.duration_minutes,
-              isRecurring: e.is_recurring,
-              dayOfWeek: e.day_of_week,
-              date: e.date
-          })));
-      } else {
-          setEvents([]);
-      }
+      try {
+          const [eventsRes, profilesRes, coursesRes, todosRes, materialsRes] = await Promise.all([
+              supabase.from('events').select('*').eq('user_id', userId),
+              supabase.from('schedule_profiles').select('*').eq('user_id', userId),
+              supabase.from('courses').select('*').eq('user_id', userId),
+              supabase.from('todos').select('*').eq('user_id', userId),
+              supabase.from('materials').select('*').eq('user_id', userId)
+          ]);
 
-      // Fetch Profiles
-      const { data: profilesData } = await supabase.from('schedule_profiles').select('*').eq('user_id', userId);
-      if (profilesData && profilesData.length > 0) {
-          setProfiles(profilesData);
-          const active = profilesData.find((p: any) => p.is_active);
-          if (active) setActiveProfileId(active.id);
-          else setActiveProfileId(profilesData[0].id);
-      } else {
-          // Insert default profiles (omit caching here, let it be handled when persisted)
-          const defaultProfiles = INITIAL_PROFILES.map((p, index) => ({
-              id: generateId(),
-              user_id: userId,
-              name: p.name,
-              is_active: index === 0,
-              periods: p.periods
-          }));
-          
-          const { error } = await supabase.from('schedule_profiles').insert(defaultProfiles);
-          if (!error) {
-              setProfiles(defaultProfiles);
-              setActiveProfileId(defaultProfiles[0].id);
+          // Process Events
+          if (eventsRes.data && eventsRes.data.length > 0) {
+              setEvents(eventsRes.data.map((e: any) => ({
+                  ...e,
+                  scheduleId: e.schedule_id,
+                  startTime: e.start_time,
+                  durationMinutes: e.duration_minutes,
+                  isRecurring: e.is_recurring,
+                  dayOfWeek: e.day_of_week,
+                  date: e.date
+              })));
+          } else {
+              setEvents([]);
           }
+
+          // Process Profiles
+          if (profilesRes.data && profilesRes.data.length > 0) {
+              setProfiles(profilesRes.data);
+              const active = profilesRes.data.find((p: any) => p.is_active);
+              if (active) setActiveProfileId(active.id);
+              else setActiveProfileId(profilesRes.data[0].id);
+          } else {
+              // Insert default profiles
+              const defaultProfiles = INITIAL_PROFILES.map((p, index) => ({
+                  id: generateId(),
+                  user_id: userId,
+                  name: p.name,
+                  is_active: index === 0,
+                  periods: p.periods
+              }));
+              
+              const { error } = await supabase.from('schedule_profiles').insert(defaultProfiles);
+              if (!error) {
+                  setProfiles(defaultProfiles);
+                  setActiveProfileId(defaultProfiles[0].id);
+              }
+          }
+
+          // Process Courses
+          if (coursesRes.data) setCourses(coursesRes.data.map((c: any) => ({ ...c, targetGrade: c.target_grade })));
+
+          // Process Todos
+          if (todosRes.data) setToDoItems(todosRes.data.map((t: any) => ({...t, createdAt: t.created_at})));
+
+          // Process Materials
+          if (materialsRes.data) setFiles(materialsRes.data.map((m: any) => ({...m, dateAdded: m.date_added, file_data: m.file_data, mimeType: m.mime_type, parentId: m.parent_id})));
+      } catch (err) {
+          console.error("Error fetching user data:", err);
       }
+  };
 
-      // Fetch Courses
-      const { data: coursesData } = await supabase.from('courses').select('*').eq('user_id', userId);
-      if (coursesData) setCourses(coursesData.map((c: any) => ({ ...c, targetGrade: c.target_grade })));
-
-      // Fetch Todos
-      const { data: todosData } = await supabase.from('todos').select('*').eq('user_id', userId);
-      if (todosData) setToDoItems(todosData.map((t: any) => ({...t, createdAt: t.created_at})));
-
-      // Fetch Materials
-      const { data: materialsData } = await supabase.from('materials').select('*').eq('user_id', userId);
-      if (materialsData) setFiles(materialsData.map((m: any) => ({...m, dateAdded: m.date_added, fileData: m.file_data, mimeType: m.mime_type, parentId: m.parent_id})));
+  const handleSyncAll = async () => {
+      if (!session?.user?.id) {
+          toast.error("Please log in to sync.");
+          return false;
+      }
+      const toastId = toast.loading("Syncing all data...");
+      try {
+          // Force save any pending course updates
+          if (courseUpdateTimeoutRef.current) {
+              clearTimeout(courseUpdateTimeoutRef.current);
+          }
+          
+          const pendingPromises = Array.from(pendingCourseUpdatesRef.current.values()).map(c => forceSaveCourse(c));
+          await Promise.all(pendingPromises);
+          
+          await Promise.all([
+              fetchProfile(session.user.id),
+              fetchUserData(session.user.id)
+          ]);
+          
+          toast.success("All data synchronized!", { id: toastId });
+          return true;
+      } catch (err) {
+          console.error("Sync error:", err);
+          toast.error("Sync failed. Check connection.", { id: toastId });
+          return false;
+      }
   };
 
   const fetchProfile = async (userId: string) => {
@@ -568,7 +626,7 @@ export const App: React.FC = () => {
 
   const handleGymUpdate = (updates: Partial<ActiveGymState>) => setActiveGymState({ ...activeGymState, ...updates });
 
-  const isAppReady = !loading;
+  const isAppReady = !loading || (!session && !loading); // If loading is done, ready. If not logged in and loading checked, ready.
 
   if (!isAppReady) return (
     <div style={{...styles.container, justifyContent: 'center', alignItems: 'center', background: 'var(--bg-gradient)'}} className="transition-opacity duration-500 ease-in-out">
@@ -659,6 +717,7 @@ export const App: React.FC = () => {
             periods={currentPeriods}
             announcement={announcement}
             username={profile?.username}
+            onSync={handleSyncAll}
         />;
       case 'schedule':
         return <Schedule 
@@ -779,7 +838,8 @@ export const App: React.FC = () => {
                     date_added: file.dateAdded,
                     file_data: file.fileData || null,
                     mime_type: file.mimeType || null,
-                    parent_id: file.parentId || null
+                    parent_id: file.parentId || null,
+                    content: file.content || null
                 };
                 
                 // Optimistic update
@@ -797,6 +857,7 @@ export const App: React.FC = () => {
                 const dbUpdates: any = {};
                 if (updates.name !== undefined) dbUpdates.name = updates.name;
                 if ('parentId' in updates) dbUpdates.parent_id = updates.parentId;
+                if (updates.content !== undefined) dbUpdates.content = updates.content;
                 
                 console.log("Updating file", id, "with", dbUpdates);
                 
@@ -847,6 +908,7 @@ export const App: React.FC = () => {
         return <CoursesView 
             courses={courses}
             onSelectCourse={setSelectedCourseId}
+            onUpdateCourse={handleUpdateCourse}
             onAddCourse={async () => {
                 if (!session?.user?.id) return;
                 
@@ -1113,7 +1175,35 @@ export const App: React.FC = () => {
           }}
         />
       )}
-      <Toaster position="bottom-right" toastOptions={{ style: { background: '#1e293b', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' } }} />
+      <Toaster 
+        position="top-center" 
+        toastOptions={{ 
+            style: { 
+                background: 'rgba(30, 41, 59, 0.7)',
+                backdropFilter: 'blur(12px)',
+                color: '#fff', 
+                border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: '9999px',
+                padding: '8px 16px',
+                fontSize: '13px',
+                fontWeight: '600',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+                maxWidth: 'fit-content'
+            },
+            success: {
+                iconTheme: {
+                    primary: '#10b981',
+                    secondary: '#fff',
+                },
+            },
+            error: {
+                iconTheme: {
+                    primary: '#ef4444',
+                    secondary: '#fff',
+                },
+            }
+        }} 
+      />
     </div>
   );
 };
