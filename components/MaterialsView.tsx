@@ -1,5 +1,5 @@
 
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { MaterialFile } from '../types';
 import * as XLSX from 'xlsx';
 import { Folder, FileText, Download, MoreVertical, Search, Plus, Image, FileSpreadsheet, File, ArrowLeft, Eye, Edit2, Trash2, FolderPlus, CornerUpLeft, X, Minus, RotateCcw, Move, MousePointer2, FileType, Save, FilePlus } from 'lucide-react';
@@ -87,6 +87,10 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
   const [noteName, setNoteName] = useState('');
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
   const [isPlusMenuOpen, setIsPlusMenuOpen] = useState(false);
+
+  useEffect(() => {
+    onFileViewChange?.(isEditingNote);
+  }, [isEditingNote, onFileViewChange]);
 
   const getIcon = (type: string) => {
       switch(type) {
@@ -484,19 +488,19 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
        {isEditingNote && (
            <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/80 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setIsEditingNote(false)}>
                <div 
-                   className="w-[90%] h-[85%] md:w-[80%] md:h-[80%] max-w-4xl bg-[#0a0a0c] overflow-hidden flex flex-col shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-3xl border border-white/10 animate-in zoom-in-95 duration-300"
+                   className="w-full h-full md:w-[80%] md:h-[80%] max-w-4xl bg-[#0a0a0c] overflow-hidden flex flex-col shadow-[0_0_50px_rgba(0,0,0,0.5)] md:rounded-3xl border-0 md:border md:border-white/10 animate-in zoom-in-95 duration-300"
                    onClick={e => e.stopPropagation()}
                >
-                   <div className="p-4 border-b border-white/5 bg-white/5 flex items-center justify-between shrink-0 gap-4">
-                       <div className="flex items-center gap-3 flex-1">
-                           <div className="w-10 h-10 bg-violet-500/20 rounded-xl flex items-center justify-center">
-                               <FileText className="text-violet-400" size={20} />
+                   <div className="p-3 md:p-4 border-b border-white/5 bg-white/5 flex items-center justify-between shrink-0 gap-2 md:gap-4">
+                       <div className="flex items-center gap-2 md:gap-3 flex-1 min-w-0">
+                           <div className="w-8 h-8 md:w-10 md:h-10 bg-violet-500/20 rounded-lg md:rounded-xl flex items-center justify-center shrink-0">
+                               <FileText className="text-violet-400" size={18} />
                            </div>
                            <input 
                                value={noteName}
                                onChange={e => setNoteName(e.target.value)}
                                placeholder="Note Title..."
-                               className="bg-transparent border-none text-white font-bold text-lg focus:outline-none flex-1 placeholder:text-white/20"
+                               className="bg-transparent border-none text-white font-bold text-base md:text-lg focus:outline-none flex-1 placeholder:text-white/20 min-w-0"
                                autoFocus
                            />
                        </div>
@@ -506,7 +510,7 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
                                onClick={handleSaveNote}
                                className="bg-violet-600 hover:bg-violet-500 text-white px-4 py-2 rounded-xl transition-all flex items-center gap-2 font-bold shadow-lg shadow-violet-600/20 active:scale-95"
                            >
-                               <Save size={18} /> Save
+                               <Save size={18} /> <span className="hidden xs:inline">Save</span>
                            </button>
                            <button 
                                onClick={() => { setIsEditingNote(false); setActiveNoteId(null); setNoteName(''); setNoteContent(''); }}
@@ -522,12 +526,12 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
                            value={noteContent}
                            onChange={e => setNoteContent(e.target.value)}
                            placeholder="Start typing your note here..."
-                           className="flex-1 w-full p-6 bg-transparent text-white/90 text-lg leading-relaxed resize-none focus:outline-none placeholder:text-white/10 font-medium"
+                           className="flex-1 w-full p-4 md:p-6 bg-transparent text-white/90 text-base md:text-lg leading-relaxed resize-none focus:outline-none placeholder:text-white/10 font-medium"
                            spellCheck={false}
                        />
-                       <div className="px-6 py-3 border-t border-white/5 bg-black/40 flex items-center justify-between text-[10px] uppercase tracking-widest font-bold text-white/30">
-                           <div className="flex gap-4">
-                               <span>{noteContent.length} characters</span>
+                       <div className="px-4 md:px-6 py-2 md:py-3 border-t border-white/5 bg-black/40 flex items-center justify-between text-[9px] md:text-[10px] uppercase tracking-widest font-bold text-white/30">
+                           <div className="flex gap-3 md:gap-4">
+                               <span>{noteContent.length} chars</span>
                                <span>{noteContent.trim() ? noteContent.trim().split(/\s+/).length : 0} words</span>
                            </div>
                            <span>Text File (.txt)</span>
