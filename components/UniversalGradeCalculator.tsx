@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { 
     Plus, Trash2, ArrowLeft, Target, 
-    X, ChevronDown, ChevronUp, Calculator, AlertTriangle, TrendingUp, Award
+    X, ChevronDown, ChevronUp, Calculator, AlertTriangle, TrendingUp, Award, Save
 } from 'lucide-react';
 import { CourseGrade, GradeCategory, GradeItem } from '../types';
 import { generateId } from '../constants';
@@ -352,6 +352,13 @@ const UniversalGradeCalculator: React.FC<UniversalGradeCalculatorProps> = ({ cou
                     </div>
                 </div>
                 <div className="flex gap-2">
+                    <button
+                        onClick={() => onUpdate(course)}
+                        className="w-8 h-8 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-400 hover:bg-indigo-500/20 transition-colors"
+                        title="Save Changes"
+                    >
+                        <Save size={18} />
+                    </button>
                     {onDelete && (
                         <button 
                             type="button"
