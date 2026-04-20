@@ -174,12 +174,18 @@ export const App: React.FC = () => {
         profiles,
         courses,
         todos: toDoItems,
-        files,
+        // CRITICAL FIX: Strip the large file_data (base64) strings from the cached files
+        // otherwise localStorage crashes instantly with QuotaExceededError (5MB limit)
+        files: files.map(f => ({ ...f, fileData: undefined })),
         profile,
         lastSynced: Date.now()
     };
     
-    localStorage.setItem('unimate_v1_cache', JSON.stringify(cacheData));
+    try {
+        localStorage.setItem('unimate_v1_cache', JSON.stringify(cacheData));
+    } catch (e) {
+        console.error("Local storage quota exceeded or failed:", e);
+    }
   }, [events, profiles, courses, toDoItems, files, profile, session?.user?.id]);
 
   // Local Storage Hydration
@@ -198,7 +204,7 @@ export const App: React.FC = () => {
             }
             if (data.courses) setCourses(data.courses);
             if (data.todos) setToDoItems(data.todos);
-            if (data.files) setFiles(data.files);
+            if (data.files) setFiles(data.files.map((f: any) => ({ ...f, fileData: undefined })));
             if (data.profile) {
                 setProfile(data.profile);
                 if (data.profile.settings?.theme) setThemeMode(data.profile.settings.theme);
@@ -403,14 +409,18 @@ export const App: React.FC = () => {
           }
 
           // Cache for next load
-          localStorage.setItem('unimate_v1_cache', JSON.stringify({
-              events: finalEvents,
-              profiles: finalProfiles,
-              courses: finalCourses,
-              todos: finalTodos,
-              files: finalFiles,
-              lastSynced: Date.now()
-          }));
+          try {
+              localStorage.setItem('unimate_v1_cache', JSON.stringify({
+                  events: finalEvents,
+                  profiles: finalProfiles,
+                  courses: finalCourses,
+                  todos: finalTodos,
+                  files: finalFiles,
+                  lastSynced: Date.now()
+              }));
+          } catch (e) {
+              console.error("Local storage quota exceeded or failed:", e);
+          }
 
           // PHASE 2: Background Loading of File Contents
           // We do this after Phase 1 is officially "done" (setIsSyncing(false))
@@ -523,7 +533,11 @@ export const App: React.FC = () => {
       const cachedData = localStorage.getItem('unimate_v1_cache');
       if (cachedData) {
           const parsed = JSON.parse(cachedData);
-          localStorage.setItem('unimate_v1_cache', JSON.stringify({ ...parsed, profile: data }));
+          try {
+              localStorage.setItem('unimate_v1_cache', JSON.stringify({ ...parsed, profile: data }));
+          } catch (e) {
+              console.error("Local storage quota exceeded or failed:", e);
+          }
       }
       
       // Load saved settings if any
