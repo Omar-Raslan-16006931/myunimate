@@ -87,6 +87,25 @@ export const App: React.FC = () => {
   const [isSyncing, setIsSyncing] = useState(false);
   const isSyncingRef = useRef(false);
 
+  // Persistence Helpers
+  const saveToCache = (key: string, data: any) => {
+    try {
+      localStorage.setItem(`unimate_cache_${key}`, JSON.stringify(data));
+    } catch (e) {
+      console.error("Cache save error:", e);
+    }
+  };
+
+  const loadFromCache = (key: string) => {
+    try {
+      const data = localStorage.getItem(`unimate_cache_${key}`);
+      return data ? JSON.parse(data) : null;
+    } catch (e) {
+      console.error("Cache load error:", e);
+      return null;
+    }
+  };
+
   // Onboarding State
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
@@ -171,21 +190,34 @@ export const App: React.FC = () => {
 
     const initialize = async () => {
       try {
-        // Step 1: Check session immediately (most important for "logged in" state)
+        // Step 1: Check session immediately
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError) {
-            console.error("Session error:", sessionError);
-        }
-        
         setSession(session);
         
         if (session) {
-            // Wait for initial data to be loaded before showing the app
-            // This prevents the "stuff is gone" flash
-            await Promise.all([
-                fetchProfile(session.user.id),
-                fetchUserData(session.user.id)
-            ]);
+            // Instant data from cache while refreshing in background
+            const cachedEvents = loadFromCache('events');
+            const cachedFiles = loadFromCache('files');
+            const cachedProfiles = loadFromCache('profiles');
+            const cachedCourses = loadFromCache('courses');
+            const cachedToDos = loadFromCache('todos');
+            const cachedProfile = loadFromCache('profile');
+
+            if (cachedEvents) setEvents(cachedEvents);
+            if (cachedFiles) setFiles(cachedFiles);
+            if (cachedProfiles) {
+                setProfiles(cachedProfiles);
+                const active = cachedProfiles.find((p: any) => p.is_active);
+                if (active) setActiveProfileId(active.id);
+                else setActiveProfileId(cachedProfiles[0]?.id || '');
+            }
+            if (cachedCourses) setCourses(cachedCourses);
+            if (cachedToDos) setToDoItems(cachedToDos);
+            if (cachedProfile) setProfile(cachedProfile);
+
+            // Fetch fresh data in background without blocking
+            fetchProfile(session.user.id);
+            fetchUserData(session.user.id);
         } else {
             // Default states for non-logged in users
             setEvents(INITIAL_EVENTS);
@@ -230,17 +262,19 @@ export const App: React.FC = () => {
       isSyncingRef.current = true;
       setIsSyncing(true);
       try {
+          // Optimization: Do NOT select file_data for materials list. 
+          // Fetch it on demand instead.
           const [eventsRes, profilesRes, coursesRes, todosRes, materialsRes] = await Promise.all([
               supabase.from('events').select('*').eq('user_id', userId),
               supabase.from('schedule_profiles').select('*').eq('user_id', userId),
               supabase.from('courses').select('*').eq('user_id', userId),
               supabase.from('todos').select('*').eq('user_id', userId),
-              supabase.from('materials').select('*').eq('user_id', userId)
+              supabase.from('materials').select('id, user_id, name, type, size, date_added, mime_type, parent_id').eq('user_id', userId)
           ]);
 
           // Process Events
-          if (eventsRes.data && eventsRes.data.length > 0) {
-              setEvents(eventsRes.data.map((e: any) => ({
+          if (eventsRes.data) {
+              const formattedEvents = eventsRes.data.map((e: any) => ({
                   ...e,
                   scheduleId: e.schedule_id,
                   startTime: e.start_time,
@@ -248,19 +282,20 @@ export const App: React.FC = () => {
                   isRecurring: e.is_recurring,
                   dayOfWeek: e.day_of_week,
                   date: e.date
-              })));
-          } else {
-              setEvents([]);
+              }));
+              setEvents(formattedEvents);
+              saveToCache('events', formattedEvents);
           }
 
           // Process Profiles
           if (profilesRes.data && profilesRes.data.length > 0) {
               setProfiles(profilesRes.data);
+              saveToCache('profiles', profilesRes.data);
               const active = profilesRes.data.find((p: any) => p.is_active);
               if (active) setActiveProfileId(active.id);
               else setActiveProfileId(profilesRes.data[0].id);
           } else {
-              // Insert default profiles
+              // ... default profiles logic ...
               const defaultProfiles = INITIAL_PROFILES.map((p, index) => ({
                   id: generateId(),
                   user_id: userId,
@@ -273,17 +308,30 @@ export const App: React.FC = () => {
               if (!error) {
                   setProfiles(defaultProfiles);
                   setActiveProfileId(defaultProfiles[0].id);
+                  saveToCache('profiles', defaultProfiles);
               }
           }
 
           // Process Courses
-          if (coursesRes.data) setCourses(coursesRes.data.map((c: any) => ({ ...c, targetGrade: c.target_grade })));
+          if (coursesRes.data) {
+              const formattedCourses = coursesRes.data.map((c: any) => ({ ...c, targetGrade: c.target_grade }));
+              setCourses(formattedCourses);
+              saveToCache('courses', formattedCourses);
+          }
 
           // Process Todos
-          if (todosRes.data) setToDoItems(todosRes.data.map((t: any) => ({...t, createdAt: t.created_at})));
+          if (todosRes.data) {
+            const formattedTodos = todosRes.data.map((t: any) => ({...t, createdAt: t.created_at}));
+            setToDoItems(formattedTodos);
+            saveToCache('todos', formattedTodos);
+          }
 
           // Process Materials
-          if (materialsRes.data) setFiles(materialsRes.data.map((m: any) => ({...m, dateAdded: m.date_added, fileData: m.file_data, mimeType: m.mime_type, parentId: m.parent_id})));
+          if (materialsRes.data) {
+            const formattedFiles = materialsRes.data.map((m: any) => ({...m, dateAdded: m.date_added, mimeType: m.mime_type, parentId: m.parent_id}));
+            setFiles(formattedFiles);
+            saveToCache('files', formattedFiles);
+          }
       } catch (err) {
           console.error("Error fetching user data:", err);
       } finally {
@@ -325,12 +373,28 @@ export const App: React.FC = () => {
     const { data } = await supabase.from('profiles').select('*').eq('id', userId).single();
     if (data) {
       setProfile(data);
+      saveToCache('profile', data);
       // Load saved settings if any
       if (data.settings) {
         if (data.settings.theme) setThemeMode(data.settings.theme);
         if (data.settings.eventColors) setEventColors(data.settings.eventColors);
       }
     }
+  };
+
+  const handleFetchFileData = async (fileId: string) => {
+    const { data, error } = await supabase.from('materials').select('file_data').eq('id', fileId).single();
+    if (error) {
+        console.error("Error fetching file data:", error);
+        return null;
+    }
+    const fileData = data.file_data;
+    setFiles(prev => {
+        const updated = prev.map(f => f.id === fileId ? { ...f, fileData } : f);
+        saveToCache('files', updated);
+        return updated;
+    });
+    return fileData;
   };
 
   const handleUpdateProfile = async (updates: any) => {
@@ -836,6 +900,7 @@ export const App: React.FC = () => {
       case 'materials':
         return <MaterialsView 
             files={files}
+            onFetchFileData={handleFetchFileData}
             onAddFile={async (file) => {
                 if (!session?.user?.id) return;
                 const newFile = {
