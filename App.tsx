@@ -427,34 +427,43 @@ export const App: React.FC = () => {
 
   const backgroundLoadFileContents = async (userId: string, targetFiles?: MaterialFile[]) => {
       // If targetFiles is provided, use it, otherwise use current state
-      // Note: Since setFiles is async, we often rely on initialFiles passed from fetch
       const filesToFilter = targetFiles || files;
+      // Only load content for files that don't have it yet
       const filesToLoad = filesToFilter.filter(f => f.type !== 'folder' && f.fileData === undefined);
-      if (filesToLoad.length === 0) return;
+      
+      if (filesToLoad.length === 0) {
+          setIsSyncingPhase2(false);
+          return;
+      }
 
       setIsSyncingPhase2(true);
-      console.log(`Starting Phase 2: Loading ${filesToLoad.length} file contents in background...`);
+      console.log(`Starting Phase 2: Loading ${filesToLoad.length} file contents via optimized batches...`);
       
-      // Load in batches of 3 to avoid overwhelming the connection
-      const batchSize = 3;
+      // OPTIMIZATION: Use .in() to fetch multiple documents in a single request
+      // and update state once per batch to reduce re-renders.
+      const batchSize = 10;
       for (let i = 0; i < filesToLoad.length; i += batchSize) {
           const batch = filesToLoad.slice(i, i + batchSize);
-          await Promise.all(batch.map(async (file) => {
-              try {
-                  const { data, error } = await supabase
-                    .from('materials')
-                    .select('file_data')
-                    .eq('id', file.id)
-                    .single();
-                  
-                  if (!error && data) {
-                      setFiles(prev => prev.map(f => f.id === file.id ? { ...f, fileData: data.file_data || '' } : f));
-                  }
-              } catch (e) {
-                  console.error(`Failed to background load file ${file.id}`, e);
+          const batchIds = batch.map(f => f.id);
+          
+          try {
+              const { data, error } = await supabase
+                .from('materials')
+                .select('id, file_data')
+                .in('id', batchIds);
+              
+              if (!error && data && data.length > 0) {
+                  setFiles(prev => prev.map(f => {
+                      const match = data.find(d => d.id === f.id);
+                      if (match) return { ...f, fileData: match.file_data || '' };
+                      return f;
+                  }));
               }
-          }));
+          } catch (e) {
+              console.error(`Background load batch error at skip ${i}:`, e);
+          }
       }
+      
       console.log("Phase 2 background loading complete.");
       setIsSyncingPhase2(false);
   };
