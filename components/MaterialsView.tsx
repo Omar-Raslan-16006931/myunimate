@@ -15,6 +15,7 @@ interface MaterialsViewProps {
   onDeleteFile: (id: string) => void;
   onBack: () => void;
   onFileViewChange?: (isViewing: boolean) => void;
+  onFetchFileData?: (fileId: string) => Promise<string | null>;
 }
 
 const ExcelViewer: React.FC<{ data: string }> = ({ data }) => {
@@ -70,10 +71,11 @@ const ExcelViewer: React.FC<{ data: string }> = ({ data }) => {
     );
 };
 
-const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdateFile, onDeleteFile, onBack, onFileViewChange }) => {
+const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdateFile, onDeleteFile, onBack, onFileViewChange, onFetchFileData }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isFetchingData, setIsFetchingData] = useState(false);
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
@@ -154,21 +156,34 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
       reader.readAsDataURL(file);
   };
 
-  const openFile = (file: MaterialFile) => {
+  const openFile = async (file: MaterialFile) => {
       if (file.type === 'folder') {
           setCurrentFolderId(file.id);
           return;
+      }
+
+      let fileData = file.fileData;
+      if (!fileData && onFetchFileData) {
+          setIsFetchingData(true);
+          onFileViewChange?.(true);
+          fileData = await onFetchFileData(file.id) || undefined;
+          setIsFetchingData(false);
+          if (!fileData) {
+              onFileViewChange?.(false);
+              return;
+          }
       }
       
       if (file.type === 'txt') {
           setActiveNoteId(file.id);
           setNoteName(file.name);
-          setNoteContent(file.content || file.fileData || '');
+          setNoteContent(file.content || fileData || '');
           setIsEditingNote(true);
+          onFileViewChange?.(true);
           return;
       }
 
-      setViewingFile(file);
+      setViewingFile({ ...file, fileData });
   };
 
   const handleSaveNote = () => {
@@ -540,7 +555,7 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
            </div>
        )}
 
-       {viewingFile && (
+       {(viewingFile || isFetchingData) && (
            <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/95 backdrop-blur-xl animate-in fade-in duration-300">
                <div className="w-full h-full max-w-6xl bg-[#0a0a0c] overflow-hidden flex flex-col shadow-[0_0_50px_rgba(0,0,0,0.5)]">
                    <div className="p-3 border-b border-white/5 bg-black/40 flex items-center justify-between shrink-0 gap-4">
