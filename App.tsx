@@ -85,26 +85,9 @@ export const App: React.FC = () => {
   const [themeMode, setThemeMode] = useState<ThemeMode>('dark');
   const [isViewingFile, setIsViewingFile] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
-  const isSyncingRef = useRef(false);
-
-  // Persistence Helpers
-  const saveToCache = (key: string, data: any) => {
-    try {
-      localStorage.setItem(`unimate_cache_${key}`, JSON.stringify(data));
-    } catch (e) {
-      console.error("Cache save error:", e);
-    }
-  };
-
-  const loadFromCache = (key: string) => {
-    try {
-      const data = localStorage.getItem(`unimate_cache_${key}`);
-      return data ? JSON.parse(data) : null;
-    } catch (e) {
-      console.error("Cache load error:", e);
-      return null;
-    }
-  };
+  const [isSyncingPhase2, setIsSyncingPhase2] = useState(false);
+  const isInitializingRef = useRef(false);
+  const hasHydratedRef = useRef(false);
 
   // Onboarding State
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -182,6 +165,52 @@ export const App: React.FC = () => {
   const [toDoItems, setToDoItems] = useState<ToDoItem[]>([]);
   const [files, setFiles] = useState<MaterialFile[]>([]);
 
+  // Persist State to LocalStorage for instant subsequent loads
+  useEffect(() => {
+    if (!session?.user?.id || !hasHydratedRef.current) return;
+    
+    const cacheData = {
+        events,
+        profiles,
+        courses,
+        todos: toDoItems,
+        files,
+        profile,
+        lastSynced: Date.now()
+    };
+    
+    localStorage.setItem('unimate_v1_cache', JSON.stringify(cacheData));
+  }, [events, profiles, courses, toDoItems, files, profile, session?.user?.id]);
+
+  // Local Storage Hydration
+  useEffect(() => {
+    if (hasHydratedRef.current) return;
+    
+    const cachedData = localStorage.getItem('unimate_v1_cache');
+    if (cachedData) {
+        try {
+            const data = JSON.parse(cachedData);
+            if (data.events) setEvents(data.events);
+            if (data.profiles) {
+                setProfiles(data.profiles);
+                const active = data.profiles.find((p: any) => p.is_active);
+                if (active) setActiveProfileId(active.id);
+            }
+            if (data.courses) setCourses(data.courses);
+            if (data.todos) setToDoItems(data.todos);
+            if (data.files) setFiles(data.files);
+            if (data.profile) {
+                setProfile(data.profile);
+                if (data.profile.settings?.theme) setThemeMode(data.profile.settings.theme);
+                if (data.profile.settings?.eventColors) setEventColors(data.profile.settings.eventColors);
+            }
+            hasHydratedRef.current = true;
+        } catch (e) {
+            console.error("Hydration fallback failed", e);
+        }
+    }
+  }, []);
+
   useEffect(() => {
     // Fallback: If EVERYTHING hangs for 8 seconds, force it to stop
     const loadingTimeout = setTimeout(() => {
@@ -189,41 +218,35 @@ export const App: React.FC = () => {
     }, 8000);
 
     const initialize = async () => {
+      if (isInitializingRef.current) return;
+      isInitializingRef.current = true;
+      
       try {
-        // Step 1: Check session immediately
+        // Step 1: Check session immediately (most important for "logged in" state)
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) {
+            console.error("Session error:", sessionError);
+        }
+        
         setSession(session);
         
         if (session) {
-            // Instant data from cache while refreshing in background
-            const cachedEvents = loadFromCache('events');
-            const cachedFiles = loadFromCache('files');
-            const cachedProfiles = loadFromCache('profiles');
-            const cachedCourses = loadFromCache('courses');
-            const cachedToDos = loadFromCache('todos');
-            const cachedProfile = loadFromCache('profile');
-
-            if (cachedEvents) setEvents(cachedEvents);
-            if (cachedFiles) setFiles(cachedFiles);
-            if (cachedProfiles) {
-                setProfiles(cachedProfiles);
-                const active = cachedProfiles.find((p: any) => p.is_active);
-                if (active) setActiveProfileId(active.id);
-                else setActiveProfileId(cachedProfiles[0]?.id || '');
-            }
-            if (cachedCourses) setCourses(cachedCourses);
-            if (cachedToDos) setToDoItems(cachedToDos);
-            if (cachedProfile) setProfile(cachedProfile);
-
-            // Fetch fresh data in background without blocking
-            fetchProfile(session.user.id);
-            fetchUserData(session.user.id);
+            // Wait for initial data to be loaded before showing the app
+            // This prevents the "stuff is gone" flash
+            await Promise.all([
+                fetchProfile(session.user.id),
+                fetchUserData(session.user.id)
+            ]);
+            hasHydratedRef.current = true;
         } else {
             // Default states for non-logged in users
-            setEvents(INITIAL_EVENTS);
-            setProfiles(INITIAL_PROFILES);
-            setActiveProfileId(INITIAL_PROFILES[0].id);
-            setFiles(INITIAL_FILES);
+            if (!hasHydratedRef.current) {
+                setEvents(INITIAL_EVENTS);
+                setProfiles(INITIAL_PROFILES);
+                setActiveProfileId(INITIAL_PROFILES[0].id);
+                setFiles(INITIAL_FILES);
+                hasHydratedRef.current = true;
+            }
         }
 
         setLoading(false);
@@ -232,6 +255,8 @@ export const App: React.FC = () => {
         console.error("Initialization error:", error);
         setLoading(false);
         clearTimeout(loadingTimeout);
+      } finally {
+          isInitializingRef.current = false;
       }
     };
 
@@ -239,7 +264,7 @@ export const App: React.FC = () => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, currentSession) => {
       setSession(currentSession);
-      if (_event === 'SIGNED_IN' && currentSession) {
+      if ((_event === 'SIGNED_IN' || _event === 'INITIAL_SESSION') && currentSession && !isInitializingRef.current) {
           fetchProfile(currentSession.user.id);
           fetchUserData(currentSession.user.id);
       }
@@ -251,30 +276,70 @@ export const App: React.FC = () => {
           setCourses([]);
           setToDoItems([]);
           setFiles(INITIAL_FILES);
+          localStorage.removeItem('unimate_v1_cache');
       }
     });
 
-    return () => subscription.unsubscribe();
-  }, []);
+    // Subscriptions for Live Syncing
+    let channels: any[] = [];
+    if (session?.user?.id) {
+        const userId = session.user.id;
+        const channelNames = ['events', 'schedule_profiles', 'courses', 'todos', 'materials'];
+        
+        channels = channelNames.map(name => {
+            return supabase.channel(`public:${name}:${userId}`)
+                .on('postgres_changes', { event: '*', schema: 'public', table: name, filter: `user_id=eq.${userId}` }, () => {
+                    // When remote changes occur, we could fetch specifically for that table.
+                    // For "faster syncing", we'll just trigger a background fetch of that specific data.
+                    // But to keep it simple, we'll just trigger the sync of that specific slice.
+                    switch(name) {
+                        case 'events': supabase.from('events').select('*').eq('user_id', userId).then((res: any) => res.data && setEvents(res.data.map((e: any) => ({ ...e, scheduleId: e.schedule_id, startTime: e.start_time, durationMinutes: e.duration_minutes, isRecurring: e.is_recurring, dayOfWeek: e.day_of_week, date: e.date })))); break;
+                        case 'todos': supabase.from('todos').select('*').eq('user_id', userId).then((res: any) => res.data && setToDoItems(res.data.map((t: any) => ({...t, createdAt: t.created_at})))); break;
+                        case 'courses': supabase.from('courses').select('*').eq('user_id', userId).then((res: any) => res.data && setCourses(res.data.map((c: any) => ({ ...c, targetGrade: c.target_grade })))); break;
+                        case 'materials': 
+                            supabase.from('materials').select('id, name, type, size, date_added, mime_type, parent_id, created_at').eq('user_id', userId).then((res: any) => {
+                                if (res.data) {
+                                    const updatedFiles = res.data.map((m: any) => ({...m, dateAdded: m.date_added, mimeType: m.mime_type, parentId: m.parent_id}));
+                                    setFiles(updatedFiles);
+                                    // Trigger background load for any new files detected
+                                    setTimeout(() => backgroundLoadFileContents(userId, updatedFiles), 500);
+                                }
+                            }); 
+                            break;
+                    }
+                })
+                .subscribe();
+        });
+    }
+
+    return () => {
+        subscription.unsubscribe();
+        channels.forEach(ch => supabase.removeChannel(ch));
+    };
+  }, [session?.user?.id]);
 
   const fetchUserData = async (userId: string) => {
-      if (isSyncingRef.current) return;
-      isSyncingRef.current = true;
       setIsSyncing(true);
       try {
-          // Optimization: Do NOT select file_data for materials list. 
-          // Fetch it on demand instead.
           const [eventsRes, profilesRes, coursesRes, todosRes, materialsRes] = await Promise.all([
               supabase.from('events').select('*').eq('user_id', userId),
               supabase.from('schedule_profiles').select('*').eq('user_id', userId),
               supabase.from('courses').select('*').eq('user_id', userId),
               supabase.from('todos').select('*').eq('user_id', userId),
-              supabase.from('materials').select('id, user_id, name, type, size, date_added, mime_type, parent_id').eq('user_id', userId)
+              // CRITICAL OPTIMIZATION: Do not fetch file_data on initial load. 
+              // This field can be massive and slows down everything.
+              supabase.from('materials').select('id, name, type, size, date_added, mime_type, parent_id, created_at').eq('user_id', userId)
           ]);
 
+          let finalEvents: ScheduleEvent[] = [];
+          let finalProfiles: ScheduleProfile[] = [];
+          let finalCourses: CourseGrade[] = [];
+          let finalTodos: ToDoItem[] = [];
+          let finalFiles: MaterialFile[] = [];
+
           // Process Events
-          if (eventsRes.data) {
-              const formattedEvents = eventsRes.data.map((e: any) => ({
+          if (eventsRes.data && eventsRes.data.length > 0) {
+              finalEvents = eventsRes.data.map((e: any) => ({
                   ...e,
                   scheduleId: e.schedule_id,
                   startTime: e.start_time,
@@ -283,19 +348,20 @@ export const App: React.FC = () => {
                   dayOfWeek: e.day_of_week,
                   date: e.date
               }));
-              setEvents(formattedEvents);
-              saveToCache('events', formattedEvents);
+              setEvents(finalEvents);
+          } else {
+              setEvents([]);
           }
 
           // Process Profiles
           if (profilesRes.data && profilesRes.data.length > 0) {
-              setProfiles(profilesRes.data);
-              saveToCache('profiles', profilesRes.data);
+              finalProfiles = profilesRes.data;
+              setProfiles(finalProfiles);
               const active = profilesRes.data.find((p: any) => p.is_active);
               if (active) setActiveProfileId(active.id);
               else setActiveProfileId(profilesRes.data[0].id);
           } else {
-              // ... default profiles logic ...
+              // Insert default profiles
               const defaultProfiles = INITIAL_PROFILES.map((p, index) => ({
                   id: generateId(),
                   user_id: userId,
@@ -306,38 +372,109 @@ export const App: React.FC = () => {
               
               const { error } = await supabase.from('schedule_profiles').insert(defaultProfiles);
               if (!error) {
+                  finalProfiles = defaultProfiles;
                   setProfiles(defaultProfiles);
                   setActiveProfileId(defaultProfiles[0].id);
-                  saveToCache('profiles', defaultProfiles);
               }
           }
 
           // Process Courses
           if (coursesRes.data) {
-              const formattedCourses = coursesRes.data.map((c: any) => ({ ...c, targetGrade: c.target_grade }));
-              setCourses(formattedCourses);
-              saveToCache('courses', formattedCourses);
+              finalCourses = coursesRes.data.map((c: any) => ({ ...c, targetGrade: c.target_grade }));
+              setCourses(finalCourses);
           }
 
           // Process Todos
           if (todosRes.data) {
-            const formattedTodos = todosRes.data.map((t: any) => ({...t, createdAt: t.created_at}));
-            setToDoItems(formattedTodos);
-            saveToCache('todos', formattedTodos);
+              finalTodos = todosRes.data.map((t: any) => ({...t, createdAt: t.created_at}));
+              setToDoItems(finalTodos);
           }
 
           // Process Materials
           if (materialsRes.data) {
-            const formattedFiles = materialsRes.data.map((m: any) => ({...m, dateAdded: m.date_added, mimeType: m.mime_type, parentId: m.parent_id}));
-            setFiles(formattedFiles);
-            saveToCache('files', formattedFiles);
+              finalFiles = materialsRes.data.map((m: any) => ({
+                  ...m, 
+                  dateAdded: m.date_added, 
+                  mimeType: m.mime_type, 
+                  parentId: m.parent_id,
+                  fileData: undefined // Not loaded yet in Phase 1
+              }));
+              setFiles(finalFiles);
           }
+
+          // Cache for next load
+          localStorage.setItem('unimate_v1_cache', JSON.stringify({
+              events: finalEvents,
+              profiles: finalProfiles,
+              courses: finalCourses,
+              todos: finalTodos,
+              files: finalFiles,
+              lastSynced: Date.now()
+          }));
+
+          // PHASE 2: Background Loading of File Contents
+          // We do this after Phase 1 is officially "done" (setIsSyncing(false))
+          setTimeout(() => {
+              backgroundLoadFileContents(userId, finalFiles);
+          }, 1000);
+
       } catch (err) {
           console.error("Error fetching user data:", err);
       } finally {
           setIsSyncing(false);
-          isSyncingRef.current = false;
       }
+  };
+
+  const backgroundLoadFileContents = async (userId: string, targetFiles?: MaterialFile[]) => {
+      // If targetFiles is provided, use it, otherwise use current state
+      // Note: Since setFiles is async, we often rely on initialFiles passed from fetch
+      const filesToFilter = targetFiles || files;
+      const filesToLoad = filesToFilter.filter(f => f.type !== 'folder' && f.fileData === undefined);
+      if (filesToLoad.length === 0) return;
+
+      setIsSyncingPhase2(true);
+      console.log(`Starting Phase 2: Loading ${filesToLoad.length} file contents in background...`);
+      
+      // Load in batches of 3 to avoid overwhelming the connection
+      const batchSize = 3;
+      for (let i = 0; i < filesToLoad.length; i += batchSize) {
+          const batch = filesToLoad.slice(i, i + batchSize);
+          await Promise.all(batch.map(async (file) => {
+              try {
+                  const { data, error } = await supabase
+                    .from('materials')
+                    .select('file_data')
+                    .eq('id', file.id)
+                    .single();
+                  
+                  if (!error && data) {
+                      setFiles(prev => prev.map(f => f.id === file.id ? { ...f, fileData: data.file_data || '' } : f));
+                  }
+              } catch (e) {
+                  console.error(`Failed to background load file ${file.id}`, e);
+              }
+          }));
+      }
+      console.log("Phase 2 background loading complete.");
+      setIsSyncingPhase2(false);
+  };
+
+  const handleLoadFileContent = async (fileId: string): Promise<string | undefined> => {
+    try {
+        const { data, error } = await supabase.from('materials').select('file_data').eq('id', fileId).single();
+        if (error) throw error;
+        
+        const content = data.file_data || '';
+        
+        // Optimistically update the file in state with the fetched content
+        setFiles(prev => prev.map(f => f.id === fileId ? { ...f, fileData: content } : f));
+        
+        return content;
+    } catch (err) {
+        console.error("Error loading file content:", err);
+        // toast.error("Failed to load file content."); // Suppress to avoid double toast if background fails
+        return undefined;
+    }
   };
 
   const handleSyncAll = async () => {
@@ -373,28 +510,19 @@ export const App: React.FC = () => {
     const { data } = await supabase.from('profiles').select('*').eq('id', userId).single();
     if (data) {
       setProfile(data);
-      saveToCache('profile', data);
+      // Update cache
+      const cachedData = localStorage.getItem('unimate_v1_cache');
+      if (cachedData) {
+          const parsed = JSON.parse(cachedData);
+          localStorage.setItem('unimate_v1_cache', JSON.stringify({ ...parsed, profile: data }));
+      }
+      
       // Load saved settings if any
       if (data.settings) {
         if (data.settings.theme) setThemeMode(data.settings.theme);
         if (data.settings.eventColors) setEventColors(data.settings.eventColors);
       }
     }
-  };
-
-  const handleFetchFileData = async (fileId: string) => {
-    const { data, error } = await supabase.from('materials').select('file_data').eq('id', fileId).single();
-    if (error) {
-        console.error("Error fetching file data:", error);
-        return null;
-    }
-    const fileData = data.file_data;
-    setFiles(prev => {
-        const updated = prev.map(f => f.id === fileId ? { ...f, fileData } : f);
-        saveToCache('files', updated);
-        return updated;
-    });
-    return fileData;
   };
 
   const handleUpdateProfile = async (updates: any) => {
@@ -900,7 +1028,6 @@ export const App: React.FC = () => {
       case 'materials':
         return <MaterialsView 
             files={files}
-            onFetchFileData={handleFetchFileData}
             onAddFile={async (file) => {
                 if (!session?.user?.id) return;
                 const newFile = {
@@ -944,11 +1071,22 @@ export const App: React.FC = () => {
                 }
             }}
             onDeleteFile={async (id) => {
+                if (!confirm("Are you sure you want to delete this file?")) return;
+                
+                const backup = files.find(f => f.id === id);
                 // Optimistic update
                 setFiles(prev => prev.filter(f => f.id !== id && f.parentId !== id));
-                await supabase.from('materials').delete().eq('id', id);
-                await supabase.from('materials').delete().eq('parent_id', id);
+                
+                const { error } = await supabase.from('materials').delete().eq('id', id);
+                if (error) {
+                    console.error("Error deleting file:", error);
+                    toast.error("Failed to delete file.");
+                    if (backup) setFiles(prev => [...prev, backup]);
+                } else {
+                    toast.success("File deleted.");
+                }
             }}
+            onLoadFileContent={handleLoadFileContent}
             onBack={() => setView('dashboard')}
             onFileViewChange={setIsViewingFile}
         />;
@@ -1159,10 +1297,12 @@ export const App: React.FC = () => {
 
   return (
     <div style={styles.container} className={themeMode}>
-      {isSyncing && !loading && (
+      {((isSyncing) || (isSyncingPhase2 && view === 'materials')) && !loading && (
         <div className="fixed top-20 right-4 z-[2000] flex items-center gap-2 bg-slate-900/80 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-full shadow-2xl animate-in fade-in slide-in-from-top-2 duration-300">
-           <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div>
-           <span className="text-[9px] font-bold text-white/70 uppercase tracking-widest">Syncing</span>
+           <div className={`w-1.5 h-1.5 ${isSyncing ? 'bg-emerald-500' : 'bg-violet-500'} rounded-full animate-pulse`}></div>
+           <span className="text-[9px] font-bold text-white/70 uppercase tracking-widest">
+               {isSyncing ? 'Syncing Meta' : 'Background Sync'}
+           </span>
         </div>
       )}
       <ErrorBoundary>
