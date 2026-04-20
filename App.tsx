@@ -84,6 +84,8 @@ export const App: React.FC = () => {
   const [view, setView] = useState<ViewState>('dashboard');
   const [themeMode, setThemeMode] = useState<ThemeMode>('dark');
   const [isViewingFile, setIsViewingFile] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const isSyncingRef = useRef(false);
 
   // Onboarding State
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -159,7 +161,7 @@ export const App: React.FC = () => {
   };
 
   const [toDoItems, setToDoItems] = useState<ToDoItem[]>([]);
-  const [files, setFiles] = useState<MaterialFile[]>(INITIAL_FILES);
+  const [files, setFiles] = useState<MaterialFile[]>([]);
 
   useEffect(() => {
     // Fallback: If EVERYTHING hangs for 8 seconds, force it to stop
@@ -177,22 +179,23 @@ export const App: React.FC = () => {
         
         setSession(session);
         
-        // Step 2: Stop blocking the UI as soon as we know the auth state
-        // This makes the app feel "instant"
-        setLoading(false);
-        clearTimeout(loadingTimeout);
-
         if (session) {
-            // Step 3: Fetch profile and data in the background
-            // We don't await them here so the main loading screen disappears immediately
-            fetchProfile(session.user.id);
-            fetchUserData(session.user.id);
+            // Wait for initial data to be loaded before showing the app
+            // This prevents the "stuff is gone" flash
+            await Promise.all([
+                fetchProfile(session.user.id),
+                fetchUserData(session.user.id)
+            ]);
         } else {
             // Default states for non-logged in users
             setEvents(INITIAL_EVENTS);
             setProfiles(INITIAL_PROFILES);
             setActiveProfileId(INITIAL_PROFILES[0].id);
+            setFiles(INITIAL_FILES);
         }
+
+        setLoading(false);
+        clearTimeout(loadingTimeout);
       } catch (error) {
         console.error("Initialization error:", error);
         setLoading(false);
@@ -204,7 +207,7 @@ export const App: React.FC = () => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, currentSession) => {
       setSession(currentSession);
-      if ((_event === 'SIGNED_IN' || _event === 'INITIAL_SESSION') && currentSession) {
+      if (_event === 'SIGNED_IN' && currentSession) {
           fetchProfile(currentSession.user.id);
           fetchUserData(currentSession.user.id);
       }
@@ -223,6 +226,9 @@ export const App: React.FC = () => {
   }, []);
 
   const fetchUserData = async (userId: string) => {
+      if (isSyncingRef.current) return;
+      isSyncingRef.current = true;
+      setIsSyncing(true);
       try {
           const [eventsRes, profilesRes, coursesRes, todosRes, materialsRes] = await Promise.all([
               supabase.from('events').select('*').eq('user_id', userId),
@@ -280,6 +286,9 @@ export const App: React.FC = () => {
           if (materialsRes.data) setFiles(materialsRes.data.map((m: any) => ({...m, dateAdded: m.date_added, fileData: m.file_data, mimeType: m.mime_type, parentId: m.parent_id})));
       } catch (err) {
           console.error("Error fetching user data:", err);
+      } finally {
+          setIsSyncing(false);
+          isSyncingRef.current = false;
       }
   };
 
@@ -1085,6 +1094,12 @@ export const App: React.FC = () => {
 
   return (
     <div style={styles.container} className={themeMode}>
+      {isSyncing && !loading && (
+        <div className="fixed top-20 right-4 z-[2000] flex items-center gap-2 bg-slate-900/80 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-full shadow-2xl animate-in fade-in slide-in-from-top-2 duration-300">
+           <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div>
+           <span className="text-[9px] font-bold text-white/70 uppercase tracking-widest">Syncing</span>
+        </div>
+      )}
       <ErrorBoundary>
         {renderContent()}
       </ErrorBoundary>
