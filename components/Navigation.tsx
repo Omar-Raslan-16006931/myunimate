@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'motion/react';
 import { LayoutDashboard, Calendar as CalendarIcon, BookOpen, Folder, Settings } from 'lucide-react';
 import { ViewState } from '../types';
 import { styles } from '../theme';
@@ -17,7 +18,7 @@ const Navigation: React.FC<NavigationProps> = ({ currentView, onNavigate }) => {
   ];
 
   return (
-    <div style={styles.bottomNav}>
+    <div style={styles.bottomNav} className="bg-white/10 backdrop-blur-lg border border-white/10 rounded-full shadow-2xl">
       {navItems.map((item) => {
         const isActive = currentView === item.view;
         return (
@@ -29,7 +30,14 @@ const Navigation: React.FC<NavigationProps> = ({ currentView, onNavigate }) => {
             }}
             onClick={() => onNavigate(item.view)}
           >
-            <item.icon size={22} strokeWidth={isActive ? 2.5 : 1.5} />
+            {isActive && (
+              <motion.div
+                layoutId="nav-pill"
+                className="absolute inset-0 bg-white/20 rounded-full"
+                transition={{ type: "spring", stiffness: 350, damping: 20, mass: 0.8 }}
+              />
+            )}
+            <item.icon size={22} strokeWidth={isActive ? 2.5 : 1.5} className="relative z-10" />
           </div>
         );
       })}
