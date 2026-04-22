@@ -449,7 +449,7 @@ const Settings: React.FC<SettingsProps> = ({
                                           <div className="bg-black/20 rounded-[20px] p-4 border border-white/[0.03]">
                                               <p className="text-[9px] font-black text-white/20 uppercase tracking-widest mb-1.5">Gender</p>
                                               {isEditingAccount ? (
-                                                  <select value={editForm.gender || ''} onChange={e => setEditForm({...editForm, gender: e.target.value})} className="bg-transparent text-sm font-bold text-white outline-none w-full appearance-none"><option value="male">Male</option><option value="female">Female</option><option value="other">Other</option></select>
+                                                  <select value={editForm.gender || ''} onChange={e => setEditForm({...editForm, gender: e.target.value})} className="bg-transparent text-sm font-bold text-white outline-none w-full appearance-none"><option value="male">Male</option><option value="female">Female</option></select>
                                               ) : <p className="text-sm font-bold text-white">{accountInfo.gender || '—'}</p>}
                                           </div>
                                           <div className="bg-black/20 rounded-[20px] p-4 border border-white/[0.03]">
