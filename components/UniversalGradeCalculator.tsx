@@ -28,11 +28,24 @@ const CategorySection = ({ cat, updateCategory, deleteCategory, addItem, updateI
     let catPercentage = 0;
 
     if (validItems.length > 0) {
-        const sumScore = validItems.reduce((acc: number, i: any) => acc + parseFloat(i.score), 0);
-        const sumTotal = validItems.reduce((acc: number, i: any) => acc + parseFloat(i.total), 0);
-        catScoreDisplay = sumScore.toFixed(1).replace(/\.0$/, '');
-        catMaxDisplay = sumTotal.toFixed(1).replace(/\.0$/, '');
-        catPercentage = (sumScore / sumTotal) * 100;
+        const dropCount = parseInt(cat.dropLowest) || 0;
+        const withPercent = validItems.map((i: any) => ({
+            s: parseFloat(i.score),
+            t: parseFloat(i.total),
+            pct: parseFloat(i.score) / parseFloat(i.total)
+        })).sort((a: any, b: any) => a.pct - b.pct);
+
+        const kept = withPercent.slice(dropCount);
+        
+        if (kept.length > 0) {
+            const sumPct = kept.reduce((acc: number, i: any) => acc + i.pct, 0);
+            catPercentage = (sumPct / kept.length) * 100;
+            
+            const sumScore = kept.reduce((acc: number, i: any) => acc + i.s, 0);
+            const sumTotal = kept.reduce((acc: number, i: any) => acc + i.t, 0);
+            catScoreDisplay = sumScore.toFixed(1).replace(/\.0$/, '');
+            catMaxDisplay = sumTotal.toFixed(1).replace(/\.0$/, '');
+        }
     }
 
     const weight = parseFloat(cat.weight) || 0;
@@ -213,8 +226,6 @@ const UniversalGradeCalculator: React.FC<UniversalGradeCalculatorProps> = ({ cou
         
         if (validItems.length > 0) {
             const withPercent = validItems.map(i => ({
-                s: parseFloat(i.score),
-                t: parseFloat(i.total),
                 pct: parseFloat(i.score) / parseFloat(i.total)
             })).sort((a, b) => a.pct - b.pct);
 
@@ -222,9 +233,8 @@ const UniversalGradeCalculator: React.FC<UniversalGradeCalculatorProps> = ({ cou
             const kept = withPercent.slice(dropCount);
             
             if (kept.length > 0) {
-                const sumScore = kept.reduce((a, b) => a + b.s, 0);
-                const sumTotal = kept.reduce((a, b) => a + b.t, 0);
-                const catAvg = sumTotal > 0 ? (sumScore / sumTotal) : 0;
+                const sumPct = kept.reduce((a, b) => a + b.pct, 0);
+                const catAvg = sumPct / kept.length;
                 
                 totalPointsAccumulated += catAvg * weight;
                 weightCompleted += weight;
@@ -266,12 +276,12 @@ const UniversalGradeCalculator: React.FC<UniversalGradeCalculatorProps> = ({ cou
     const addItem = (catId: string) => {
         const newCats = course.categories.map(c => {
             if (c.id === catId) {
-                let baseName = "New Item";
-                let name = baseName;
-                let counter = 1;
+                const baseName = c.name && c.name.trim() !== "" ? c.name : "Item";
+                let counter = c.items.length + 1;
+                let name = `${baseName} ${counter}`;
                 while (c.items.some(i => (i.name || "").toLowerCase() === name.toLowerCase())) {
-                    name = `${baseName} (${counter})`;
                     counter++;
+                    name = `${baseName} ${counter}`;
                 }
                 return { ...c, items: [...c.items, { id: generateId(), name: name, score: "", total: "100", active: true }] };
             }
