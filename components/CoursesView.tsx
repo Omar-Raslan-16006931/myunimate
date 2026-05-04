@@ -91,8 +91,6 @@ const calculateCourseStats = (course: CourseGrade) => {
         
         if (usableItems.length > 0) {
             const withPercent = usableItems.map(i => ({
-                s: parseFloat(i.score),
-                t: parseFloat(i.total),
                 pct: parseFloat(i.score) / parseFloat(i.total)
             })).sort((a, b) => a.pct - b.pct);
 
@@ -100,9 +98,8 @@ const calculateCourseStats = (course: CourseGrade) => {
             const kept = withPercent.slice(dropCount);
             
             if (kept.length > 0) {
-                const sumScore = kept.reduce((a, b) => a + b.s, 0);
-                const sumTotal = kept.reduce((a, b) => a + b.t, 0);
-                const catAvg = sumTotal > 0 ? (sumScore / sumTotal) : 0;
+                const sumPct = kept.reduce((a, b) => a + b.pct, 0);
+                const catAvg = sumPct / kept.length;
                 
                 accumulatedPoints += catAvg * weight;
                 weightCompleted += weight;
