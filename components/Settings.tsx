@@ -701,7 +701,7 @@ const Settings: React.FC<SettingsProps> = ({
                 <div className="pt-4 pb-12 text-center flex flex-col items-center gap-3">
                     <div className="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-full border border-white/5 backdrop-blur-sm">
                         <Heart size={12} className="text-red-500 fill-red-500" />
-                        <span className="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em]">Build 3.0 • Made with Pride</span>
+                        <span className="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em]">VERSION 3.5 • Made with PASSION</span>
                     </div>
                     <div className="flex gap-4">
                         <a href="#" className="text-[10px] font-bold text-white/20 hover:text-white transition-colors underline-offset-4 underline decoration-white/10">Terms of Service</a>
