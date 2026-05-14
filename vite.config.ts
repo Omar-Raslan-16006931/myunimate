@@ -39,6 +39,6 @@ export default defineConfig({
     },
   },
   define: {
-    'process.env.API_KEY': JSON.stringify("AIzaSyBgJM6Dx4mVwL_v6VPOtACTVSBAr22rVDc"),
+    'process.env.API_KEY': JSON.stringify(process.env.VITE_GEMINI_API_KEY || ''),
   },
 });
