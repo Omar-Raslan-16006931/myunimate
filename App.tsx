@@ -876,7 +876,7 @@ export const App: React.FC = () => {
 
   if (!session) {
     if (showAuth) return <Auth />;
-    return <LandingPage onGetStarted={() => setShowAuth(true)} onShowReferral={() => setShowAuth(true)} />;
+    return <LandingPage onGetStarted={() => setShowAuth(true)} />;
   }
 
   if (profile && !profile.username) {
