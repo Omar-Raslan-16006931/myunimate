@@ -39,6 +39,6 @@ export default defineConfig({
     },
   },
   define: {
-    'process.env.API_KEY': JSON.stringify("REMOVED_API_KEY"),
+    'process.env.API_KEY': JSON.stringify(process.env.VITE_GEMINI_API_KEY || ''),
   },
 });
