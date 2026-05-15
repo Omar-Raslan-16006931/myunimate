@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { X, Send, Loader2, MessageSquare, CheckCircle2, ChevronDown, Bug, Lightbulb, HelpCircle, AlertTriangle } from 'lucide-react';
-import { theme } from '../theme';
+
 
 interface FeedbackModalProps {
   isOpen: boolean;

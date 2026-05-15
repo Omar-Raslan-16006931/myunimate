@@ -1,5 +1,6 @@
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
+
 import { X, ArrowRight, DollarSign } from 'lucide-react';
 
 interface BannerProps {
@@ -13,18 +14,11 @@ interface BannerProps {
 }
 
 export const Banner: React.FC<BannerProps> = ({ show, action, onHide }) => {
-  const [isVisible, setIsVisible] = useState(show);
-
-  useEffect(() => {
-    if (show) setIsVisible(true);
-  }, [show]);
-
-  const isHidden = !show;
 
   return (
     <div 
       className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-[2000] w-auto max-w-[95vw] transition-all duration-700 cubic-bezier(0.19, 1, 0.22, 1) ${
-        isHidden ? 'translate-y-[150%] opacity-0 scale-90' : 'translate-y-0 opacity-100 scale-100'
+        !show ? 'translate-y-[150%] opacity-0 scale-90' : 'translate-y-0 opacity-100 scale-100'
       }`}
     >
       <div className="relative group flex items-center gap-3 bg-[#0a0a0f]/80 backdrop-blur-xl border border-white/20 shadow-[0_0_25px_-5px_rgba(255,255,255,0.2)] rounded-full p-1.5 pr-3 ring-1 ring-white/5 overflow-hidden">

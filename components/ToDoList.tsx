@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Plus, Trash2, Circle, CheckCircle2, X, ArrowLeft, CheckSquare, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, Circle, CheckCircle2, X, ArrowLeft, CheckSquare } from 'lucide-react';
 import { ToDoItem } from '../types';
 import { theme, styles } from '../theme';
 

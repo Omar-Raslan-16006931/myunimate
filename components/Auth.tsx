@@ -58,7 +58,7 @@ function Auth({ onEnterTestMode }: AuthProps) {
         setIsCheckingUsername(true);
         try {
           // Check if username exists (case insensitive)
-          const { data, error } = await supabase
+          const { data } = await supabase
             .from('profiles')
             .select('username')
             .ilike('username', username.trim())

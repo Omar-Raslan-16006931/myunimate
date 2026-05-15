@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { User, GraduationCap, Calendar, Building, Users, Sparkles, Loader2, LogOut, ArrowRight } from 'lucide-react';
-import { theme, styles } from '../theme';
+import { styles } from '../theme';
 
 interface CompleteProfileProps {
   onComplete: (data: { username: string; gender: string; major: string; year: string; college: string }) => Promise<void>;

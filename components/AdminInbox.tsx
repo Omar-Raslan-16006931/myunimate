@@ -2,8 +2,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { AppFeedback, FeedbackReply } from '../types';
-import { Check, User, Loader2, Inbox, RefreshCw, Trash2, X, MessageSquare, Send, AlertTriangle, Search, ChevronLeft, Filter, Sparkles, MoreHorizontal, Copy } from 'lucide-react';
-import { theme } from '../theme';
+import { Check, User, Loader2, Inbox, RefreshCw, Trash2, Send, AlertTriangle, Search, ChevronLeft, Sparkles, Copy } from 'lucide-react';
 
 const AdminInbox: React.FC = () => {
   const [feedbackItems, setFeedbackItems] = useState<AppFeedback[]>([]);

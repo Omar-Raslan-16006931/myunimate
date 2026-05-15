@@ -109,7 +109,7 @@ Return ONLY the JSON array. Ensure the date is in YYYY-MM-DD format.`;
         location: item.room,
         type: (item.type?.toLowerCase() as EventType) || (importType === 'exam' ? 'exam' : 'lecture'),
         dayOfWeek: item.day,
-        date: item.date || null,
+        date: item.date,
         startTime: item.time_start,
         durationMinutes: calculateDuration(item.time_start, item.time_end),
         isRecurring: importType === 'weekly',

@@ -1,7 +1,8 @@
 
 import React, { useState } from 'react';
-import { ArrowLeft, Check, Sparkles, Zap, Shield, Crown, CreditCard, Loader2, Calendar, AlertTriangle, XCircle, ChevronRight, Star } from 'lucide-react';
-import { theme, styles } from '../theme';
+import { ArrowLeft, Check, Sparkles, Zap, Shield, Crown, Loader2, XCircle, ChevronRight, Star } from 'lucide-react';
+import { styles } from '../theme';
+
 
 interface SubscriptionPageProps {
   subscriptionTier: number;

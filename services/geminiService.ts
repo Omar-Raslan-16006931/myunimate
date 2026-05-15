@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, Type, FunctionDeclaration } from "@google/genai";
-import { ScheduleEvent, EventType, Macros, PeriodDefinition } from "../types";
+import { ScheduleEvent, Macros, PeriodDefinition } from "../types";
 import { supabase } from "../lib/supabase";
 
 const MODEL_NAME = 'gemini-3-flash-preview';

@@ -4,8 +4,8 @@ import { AlertCircle, RefreshCw } from 'lucide-react';
 import { Toaster, toast } from 'react-hot-toast';
 import { supabase } from './lib/supabase';
 import { ViewState, ScheduleEvent, ScheduleProfile, EventColorMap, EventType, PeriodDefinition, Announcement, ThemeMode, FoodItem, WaterLog, WorkoutSession, WorkoutRoutine, ExerciseDefinition, GymSettings, ActiveGymState, CourseGrade, ToDoItem, MaterialFile } from './types';
-import { INITIAL_EVENTS, INITIAL_PROFILES, INITIAL_COLORS, INITIAL_PERIODS, DEFAULT_GYM_SETTINGS, DEFAULT_ROUTINES, DEFAULT_EXERCISES, INITIAL_FILES, generateId } from './constants';
-import { styles, theme } from './theme';
+import { INITIAL_EVENTS, INITIAL_PROFILES, INITIAL_COLORS, INITIAL_PERIODS, DEFAULT_GYM_SETTINGS, DEFAULT_ROUTINES, INITIAL_FILES, generateId } from './constants';
+import { styles } from './theme';
 
 import Auth from './components/Auth';
 import LandingPage from './components/LandingPage';
@@ -17,7 +17,7 @@ import AIChat from './components/AIChat';
 import Settings from './components/Settings';
 import GymView from './components/GymView';
 import ToDoList from './components/ToDoList';
-import ReferralProgram from './components/ReferralProgram';
+
 import AddEventModal from './components/AddEventModal';
 import EventDetailsModal from './components/EventDetailsModal';
 import ImageImportModal from './components/ImageImportModal';
@@ -99,7 +99,7 @@ export const App: React.FC = () => {
   const [profiles, setProfiles] = useState<ScheduleProfile[]>([]);
   const [activeProfileId, setActiveProfileId] = useState<string>('');
   const [eventColors, setEventColors] = useState<EventColorMap>(INITIAL_COLORS);
-  const [announcement, setAnnouncement] = useState<Announcement | null>(null);
+  const announcement: Announcement | null = null;
 
   const currentPeriods = profiles.find(p => p.id === activeProfileId)?.periods || INITIAL_PERIODS;
 
@@ -268,7 +268,7 @@ export const App: React.FC = () => {
 
     initialize();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, currentSession) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event: string, currentSession: any) => {
       setSession(currentSession);
       if ((_event === 'SIGNED_IN' || _event === 'INITIAL_SESSION') && currentSession && !isInitializingRef.current) {
           fetchProfile(currentSession.user.id);
@@ -435,7 +435,7 @@ export const App: React.FC = () => {
       }
   };
 
-  const backgroundLoadFileContents = async (userId: string, targetFiles?: MaterialFile[]) => {
+  const backgroundLoadFileContents = async (_userId: string, targetFiles?: MaterialFile[]) => {
       // If targetFiles is provided, use it, otherwise use current state
       const filesToFilter = targetFiles || files;
       // Only load content for files that don't have it yet
@@ -464,7 +464,7 @@ export const App: React.FC = () => {
               
               if (!error && data && data.length > 0) {
                   setFiles(prev => prev.map(f => {
-                      const match = data.find(d => d.id === f.id);
+                      const match = data.find((d: any) => d.id === f.id);
                       if (match) return { ...f, fileData: match.file_data || '' };
                       return f;
                   }));
@@ -478,7 +478,7 @@ export const App: React.FC = () => {
       setIsSyncingPhase2(false);
   };
 
-  const handleLoadFileContent = async (fileId: string): Promise<string | undefined> => {
+  const handleLoadFileContent = async (fileId: string): Promise<string> => {
     try {
         const { data, error } = await supabase.from('materials').select('file_data').eq('id', fileId).single();
         if (error) throw error;
@@ -492,7 +492,7 @@ export const App: React.FC = () => {
     } catch (err) {
         console.error("Error loading file content:", err);
         // toast.error("Failed to load file content."); // Suppress to avoid double toast if background fails
-        return undefined;
+        return '';
     }
   };
 
@@ -635,8 +635,8 @@ export const App: React.FC = () => {
         startTime: eventData.startTime || '09:00',
         durationMinutes: eventData.durationMinutes || 60,
         isRecurring: eventData.isRecurring || false,
-        dayOfWeek: eventData.dayOfWeek || null,
-        date: eventData.isRecurring ? null : (eventData.date || null),
+        dayOfWeek: eventData.dayOfWeek,
+        date: eventData.isRecurring ? undefined : eventData.date,
         location: eventData.location,
         description: eventData.description,
         code: eventData.code,
@@ -692,8 +692,8 @@ export const App: React.FC = () => {
     
     const newEvents: ScheduleEvent[] = eventsData.map(eventData => {
         const isRecurring = eventData.isRecurring || false;
-        const date = isRecurring ? null : (eventData.date || null);
-        let dayOfWeek = eventData.dayOfWeek || null;
+        const date = isRecurring ? undefined : eventData.date;
+        let dayOfWeek = eventData.dayOfWeek;
         
         // Ensure dayOfWeek is set for non-recurring events if date is provided
         if (!isRecurring && date && !dayOfWeek) {
@@ -793,8 +793,8 @@ export const App: React.FC = () => {
         ...updatedEvent,
         startTime: updatedEvent.startTime || '09:00',
         durationMinutes: updatedEvent.durationMinutes || 60,
-        dayOfWeek: updatedEvent.dayOfWeek || null,
-        date: updatedEvent.isRecurring ? null : (updatedEvent.date || null)
+        dayOfWeek: updatedEvent.dayOfWeek,
+        date: updatedEvent.isRecurring ? undefined : updatedEvent.date
     };
 
     // Ensure dayOfWeek is set for non-recurring events if date is provided
@@ -1114,11 +1114,7 @@ export const App: React.FC = () => {
             onFileViewChange={setIsViewingFile}
         />;
       case 'study_groups':
-        return <StudyGroupsView 
-            onBack={() => setView('dashboard')}
-            userId={session?.user?.id}
-            username={profile?.username || 'Student'}
-        />;
+        return <div style={{ padding: '20px' }}><p>Study Groups View - Coming Soon</p></div>;
       case 'grades':
         if (selectedCourseId) {
             const course = courses.find(c => c.id === selectedCourseId);
@@ -1234,16 +1230,7 @@ export const App: React.FC = () => {
             onDowngrade={handleDowngrade}
             onBack={() => setView('settings')}
         />;
-      case 'referral':
-        return <ReferralProgram 
-            onBack={() => setView('settings')} 
-            isLoggedIn={true} 
-            userId={session?.user?.id}
-            username={profile?.username} 
-            balance={profile?.wallet_balance || 0.00}
-            subscriptionTier={profile?.subscription_tier || 0}
-            onRefreshProfile={() => session?.user?.id && fetchProfile(session.user.id)}
-        />;
+      
       case 'settings':
         return <Settings 
             profiles={profiles}

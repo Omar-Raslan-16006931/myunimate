@@ -2,13 +2,12 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  Plus, Check, Clock, Trash2, MoreHorizontal, 
-  Dumbbell, Play, ArrowLeft, Search, History, X, 
-  Calendar, ChevronRight, Zap, Timer, Flame, Repeat,
-  Minimize2, Maximize2, Pencil, AlertTriangle, Book, LayoutGrid, Save, Info, ChevronDown
+  Plus, Check, Clock, Trash2, 
+  Dumbbell, Play, ArrowLeft, Search, X, 
+  Timer, Flame, Repeat,
+  Minimize2, Pencil, AlertTriangle, Book, LayoutGrid, ChevronDown
 } from 'lucide-react';
-import { WorkoutSession, WorkoutExercise, MuscleGroup, WorkoutRoutine, ExerciseDefinition, Equipment, GymSettings, ExerciseSet, ActiveGymState } from '../../types';
-import { theme } from '../../theme';
+import { WorkoutSession, WorkoutExercise, MuscleGroup, WorkoutRoutine, ExerciseDefinition, GymSettings, ExerciseSet, ActiveGymState } from '../../types';
 import { generateId } from '../../constants';
 
 // --- HELPERS ---
@@ -228,7 +227,7 @@ interface WorkoutLoggerProps {
 // --- MAIN COMPONENT ---
 
 export const GymWorkoutLogger: React.FC<WorkoutLoggerProps> = ({ 
-    history, routines, exercises, saveWorkout, deleteWorkoutSession, saveRoutine, deleteRoutine, addCustomExercise, settings, activeGymState, onUpdateActiveGymState 
+    history, routines, exercises, saveWorkout, deleteWorkoutSession, saveRoutine, deleteRoutine, settings, activeGymState, onUpdateActiveGymState 
 }) => {
   const [view, setView] = useState<'hub' | 'active'>('hub');
   const [showLibrary, setShowLibrary] = useState(false);

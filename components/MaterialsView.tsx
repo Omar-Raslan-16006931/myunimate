@@ -2,7 +2,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { MaterialFile } from '../types';
 import * as XLSX from 'xlsx';
-import { Folder, FileText, Download, MoreVertical, Search, Plus, Image, FileSpreadsheet, File, ArrowLeft, Eye, Edit2, Trash2, FolderPlus, CornerUpLeft, X, Minus, RotateCw, Move, MousePointer2, FileType, Save, FilePlus, Loader2 } from 'lucide-react';
+import { Folder, FileText, Download, MoreVertical, Search, Plus, Image, FileSpreadsheet, File, ArrowLeft, Eye, Edit2, Trash2, FolderPlus, CornerUpLeft, X, RotateCw, FileType, FilePlus, Save } from 'lucide-react';
 import { styles, theme } from '../theme';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 import { PdfViewer } from './PdfViewer';
@@ -164,7 +164,7 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
       
       // Lazy load content if missing
       let fileContent = file.fileData;
-      if (file.type !== 'folder' && fileContent === undefined) {
+    if (fileContent === undefined) {
           setIsLoadingContent(true);
           fileContent = await onLoadFileContent(file.id);
           setIsLoadingContent(false);

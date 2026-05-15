@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { styles } from '../theme';
-import { CreditCard, Check, Lock, Loader2, ArrowLeft } from 'lucide-react';
+import { CreditCard, Lock, Loader2, ArrowLeft } from 'lucide-react';
 
 interface PaymentPageProps {
   price: number;
