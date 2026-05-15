@@ -272,7 +272,7 @@ const GroupCard = ({ children, className = "" }: any) => {
 };
 
 const Settings: React.FC<SettingsProps> = ({
-    profiles, activeProfileId, eventColors, onAddProfile, onSwitchProfile, onDeleteProfile, onUpdateColor, onResetApp, onSignOut, periods, setPeriods, accountInfo, onUpdateAccount, onNavigate
+    profiles, activeProfileId, eventColors, onAddProfile, onSwitchProfile, onDeleteProfile, onUpdateColor, onResetApp, onSignOut, periods, setPeriods, accountInfo, onUpdateAccount, 
 }) => {
     const [newProfileName, setNewProfileName] = useState('');
     const [isScheduleSettingsExpanded, setIsScheduleSettingsExpanded] = useState(false);
