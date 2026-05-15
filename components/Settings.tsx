@@ -1,10 +1,8 @@
-
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../lib/supabase';
-// Added Crown to the lucide-react imports to fix 'Cannot find name Crown' error
-import { Plus, Trash2, CalendarDays, Palette, Layers, Pencil, Upload, ImageIcon, Loader2, LogOut, ChevronDown, ChevronUp, Columns, AlertTriangle, User, GraduationCap, Calendar, Building, Users, Moon, Sun, Check, X, Shield, Search, Ban, MessageSquare, Sparkles, Clock, ChevronRight, Ticket, Send, ArrowLeft, CheckCircle2, DollarSign, Heart, ExternalLink, Crown } from 'lucide-react';
-import { ScheduleProfile, EventColorMap, EventType, ScheduleEvent, PeriodDefinition, ThemeMode, ReferralCode, AppFeedback, FeedbackReply, ViewState } from '../types';
+import { Plus, Trash2, Palette, Layers, Loader2, LogOut, ChevronDown, AlertTriangle, User, Check, X, Shield, Search, Ban, Send, ArrowLeft, MessageSquare, ChevronRight, Heart, Columns } from 'lucide-react';
+import { ScheduleProfile, EventColorMap, EventType, ScheduleEvent, PeriodDefinition, ThemeMode, AppFeedback, FeedbackReply, ViewState } from '../types';
 import { theme, styles } from '../theme';
 import ScheduleSettings from './ScheduleSettings';
 import FeedbackModal from './FeedbackModal';
@@ -38,7 +36,7 @@ const SupportHistoryModal = ({ isOpen, onClose, userId }: { isOpen: boolean, onC
                 .on(
                     'postgres_changes',
                     { event: '*', schema: 'public', table: 'app_feedback', filter: `user_id=eq.${userId}` },
-                    (payload) => {
+                    (payload: any) => {
                         if (payload.eventType === 'INSERT') {
                             setTickets(prev => [payload.new as AppFeedback, ...prev]);
                         } else if (payload.eventType === 'UPDATE') {
@@ -63,20 +61,20 @@ const SupportHistoryModal = ({ isOpen, onClose, userId }: { isOpen: boolean, onC
                 .select('*')
                 .eq('feedback_id', activeTicket.id)
                 .order('created_at', { ascending: true })
-                .then(({ data }) => {
+                .then(({ data }: any) => {
                     if (data) setReplies(data);
                 });
-                
+
             const channelId = `user_chat_${activeTicket.id}`;
             const channel = supabase.channel(channelId)
-            .on(
-              'postgres_changes',
-              { event: 'INSERT', schema: 'public', table: 'feedback_replies', filter: `feedback_id=eq.${activeTicket.id}` },
-              (payload: any) => {
-                setReplies(prev => [...prev, payload.new as FeedbackReply]);
-              }
-            )
-            .subscribe();
+                .on(
+                    'postgres_changes',
+                    { event: 'INSERT', schema: 'public', table: 'feedback_replies', filter: `feedback_id=eq.${activeTicket.id}` },
+                    (payload: any) => {
+                        setReplies(prev => [...prev, payload.new as FeedbackReply]);
+                    }
+                )
+                .subscribe();
 
             return () => { supabase.removeChannel(channel); };
         }
@@ -93,21 +91,18 @@ const SupportHistoryModal = ({ isOpen, onClose, userId }: { isOpen: boolean, onC
     const handleSendReply = async () => {
         if (!replyText.trim() || !activeTicket || !userId) return;
         setSendingReply(true);
-        
         try {
             const { error: replyError } = await supabase.from('feedback_replies').insert({
                 feedback_id: activeTicket.id,
                 sender_id: userId,
                 message: replyText.trim(),
-                is_admin: false 
+                is_admin: false
             });
-            
             if (replyError) throw replyError;
             await supabase.from('app_feedback').update({ status: 'unread' }).eq('id', activeTicket.id);
             setReplyText('');
         } catch (error) {
             console.error(error);
-            console.error('Failed to send reply');
         } finally {
             setSendingReply(false);
         }
@@ -117,7 +112,7 @@ const SupportHistoryModal = ({ isOpen, onClose, userId }: { isOpen: boolean, onC
 
     return createPortal(
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200" onClick={onClose}>
-            <div 
+            <div
                 className="w-full max-w-md h-[85vh] bg-[#0f172a] rounded-[32px] border border-white/10 shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-300"
                 onClick={e => e.stopPropagation()}
             >
@@ -140,7 +135,7 @@ const SupportHistoryModal = ({ isOpen, onClose, userId }: { isOpen: boolean, onC
                         <X size={20} />
                     </button>
                 </div>
-                
+
                 <div className="flex-1 overflow-hidden relative bg-[#0f172a]">
                     {!activeTicket ? (
                         <div className="absolute inset-0 overflow-y-auto p-4 space-y-3 custom-scrollbar">
@@ -168,14 +163,14 @@ const SupportHistoryModal = ({ isOpen, onClose, userId }: { isOpen: boolean, onC
                             <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-[#0f172a] to-[#130f1c] custom-scrollbar">
                                 <div className="flex flex-col items-end animate-in slide-in-from-bottom-2">
                                     <div className="bg-indigo-600 text-white px-4 py-3 rounded-2xl rounded-tr-none max-w-[85%] text-sm shadow-md leading-relaxed">{activeTicket.message}</div>
-                                    <span className="text-[10px] text-white/20 mt-1 mr-1">{new Date(activeTicket.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                                    <span className="text-[10px] text-white/20 mt-1 mr-1">{new Date(activeTicket.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                 </div>
                                 {replies.map(reply => {
                                     const isMe = !reply.is_admin;
                                     return (
                                         <div key={reply.id} className={`flex flex-col animate-in slide-in-from-bottom-2 ${isMe ? 'items-end' : 'items-start'}`}>
                                             <div className={`px-4 py-3 rounded-2xl max-w-[85%] text-sm shadow-md leading-relaxed ${isMe ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-white/10 text-white/90 rounded-tl-none border border-white/5'}`}>{reply.message}</div>
-                                            <span className={`text-[10px] text-white/20 mt-1 ${isMe ? 'mr-1' : 'ml-1'}`}>{isMe ? 'You' : 'Support'} • {new Date(reply.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                                            <span className={`text-[10px] text-white/20 mt-1 ${isMe ? 'mr-1' : 'ml-1'}`}>{isMe ? 'You' : 'Support'} • {new Date(reply.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                         </div>
                                     );
                                 })}
@@ -183,7 +178,7 @@ const SupportHistoryModal = ({ isOpen, onClose, userId }: { isOpen: boolean, onC
                             </div>
                             <div className="p-3 bg-[#130f1c] border-t border-white/5 shrink-0">
                                 <div className="flex gap-2 items-end bg-white/5 rounded-3xl p-1 border border-white/10 focus-within:border-indigo-500/50 transition-colors">
-                                    <textarea value={replyText} onChange={e => setReplyText(e.target.value)} onKeyDown={e => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendReply(); } }} placeholder="Type a message..." className="flex-1 bg-transparent border-none text-white text-sm px-4 py-3 focus:outline-none resize-none max-h-[100px] min-h-[44px] placeholder-white/30" rows={1}/>
+                                    <textarea value={replyText} onChange={e => setReplyText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendReply(); } }} placeholder="Type a message..." className="flex-1 bg-transparent border-none text-white text-sm px-4 py-3 focus:outline-none resize-none max-h-[100px] min-h-[44px] placeholder-white/30" rows={1} />
                                     <button onClick={handleSendReply} disabled={!replyText.trim() || sendingReply} className={`w-10 h-10 rounded-full flex items-center justify-center transition-all shrink-0 ${(!replyText.trim() || sendingReply) ? 'bg-white/5 text-white/20' : 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-900/20'}`}>
                                         {sendingReply ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} className={replyText.trim() ? 'ml-0.5' : ''} />}
                                     </button>
@@ -202,20 +197,20 @@ const BanModal = ({ isOpen, onClose, onConfirm, username }: { isOpen: boolean, o
     if (!isOpen) return null;
     return (
         <div style={styles.modalOverlay} onClick={onClose}>
-            <div style={{...styles.modalContent, maxWidth: '300px', textAlign: 'center'}} onClick={e => e.stopPropagation()}>
-                <div style={{margin: '0 auto 16px', width: '50px', height: '50px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.danger}}>
+            <div style={{ ...styles.modalContent, maxWidth: '300px', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+                <div style={{ margin: '0 auto 16px', width: '50px', height: '50px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.danger }}>
                     <Ban size={24} />
                 </div>
-                <h3 style={{fontSize: '1.2rem', fontWeight: 800, margin: '0 0 8px 0'}}>Suspend {username}?</h3>
-                <p style={{fontSize: '0.85rem', color: theme.textMuted, marginBottom: '20px'}}>Select suspension duration.</p>
-                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '12px'}}>
-                    <button onClick={() => onConfirm('1d')} style={{padding: '8px', background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '0.8rem'}}>1 Day</button>
-                    <button onClick={() => onConfirm('3d')} style={{padding: '8px', background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '0.8rem'}}>3 Days</button>
-                    <button onClick={() => onConfirm('1w')} style={{padding: '8px', background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '0.8rem'}}>1 Week</button>
-                    <button onClick={() => onConfirm('1m')} style={{padding: '8px', background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '0.8rem'}}>1 Month</button>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 800, margin: '0 0 8px 0' }}>Suspend {username}?</h3>
+                <p style={{ fontSize: '0.85rem', color: theme.textMuted, marginBottom: '20px' }}>Select suspension duration.</p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '12px' }}>
+                    <button onClick={() => onConfirm('1d')} style={{ padding: '8px', background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '0.8rem' }}>1 Day</button>
+                    <button onClick={() => onConfirm('3d')} style={{ padding: '8px', background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '0.8rem' }}>3 Days</button>
+                    <button onClick={() => onConfirm('1w')} style={{ padding: '8px', background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '0.8rem' }}>1 Week</button>
+                    <button onClick={() => onConfirm('1m')} style={{ padding: '8px', background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '0.8rem' }}>1 Month</button>
                 </div>
-                <button onClick={() => onConfirm(null)} style={{width: '100%', padding: '10px', background: 'rgba(239, 68, 68, 0.2)', color: theme.danger, border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '8px', fontWeight: 700, marginBottom: '8px'}}>Permanent Ban</button>
-                <button onClick={onClose} style={{width: '100%', padding: '10px', background: 'transparent', color: theme.textMuted, border: 'none'}}>Cancel</button>
+                <button onClick={() => onConfirm(null)} style={{ width: '100%', padding: '10px', background: 'rgba(239, 68, 68, 0.2)', color: theme.danger, border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '8px', fontWeight: 700, marginBottom: '8px' }}>Permanent Ban</button>
+                <button onClick={onClose} style={{ width: '100%', padding: '10px', background: 'transparent', color: theme.textMuted, border: 'none' }}>Cancel</button>
             </div>
         </div>
     );
@@ -224,303 +219,245 @@ const BanModal = ({ isOpen, onClose, onConfirm, username }: { isOpen: boolean, o
 // --- MAIN SETTINGS COMPONENT ---
 
 interface SettingsProps {
-  profiles: ScheduleProfile[];
-  activeProfileId: string;
-  eventColors: EventColorMap;
-  baseEvents: ScheduleEvent[];
-  onAddProfile: (name: string) => void;
-  onSwitchProfile: (id: string) => void;
-  onDeleteProfile: (id: string) => void;
-  onUpdateColor: (type: EventType, color: string) => void;
-  onDeleteEvent: (id: string) => void;
-  onEditEvent: (event: ScheduleEvent) => void;
-  onAddBaseEventClick: () => void;
-  onImageUpload: (file: File) => void;
-  isAnalyzing: boolean;
-  onResetApp: () => void;
-  onSignOut: () => void;
-  periods: PeriodDefinition[];
-  setPeriods: (periods: PeriodDefinition[]) => void;
-  accountInfo: any;
-  onUpdateAccount: (data: any) => void;
-  themeMode: ThemeMode;
-  setThemeMode: (mode: ThemeMode) => void;
-  onImpersonate: (userId: string) => void;
-  onNavigate: (view: ViewState) => void;
+    profiles: ScheduleProfile[];
+    activeProfileId: string;
+    eventColors: EventColorMap;
+    baseEvents: ScheduleEvent[];
+    onAddProfile: (name: string) => void;
+    onSwitchProfile: (id: string) => void;
+    onDeleteProfile: (id: string) => void;
+    onUpdateColor: (type: EventType, color: string) => void;
+    onDeleteEvent: (id: string) => void;
+    onEditEvent: (event: ScheduleEvent) => void;
+    onAddBaseEventClick: () => void;
+    onImageUpload: (file: File) => void;
+    isAnalyzing: boolean;
+    onResetApp: () => void;
+    onSignOut: () => void;
+    periods: PeriodDefinition[];
+    setPeriods: (periods: PeriodDefinition[]) => void;
+    accountInfo: any;
+    onUpdateAccount: (data: any) => void;
+    themeMode: ThemeMode;
+    setThemeMode: (mode: ThemeMode) => void;
+    onImpersonate: (userId: string) => void;
+    onNavigate: (view: ViewState) => void;
 }
 
-// --- REFINED STYLE HELPERS ---
 const SectionHeader = ({ icon: Icon, color, title, isExpanded, onToggle, rightElement }: any) => {
     return (
-      <div 
-        onClick={onToggle}
-        className="flex items-center justify-between cursor-pointer p-4 group"
-      >
-          <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-300 group-hover:scale-110" style={{ background: `${color}15`, color: color }}>
-                  <Icon size={20} />
-              </div>
-              <h3 className="text-[15px] font-bold text-white tracking-tight">{title}</h3>
-          </div>
-          <div className="flex items-center gap-3">
-              {rightElement}
-              <div className={`text-white/20 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
-                  <ChevronDown size={18} />
-              </div>
-          </div>
-      </div>
+        <div onClick={onToggle} className="flex items-center justify-between cursor-pointer p-4 group">
+            <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-300 group-hover:scale-110" style={{ background: `${color}15`, color: color }}>
+                    <Icon size={20} />
+                </div>
+                <h3 className="text-[15px] font-bold text-white tracking-tight">{title}</h3>
+            </div>
+            <div className="flex items-center gap-3">
+                {rightElement}
+                <div className={`text-white/20 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
+                    <ChevronDown size={18} />
+                </div>
+            </div>
+        </div>
     );
 };
 
 const GroupCard = ({ children, className = "" }: any) => {
     return (
-      <div className={`bg-white/[0.03] backdrop-blur-xl border border-white/[0.05] rounded-[28px] overflow-hidden shadow-2xl ${className}`}>
-          {children}
-      </div>
+        <div className={`bg-white/[0.03] backdrop-blur-xl border border-white/[0.05] rounded-[28px] overflow-hidden shadow-2xl ${className}`}>
+            {children}
+        </div>
     );
 };
 
 const Settings: React.FC<SettingsProps> = ({
-  profiles, activeProfileId, eventColors, baseEvents, onAddProfile, onSwitchProfile, onDeleteProfile, onUpdateColor, onDeleteEvent, onEditEvent, onAddBaseEventClick, onImageUpload, isAnalyzing, onResetApp, onSignOut, periods, setPeriods, accountInfo, onUpdateAccount, themeMode, setThemeMode, onImpersonate, onNavigate
+    profiles, activeProfileId, eventColors, onAddProfile, onSwitchProfile, onDeleteProfile, onUpdateColor, onResetApp, onSignOut, periods, setPeriods, accountInfo, onUpdateAccount, onNavigate
 }) => {
-  const [newProfileName, setNewProfileName] = useState('');
-  const [isScheduleSettingsExpanded, setIsScheduleSettingsExpanded] = useState(false);
-  const [isProfilesExpanded, setIsProfilesExpanded] = useState(false);
-  const [isColorsExpanded, setIsColorsExpanded] = useState(false);
-  const [isBaseScheduleExpanded, setIsBaseScheduleExpanded] = useState(false);
-  const [isAccountExpanded, setIsAccountExpanded] = useState(false);
-  const [isUserMgmtExpanded, setIsUserMgmtExpanded] = useState(false);
-  const [isFeedbackInboxExpanded, setIsFeedbackInboxExpanded] = useState(false);
-  const [isReferralExpanded, setIsReferralExpanded] = useState(false);
-  const [referralCodes, setReferralCodes] = useState<ReferralCode[]>([]);
-  const [isCreatingReferral, setIsCreatingReferral] = useState(false);
-  const [newReferralCode, setNewReferralCode] = useState('');
-  const [newReferralTier, setNewReferralTier] = useState(0);
-  const [showResetConfirm, setShowResetConfirm] = useState(false);
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
-  const [isEditingAccount, setIsEditingAccount] = useState(false);
-  const [editForm, setEditForm] = useState<any>({});
-  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
-  const [isCheckingUsername, setIsCheckingUsername] = useState(false);
-  const [users, setUsers] = useState<any[]>([]);
-  const [userSearch, setUserSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
-  const [banModalUser, setBanModalUser] = useState<{id: string, username: string} | null>(null);
-  const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
-  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+    const [newProfileName, setNewProfileName] = useState('');
+    const [isScheduleSettingsExpanded, setIsScheduleSettingsExpanded] = useState(false);
+    const [isProfilesExpanded, setIsProfilesExpanded] = useState(false);
+    const [isColorsExpanded, setIsColorsExpanded] = useState(false);
+    const [isAccountExpanded, setIsAccountExpanded] = useState(false);
+    const [isUserMgmtExpanded, setIsUserMgmtExpanded] = useState(false);
+    const [isFeedbackInboxExpanded, setIsFeedbackInboxExpanded] = useState(false);
+    const [showResetConfirm, setShowResetConfirm] = useState(false);
+    const [isEditingAccount, setIsEditingAccount] = useState(false);
+    const [editForm, setEditForm] = useState<any>({});
+    const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
+    const [isCheckingUsername, setIsCheckingUsername] = useState(false);
+    const [users, setUsers] = useState<any[]>([]);
+    const [userSearch, setUserSearch] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
+    const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+    const [banModalUser, setBanModalUser] = useState<{ id: string, username: string } | null>(null);
+    const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
+    const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
 
-  const handleCreateProfile = () => { if (newProfileName.trim()) { onAddProfile(newProfileName); setNewProfileName(''); } };
-  const to12h = (time24: string) => { if (!time24) return ""; const [h, m] = time24.split(":").map(Number); const period = h >= 12 ? "PM" : "AM"; const h12 = h % 12 || 12; return `${h12}:${m.toString().padStart(2, "0")} ${period}`; };
-  const startEditingAccount = (e: React.MouseEvent) => { e.stopPropagation(); setEditForm({ ...accountInfo }); setIsEditingAccount(true); setIsAccountExpanded(true); setUsernameAvailable(null); };
-  const cancelEditingAccount = () => { setIsEditingAccount(false); setEditForm({}); setUsernameAvailable(null); setIsCheckingUsername(false); };
-  const saveEditingAccount = () => { onUpdateAccount(editForm); setIsEditingAccount(false); setUsernameAvailable(null); };
+    const handleCreateProfile = () => { if (newProfileName.trim()) { onAddProfile(newProfileName); setNewProfileName(''); } };
+    const startEditingAccount = (e: React.MouseEvent) => { e.stopPropagation(); setEditForm({ ...accountInfo }); setIsEditingAccount(true); setIsAccountExpanded(true); setUsernameAvailable(null); };
+    const cancelEditingAccount = () => { setIsEditingAccount(false); setEditForm({}); setUsernameAvailable(null); setIsCheckingUsername(false); };
+    const saveEditingAccount = () => { onUpdateAccount(editForm); setIsEditingAccount(false); setUsernameAvailable(null); };
 
-  useEffect(() => { const timer = setTimeout(() => setDebouncedSearch(userSearch), 500); return () => clearTimeout(timer); }, [userSearch]);
+    useEffect(() => { const timer = setTimeout(() => setDebouncedSearch(userSearch), 500); return () => clearTimeout(timer); }, [userSearch]);
 
-  const fetchUsers = useCallback(async (manualSearchTerm?: string) => {
-      if (!isUserMgmtExpanded) return;
-      setIsLoadingUsers(true);
-      const term = manualSearchTerm !== undefined ? manualSearchTerm : debouncedSearch;
-      const cleanTerm = term.trim();
-      try {
-          let query = supabase.from('profiles').select('id, username, created_at, updated_at, college, subscription_tier, is_banned, settings').order('updated_at', { ascending: false });
-          if (cleanTerm) {
-             const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanTerm);
-             if (isUUID) query = query.eq('id', cleanTerm);
-             else query = query.ilike('username', `%${cleanTerm}%`);
-             query = query.limit(50); 
-          } else query = query.limit(20);
-          const { data } = await query;
-          if (data) setUsers(data.map((u: any) => ({ ...u, email: u.settings?.account?.email || 'No Email', usage: u.settings?.usage || { total: 0, today: 0, features: {} } })));
-      } catch (err) { console.error(err); } finally { setIsLoadingUsers(false); }
-  }, [debouncedSearch, isUserMgmtExpanded]);
-
-  useEffect(() => { if (isUserMgmtExpanded) fetchUsers(); }, [fetchUsers, isUserMgmtExpanded]);
-
-  const handleBanConfirm = async (duration: string | null) => {
-      if (!banModalUser) return;
-      let bannedUntil = null;
-      if (duration) {
-          const now = new Date();
-          if (duration === '1d') now.setDate(now.getDate() + 1);
-          if (duration === '3d') now.setDate(now.getDate() + 3);
-          if (duration === '1w') now.setDate(now.getDate() + 7);
-          if (duration === '1m') now.setMonth(now.getMonth() + 1);
-          bannedUntil = now.toISOString();
-      }
-      const { error } = await supabase.from('profiles').update({ is_banned: true, banned_until: bannedUntil }).eq('id', banModalUser.id);
-      if (!error) setUsers(users.map(u => u.id === banModalUser.id ? { ...u, is_banned: true } : u));
-      setBanModalUser(null);
-  };
-
-  const unbanUser = async (id: string) => { if (!confirm("Unban this user?")) return; const { error } = await supabase.from('profiles').update({ is_banned: false, banned_until: null }).eq('id', id); if (!error) setUsers(users.map(u => u.id === id ? { ...u, is_banned: false } : u)); };
-  const toggleUserPro = async (id: string, currentTier: number) => { const newTier = currentTier === 1 ? 0 : 1; const { error } = await supabase.from('profiles').update({ subscription_tier: newTier }).eq('id', id); if (!error) setUsers(users.map(u => u.id === id ? { ...u, subscription_tier: newTier } : u)); };
-  const deleteUser = async (id: string) => { if (!confirm("Are you sure?")) return; const { error } = await supabase.from('profiles').delete().eq('id', id); if (!error) setUsers(users.filter(u => u.id !== id)); };
-  const fetchReferralCodes = useCallback(async () => { const { data } = await supabase.from('referral_codes').select('*').order('created_at', { ascending: false }); if (data) setReferralCodes(data); }, []);
-  useEffect(() => { if (isReferralExpanded) fetchReferralCodes(); }, [isReferralExpanded, fetchReferralCodes]);
-
-  const createReferralCode = async () => {
-      if (!newReferralCode.trim()) return;
-      try {
-          const { data, error } = await supabase.from('referral_codes').insert({ code: newReferralCode.trim().toUpperCase(), is_active: true, usage_count: 0, subscription_tier: newReferralTier }).select().single();
-          if (data) { setReferralCodes([data, ...referralCodes]); setIsCreatingReferral(false); setNewReferralCode(''); }
-          if (error) throw error;
-      } catch (err) { console.error(err); }
-  };
-
-  const toggleReferralCode = async (id: string, currentState: boolean) => { const { error } = await supabase.from('referral_codes').update({ is_active: !currentState }).eq('id', id); if (!error) setReferralCodes(referralCodes.map(c => c.id === id ? { ...c, is_active: !currentState } : c)); };
-
-  useEffect(() => {
-    if (!isEditingAccount || !editForm.username || editForm.username === accountInfo?.username || editForm.username.length < 4) { setUsernameAvailable(null); setIsCheckingUsername(false); return; }
-    setIsCheckingUsername(true);
-    const timer = setTimeout(async () => {
+    const fetchUsers = useCallback(async (manualSearchTerm?: string) => {
+        if (!isUserMgmtExpanded) return;
+        setIsLoadingUsers(true);
+        const term = manualSearchTerm !== undefined ? manualSearchTerm : debouncedSearch;
+        const cleanTerm = term.trim();
         try {
-            const { data } = await supabase.from('profiles').select('username').ilike('username', editForm.username.trim()).neq('id', accountInfo?.id || '').maybeSingle();
-            setUsernameAvailable(!data);
-        } catch (err) { console.error(err); } finally { setIsCheckingUsername(false); }
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [editForm.username, isEditingAccount, accountInfo]);
+            let query = supabase.from('profiles').select('id, username, created_at, updated_at, college, is_banned, settings').order('updated_at', { ascending: false });
+            if (cleanTerm) {
+                const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanTerm);
+                if (isUUID) query = query.eq('id', cleanTerm);
+                else query = query.ilike('username', `%${cleanTerm}%`);
+                query = query.limit(50);
+            } else query = query.limit(20);
+            const { data } = await query;
+            if (data) setUsers(data.map((u: any) => ({ ...u, email: u.settings?.account?.email || 'No Email' })));
+        } catch (err) { console.error(err); } finally { setIsLoadingUsers(false); }
+    }, [debouncedSearch, isUserMgmtExpanded]);
 
-  const canEditUsername = !accountInfo?.lastUsernameChange || (new Date().getTime() - new Date(accountInfo.lastUsernameChange).getTime()) > 14 * 24 * 60 * 60 * 1000;
-  const isSaveDisabled = isCheckingUsername || (usernameAvailable === false && editForm.username !== accountInfo?.username) || (editForm.username && editForm.username.length < 4);
-  const days = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+    useEffect(() => { if (isUserMgmtExpanded) fetchUsers(); }, [fetchUsers, isUserMgmtExpanded]);
 
-  return (
-    <div style={styles.scrollableContent} className="animate-in fade-in duration-700">
-          <header className="mb-8 px-1">
-               <h1 className="text-3xl font-black text-white tracking-tight leading-tight">Settings</h1>
-               <p className="text-[13px] text-white/40 font-medium tracking-wide">Manage your university operating system</p>
-          </header>
+    const handleBanConfirm = async (duration: string | null) => {
+        if (!banModalUser) return;
+        let bannedUntil = null;
+        if (duration) {
+            const now = new Date();
+            if (duration === '1d') now.setDate(now.getDate() + 1);
+            if (duration === '3d') now.setDate(now.getDate() + 3);
+            if (duration === '1w') now.setDate(now.getDate() + 7);
+            if (duration === '1m') now.setMonth(now.getMonth() + 1);
+            bannedUntil = now.toISOString();
+        }
+        const { error } = await supabase.from('profiles').update({ is_banned: true, banned_until: bannedUntil }).eq('id', banModalUser.id);
+        if (!error) setUsers(users.map(u => u.id === banModalUser.id ? { ...u, is_banned: true } : u));
+        setBanModalUser(null);
+    };
 
-          <div className="space-y-6">
-                
+    const unbanUser = async (id: string) => { if (!confirm("Unban this user?")) return; const { error } = await supabase.from('profiles').update({ is_banned: false, banned_until: null }).eq('id', id); if (!error) setUsers(users.map(u => u.id === id ? { ...u, is_banned: false } : u)); };
+    const deleteUser = async (id: string) => { if (!confirm("Are you sure?")) return; const { error } = await supabase.from('profiles').delete().eq('id', id); if (!error) setUsers(users.filter(u => u.id !== id)); };
+
+    useEffect(() => {
+        if (!isEditingAccount || !editForm.username || editForm.username === accountInfo?.username || editForm.username.length < 4) { setUsernameAvailable(null); setIsCheckingUsername(false); return; }
+        setIsCheckingUsername(true);
+        const timer = setTimeout(async () => {
+            try {
+                const { data } = await supabase.from('profiles').select('username').ilike('username', editForm.username.trim()).neq('id', accountInfo?.id || '').maybeSingle();
+                setUsernameAvailable(!data);
+            } catch (err) { console.error(err); } finally { setIsCheckingUsername(false); }
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [editForm.username, isEditingAccount, accountInfo]);
+
+    const canEditUsername = !accountInfo?.lastUsernameChange || (new Date().getTime() - new Date(accountInfo.lastUsernameChange).getTime()) > 14 * 24 * 60 * 60 * 1000;
+    const isSaveDisabled = isCheckingUsername || (usernameAvailable === false && editForm.username !== accountInfo?.username) || (editForm.username && editForm.username.length < 4);
+
+    return (
+        <div style={styles.scrollableContent} className="animate-in fade-in duration-700">
+            <header className="mb-8 px-1">
+                <h1 className="text-3xl font-black text-white tracking-tight leading-tight">Settings</h1>
+                <p className="text-[13px] text-white/40 font-medium tracking-wide">Manage your university operating system</p>
+            </header>
+
+            <div className="space-y-6">
+
                 {/* --- PERSONAL GROUP --- */}
                 <GroupCard>
                     <div className="px-5 pt-6 pb-2">
                         <div className="flex items-center gap-2 mb-4 opacity-40">
-                             <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white">Personal & Identity</span>
+                            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white">Personal & Identity</span>
                         </div>
                     </div>
 
-                    {/* Account Section */}
                     {accountInfo && (
-                      <div className="border-b border-white/[0.05] last:border-0">
-                          <SectionHeader 
-                            icon={User} 
-                            color="#3b82f6" 
-                            title="Account Profile" 
-                            isExpanded={isAccountExpanded} 
-                            onToggle={() => setIsAccountExpanded(!isAccountExpanded)}
-                            rightElement={!isEditingAccount && (
-                                <button onClick={startEditingAccount} className="px-3 py-1.5 bg-white/5 rounded-full text-[11px] font-bold text-white/60 hover:text-white transition-colors border border-white/5">Edit</button>
+                        <div className="border-b border-white/[0.05] last:border-0">
+                            <SectionHeader
+                                icon={User}
+                                color="#3b82f6"
+                                title="Account Profile"
+                                isExpanded={isAccountExpanded}
+                                onToggle={() => setIsAccountExpanded(!isAccountExpanded)}
+                                rightElement={!isEditingAccount && (
+                                    <button onClick={startEditingAccount} className="px-3 py-1.5 bg-white/5 rounded-full text-[11px] font-bold text-white/60 hover:text-white transition-colors border border-white/5">Edit</button>
+                                )}
+                            />
+                            {isAccountExpanded && (
+                                <div className="px-5 pb-6 pt-2 animate-in slide-in-from-top-2 duration-300">
+                                    {isEditingAccount && (
+                                        <div className="flex gap-2 mb-5">
+                                            <button onClick={saveEditingAccount} disabled={isSaveDisabled} className="flex-1 py-2.5 bg-blue-600 rounded-xl text-xs font-bold text-white shadow-lg shadow-blue-900/20 disabled:opacity-50">Save Changes</button>
+                                            <button onClick={cancelEditingAccount} className="flex-1 py-2.5 bg-white/5 rounded-xl text-xs font-bold text-white/60">Cancel</button>
+                                        </div>
+                                    )}
+                                    <div className="grid gap-3">
+                                        <div className="bg-black/20 rounded-[20px] p-4 border border-white/[0.03] flex items-center gap-4">
+                                            <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/20"><User size={18} /></div>
+                                            <div className="flex-1">
+                                                <p className="text-[9px] font-black text-white/20 uppercase tracking-widest mb-0.5">Username</p>
+                                                {isEditingAccount ? (
+                                                    <div className="relative">
+                                                        <input value={editForm.username} onChange={e => setEditForm({ ...editForm, username: e.target.value })} disabled={!canEditUsername} className="w-full bg-transparent text-sm font-bold text-white outline-none" />
+                                                        {isCheckingUsername && <Loader2 size={12} className="absolute right-0 top-1 animate-spin text-white/40" />}
+                                                    </div>
+                                                ) : <p className="text-sm font-bold text-white">{accountInfo.username}</p>}
+                                            </div>
+                                        </div>
+                                        <div className="bg-black/20 rounded-[20px] p-4 border border-white/[0.03] flex items-center gap-4">
+                                            <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/20"><MessageSquare size={18} /></div>
+                                            <div className="flex-1 overflow-hidden">
+                                                <p className="text-[9px] font-black text-white/20 uppercase tracking-widest mb-0.5">Email Address</p>
+                                                <p className="text-sm font-bold text-white/60 truncate">{accountInfo.email}</p>
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div className="bg-black/20 rounded-[20px] p-4 border border-white/[0.03]">
+                                                <p className="text-[9px] font-black text-white/20 uppercase tracking-widest mb-1.5">Gender</p>
+                                                {isEditingAccount ? (
+                                                    <select value={editForm.gender || ''} onChange={e => setEditForm({ ...editForm, gender: e.target.value })} className="bg-transparent text-sm font-bold text-white outline-none w-full appearance-none">
+                                                        <option value="male">Male</option>
+                                                        <option value="female">Female</option>
+                                                    </select>
+                                                ) : <p className="text-sm font-bold text-white">{accountInfo.gender || '—'}</p>}
+                                            </div>
+                                            <div className="bg-black/20 rounded-[20px] p-4 border border-white/[0.03]">
+                                                <p className="text-[9px] font-black text-white/20 uppercase tracking-widest mb-1.5">Year</p>
+                                                {isEditingAccount ? (
+                                                    <select value={editForm.year || ''} onChange={e => setEditForm({ ...editForm, year: e.target.value })} className="bg-transparent text-sm font-bold text-white outline-none w-full appearance-none">
+                                                        <option value="1">Year 1</option>
+                                                        <option value="2">Year 2</option>
+                                                        <option value="3">Year 3</option>
+                                                        <option value="4">Year 4</option>
+                                                        <option value="5">Year 5+</option>
+                                                    </select>
+                                                ) : <p className="text-sm font-bold text-white">Year {accountInfo.year || '—'}</p>}
+                                            </div>
+                                        </div>
+                                        <div className="bg-black/20 rounded-[20px] p-4 border border-white/[0.03]">
+                                            <p className="text-[9px] font-black text-white/20 uppercase tracking-widest mb-0.5">College / Major</p>
+                                            <p className="text-sm font-bold text-white">{accountInfo.college || 'Not set'} • <span className="text-white/50">{accountInfo.major || 'Not set'}</span></p>
+                                        </div>
+                                    </div>
+                                </div>
                             )}
-                          />
-                          {isAccountExpanded && (
-                              <div className="px-5 pb-6 pt-2 animate-in slide-in-from-top-2 duration-300">
-                                  {isEditingAccount && (
-                                      <div className="flex gap-2 mb-5">
-                                          <button onClick={saveEditingAccount} disabled={isSaveDisabled} className="flex-1 py-2.5 bg-blue-600 rounded-xl text-xs font-bold text-white shadow-lg shadow-blue-900/20 disabled:opacity-50">Save Changes</button>
-                                          <button onClick={cancelEditingAccount} className="flex-1 py-2.5 bg-white/5 rounded-xl text-xs font-bold text-white/60">Cancel</button>
-                                      </div>
-                                  )}
-                                  <div className="grid gap-3">
-                                      <div className="bg-black/20 rounded-[20px] p-4 border border-white/[0.03] flex items-center gap-4">
-                                          <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/20"><User size={18} /></div>
-                                          <div className="flex-1">
-                                              <p className="text-[9px] font-black text-white/20 uppercase tracking-widest mb-0.5">Username</p>
-                                              {isEditingAccount ? (
-                                                  <div className="relative">
-                                                      <input value={editForm.username} onChange={e => setEditForm({...editForm, username: e.target.value})} disabled={!canEditUsername} className="w-full bg-transparent text-sm font-bold text-white outline-none" />
-                                                      {isCheckingUsername && <Loader2 size={12} className="absolute right-0 top-1 animate-spin text-white/40" />}
-                                                  </div>
-                                              ) : <p className="text-sm font-bold text-white">{accountInfo.username}</p>}
-                                          </div>
-                                      </div>
-                                      <div className="bg-black/20 rounded-[20px] p-4 border border-white/[0.03] flex items-center gap-4">
-                                          <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/20"><MessageSquare size={18} /></div>
-                                          <div className="flex-1 overflow-hidden">
-                                              <p className="text-[9px] font-black text-white/20 uppercase tracking-widest mb-0.5">Email Address</p>
-                                              <p className="text-sm font-bold text-white/60 truncate">{accountInfo.email}</p>
-                                          </div>
-                                      </div>
-                                      <div className="grid grid-cols-2 gap-3">
-                                          <div className="bg-black/20 rounded-[20px] p-4 border border-white/[0.03]">
-                                              <p className="text-[9px] font-black text-white/20 uppercase tracking-widest mb-1.5">Gender</p>
-                                              {isEditingAccount ? (
-                                                  <select value={editForm.gender || ''} onChange={e => setEditForm({...editForm, gender: e.target.value})} className="bg-transparent text-sm font-bold text-white outline-none w-full appearance-none"><option value="male">Male</option><option value="female">Female</option></select>
-                                              ) : <p className="text-sm font-bold text-white">{accountInfo.gender || '—'}</p>}
-                                          </div>
-                                          <div className="bg-black/20 rounded-[20px] p-4 border border-white/[0.03]">
-                                              <p className="text-[9px] font-black text-white/20 uppercase tracking-widest mb-1.5">Year</p>
-                                              {isEditingAccount ? (
-                                                  <select value={editForm.year || ''} onChange={e => setEditForm({...editForm, year: e.target.value})} className="bg-transparent text-sm font-bold text-white outline-none w-full appearance-none"><option value="1">Year 1</option><option value="2">Year 2</option><option value="3">Year 3</option><option value="4">Year 4</option><option value="5">Year 5+</option></select>
-                                              ) : <p className="text-sm font-bold text-white">Year {accountInfo.year || '—'}</p>}
-                                          </div>
-                                      </div>
-                                      <div className="bg-black/20 rounded-[20px] p-4 border border-white/[0.03]">
-                                          <p className="text-[9px] font-black text-white/20 uppercase tracking-widest mb-0.5">College / Major</p>
-                                          <p className="text-sm font-bold text-white">{accountInfo.college || 'Not set'} • <span className="text-white/50">{accountInfo.major || 'Not set'}</span></p>
-                                      </div>
-                                  </div>
-
-                                  {/* Membership Badge UI */}
-                                  <div 
-                                    onClick={() => onNavigate('subscription')}
-                                    className="mt-6 group/badge relative cursor-pointer"
-                                  >
-                                      <div className={`absolute -inset-1 rounded-2xl blur-xl opacity-20 transition duration-500 ${accountInfo.subscription_tier === 1 ? 'bg-amber-400 group-hover/badge:opacity-40' : 'bg-white group-hover/badge:opacity-20'}`} />
-                                      <div className={`relative flex items-center justify-between p-5 rounded-2xl border backdrop-blur-2xl transition-all ${accountInfo.subscription_tier === 1 ? 'bg-gradient-to-br from-amber-500/10 to-yellow-600/10 border-amber-500/30' : 'bg-white/5 border-white/10'}`}>
-                                          <div className="flex items-center gap-4">
-                                              <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-xl ${accountInfo.subscription_tier === 1 ? 'bg-gradient-to-br from-amber-300 to-yellow-600 text-white' : 'bg-white/10 text-white/40'}`}>
-                                                  {accountInfo.subscription_tier === 1 ? <Crown size={24} /> : <Shield size={24} />}
-                                              </div>
-                                              <div>
-                                                  <p className="text-[10px] font-black text-white/30 uppercase tracking-widest">Active Plan</p>
-                                                  <p className={`text-lg font-black tracking-tight ${accountInfo.subscription_tier === 1 ? 'text-amber-200' : 'text-white'}`}>
-                                                      {accountInfo.subscription_tier === 1 ? 'Scholar Pro' : 'Free Tier'}
-                                                  </p>
-                                              </div>
-                                          </div>
-                                          <div className="flex flex-col items-end">
-                                              <span className="text-[10px] font-bold text-white/40 uppercase bg-white/5 px-2 py-1 rounded-md border border-white/5">Manage</span>
-                                          </div>
-                                      </div>
-                                  </div>
-                                  
-                                  {/* Refer & Earn Mini Card */}
-                                  <div onClick={() => onNavigate('referral')} className="mt-3 bg-emerald-500/5 hover:bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-4 flex items-center justify-between cursor-pointer transition-all active:scale-[0.98]">
-                                      <div className="flex items-center gap-3">
-                                          <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400"><DollarSign size={16} /></div>
-                                          <div>
-                                              <p className="text-[13px] font-bold text-emerald-200">Refer & Earn</p>
-                                              <p className="text-[10px] text-emerald-400/60 font-medium">Get 20% commission on every friend</p>
-                                          </div>
-                                      </div>
-                                      <ChevronRight size={16} className="text-emerald-500/40" />
-                                  </div>
-                              </div>
-                          )}
-                      </div>
+                        </div>
                     )}
-
-
                 </GroupCard>
 
                 {/* --- ACADEMIC ENGINE GROUP --- */}
                 <GroupCard>
                     <div className="px-5 pt-6 pb-2">
                         <div className="flex items-center gap-2 mb-4 opacity-40">
-                             <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white">Academic Engine</span>
+                            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white">Academic Engine</span>
                         </div>
                     </div>
 
-                    {/* Profiles */}
                     <div className="border-b border-white/[0.05] last:border-0">
-                        <SectionHeader 
-                            icon={Layers} color="#8b5cf6" title="Schedules & Profiles" 
-                            isExpanded={isProfilesExpanded} onToggle={() => setIsProfilesExpanded(!isProfilesExpanded)} 
+                        <SectionHeader
+                            icon={Layers} color="#8b5cf6" title="Schedules & Profiles"
+                            isExpanded={isProfilesExpanded} onToggle={() => setIsProfilesExpanded(!isProfilesExpanded)}
                             rightElement={<span className="text-[10px] font-bold text-white/30 bg-white/5 px-2 py-0.5 rounded-md">{profiles.length} Profiles</span>}
                         />
                         {isProfilesExpanded && (
@@ -546,13 +483,11 @@ const Settings: React.FC<SettingsProps> = ({
                         )}
                     </div>
 
-                    {/* Structure */}
                     <div className="border-b border-white/[0.05] last:border-0">
                         <SectionHeader icon={Columns} color="#ec4899" title="Timeline Grid" isExpanded={isScheduleSettingsExpanded} onToggle={() => setIsScheduleSettingsExpanded(!isScheduleSettingsExpanded)} />
                         {isScheduleSettingsExpanded && <div className="px-5 pb-6 pt-2 animate-in slide-in-from-top-2 duration-300"><ScheduleSettings periods={periods} setPeriods={setPeriods} /></div>}
                     </div>
 
-                    {/* Colors */}
                     <div className="border-b border-white/[0.05] last:border-0">
                         <SectionHeader icon={Palette} color="#f59e0b" title="Theme Colors" isExpanded={isColorsExpanded} onToggle={() => setIsColorsExpanded(!isColorsExpanded)} />
                         {isColorsExpanded && (
@@ -568,21 +503,16 @@ const Settings: React.FC<SettingsProps> = ({
                             </div>
                         )}
                     </div>
-
-
                 </GroupCard>
 
                 {/* --- UTILITIES & SUPPORT GROUP --- */}
                 <GroupCard>
                     <div className="px-5 pt-6 pb-2">
                         <div className="flex items-center gap-2 mb-4 opacity-40">
-                             <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white">System & Support</span>
+                            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white">System & Support</span>
                         </div>
                     </div>
 
-
-
-                    {/* Support Buttons */}
                     <div className="p-4 px-5 space-y-2">
                         <button onClick={() => setIsHistoryModalOpen(true)} className="w-full flex items-center justify-between p-4 bg-white/5 rounded-[20px] hover:bg-white/10 transition-all group border border-white/[0.03]">
                             <div className="flex items-center gap-3">
@@ -607,8 +537,8 @@ const Settings: React.FC<SettingsProps> = ({
                     </div>
 
                     <div className="p-5 pt-0">
-                         <button onClick={onSignOut} className="w-full py-4 bg-red-500/10 text-red-500 rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:bg-red-500/20 transition-all flex items-center justify-center gap-3"><LogOut size={16} /> Sign Out</button>
-                         <button onClick={() => setShowResetConfirm(true)} className="w-full py-3 text-white/20 hover:text-white/40 text-[10px] font-bold uppercase tracking-widest transition-colors mt-2">Factory Reset</button>
+                        <button onClick={onSignOut} className="w-full py-4 bg-red-500/10 text-red-500 rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:bg-red-500/20 transition-all flex items-center justify-center gap-3"><LogOut size={16} /> Sign Out</button>
+                        <button onClick={() => setShowResetConfirm(true)} className="w-full py-3 text-white/20 hover:text-white/40 text-[10px] font-bold uppercase tracking-widest transition-colors mt-2">Factory Reset</button>
                     </div>
                 </GroupCard>
 
@@ -621,8 +551,7 @@ const Settings: React.FC<SettingsProps> = ({
                                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-red-400">Restricted Admin Access</span>
                             </div>
                         </div>
-                        
-                        {/* User Management */}
+
                         <div className="border-b border-red-500/10 last:border-0">
                             <SectionHeader icon={Shield} color="#ef4444" title="User Control" isExpanded={isUserMgmtExpanded} onToggle={() => setIsUserMgmtExpanded(!isUserMgmtExpanded)} />
                             {isUserMgmtExpanded && (
@@ -640,11 +569,10 @@ const Settings: React.FC<SettingsProps> = ({
                                                         <p className="text-[10px] text-white/30 truncate max-w-[120px]">{user.email}</p>
                                                     </div>
                                                     <div className="flex gap-1">
-                                                        <button onClick={() => toggleUserPro(user.id, user.subscription_tier || 0)} className={`px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-wider ${user.subscription_tier === 1 ? 'bg-amber-500 text-black' : 'bg-white/10 text-white/40'}`}>{user.subscription_tier === 1 ? 'PRO' : 'FREE'}</button>
                                                         {user.is_banned ? (
                                                             <button onClick={() => unbanUser(user.id)} className="p-1.5 bg-emerald-500/20 text-emerald-400 rounded-lg"><Check size={14} /></button>
                                                         ) : (
-                                                            <button onClick={() => setBanModalUser({id: user.id, username: user.username})} className="p-1.5 bg-white/5 text-white/40 rounded-lg"><Ban size={14} /></button>
+                                                            <button onClick={() => setBanModalUser({ id: user.id, username: user.username })} className="p-1.5 bg-white/5 text-white/40 rounded-lg"><Ban size={14} /></button>
                                                         )}
                                                         <button onClick={() => deleteUser(user.id)} className="p-1.5 bg-red-500/20 text-red-400 rounded-lg"><Trash2 size={14} /></button>
                                                     </div>
@@ -656,40 +584,6 @@ const Settings: React.FC<SettingsProps> = ({
                             )}
                         </div>
 
-                        {/* Referral Management */}
-                        <div className="border-b border-red-500/10 last:border-0">
-                            <SectionHeader icon={Ticket} color="#10b981" title="Referral Codes" isExpanded={isReferralExpanded} onToggle={() => setIsReferralExpanded(!isReferralExpanded)} />
-                            {isReferralExpanded && (
-                                <div className="px-5 pb-6 pt-2 animate-in slide-in-from-top-2 duration-300">
-                                    {!isCreatingReferral ? <button onClick={() => setIsCreatingReferral(true)} className="w-full py-2 bg-emerald-600/20 text-emerald-400 rounded-xl text-[10px] font-black uppercase tracking-widest mb-4">Create Master Code</button> : (
-                                        <div className="bg-black/40 p-4 rounded-2xl border border-white/5 mb-4 space-y-3">
-                                            <input value={newReferralCode} onChange={(e) => setNewReferralCode(e.target.value.toUpperCase())} placeholder="CODE NAME" className="w-full bg-transparent border-b border-white/10 text-lg font-black text-white text-center outline-none" />
-                                            <div className="flex gap-2">
-                                                <button onClick={() => setNewReferralTier(0)} className={`flex-1 py-2 rounded-lg text-[9px] font-black ${newReferralTier === 0 ? 'bg-white text-black' : 'bg-white/5 text-white/40'}`}>FREE</button>
-                                                <button onClick={() => setNewReferralTier(1)} className={`flex-1 py-2 rounded-lg text-[9px] font-black ${newReferralTier === 1 ? 'bg-amber-500 text-black' : 'bg-white/5 text-white/40'}`}>PRO</button>
-                                            </div>
-                                            <div className="flex gap-2">
-                                                <button onClick={createReferralCode} className="flex-1 py-2 bg-emerald-600 rounded-lg text-[10px] font-black text-white">SAVE</button>
-                                                <button onClick={() => setIsCreatingReferral(false)} className="flex-1 py-2 bg-white/5 rounded-lg text-[10px] font-black text-white/40">CANCEL</button>
-                                            </div>
-                                        </div>
-                                    )}
-                                    <div className="space-y-2 max-h-[250px] overflow-y-auto custom-scrollbar pr-1">
-                                        {referralCodes.map(code => (
-                                            <div key={code.id} className="bg-black/40 p-3 rounded-2xl border border-white/[0.03] flex items-center justify-between">
-                                                <div>
-                                                    <p className="text-xs font-black text-white tracking-widest">{code.code}</p>
-                                                    <p className="text-[9px] font-bold text-white/20 uppercase">Uses: {code.usage_count} • Tier: {code.subscription_tier === 1 ? 'PRO' : 'FREE'}</p>
-                                                </div>
-                                                <button onClick={() => toggleReferralCode(code.id, code.is_active)} className={`px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-wider ${code.is_active ? 'bg-emerald-500 text-black' : 'bg-red-500 text-white'}`}>{code.is_active ? 'Active' : 'Locked'}</button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Admin Feedback */}
                         <div className="border-b border-red-500/10 last:border-0">
                             <SectionHeader icon={MessageSquare} color="#3b82f6" title="Feedback Inbox" isExpanded={isFeedbackInboxExpanded} onToggle={() => setIsFeedbackInboxExpanded(!isFeedbackInboxExpanded)} />
                             {isFeedbackInboxExpanded && <div className="px-5 pb-6 pt-2 animate-in slide-in-from-top-2 duration-300"><AdminInbox /></div>}
@@ -697,7 +591,6 @@ const Settings: React.FC<SettingsProps> = ({
                     </GroupCard>
                 )}
 
-                {/* Footer Credits */}
                 <div className="pt-4 pb-12 text-center flex flex-col items-center gap-3">
                     <div className="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-full border border-white/5 backdrop-blur-sm">
                         <Heart size={12} className="text-red-500 fill-red-500" />
@@ -708,34 +601,33 @@ const Settings: React.FC<SettingsProps> = ({
                         <a href="#" className="text-[10px] font-bold text-white/20 hover:text-white transition-colors underline-offset-4 underline decoration-white/10">Privacy Policy</a>
                     </div>
                 </div>
-          </div>
-          
-          {/* Reset Modal */}
-          {showResetConfirm && (
-             <div style={styles.modalOverlay}>
-                 <div style={{...styles.modalContent, maxWidth: '320px', padding: '0', overflow: 'hidden'}} onClick={e => e.stopPropagation()}>
-                     <div style={{padding: '32px 24px', textAlign: 'center'}}>
-                         <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-5 text-red-500">
-                             <AlertTriangle size={32} />
-                         </div>
-                         <h3 className="text-xl font-black text-white mb-2">Factory Reset?</h3>
-                         <p className="text-sm text-white/40 leading-relaxed font-medium">
-                             This will permanently wipe <b>all</b> your courses, logs, and settings. This cannot be undone.
-                         </p>
-                     </div>
-                     <div className="flex border-t border-white/5">
-                         <button onClick={() => setShowResetConfirm(false)} className="flex-1 py-5 text-sm font-bold text-white/40 hover:bg-white/5 transition-colors border-r border-white/5">Cancel</button>
-                         <button onClick={() => { setShowResetConfirm(false); onResetApp(); }} className="flex-1 py-5 text-sm font-black text-red-500 hover:bg-red-500/10 transition-colors uppercase tracking-widest">Wipe Data</button>
-                     </div>
-                 </div>
-             </div>
-          )}
+            </div>
 
-          <FeedbackModal isOpen={isFeedbackModalOpen} onClose={() => setIsFeedbackModalOpen(false)} userId={accountInfo?.id}/>
-          <SupportHistoryModal isOpen={isHistoryModalOpen} onClose={() => setIsHistoryModalOpen(false)} userId={accountInfo?.id}/>
-          <BanModal isOpen={!!banModalUser} username={banModalUser?.username || ''} onClose={() => setBanModalUser(null)} onConfirm={handleBanConfirm}/>
-    </div>
-  );
+            {showResetConfirm && (
+                <div style={styles.modalOverlay}>
+                    <div style={{ ...styles.modalContent, maxWidth: '320px', padding: '0', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
+                        <div style={{ padding: '32px 24px', textAlign: 'center' }}>
+                            <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-5 text-red-500">
+                                <AlertTriangle size={32} />
+                            </div>
+                            <h3 className="text-xl font-black text-white mb-2">Factory Reset?</h3>
+                            <p className="text-sm text-white/40 leading-relaxed font-medium">
+                                This will permanently wipe <b>all</b> your courses, logs, and settings. This cannot be undone.
+                            </p>
+                        </div>
+                        <div className="flex border-t border-white/5">
+                            <button onClick={() => setShowResetConfirm(false)} className="flex-1 py-5 text-sm font-bold text-white/40 hover:bg-white/5 transition-colors border-r border-white/5">Cancel</button>
+                            <button onClick={() => { setShowResetConfirm(false); onResetApp(); }} className="flex-1 py-5 text-sm font-black text-red-500 hover:bg-red-500/10 transition-colors uppercase tracking-widest">Wipe Data</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <FeedbackModal isOpen={isFeedbackModalOpen} onClose={() => setIsFeedbackModalOpen(false)} userId={accountInfo?.id} />
+            <SupportHistoryModal isOpen={isHistoryModalOpen} onClose={() => setIsHistoryModalOpen(false)} userId={accountInfo?.id} />
+            <BanModal isOpen={!!banModalUser} username={banModalUser?.username || ''} onClose={() => setBanModalUser(null)} onConfirm={handleBanConfirm} />
+        </div>
+    );
 };
 
 export default Settings;

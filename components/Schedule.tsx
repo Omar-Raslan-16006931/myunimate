@@ -1,10 +1,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, ChevronRight, MapPin, Plus, Brain, ChevronDown, X, RotateCcw, Trash2, GripVertical, Download, MoreHorizontal } from 'lucide-react';
+import { ChevronLeft, ChevronRight, MapPin, Plus, Brain, ChevronDown, X, RotateCcw, Trash2, Download, MoreHorizontal } from 'lucide-react';
 import { ScheduleEvent, EventColorMap, ScheduleProfile, PeriodDefinition } from '../types';
 import { getLocalISOString } from '../constants';
 import { theme, styles } from '../theme';
-import { generateICS, downloadICS } from '../utils/ics';
 import SyncCalendarModal from './SyncCalendarModal';
 
 interface ScheduleProps {
@@ -202,9 +201,6 @@ const Schedule: React.FC<ScheduleProps> = ({
     e.dataTransfer.setData('text/plain', event.id);
     
     // Set a drag image or just let it be
-    if (e.dataTransfer.setDragImage && e.currentTarget instanceof HTMLElement) {
-        // Optional: customize drag image
-    }
   };
 
   const handleDragEnd = () => {
@@ -461,7 +457,7 @@ const Schedule: React.FC<ScheduleProps> = ({
         <div ref={scrollContainerRef} style={{...styles.scheduleWrapper, borderRadius: '16px'}}>
             <div ref={scheduleRef} style={{...styles.scheduleContainer, gridTemplateColumns: gridTemplateColumns, minWidth: periods.length * 80 + 'px'}}>
              <div style={styles.scheduleHeaderCell}></div>
-             {periods.map((p, i) => (
+             {periods.map((p, _i) => (
                p.isBreak ? <div key={p.id} style={styles.scheduleBreakHeader}>{p.label}</div> : 
                  <div key={p.id} style={styles.scheduleHeaderCell}>
                    <span style={{color: theme.accent, fontSize: "0.7rem", fontWeight: 800, textTransform: 'uppercase', marginBottom: '2px'}}>{p.label}</span>

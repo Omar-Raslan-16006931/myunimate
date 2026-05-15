@@ -2,9 +2,9 @@
 import React, { useState, useEffect } from 'react';
 import { CourseGrade } from '../types';
 import { generateId } from '../constants';
-import { Plus, GraduationCap, BookOpen, Trash2, AlertTriangle, X, Calculator, ArrowLeft, Save, CheckCircle2, RotateCcw, ChevronDown, Check } from 'lucide-react';
+import { Plus, GraduationCap, BookOpen, Trash2, AlertTriangle, X, Calculator, ArrowLeft, Save, CheckCircle2 } from 'lucide-react';
 import { styles } from '../theme';
-import UniversalGradeCalculator from './UniversalGradeCalculator';
+
 
 interface CoursesViewProps {
   courses: CourseGrade[];
@@ -109,6 +109,11 @@ const calculateCourseStats = (course: CourseGrade) => {
 
     const performance = weightCompleted > 0 ? (accumulatedPoints / weightCompleted) * 100 : 0;
     return { accumulatedPoints, performance, weightCompleted };
+};
+
+const calculateCoursePercentage = (course: CourseGrade): number => {
+    const stats = calculateCourseStats(course);
+    return stats.performance;
 };
 
 // --- SCHEMA EDITOR MODAL ---
@@ -709,7 +714,7 @@ const GPACalculator = ({ courses, onBack }: { courses: CourseGrade[], onBack: ()
 };
 
 // --- MAIN COURSES VIEW ---
-const CoursesView: React.FC<CoursesViewProps> = ({ courses, onSelectCourse, onAddCourse, onDeleteCourse, onUpdateCourse }) => {
+const CoursesView: React.FC<CoursesViewProps> = ({ courses, onSelectCourse, onAddCourse, onDeleteCourse }) => {
   const [courseToDelete, setCourseToDelete] = useState<CourseGrade | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'gpa'>('list');
 

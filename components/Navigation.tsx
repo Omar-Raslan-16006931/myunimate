@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { LayoutDashboard, Calendar as CalendarIcon, BookOpen, Folder, Settings } from 'lucide-react';
+import { LayoutDashboard, Calendar as CalendarIcon, Folder, Settings } from 'lucide-react';
 import { ViewState } from '../types';
 import { styles } from '../theme';
 

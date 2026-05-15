@@ -29,7 +29,7 @@ export interface ToDoItem {
 export interface MaterialFile {
   id: string;
   name: string;
-  type: "pdf" | "folder" | "image" | "google-doc" | "google-sheet" | "google-slide" | "txt" | "other";
+  type: "pdf" | "folder" | "image" | "google-doc" | "google-sheet" | "google-slide" | "txt" | "excel" | "powerpoint" | "word" | "other";
   size?: string;
   dateAdded: string;
   parentId?: string | null;

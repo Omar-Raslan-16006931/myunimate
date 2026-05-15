@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Bot, Send, CheckCircle2, AlertCircle } from 'lucide-react';
 import { theme, styles } from '../theme';
 import { getChatResponse } from '../services/geminiService';

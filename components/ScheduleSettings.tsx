@@ -1,7 +1,7 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { PeriodDefinition } from '../types';
-import { Plus, Trash2, Clock, Eye, Columns, Coffee } from 'lucide-react';
+import { Plus, Trash2, Clock, Eye, Coffee } from 'lucide-react';
 import { theme, styles } from '../theme';
 
 interface ScheduleSettingsProps {
@@ -51,7 +51,7 @@ const ScheduleSettings: React.FC<ScheduleSettingsProps> = ({ periods, setPeriods
     };
 
     // Smart index calculation for display in this component
-    const getPeriodLabelDisplay = (currentPeriod: PeriodDefinition, allPeriods: PeriodDefinition[]) => {
+    const getPeriodLabelDisplay = (currentPeriod: PeriodDefinition) => {
         if (currentPeriod.isBreak) return null;
         // Use the label we just calculated if available, otherwise fallback to index logic
         // Actually, let's trust the recalculatePeriods logic which runs on every change.
@@ -164,8 +164,8 @@ const ScheduleSettings: React.FC<ScheduleSettingsProps> = ({ periods, setPeriods
             </p>
 
             <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
-                {periods.map((period, index) => {
-                    const slotLabel = getPeriodLabelDisplay(period, periods);
+                {periods.map((period, _index) => {
+                    const slotLabel = getPeriodLabelDisplay(period);
                     return (
                         <div key={period.id} style={{
                             display: 'grid', 
@@ -328,7 +328,7 @@ const ScheduleSettings: React.FC<ScheduleSettingsProps> = ({ periods, setPeriods
                     minHeight: '80px',
                     alignItems: 'stretch'
                 }}>
-                    {periods.map((p, i) => (
+                    {periods.map((p, _i) => (
                         <div key={p.id} style={{
                             flex: p.isBreak ? '0 0 40px' : '1',
                             minWidth: p.isBreak ? '40px' : '120px',

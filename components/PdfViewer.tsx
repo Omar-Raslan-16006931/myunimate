@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
-import 'react-pdf/dist/Page/AnnotationLayer.css';
-import 'react-pdf/dist/Page/TextLayer.css';
+
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/build/pdf.worker.min.mjs',
@@ -40,7 +39,8 @@ export const PdfViewer = ({ file }: { file: string }) => {
           step: 3
         }}
         alignmentAnimation={{
-          size: 0.2,
+          sizeX: 0.2,
+          sizeY: 0.2,
           velocityAlignmentTime: 300
         }}
       >
@@ -59,7 +59,7 @@ export const PdfViewer = ({ file }: { file: string }) => {
               </div>
             }
           >
-            {Array.from(new Array(numPages), (el, index) => (
+            {Array.from(new Array(numPages), (_el, index) => (
               <Page 
                 key={`page_${index + 1}`} 
                 pageNumber={index + 1} 

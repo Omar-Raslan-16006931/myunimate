@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-    Plus, Trash2, ArrowLeft, Target, 
+    Plus, Trash2, ArrowLeft, 
     X, ChevronDown, ChevronUp, Calculator, AlertTriangle, TrendingUp, Award, Save, Check
 } from 'lucide-react';
 import { CourseGrade, GradeCategory, GradeItem } from '../types';
