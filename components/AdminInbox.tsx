@@ -42,6 +42,32 @@ const AdminInbox: React.FC = () => {
     checkAdminStatus();
   }, []);
 
+  // Fetch feedback only if authorized
+  const fetchFeedback = async () => {
+    if (!isAuthorized) return;
+
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('app_feedback')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setFeedbackItems(data || []);
+    } catch (err) {
+      console.error("Error fetching feedback:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isAuthorized) {
+      fetchFeedback();
+    }
+  }, [isAuthorized]);
+
   // Fetch replies when message selected
   useEffect(() => {
       if (selectedMessage) {

@@ -4,27 +4,50 @@ import { ScheduleEvent, Macros, PeriodDefinition } from "../types";
 import { supabase } from "../lib/supabase";
 
 const MODEL_NAME = 'gemini-3-flash-preview';
-const BACKEND_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
+// For Supabase Edge Functions
+const getBackendUrl = () => {
+  // For Edge Functions, use the supabase function invoke method
+  return import.meta.env.VITE_SUPABASE_URL || 'http://localhost:54321';
+};
 
 const makeBackendRequest = async (endpoint: string, data: any) => {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) throw new Error("Not authenticated");
 
-  const response = await fetch(`${BACKEND_URL}${endpoint}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${session.access_token}`,
-    },
-    body: JSON.stringify(data),
-  });
+  // For Supabase Edge Functions, use supabase.functions.invoke
+  try {
+    const { data: responseData, error } = await supabase.functions.invoke('ai-handler', {
+      headers: {
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: {
+        ...data,
+        endpoint,
+      },
+    });
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || `Backend request failed: ${response.status}`);
+    if (error) throw new Error(error.message || 'Backend request failed');
+    return responseData;
+  } catch (error) {
+    // Fallback to direct HTTP if functions not available
+    const backendUrl = getBackendUrl();
+    const response = await fetch(`${backendUrl}/functions/v1/ai-handler${endpoint}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || `Backend request failed: ${response.status}`);
+    }
+
+    return response.json();
   }
-
-  return response.json();
 };
 
 // --- Usage Tracking Helper ---
@@ -109,13 +132,13 @@ const addEventTool: FunctionDeclaration = {
 export const analyzeFoodText = async (description: string): Promise<Macros & { name: string }> => {
   trackUsage('nutrition_text');
   try {
-    const data = await makeBackendRequest('/api/ai/analyze-food-text', { description });
+    const data = await makeBackendRequest('/analyze-food-text', { description });
     return {
-      name: data.name,
-      calories: data.calories,
-      protein: data.protein,
-      carbs: data.carbs,
-      fat: data.fat
+      name: data.name || 'Unknown Food',
+      calories: data.calories || 0,
+      protein: data.protein || 0,
+      carbs: data.carbs || 0,
+      fat: data.fat || 0
     };
   } catch (error) {
     console.error("Food text analysis error:", error);
@@ -127,13 +150,13 @@ export const analyzeFoodImage = async (base64Image: string): Promise<Macros & { 
   trackUsage('nutrition_image');
   try {
     const cleanBase64 = base64Image.split(',')[1] || base64Image;
-    const data = await makeBackendRequest('/api/ai/analyze-food-image', { image: cleanBase64 });
+    const data = await makeBackendRequest('/analyze-food-image', { image: cleanBase64 });
     return {
-      name: data.name,
-      calories: data.calories,
-      protein: data.protein,
-      carbs: data.carbs,
-      fat: data.fat
+      name: data.name || 'Unknown Food',
+      calories: data.calories || 0,
+      protein: data.protein || 0,
+      carbs: data.carbs || 0,
+      fat: data.fat || 0
     };
   } catch (error) {
     console.error("Food image analysis error:", error);
@@ -146,7 +169,7 @@ export const parseNaturalLanguageEvent = async (input: string, periods: PeriodDe
   trackUsage('autofill');
 
   try {
-    const data = await makeBackendRequest('/api/ai/parse-event', { input, periods });
+    const data = await makeBackendRequest('/parse-event', { input, periods });
     return data as Partial<ScheduleEvent>;
   } catch (error) {
     console.error("Event parsing error:", error);
@@ -157,7 +180,7 @@ export const parseNaturalLanguageEvent = async (input: string, periods: PeriodDe
 export const parseScheduleImage = async (base64Data: string): Promise<any[]> => {
   trackUsage('schedule_import');
   try {
-    const data = await makeBackendRequest('/api/ai/parse-schedule', { image: base64Data });
+    const data = await makeBackendRequest('/parse-schedule', { image: base64Data });
     return Array.isArray(data) ? data : [];
   } catch (error) {
     console.error("Schedule parsing error:", error);
@@ -173,7 +196,7 @@ export const getChatResponse = async (
 ): Promise<{ text: string, eventData?: Partial<ScheduleEvent> }> => {
     trackUsage('chat');
     try {
-        const data = await makeBackendRequest('/api/ai/chat', {
+        const data = await makeBackendRequest('/chat', {
           history,
           message,
           periods,
