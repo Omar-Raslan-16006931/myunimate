@@ -13,27 +13,33 @@ const AdminInbox: React.FC = () => {
   const [isSendingReply, setIsSendingReply] = useState(false);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [isAuthorized, setIsAuthorized] = useState(false);
   const replyEndRef = useRef<HTMLDivElement>(null);
 
-  const fetchFeedback = async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('app_feedback')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setFeedbackItems(data || []);
-    } catch (err) {
-      console.error("Error fetching feedback:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Check if user is admin before showing admin panel
   useEffect(() => {
-    fetchFeedback();
+    const checkAdminStatus = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          setIsAuthorized(false);
+          return;
+        }
+
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('is_admin')
+          .eq('id', session.user.id)
+          .single();
+
+        setIsAuthorized(!!profile?.is_admin);
+      } catch (err) {
+        console.error("Admin check failed:", err);
+        setIsAuthorized(false);
+      }
+    };
+
+    checkAdminStatus();
   }, []);
 
   // Fetch replies when message selected
@@ -113,11 +119,13 @@ const AdminInbox: React.FC = () => {
           const { data: { session } } = await supabase.auth.getSession();
           if (!session) throw new Error("No session");
 
+          // NOTE: is_admin status is now determined server-side via RLS policies
+          // The client MUST NOT set is_admin flag - backend verifies admin status
           const { error } = await supabase.from('feedback_replies').insert({
                 feedback_id: selectedMessage.id,
                 sender_id: session.user.id,
-                message: replyText.trim(),
-                is_admin: true 
+                message: replyText.trim()
+                // is_admin flag is set by database trigger or backend function
             });
 
           if (error) throw error;
@@ -130,7 +138,6 @@ const AdminInbox: React.FC = () => {
           setReplyText('');
       } catch (err: any) {
           console.error("Error sending reply:", err);
-          console.error(`Failed: ${err.message}`);
       } finally {
           setIsSendingReply(false);
       }

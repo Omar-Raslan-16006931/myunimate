@@ -1,0 +1,7 @@
+{
+  "imports": {
+    "std/": "https://deno.land/std@0.208.0/",
+    "@supabase/": "https://esm.sh/@supabase/",
+    "@google/genai": "https://esm.sh/@google/genai@1.30.0"
+  }
+}

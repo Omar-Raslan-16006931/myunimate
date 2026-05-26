@@ -53,7 +53,10 @@ export function ShaderAnimation() {
     const THREE = window.THREE
     const container = containerRef.current
 
-    container.innerHTML = ""
+    // Safe alternative to innerHTML - clear all child nodes
+    while (container.firstChild) {
+      container.removeChild(container.firstChild)
+    }
 
     const camera = new THREE.Camera()
     camera.position.z = 1
