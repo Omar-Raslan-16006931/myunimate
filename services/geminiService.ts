@@ -1,13 +1,30 @@
 
-import { GoogleGenAI, Type, FunctionDeclaration } from "@google/genai";
+import { Type, FunctionDeclaration } from "@google/genai";
 import { ScheduleEvent, Macros, PeriodDefinition } from "../types";
 import { supabase } from "../lib/supabase";
 
 const MODEL_NAME = 'gemini-3-flash-preview';
+const BACKEND_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
-const getAiClient = () => {
-  // Always use a new GoogleGenAI instance with the API key directly from process.env as per guidelines
-  return new GoogleGenAI({ apiKey: process.env.API_KEY });
+const makeBackendRequest = async (endpoint: string, data: any) => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error("Not authenticated");
+
+  const response = await fetch(`${BACKEND_URL}${endpoint}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || `Backend request failed: ${response.status}`);
+  }
+
+  return response.json();
 };
 
 // --- Usage Tracking Helper ---
@@ -89,34 +106,19 @@ const addEventTool: FunctionDeclaration = {
   }
 };
 
-// --- Nutrition Analysis ---
 export const analyzeFoodText = async (description: string): Promise<Macros & { name: string }> => {
   trackUsage('nutrition_text');
   try {
-    const ai = getAiClient();
-    const response = await ai.models.generateContent({
-      model: MODEL_NAME,
-      contents: `Analyze the following food description and estimate the nutritional content: "${description}". Be realistic.`,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: nutritionSchema,
-        systemInstruction: "You are an expert nutritionist. Analyze food descriptions provided by the user and return accurate estimated macro-nutrients."
-      }
-    });
-
-    const text = response.text;
-    if (!text) throw new Error("No response from AI");
-    
-    const data = JSON.parse(text);
+    const data = await makeBackendRequest('/api/ai/analyze-food-text', { description });
     return {
-      name: data.foodName,
+      name: data.name,
       calories: data.calories,
       protein: data.protein,
       carbs: data.carbs,
       fat: data.fat
     };
   } catch (error) {
-    console.error("Gemini Text Analysis Error:", error);
+    console.error("Food text analysis error:", error);
     throw error;
   }
 };
@@ -124,241 +126,65 @@ export const analyzeFoodText = async (description: string): Promise<Macros & { n
 export const analyzeFoodImage = async (base64Image: string): Promise<Macros & { name: string }> => {
   trackUsage('nutrition_image');
   try {
-    const ai = getAiClient();
-    // Remove header if present (e.g., "data:image/jpeg;base64,")
     const cleanBase64 = base64Image.split(',')[1] || base64Image;
-
-    const response = await ai.models.generateContent({
-      model: MODEL_NAME,
-      contents: {
-        parts: [
-          {
-            inlineData: {
-              mimeType: 'image/jpeg',
-              data: cleanBase64
-            }
-          },
-          {
-            text: "Identify the food in this image and estimate the portion size and nutritional content for the entire visible portion."
-          }
-        ]
-      },
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: nutritionSchema,
-        systemInstruction: "You are an expert nutritionist. Analyze the image provided, estimate the portion size visually, and calculate the macros."
-      }
-    });
-
-    const text = response.text;
-    if (!text) throw new Error("No response from AI");
-
-    const data = JSON.parse(text);
+    const data = await makeBackendRequest('/api/ai/analyze-food-image', { image: cleanBase64 });
     return {
-      name: data.foodName,
+      name: data.name,
       calories: data.calories,
       protein: data.protein,
       carbs: data.carbs,
       fat: data.fat
     };
   } catch (error) {
-    console.error("Gemini Image Analysis Error:", error);
+    console.error("Food image analysis error:", error);
     throw error;
   }
 };
 
-// --- Magic Autofill (Schedule) ---
 export const parseNaturalLanguageEvent = async (input: string, periods: PeriodDefinition[] = []): Promise<Partial<ScheduleEvent> | null> => {
   if (!input) return null;
   trackUsage('autofill');
-  const now = new Date();
-  
-  // Format period info for the model
-  const periodContext = periods.length > 0 
-    ? `\nAvailable Time Slots (use these start times if user says "1st slot", "period 2", etc):
-       ${periods.map(p => `- ${p.label}: Starts ${p.startTime}, Duration ${90} mins approx`).join('\n')}`
-    : "";
-
-  const dateContext = `Today is ${now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}.`;
 
   try {
-    const ai = getAiClient();
-    const response = await ai.models.generateContent({
-      model: MODEL_NAME,
-      contents: `Extract event details from this text: "${input}".
-            ${dateContext}
-            ${periodContext}
-            Return JSON only with this schema: { title: string, type: string (lecture/tutorial/lab/quiz/assignment/exam/study/other), date: string (YYYY-MM-DD), startTime: string (HH:MM), durationMinutes: number, location: string, description: string }.
-            
-            CRITICAL RULES:
-            1. DATE LOGIC: "Next [Day]" (e.g., "Next Thursday") ALWAYS means the VERY NEXT occurrence of that day, even if it is in the current week.
-               - Example: If today is Monday Nov 24, "Next Thursday" is Nov 27 (the closest upcoming Thursday).
-               - Do NOT skip a week unless the user says "week after next".
-            2. TIME SLOTS: If the user mentions a slot (e.g. "1st slot"), map it to the corresponding 'startTime' from the provided list.
-            3. DURATION: Default to 90 minutes if not specified.
-            4. Ensure YYYY-MM-DD format is accurate based on ${now.getFullYear()}.`,
-      config: {
-        responseMimeType: "application/json"
-      },
-    });
-
-    const text = response.text;
-    if (!text) return null;
-    return JSON.parse(text) as Partial<ScheduleEvent>;
+    const data = await makeBackendRequest('/api/ai/parse-event', { input, periods });
+    return data as Partial<ScheduleEvent>;
   } catch (error) {
-    console.error("Autofill error:", error);
+    console.error("Event parsing error:", error);
     return null;
   }
 };
 
-// --- Image to Schedule ---
 export const parseScheduleImage = async (base64Data: string): Promise<any[]> => {
   trackUsage('schedule_import');
   try {
-    const ai = getAiClient();
-    const prompt = `
-        Role: You are a precise Data Extraction Engine for university schedules.
-        Task: Extract the schedule from the provided image into strict JSON format.
-        CRITICAL VISUAL RULES (Do not ignore):
-        1. Grid Logic: The schedule is a grid. The columns are "Periods" (1st to 5th) and rows are "Days" (Saturday to Thursday).
-        2. Merged Cell Rule: If a cell spans multiple columns (horizontally) or rows (vertically), you must UNMERGE it in the data.
-           - Example: If "Free" spans 1st, 2nd, and 3rd period, you must generate THREE separate entries: one for 1st, one for 2nd, and one for 3rd.
-           - NEVER output a single entry for a time range.
-           - ALWAYS break it down into the specific period slots defined in the header.
-        3. Empty/Visual Gaps: If a slot has no text but is visually distinct (e.g., a grey box or empty white box), mark it as "Free" or "No Class".
-        Output Format:
-        Return ONLY a JSON array with this structure:
-        [
-          {
-            "day": "Sunday",
-            "period_number": 1,
-            "time_start": "08:30",
-            "time_end": "10:00",
-            "course_name": "Databases",
-            "room": "M1.205",
-            "type": "Lecture"
-          }
-        ] 
-      `;
-
-    const response = await ai.models.generateContent({
-      model: MODEL_NAME,
-      contents: {
-        parts: [
-          { inlineData: { data: base64Data, mimeType: 'image/png' } },
-          { text: prompt }
-        ]
-      },
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-             type: Type.ARRAY,
-             items: {
-               type: Type.OBJECT,
-               properties: {
-                 day: { type: Type.STRING },
-                 period_number: { type: Type.INTEGER },
-                 time_start: { type: Type.STRING },
-                 time_end: { type: Type.STRING },
-                 course_name: { type: Type.STRING },
-                 room: { type: Type.STRING },
-                 type: { type: Type.STRING }
-               }
-             }
-          }
-      },
-    });
-
-    const text = response.text;
-    if (!text) return [];
-    
-    const extracted = JSON.parse(text);
-    return extracted.filter((item: any) => 
-        item.course_name && 
-        !item.course_name.toLowerCase().includes('free') && 
-        !item.course_name.toLowerCase().includes('no class')
-    );
-
+    const data = await makeBackendRequest('/api/ai/parse-schedule', { image: base64Data });
+    return Array.isArray(data) ? data : [];
   } catch (error) {
-    console.error("Image Parse Error:", error);
+    console.error("Schedule parsing error:", error);
     return [];
   }
 };
 
-// --- Chat Assistant ---
 export const getChatResponse = async (
-    history: {role: string, text: string}[], 
-    message: string, 
+    history: {role: string, text: string}[],
+    message: string,
     periods: PeriodDefinition[] = [],
     context?: string
 ): Promise<{ text: string, eventData?: Partial<ScheduleEvent> }> => {
     trackUsage('chat');
-    // Allow errors to propagate to the caller for proper UI handling
     try {
-        const ai = getAiClient();
-        const formattedHistory = history.map(m => ({
-            role: m.role,
-            parts: [{ text: m.text }]
-        }));
-
-        const now = new Date();
-        const dateContext = `
-        Current Date: ${now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}.
-        
-        CRITICAL INSTRUCTIONS:
-        1. DATES: "Next [Day]" (e.g. Next Thursday) means the closest upcoming Thursday, even if it's this week. Do not skip weeks unless explicitly told.
-        2. SLOTS: Use the grid below. If user says "1st slot", use start time ${periods[0]?.startTime || '08:30'}.
-        
-        SCHEDULE GRID:
-        ${periods.map(p => `- "${p.label}" (${p.startTime} - ${p.endTime})`).join('\n')}
-        `;
-
-        const chatSession = ai.chats.create({
-        model: MODEL_NAME,
-        config: {
-            systemInstruction: `You are a concise, helpful assistant for a university student. 
-            ${dateContext}
-            ${context || ""}
-            Behavior:
-            - No cringe. No emojis. Be brief and direct.
-            - If user asks to add an event, call 'addEvent'.
-            - If user asks to organize, check their schedule (provided in context if any) and suggest improvements.
-            - If user asks about "next Thursday", assume the closest upcoming Thursday.
-            `,
-            tools: [{ functionDeclarations: [addEventTool] }]
-        },
-        history: formattedHistory
+        const data = await makeBackendRequest('/api/ai/chat', {
+          history,
+          message,
+          periods,
+          context
         });
-
-        const result = await chatSession.sendMessage({ message });
-        
-        let finalText = result.text || "";
-        let eventData: Partial<ScheduleEvent> | undefined;
-
-        // Check for tool calls
-        const calls = result.functionCalls;
-        if (calls && calls.length > 0) {
-             const call = calls[0];
-             if (call.name === 'addEvent') {
-                 eventData = call.args as any;
-                 
-                 // Feed result back to get the final text response from model
-                 const toolResult = await chatSession.sendMessage({
-                     message: [{
-                         functionResponse: {
-                             name: 'addEvent',
-                             id: call.id,
-                             response: { result: "Event added successfully" }
-                         }
-                     }]
-                 });
-                 finalText = toolResult.text || "Event scheduled.";
-             }
-        }
-
-        return { text: finalText, eventData };
+        return {
+          text: data.text || "I'm having trouble thinking right now.",
+          eventData: data.eventData
+        };
     } catch (error) {
-        console.error("Chat Error:", error);
+        console.error("Chat error:", error);
         return { text: "I'm having trouble thinking right now." };
     }
 };

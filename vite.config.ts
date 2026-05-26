@@ -38,7 +38,7 @@ export default defineConfig({
       '@': '/',
     },
   },
-  define: {
-    'process.env.API_KEY': JSON.stringify(process.env.VITE_GEMINI_API_KEY || ''),
-  },
+  // NOTE: Gemini API key has been moved to backend-only endpoints
+  // Frontend no longer has direct access to API credentials
+  // All AI features now go through secure backend endpoints
 });

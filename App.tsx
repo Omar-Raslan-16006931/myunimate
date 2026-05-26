@@ -6,6 +6,8 @@ import { supabase } from './lib/supabase';
 import { ViewState, ScheduleEvent, ScheduleProfile, EventColorMap, EventType, PeriodDefinition, Announcement, ThemeMode, FoodItem, WaterLog, WorkoutSession, WorkoutRoutine, ExerciseDefinition, GymSettings, ActiveGymState, CourseGrade, ToDoItem, MaterialFile } from './types';
 import { INITIAL_EVENTS, INITIAL_PROFILES, INITIAL_COLORS, INITIAL_PERIODS, DEFAULT_GYM_SETTINGS, DEFAULT_ROUTINES, INITIAL_FILES, generateId } from './constants';
 import { styles } from './theme';
+import { isCachedData, isScheduleEvent, isCourseGrade, isToDoItem, sanitizeStoredData } from './utils/schemas';
+import { logError, logInfo, logDataAccess } from './utils/logger';
 
 import Auth from './components/Auth';
 import LandingPage from './components/LandingPage';
@@ -191,29 +193,61 @@ export const App: React.FC = () => {
   // Local Storage Hydration
   useEffect(() => {
     if (hasHydratedRef.current) return;
-    
+
     const cachedData = localStorage.getItem('unimate_v1_cache');
     if (cachedData) {
-        try {
-            const data = JSON.parse(cachedData);
-            if (data.events) setEvents(data.events);
-            if (data.profiles) {
-                setProfiles(data.profiles);
-                const active = data.profiles.find((p: any) => p.is_active);
-                if (active) setActiveProfileId(active.id);
-            }
-            if (data.courses) setCourses(data.courses);
-            if (data.todos) setToDoItems(data.todos);
-            if (data.files) setFiles(data.files.map((f: any) => ({ ...f, fileData: undefined })));
-            if (data.profile) {
-                setProfile(data.profile);
-                if (data.profile.settings?.theme) setThemeMode(data.profile.settings.theme);
-                if (data.profile.settings?.eventColors) setEventColors(data.profile.settings.eventColors);
-            }
-            hasHydratedRef.current = true;
-        } catch (e) {
-            console.error("Hydration fallback failed", e);
+      try {
+        const parsed = JSON.parse(cachedData);
+
+        // Validate cache structure
+        if (!isCachedData(parsed)) {
+          logWarn("CACHE", "Invalid cache structure detected, skipping hydration");
+          localStorage.removeItem('unimate_v1_cache');
+          hasHydratedRef.current = true;
+          return;
         }
+
+        // Safely load validated data
+        if (parsed.events && Array.isArray(parsed.events)) {
+          const validEvents = parsed.events.filter((e: any) => isScheduleEvent(e));
+          if (validEvents.length > 0) setEvents(validEvents);
+        }
+
+        if (parsed.profiles && Array.isArray(parsed.profiles)) {
+          setProfiles(parsed.profiles);
+          const active = parsed.profiles.find((p: any) => p.is_active);
+          if (active) setActiveProfileId(active.id);
+        }
+
+        if (parsed.courses && Array.isArray(parsed.courses)) {
+          const validCourses = parsed.courses.filter((c: any) => isCourseGrade(c));
+          if (validCourses.length > 0) setCourses(validCourses);
+        }
+
+        if (parsed.todos && Array.isArray(parsed.todos)) {
+          const validTodos = parsed.todos.filter((t: any) => isToDoItem(t));
+          if (validTodos.length > 0) setToDoItems(validTodos);
+        }
+
+        if (parsed.files && Array.isArray(parsed.files)) {
+          setFiles(parsed.files.map((f: any) => ({ ...f, fileData: undefined })));
+        }
+
+        if (parsed.profile && typeof parsed.profile === 'object') {
+          setProfile(parsed.profile);
+          if (parsed.profile.settings?.theme) setThemeMode(parsed.profile.settings.theme);
+          if (parsed.profile.settings?.eventColors) setEventColors(parsed.profile.settings.eventColors);
+        }
+
+        hasHydratedRef.current = true;
+        logInfo("CACHE", "Successfully hydrated from cache");
+      } catch (e) {
+        logError("CACHE", e);
+        localStorage.removeItem('unimate_v1_cache');
+        hasHydratedRef.current = true;
+      }
+    } else {
+      hasHydratedRef.current = true;
     }
   }, []);
 

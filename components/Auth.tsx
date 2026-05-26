@@ -3,6 +3,8 @@ import React, { useState, memo, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { styles } from '../theme';
 import { Loader2, Mail, Lock, Sparkles, ArrowRight, User, GraduationCap, Calendar, Building, Users, LogIn, Check, AlertCircle, X, Ticket } from 'lucide-react';
+import { validateEmail, validatePassword, validateUsername, validateReferralCode } from '../utils/validation';
+import { logError, logAuthEvent } from '../utils/logger';
 
 interface AuthProps {
   onEnterTestMode?: () => void;
@@ -119,19 +121,30 @@ function Auth({ onEnterTestMode }: AuthProps) {
     try {
       if (mode === 'signup') {
         // --- SIGN UP FLOW ---
-        if (!username.trim()) throw new Error("Username is required.");
-        if (username.trim().length < 4) throw new Error("Username must be at least 4 characters long.");
-        
-        if (usernameAvailable === false) {
-             throw new Error("Username is already taken. Please choose another.");
+        // Username validation
+        const usernameCheck = validateUsername(username);
+        if (!usernameCheck.valid) {
+          throw new Error(usernameCheck.error || "Invalid username");
         }
 
-        if (!identifier.includes('@')) throw new Error("Please enter a valid email address for registration.");
-        
-        if (password.length < 6) throw new Error("Password must be at least 6 characters long.");
+        if (usernameAvailable === false) {
+          throw new Error("Username is already taken. Please choose another.");
+        }
+
+        // Email validation
+        const emailCheck = validateEmail(identifier);
+        if (!emailCheck.valid) {
+          throw new Error(emailCheck.error || "Invalid email address");
+        }
+
+        // Password validation
+        const passwordCheck = validatePassword(password);
+        if (!passwordCheck.valid) {
+          throw new Error(passwordCheck.error || "Password does not meet requirements");
+        }
 
         if (password !== confirmPassword) {
-            throw new Error("Passwords do not match.");
+          throw new Error("Passwords do not match.");
         }
 
         // --- REFERRAL CODE CHECK ---
@@ -139,112 +152,119 @@ function Auth({ onEnterTestMode }: AuthProps) {
         let referralCodeId = null;
 
         if (referralCode.trim()) {
-            // Re-validate strictly on submit
-            const { data, error } = await supabase
-                .from('referral_codes')
-                .select('*')
-                .eq('code', referralCode.trim())
-                .eq('is_active', true)
-                .single();
-            
-            if (error || !data) {
-                throw new Error("Invalid or inactive referral code.");
-            }
-            verifiedReferralCode = data.code;
-            referralCodeId = data.id;
+          // Validate referral code format first
+          const codeCheck = validateReferralCode(referralCode);
+          if (!codeCheck.valid) {
+            throw new Error(codeCheck.error || "Invalid referral code format");
+          }
+
+          // Re-validate strictly on submit
+          const { data, error } = await supabase
+            .from('referral_codes')
+            .select('*')
+            .eq('code', referralCode.trim().toUpperCase())
+            .eq('is_active', true)
+            .single();
+
+          if (error || !data) {
+            throw new Error("Invalid or inactive referral code.");
+          }
+          verifiedReferralCode = data.code;
+          referralCodeId = data.id;
         }
 
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-          email: identifier,
+          email: identifier.toLowerCase().trim(),
           password,
           options: {
-            // CRITICAL: Passing metadata here lets the Postgres Trigger 'on_auth_user_created'
-            // automatically create the profile row with the correct data.
             data: {
-                username,
-                full_name: username,    
-                display_name: username, 
-                name: username,         
-                gender,
-                major,
-                year,
-                college,
-                subscription_tier: 0,
-                referred_by: verifiedReferralCode 
-            }
-          }
+              username: username.trim(),
+              full_name: username.trim(),
+              display_name: username.trim(),
+              name: username.trim(),
+              gender,
+              major,
+              year,
+              college,
+              subscription_tier: 0,
+              referred_by: verifiedReferralCode,
+            },
+          },
         });
+
         if (signUpError) throw signUpError;
 
         // --- INCREMENT REFERRAL USAGE (AFTER SIGNUP) ---
         if (referralCodeId) {
-             try {
-                 const { error: rpcError } = await supabase.rpc('increment_referral_usage', { row_id: referralCodeId });
-                 if (rpcError && signUpData.session) {
-                     const { data: latestCode } = await supabase
-                        .from('referral_codes')
-                        .select('usage_count')
-                        .eq('id', referralCodeId)
-                        .single();
-                     
-                     if (latestCode) {
-                         await supabase
-                            .from('referral_codes')
-                            .update({ usage_count: (latestCode.usage_count || 0) + 1 })
-                            .eq('id', referralCodeId);
-                     }
-                 }
-             } catch (updateError) {
-                 console.warn("Failed to increment referral code count:", updateError);
-             }
+          try {
+            const { error: rpcError } = await supabase.rpc('increment_referral_usage', { row_id: referralCodeId });
+            if (rpcError && signUpData.session) {
+              const { data: latestCode } = await supabase
+                .from('referral_codes')
+                .select('usage_count')
+                .eq('id', referralCodeId)
+                .single();
+
+              if (latestCode) {
+                await supabase
+                  .from('referral_codes')
+                  .update({ usage_count: (latestCode.usage_count || 0) + 1 })
+                  .eq('id', referralCodeId);
+              }
+            }
+          } catch (updateError) {
+            logError("signup_referral", updateError);
+          }
         }
 
         // --- EXPLICIT UPDATE FOR REFERRED_BY ---
-        // If the database trigger fails to map referred_by from metadata, we do it manually here.
         if (signUpData.user && verifiedReferralCode) {
-            // Use a short timeout to reduce race condition probability with the initial trigger
-            setTimeout(async () => {
-                try {
-                    await supabase.from('profiles')
-                        .update({ referred_by: verifiedReferralCode })
-                        .eq('id', signUpData.user!.id);
-                } catch (err) {
-                    console.warn("Manual profile update failed", err);
-                }
-            }, 1000);
+          setTimeout(async () => {
+            try {
+              await supabase.from('profiles')
+                .update({ referred_by: verifiedReferralCode })
+                .eq('id', signUpData.user!.id);
+            } catch (err) {
+              logError("profile_update", err);
+            }
+          }, 1000);
         }
 
+        logAuthEvent('signup', signUpData.user?.id, true);
         setMessage('Check your email for the confirmation link!');
       } else {
         // --- SIGN IN FLOW ---
-        let emailToUse = identifier.trim();
+        let emailToUse = identifier.trim().toLowerCase();
 
         // Check if input is NOT an email (assuming it is a username)
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(emailToUse)) {
-            // Attempt to resolve username to email via Profile lookup
-            const { data, error: lookupError } = await supabase
-                .from('profiles')
-                .select('email')
-                .eq('username', emailToUse) // Queries the CITEXT username column
-                .maybeSingle();
+          // Attempt to resolve username to email via Profile lookup
+          const { data, error: lookupError } = await supabase
+            .from('profiles')
+            .select('email')
+            .eq('username', emailToUse)
+            .maybeSingle();
 
-            if (lookupError || !data || !data.email) {
-                throw new Error("Username not found. Please try your email address.");
-            }
-            
-            // Found the email associated with the username
-            emailToUse = data.email;
+          if (lookupError || !data || !data.email) {
+            throw new Error("Username not found. Please try your email address.");
+          }
+
+          emailToUse = data.email;
         }
 
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data: signInData, error } = await supabase.auth.signInWithPassword({
           email: emailToUse,
           password,
         });
+
         if (error) throw error;
+        logAuthEvent('signin', signInData.user?.id, true);
       }
     } catch (error: any) {
+      logError("auth_handleAuth", error);
       setError(error.message);
+      logAuthEvent(mode === 'signup' ? 'signup' : 'signin', undefined, false);
     } finally {
       setLoading(false);
       setIsCheckingReferral(false);
