@@ -6,8 +6,8 @@ import { supabase } from './lib/supabase';
 import { ViewState, ScheduleEvent, ScheduleProfile, EventColorMap, EventType, PeriodDefinition, Announcement, ThemeMode, FoodItem, WaterLog, WorkoutSession, WorkoutRoutine, ExerciseDefinition, GymSettings, ActiveGymState, CourseGrade, ToDoItem, MaterialFile } from './types';
 import { INITIAL_EVENTS, INITIAL_PROFILES, INITIAL_COLORS, INITIAL_PERIODS, DEFAULT_GYM_SETTINGS, DEFAULT_ROUTINES, INITIAL_FILES, generateId } from './constants';
 import { styles } from './theme';
-import { isCachedData, isScheduleEvent, isCourseGrade, isToDoItem, sanitizeStoredData } from './utils/schemas';
-import { logError, logInfo, logWarn, logDataAccess } from './utils/logger';
+import { isCachedData, isScheduleEvent, isCourseGrade, isToDoItem } from './utils/schemas';
+import { logError, logInfo, logWarn } from './utils/logger';
 
 import Auth from './components/Auth';
 import LandingPage from './components/LandingPage';
@@ -133,7 +133,7 @@ export const App: React.FC = () => {
   // Grades, Courses & ToDo
   const [courses, setCourses] = useState<CourseGrade[]>([]);
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
-  const courseUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const courseUpdateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingCourseUpdatesRef = useRef<Map<string, CourseGrade>>(new Map());
 
   const forceSaveCourse = async (course: CourseGrade) => {

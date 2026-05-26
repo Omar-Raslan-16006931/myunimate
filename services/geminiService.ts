@@ -1,14 +1,11 @@
 
-import { Type, FunctionDeclaration } from "@google/genai";
 import { ScheduleEvent, Macros, PeriodDefinition } from "../types";
 import { supabase } from "../lib/supabase";
-
-const MODEL_NAME = 'gemini-3-flash-preview';
 
 // For Supabase Edge Functions
 const getBackendUrl = () => {
   // For Edge Functions, use the supabase function invoke method
-  return import.meta.env.VITE_SUPABASE_URL || 'http://localhost:54321';
+  return (import.meta as any).env?.VITE_SUPABASE_URL || 'http://localhost:54321';
 };
 
 const makeBackendRequest = async (endpoint: string, data: any) => {
@@ -94,40 +91,6 @@ const trackUsage = async (feature: string) => {
   }
 };
 
-// --- Nutrition Schema ---
-// Removed Schema type annotation as per naming safety guidelines
-const nutritionSchema = {
-  type: Type.OBJECT,
-  properties: {
-    foodName: { type: Type.STRING, description: "A short, descriptive name of the food identified." },
-    calories: { type: Type.NUMBER, description: "Estimated total calories." },
-    protein: { type: Type.NUMBER, description: "Estimated protein in grams." },
-    carbs: { type: Type.NUMBER, description: "Estimated carbohydrates in grams." },
-    fat: { type: Type.NUMBER, description: "Estimated fat in grams." },
-  },
-  required: ["foodName", "calories", "protein", "carbs", "fat"],
-};
-
-// --- Add Event Tool Definition ---
-const addEventTool: FunctionDeclaration = {
-  name: "addEvent",
-  description: "Schedule a new event (class, quiz, etc) into the calendar.",
-  parameters: {
-    type: Type.OBJECT,
-    properties: {
-      title: { type: Type.STRING, description: "Title of the event" },
-      type: { type: Type.STRING, description: "Type: lecture, tutorial, lab, quiz, assignment, exam, study, other" },
-      date: { type: Type.STRING, description: "Date in YYYY-MM-DD format" },
-      startTime: { type: Type.STRING, description: "Start time in HH:MM format (24-hour)" },
-      durationMinutes: { type: Type.NUMBER, description: "Duration in minutes" },
-      location: { type: Type.STRING, description: "Location or room number" },
-      description: { type: Type.STRING, description: "Brief description" },
-      isRecurring: { type: Type.BOOLEAN, description: "Whether this event repeats weekly" },
-      dayOfWeek: { type: Type.STRING, description: "Day of week if recurring (e.g. Monday)" }
-    },
-    required: ["title", "type", "date", "startTime"]
-  }
-};
 
 export const analyzeFoodText = async (description: string): Promise<Macros & { name: string }> => {
   trackUsage('nutrition_text');

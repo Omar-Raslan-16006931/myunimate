@@ -68,6 +68,9 @@ export interface CachedData {
   courses?: CourseGrade[];
   todos?: ToDoItem[];
   materials?: any[];
+  files?: any[];
+  profile?: any;
+  lastSynced?: number;
   timestamp?: number;
 }
 

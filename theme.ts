@@ -26,7 +26,12 @@ export const styles: { [key: string]: React.CSSProperties } = {
     color: "var(--text-primary)", // Use var
     overflow: "hidden",
     position: "relative",
-    transition: "background 0.5s ease"
+    transition: "background 0.5s ease",
+    maxWidth: "800px",
+    margin: "0 auto",
+    boxShadow: "0 0 40px rgba(0,0,0,0.3)",
+    borderLeft: "var(--glass-border)",
+    borderRight: "var(--glass-border)",
   },
   // Floating Navigation Pill - Updated to Fixed Position
   bottomNav: {
