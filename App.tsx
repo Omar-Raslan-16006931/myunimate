@@ -7,7 +7,7 @@ import { ViewState, ScheduleEvent, ScheduleProfile, EventColorMap, EventType, Pe
 import { INITIAL_EVENTS, INITIAL_PROFILES, INITIAL_COLORS, INITIAL_PERIODS, DEFAULT_GYM_SETTINGS, DEFAULT_ROUTINES, INITIAL_FILES, generateId } from './constants';
 import { styles } from './theme';
 import { isCachedData, isScheduleEvent, isCourseGrade, isToDoItem, sanitizeStoredData } from './utils/schemas';
-import { logError, logInfo, logDataAccess } from './utils/logger';
+import { logError, logInfo, logWarn, logDataAccess } from './utils/logger';
 
 import Auth from './components/Auth';
 import LandingPage from './components/LandingPage';
