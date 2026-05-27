@@ -2,7 +2,7 @@
 import React, { useState, memo, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { styles } from '../theme';
-import { Loader2, Mail, Lock, Sparkles, ArrowRight, User, GraduationCap, Calendar, Building, Users, LogIn, Check, AlertCircle, X, Ticket } from 'lucide-react';
+import { Loader2, Mail, Lock, Sparkles, User, GraduationCap, Calendar, Building, Users, LogIn, Check, AlertCircle, X, Ticket } from 'lucide-react';
 import { validateEmail, validatePassword, validateUsername, validateReferralCode } from '../utils/validation';
 import { logError, logAuthEvent } from '../utils/logger';
 
