@@ -599,6 +599,7 @@ const Settings: React.FC<SettingsProps> = ({
                     <div className="flex gap-4">
                         <a href="#" className="text-[10px] font-bold text-white/20 hover:text-white transition-colors underline-offset-4 underline decoration-white/10">Terms of Service</a>
                         <a href="#" className="text-[10px] font-bold text-white/20 hover:text-white transition-colors underline-offset-4 underline decoration-white/10">Privacy Policy</a>
+                        <a href="https://paypal.me/OmarRaslan298" target="_blank" rel="noopener noreferrer" className="text-[10px] font-bold text-violet-400 hover:text-violet-300 transition-colors underline-offset-4 underline decoration-violet-400/30">Support Me</a>
                     </div>
                 </div>
             </div>

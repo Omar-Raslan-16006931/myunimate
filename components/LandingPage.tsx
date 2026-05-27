@@ -1044,6 +1044,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
         <p className="text-xs text-slate-600">
           &copy; {new Date().getFullYear()} UniMate. Built for students, by students.
         </p>
+        <p className="text-xs text-slate-600 mt-2">
+          <a href="https://paypal.me/OmarRaslan298" target="_blank" rel="noopener noreferrer" className="hover:text-violet-400 transition-colors underline underline-offset-4 decoration-slate-600/50 hover:decoration-violet-400/50">
+            Support me
+          </a>
+        </p>
       </footer>
     </div>
   );
