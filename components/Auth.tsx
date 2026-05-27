@@ -271,26 +271,6 @@ function Auth({ onEnterTestMode }: AuthProps) {
     }
   };
 
-  const handleGoogleLogin = async () => {
-    setLoading(true);
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          scopes: 'https://www.googleapis.com/auth/drive.readonly',
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
-          },
-        },
-      });
-      if (error) throw error;
-    } catch (error: any) {
-      setError(error.message);
-      setLoading(false);
-    }
-  };
-
   const toggleMode = () => {
     setMode(mode === 'signin' ? 'signup' : 'signin');
     clearForm();
@@ -344,23 +324,6 @@ function Auth({ onEnterTestMode }: AuthProps) {
 
         {/* Scrollable Content Area */}
         <div className="p-8 overflow-y-auto custom-scrollbar bg-gradient-to-b from-[#0a0a0f] to-[#130f1c]">
-            {/* Google Button - Always Primary */}
-            <button
-                onClick={handleGoogleLogin}
-                disabled={loading}
-                className="w-full bg-white hover:bg-slate-200 text-black font-bold py-3.5 px-4 rounded-xl transition-all flex items-center justify-center gap-3 mb-6 relative group shadow-lg shadow-white/5 active:scale-[0.98] animate-fade-in-up"
-                style={{animationDelay: '0.1s'}}
-            >
-                <img src="https://www.google.com/favicon.ico" alt="G" className="w-5 h-5" />
-                <span>Continue with Google</span>
-                <ArrowRight size={18} className="absolute right-4 opacity-0 group-hover:opacity-100 transition-all transform group-hover:translate-x-1 text-black/50" />
-            </button>
-
-            <div className="relative mb-6 animate-fade-in-up" style={{animationDelay: '0.2s'}}>
-                <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/10"></div></div>
-                <div className="relative flex justify-center text-[10px] font-bold uppercase tracking-widest"><span className="bg-[#0f0f16] px-3 text-white/30">Or via Credentials</span></div>
-            </div>
-
             <form onSubmit={handleAuth} className="space-y-4">
                 
                 {/* 1. Username Field - Snappy Collapse/Expand */}
