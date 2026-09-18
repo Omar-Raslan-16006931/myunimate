@@ -262,17 +262,33 @@ export interface WaterLog {
 
 export type Gender = 'male' | 'female';
 export type ActivityLevel = 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active';
+export type FitnessGoal = 'cut' | 'maintain' | 'bulk';
 
 export interface GymSettings {
   targets: Macros;
-  waterTarget: number; 
+  waterTarget: number;
   defaultRestTimer: number;
   name: string;
   gender: Gender;
   age: number;
-  weight: number; 
-  height: number; 
+  weight: number;
+  height: number;
   activityLevel: ActivityLevel;
+  goal?: FitnessGoal;
+}
+
+// Body weight / measurement tracking
+export interface BodyLog {
+  id: string;
+  timestamp: number;
+  weight: number; // kg
+  bodyFat?: number; // %
+  chest?: number; // cm
+  waist?: number;
+  hips?: number;
+  arms?: number;
+  thighs?: number;
+  notes?: string;
 }
 
 export enum MuscleGroup {
@@ -318,10 +334,22 @@ export interface WorkoutRoutine {
   lastPerformed?: number;
 }
 
+// A curated, read-only template plan the user can copy into "My Routines"
+export interface PresetPlan {
+  id: string;
+  name: string;
+  description: string;
+  category: string; // e.g. "Push Pull Legs", "Strength"
+  level: 'Beginner' | 'Intermediate' | 'Advanced';
+  daysPerWeek: number;
+  routines: WorkoutRoutine[];
+}
+
 export enum GymViewType {
   DASHBOARD = 'DASHBOARD',
   WORKOUT = 'WORKOUT',
   NUTRITION = 'NUTRITION',
+  ANALYSIS = 'ANALYSIS',
   SETTINGS = 'SETTINGS'
 }
 

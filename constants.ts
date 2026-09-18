@@ -1,6 +1,6 @@
 
 
-import { ScheduleEvent, MaterialFile, ScheduleProfile, EventType, MuscleGroup, GymSettings, ExerciseDefinition, WorkoutRoutine, PeriodDefinition } from './types';
+import { ScheduleEvent, MaterialFile, ScheduleProfile, EventType, MuscleGroup, GymSettings, ExerciseDefinition, WorkoutRoutine, PeriodDefinition, PresetPlan, Equipment } from './types';
 
 // Helper to get local ISO string (YYYY-MM-DD) to fix timezone issues
 export const getLocalISOString = (date: Date = new Date()) => {
@@ -107,7 +107,7 @@ export const EXERCISE_ICONS: Record<string, string> = {
 export const DEFAULT_GYM_SETTINGS: GymSettings = {
   name: 'Athlete',
   waterTarget: 2500,
-  defaultRestTimer: 30, 
+  defaultRestTimer: 60,
   targets: {
     calories: 2500,
     protein: 180,
@@ -118,163 +118,275 @@ export const DEFAULT_GYM_SETTINGS: GymSettings = {
   age: 25,
   weight: 75,
   height: 175,
-  activityLevel: 'moderate'
+  activityLevel: 'moderate',
+  goal: 'maintain'
 };
+
+// Compact builder for the exercise library
+const ex = (id: string, name: string, muscleGroup: MuscleGroup, equipment: Equipment, restTime?: number): ExerciseDefinition => ({
+  id, name, muscleGroup, equipment, restTime, imageUrl: EXERCISE_ICONS[name]
+});
 
 export const DEFAULT_EXERCISES: ExerciseDefinition[] = [
   // --- CHEST ---
-  { 
-    id: 'c1', name: 'Bench Press', muscleGroup: MuscleGroup.CHEST, equipment: 'Barbell',
-    imageUrl: EXERCISE_ICONS['Bench Press'], restTime: 120
-  },
-  { 
-    id: 'c2', name: 'Incline Dumbbell Press', muscleGroup: MuscleGroup.CHEST, equipment: 'Dumbbell',
-    imageUrl: EXERCISE_ICONS['Incline Dumbbell Press'] 
-  },
-  { 
-    id: 'c3', name: 'Cable Flyes', muscleGroup: MuscleGroup.CHEST, equipment: 'Cable',
-    imageUrl: EXERCISE_ICONS['Cable Flyes']
-  },
-  { 
-    id: 'c4', name: 'Push-ups', muscleGroup: MuscleGroup.CHEST, equipment: 'Bodyweight',
-    imageUrl: EXERCISE_ICONS['Push-ups'], restTime: 60
-  },
+  ex('ch01', 'Bench Press', MuscleGroup.CHEST, 'Barbell', 150),
+  ex('ch02', 'Incline Bench Press', MuscleGroup.CHEST, 'Barbell', 150),
+  ex('ch03', 'Decline Bench Press', MuscleGroup.CHEST, 'Barbell', 150),
+  ex('ch04', 'Dumbbell Bench Press', MuscleGroup.CHEST, 'Dumbbell', 120),
+  ex('ch05', 'Incline Dumbbell Press', MuscleGroup.CHEST, 'Dumbbell', 120),
+  ex('ch06', 'Decline Dumbbell Press', MuscleGroup.CHEST, 'Dumbbell', 120),
+  ex('ch07', 'Dumbbell Flyes', MuscleGroup.CHEST, 'Dumbbell', 75),
+  ex('ch08', 'Cable Flyes', MuscleGroup.CHEST, 'Cable', 75),
+  ex('ch09', 'Low Cable Crossover', MuscleGroup.CHEST, 'Cable', 75),
+  ex('ch10', 'Pec Deck Machine', MuscleGroup.CHEST, 'Machine', 75),
+  ex('ch11', 'Chest Press Machine', MuscleGroup.CHEST, 'Machine', 90),
+  ex('ch12', 'Push-ups', MuscleGroup.CHEST, 'Bodyweight', 60),
+  ex('ch13', 'Wide-Grip Push-ups', MuscleGroup.CHEST, 'Bodyweight', 60),
+  ex('ch14', 'Chest Dips', MuscleGroup.CHEST, 'Bodyweight', 90),
 
   // --- BACK ---
-  { 
-    id: 'b1', name: 'Deadlift', muscleGroup: MuscleGroup.BACK, equipment: 'Barbell',
-    imageUrl: EXERCISE_ICONS['Deadlift'], restTime: 180
-  },
-  { 
-    id: 'b2', name: 'Pull-ups', muscleGroup: MuscleGroup.BACK, equipment: 'Bodyweight',
-    imageUrl: EXERCISE_ICONS['Pull-ups']
-  },
-  { 
-    id: 'b3', name: 'Lat Pulldown', muscleGroup: MuscleGroup.BACK, equipment: 'Cable',
-    imageUrl: EXERCISE_ICONS['Lat Pulldown']
-  },
-  { 
-    id: 'b4', name: 'Bent Over Row', muscleGroup: MuscleGroup.BACK, equipment: 'Barbell',
-    imageUrl: EXERCISE_ICONS['Bent Over Row']
-  },
+  ex('bk01', 'Deadlift', MuscleGroup.BACK, 'Barbell', 180),
+  ex('bk02', 'Pull-ups', MuscleGroup.BACK, 'Bodyweight', 120),
+  ex('bk03', 'Chin-ups', MuscleGroup.BACK, 'Bodyweight', 120),
+  ex('bk04', 'Lat Pulldown', MuscleGroup.BACK, 'Cable', 90),
+  ex('bk05', 'Close-Grip Lat Pulldown', MuscleGroup.BACK, 'Cable', 90),
+  ex('bk06', 'Bent Over Row', MuscleGroup.BACK, 'Barbell', 120),
+  ex('bk07', 'Pendlay Row', MuscleGroup.BACK, 'Barbell', 120),
+  ex('bk08', 'Dumbbell Row', MuscleGroup.BACK, 'Dumbbell', 90),
+  ex('bk09', 'Seated Cable Row', MuscleGroup.BACK, 'Cable', 90),
+  ex('bk10', 'T-Bar Row', MuscleGroup.BACK, 'Barbell', 120),
+  ex('bk11', 'Chest Supported Row', MuscleGroup.BACK, 'Machine', 90),
+  ex('bk12', 'Machine Row', MuscleGroup.BACK, 'Machine', 90),
+  ex('bk13', 'Straight-Arm Pulldown', MuscleGroup.BACK, 'Cable', 75),
+  ex('bk14', 'Rack Pull', MuscleGroup.BACK, 'Barbell', 180),
+  ex('bk15', 'Back Extension', MuscleGroup.BACK, 'Bodyweight', 60),
+  ex('bk16', 'Barbell Shrugs', MuscleGroup.BACK, 'Barbell', 75),
+  ex('bk17', 'Dumbbell Shrugs', MuscleGroup.BACK, 'Dumbbell', 75),
 
   // --- SHOULDERS ---
-  { 
-    id: 's1', name: 'Overhead Press', muscleGroup: MuscleGroup.SHOULDERS, equipment: 'Barbell',
-    imageUrl: EXERCISE_ICONS['Overhead Press'], restTime: 120
-  },
-  { 
-    id: 's2', name: 'Lateral Raises', muscleGroup: MuscleGroup.SHOULDERS, equipment: 'Dumbbell',
-    imageUrl: EXERCISE_ICONS['Lateral Raises'], restTime: 60
-  },
+  ex('sh01', 'Overhead Press', MuscleGroup.SHOULDERS, 'Barbell', 150),
+  ex('sh02', 'Seated Dumbbell Press', MuscleGroup.SHOULDERS, 'Dumbbell', 120),
+  ex('sh03', 'Arnold Press', MuscleGroup.SHOULDERS, 'Dumbbell', 120),
+  ex('sh04', 'Machine Shoulder Press', MuscleGroup.SHOULDERS, 'Machine', 90),
+  ex('sh05', 'Push Press', MuscleGroup.SHOULDERS, 'Barbell', 150),
+  ex('sh06', 'Lateral Raises', MuscleGroup.SHOULDERS, 'Dumbbell', 60),
+  ex('sh07', 'Cable Lateral Raise', MuscleGroup.SHOULDERS, 'Cable', 60),
+  ex('sh08', 'Front Raises', MuscleGroup.SHOULDERS, 'Dumbbell', 60),
+  ex('sh09', 'Rear Delt Flyes', MuscleGroup.SHOULDERS, 'Dumbbell', 60),
+  ex('sh10', 'Reverse Pec Deck', MuscleGroup.SHOULDERS, 'Machine', 60),
+  ex('sh11', 'Face Pull', MuscleGroup.SHOULDERS, 'Cable', 60),
+  ex('sh12', 'Upright Row', MuscleGroup.SHOULDERS, 'Barbell', 90),
 
   // --- BICEPS ---
-  { 
-    id: 'a1', name: 'Barbell Curl', muscleGroup: MuscleGroup.BICEPS, equipment: 'Barbell',
-    imageUrl: EXERCISE_ICONS['Barbell Curl'], restTime: 60
-  },
-  {
-    id: 'a3', name: 'Hammer Curl', muscleGroup: MuscleGroup.BICEPS, equipment: 'Dumbbell', restTime: 60
-  },
+  ex('bi01', 'Barbell Curl', MuscleGroup.BICEPS, 'Barbell', 75),
+  ex('bi02', 'EZ-Bar Curl', MuscleGroup.BICEPS, 'Barbell', 75),
+  ex('bi03', 'Dumbbell Curl', MuscleGroup.BICEPS, 'Dumbbell', 60),
+  ex('bi04', 'Hammer Curl', MuscleGroup.BICEPS, 'Dumbbell', 60),
+  ex('bi05', 'Incline Dumbbell Curl', MuscleGroup.BICEPS, 'Dumbbell', 60),
+  ex('bi06', 'Preacher Curl', MuscleGroup.BICEPS, 'Machine', 60),
+  ex('bi07', 'Concentration Curl', MuscleGroup.BICEPS, 'Dumbbell', 60),
+  ex('bi08', 'Cable Curl', MuscleGroup.BICEPS, 'Cable', 60),
+  ex('bi09', 'Spider Curl', MuscleGroup.BICEPS, 'Dumbbell', 60),
+  ex('bi10', 'Reverse Curl', MuscleGroup.BICEPS, 'Barbell', 60),
 
   // --- TRICEPS ---
-  { 
-    id: 'a2', name: 'Tricep Pushdown', muscleGroup: MuscleGroup.TRICEPS, equipment: 'Cable',
-    imageUrl: EXERCISE_ICONS['Tricep Pushdown'], restTime: 60
-  },
-  { 
-    id: 'c5', name: 'Dips', muscleGroup: MuscleGroup.TRICEPS, equipment: 'Bodyweight',
-    imageUrl: EXERCISE_ICONS['Dips']
-  },
+  ex('tr01', 'Tricep Pushdown', MuscleGroup.TRICEPS, 'Cable', 60),
+  ex('tr02', 'Rope Pushdown', MuscleGroup.TRICEPS, 'Cable', 60),
+  ex('tr03', 'Dips', MuscleGroup.TRICEPS, 'Bodyweight', 90),
+  ex('tr04', 'Close-Grip Bench Press', MuscleGroup.TRICEPS, 'Barbell', 120),
+  ex('tr05', 'Skull Crushers', MuscleGroup.TRICEPS, 'Barbell', 75),
+  ex('tr06', 'Overhead Tricep Extension', MuscleGroup.TRICEPS, 'Dumbbell', 60),
+  ex('tr07', 'Cable Overhead Extension', MuscleGroup.TRICEPS, 'Cable', 60),
+  ex('tr08', 'Dumbbell Kickback', MuscleGroup.TRICEPS, 'Dumbbell', 60),
+  ex('tr09', 'Diamond Push-ups', MuscleGroup.TRICEPS, 'Bodyweight', 60),
+  ex('tr10', 'Machine Tricep Extension', MuscleGroup.TRICEPS, 'Machine', 60),
 
   // --- FOREARMS ---
-  {
-    id: 'fa1', name: 'Wrist Curl', muscleGroup: MuscleGroup.FOREARMS, equipment: 'Dumbbell', restTime: 45
-  },
+  ex('fa01', 'Wrist Curl', MuscleGroup.FOREARMS, 'Dumbbell', 45),
+  ex('fa02', 'Reverse Wrist Curl', MuscleGroup.FOREARMS, 'Dumbbell', 45),
+  ex('fa03', "Farmer's Walk", MuscleGroup.FOREARMS, 'Dumbbell', 90),
+  ex('fa04', 'Plate Pinch Hold', MuscleGroup.FOREARMS, 'Other', 60),
+  ex('fa05', 'Dead Hang', MuscleGroup.FOREARMS, 'Bodyweight', 60),
 
   // --- QUADRICEPS ---
-  { 
-    id: 'l1', name: 'Squat', muscleGroup: MuscleGroup.QUADRICEPS, equipment: 'Barbell',
-    imageUrl: EXERCISE_ICONS['Squat'], restTime: 180
-  },
-  { 
-    id: 'l2', name: 'Leg Press', muscleGroup: MuscleGroup.QUADRICEPS, equipment: 'Machine',
-    imageUrl: EXERCISE_ICONS['Leg Press']
-  },
-  
+  ex('qd01', 'Squat', MuscleGroup.QUADRICEPS, 'Barbell', 180),
+  ex('qd02', 'Front Squat', MuscleGroup.QUADRICEPS, 'Barbell', 180),
+  ex('qd03', 'Hack Squat', MuscleGroup.QUADRICEPS, 'Machine', 150),
+  ex('qd04', 'Leg Press', MuscleGroup.QUADRICEPS, 'Machine', 120),
+  ex('qd05', 'Leg Extension', MuscleGroup.QUADRICEPS, 'Machine', 75),
+  ex('qd06', 'Goblet Squat', MuscleGroup.QUADRICEPS, 'Dumbbell', 90),
+  ex('qd07', 'Bulgarian Split Squat', MuscleGroup.QUADRICEPS, 'Dumbbell', 90),
+  ex('qd08', 'Smith Machine Squat', MuscleGroup.QUADRICEPS, 'Machine', 150),
+  ex('qd09', 'Sissy Squat', MuscleGroup.QUADRICEPS, 'Bodyweight', 75),
+  ex('qd10', 'Step-ups', MuscleGroup.QUADRICEPS, 'Dumbbell', 75),
+
   // --- HAMSTRINGS ---
-  {
-    id: 'l4', name: 'Leg Curl', muscleGroup: MuscleGroup.HAMSTRINGS, equipment: 'Machine', restTime: 90
-  },
-  {
-    id: 'l5', name: 'Romanian Deadlift', muscleGroup: MuscleGroup.HAMSTRINGS, equipment: 'Barbell', restTime: 120
-  },
+  ex('hm01', 'Romanian Deadlift', MuscleGroup.HAMSTRINGS, 'Barbell', 150),
+  ex('hm02', 'Stiff-Leg Deadlift', MuscleGroup.HAMSTRINGS, 'Barbell', 150),
+  ex('hm03', 'Leg Curl', MuscleGroup.HAMSTRINGS, 'Machine', 75),
+  ex('hm04', 'Seated Leg Curl', MuscleGroup.HAMSTRINGS, 'Machine', 75),
+  ex('hm05', 'Nordic Curl', MuscleGroup.HAMSTRINGS, 'Bodyweight', 90),
+  ex('hm06', 'Good Mornings', MuscleGroup.HAMSTRINGS, 'Barbell', 120),
+  ex('hm07', 'Single-Leg RDL', MuscleGroup.HAMSTRINGS, 'Dumbbell', 75),
 
   // --- GLUTES ---
-  { 
-    id: 'l3', name: 'Lunges', muscleGroup: MuscleGroup.GLUTES, equipment: 'Dumbbell',
-    imageUrl: EXERCISE_ICONS['Lunges']
-  },
-  {
-    id: 'l6', name: 'Hip Thrust', muscleGroup: MuscleGroup.GLUTES, equipment: 'Barbell', restTime: 120
-  },
+  ex('gl01', 'Hip Thrust', MuscleGroup.GLUTES, 'Barbell', 120),
+  ex('gl02', 'Glute Bridge', MuscleGroup.GLUTES, 'Bodyweight', 60),
+  ex('gl03', 'Lunges', MuscleGroup.GLUTES, 'Dumbbell', 90),
+  ex('gl04', 'Walking Lunges', MuscleGroup.GLUTES, 'Dumbbell', 90),
+  ex('gl05', 'Cable Kickback', MuscleGroup.GLUTES, 'Cable', 60),
+  ex('gl06', 'Sumo Deadlift', MuscleGroup.GLUTES, 'Barbell', 180),
+  ex('gl07', 'Curtsy Lunge', MuscleGroup.GLUTES, 'Dumbbell', 75),
+  ex('gl08', 'Glute Kickback Machine', MuscleGroup.GLUTES, 'Machine', 60),
 
   // --- CALVES ---
-  {
-    id: 'ca2', name: 'Calf Raises', muscleGroup: MuscleGroup.CALVES, equipment: 'Machine', restTime: 60
-  },
+  ex('cv01', 'Standing Calf Raise', MuscleGroup.CALVES, 'Machine', 60),
+  ex('cv02', 'Seated Calf Raise', MuscleGroup.CALVES, 'Machine', 60),
+  ex('cv03', 'Donkey Calf Raise', MuscleGroup.CALVES, 'Machine', 60),
+  ex('cv04', 'Single-Leg Calf Raise', MuscleGroup.CALVES, 'Bodyweight', 45),
+  ex('cv05', 'Calf Press on Leg Press', MuscleGroup.CALVES, 'Machine', 60),
 
   // --- ADDUCTORS ---
-  {
-    id: 'ad1', name: 'Hip Adduction', muscleGroup: MuscleGroup.ADDUCTORS, equipment: 'Machine', restTime: 60
-  },
+  ex('ad01', 'Hip Adduction Machine', MuscleGroup.ADDUCTORS, 'Machine', 60),
+  ex('ad02', 'Sumo Squat', MuscleGroup.ADDUCTORS, 'Dumbbell', 90),
+  ex('ad03', 'Copenhagen Plank', MuscleGroup.ADDUCTORS, 'Bodyweight', 60),
+  ex('ad04', 'Side Lunge', MuscleGroup.ADDUCTORS, 'Bodyweight', 60),
 
   // --- ABS ---
-  { 
-    id: 'co1', name: 'Plank', muscleGroup: MuscleGroup.ABS, equipment: 'Bodyweight',
-    imageUrl: EXERCISE_ICONS['Plank'], restTime: 45
-  },
-  {
-    id: 'co2', name: 'Crunches', muscleGroup: MuscleGroup.ABS, equipment: 'Bodyweight', restTime: 60
-  },
+  ex('ab01', 'Plank', MuscleGroup.ABS, 'Bodyweight', 45),
+  ex('ab02', 'Crunches', MuscleGroup.ABS, 'Bodyweight', 45),
+  ex('ab03', 'Cable Crunch', MuscleGroup.ABS, 'Cable', 60),
+  ex('ab04', 'Hanging Leg Raise', MuscleGroup.ABS, 'Bodyweight', 60),
+  ex('ab05', 'Hanging Knee Raise', MuscleGroup.ABS, 'Bodyweight', 60),
+  ex('ab06', 'Sit-ups', MuscleGroup.ABS, 'Bodyweight', 45),
+  ex('ab07', 'Bicycle Crunches', MuscleGroup.ABS, 'Bodyweight', 45),
+  ex('ab08', 'Ab Wheel Rollout', MuscleGroup.ABS, 'Other', 60),
+  ex('ab09', 'Mountain Climbers', MuscleGroup.ABS, 'Bodyweight', 45),
+  ex('ab10', 'V-ups', MuscleGroup.ABS, 'Bodyweight', 45),
+  ex('ab11', 'Decline Sit-up', MuscleGroup.ABS, 'Bodyweight', 45),
+  ex('ab12', 'Toe Touches', MuscleGroup.ABS, 'Bodyweight', 45),
 
   // --- CORE ---
-  {
-    id: 'co3', name: 'Russian Twist', muscleGroup: MuscleGroup.CORE, equipment: 'Bodyweight', restTime: 60
-  },
+  ex('co01', 'Russian Twist', MuscleGroup.CORE, 'Bodyweight', 45),
+  ex('co02', 'Side Plank', MuscleGroup.CORE, 'Bodyweight', 45),
+  ex('co03', 'Dead Bug', MuscleGroup.CORE, 'Bodyweight', 45),
+  ex('co04', 'Bird Dog', MuscleGroup.CORE, 'Bodyweight', 45),
+  ex('co05', 'Pallof Press', MuscleGroup.CORE, 'Cable', 60),
+  ex('co06', 'Cable Woodchopper', MuscleGroup.CORE, 'Cable', 60),
+  ex('co07', 'Suitcase Carry', MuscleGroup.CORE, 'Dumbbell', 60),
+  ex('co08', 'Hollow Body Hold', MuscleGroup.CORE, 'Bodyweight', 45),
 
   // --- CARDIO ---
-  { 
-    id: 'ca1', name: 'Running', muscleGroup: MuscleGroup.CARDIO, equipment: 'Other',
-    imageUrl: EXERCISE_ICONS['Running']
-  },
-  {
-    id: 'ca3', name: 'Cycling', muscleGroup: MuscleGroup.CARDIO, equipment: 'Machine', restTime: 0
-  },
-  {
-    id: 'ca4', name: 'Jump Rope', muscleGroup: MuscleGroup.CARDIO, equipment: 'Other', restTime: 60
-  },
-  {
-    id: 'ca5', name: 'Stair Master', muscleGroup: MuscleGroup.CARDIO, equipment: 'Machine', restTime: 0
-  }
+  ex('cr01', 'Running', MuscleGroup.CARDIO, 'Other', 0),
+  ex('cr02', 'Incline Treadmill Walk', MuscleGroup.CARDIO, 'Machine', 0),
+  ex('cr03', 'Cycling', MuscleGroup.CARDIO, 'Machine', 0),
+  ex('cr04', 'Rowing Machine', MuscleGroup.CARDIO, 'Machine', 60),
+  ex('cr05', 'Elliptical', MuscleGroup.CARDIO, 'Machine', 0),
+  ex('cr06', 'Stair Master', MuscleGroup.CARDIO, 'Machine', 0),
+  ex('cr07', 'Jump Rope', MuscleGroup.CARDIO, 'Other', 60),
+  ex('cr08', 'Swimming', MuscleGroup.CARDIO, 'Other', 0),
+  ex('cr09', 'HIIT Sprints', MuscleGroup.CARDIO, 'Other', 90),
+  ex('cr10', 'Battle Ropes', MuscleGroup.CARDIO, 'Other', 60),
+  ex('cr11', 'Boxing', MuscleGroup.CARDIO, 'Other', 60),
+  ex('cr12', 'Assault Bike', MuscleGroup.CARDIO, 'Machine', 60),
+  ex('cr13', 'Sled Push', MuscleGroup.CARDIO, 'Other', 90),
 ];
 
+// Look up library exercises by name to compose routines (skips silently if renamed)
+const pick = (...names: string[]): ExerciseDefinition[] =>
+  names
+    .map(n => DEFAULT_EXERCISES.find(e => e.name === n))
+    .filter((e): e is ExerciseDefinition => !!e);
+
+const routine = (id: string, name: string, ...names: string[]): WorkoutRoutine => ({
+  id, name, exercises: pick(...names)
+});
+
 export const DEFAULT_ROUTINES: WorkoutRoutine[] = [
+  routine('r1', 'Upper Power', 'Bench Press', 'Bent Over Row', 'Overhead Press', 'Lat Pulldown', 'Barbell Curl', 'Tricep Pushdown'),
+  routine('r2', 'Leg Day', 'Squat', 'Romanian Deadlift', 'Leg Press', 'Leg Curl', 'Standing Calf Raise'),
+];
+
+// --- PRESET TRAINING PLANS ---
+
+export const PRESET_PLANS: PresetPlan[] = [
   {
-    id: 'r1',
-    name: 'Upper Power',
-    exercises: [
-      { id: 'c1', name: 'Bench Press', muscleGroup: MuscleGroup.CHEST, equipment: 'Barbell', imageUrl: EXERCISE_ICONS['Bench Press'], restTime: 120 },
-      { id: 'b4', name: 'Bent Over Row', muscleGroup: MuscleGroup.BACK, equipment: 'Barbell', imageUrl: EXERCISE_ICONS['Bent Over Row'] },
-      { id: 's1', name: 'Overhead Press', muscleGroup: MuscleGroup.SHOULDERS, equipment: 'Barbell', imageUrl: EXERCISE_ICONS['Overhead Press'], restTime: 120 },
+    id: 'plan-ppl',
+    name: 'Push / Pull / Legs',
+    description: 'The classic high-volume hypertrophy split. Run it 3 or 6 days a week.',
+    category: 'Hypertrophy',
+    level: 'Intermediate',
+    daysPerWeek: 6,
+    routines: [
+      routine('ppl-push', 'Push Day', 'Bench Press', 'Overhead Press', 'Incline Dumbbell Press', 'Cable Flyes', 'Lateral Raises', 'Tricep Pushdown', 'Overhead Tricep Extension'),
+      routine('ppl-pull', 'Pull Day', 'Deadlift', 'Pull-ups', 'Seated Cable Row', 'Lat Pulldown', 'Face Pull', 'Barbell Curl', 'Hammer Curl'),
+      routine('ppl-legs', 'Leg Day', 'Squat', 'Romanian Deadlift', 'Leg Press', 'Leg Curl', 'Leg Extension', 'Standing Calf Raise', 'Plank'),
     ]
   },
   {
-    id: 'r2',
-    name: 'Leg Day',
-    exercises: [
-      { id: 'l1', name: 'Squat', muscleGroup: MuscleGroup.QUADRICEPS, equipment: 'Barbell', imageUrl: EXERCISE_ICONS['Squat'], restTime: 180 },
-      { id: 'l3', name: 'Lunges', muscleGroup: MuscleGroup.GLUTES, equipment: 'Dumbbell', imageUrl: EXERCISE_ICONS['Lunges'] },
+    id: 'plan-ul',
+    name: 'Upper / Lower Split',
+    description: 'Balanced strength and size with 4 sessions per week. Great recovery-to-volume ratio.',
+    category: 'Strength & Size',
+    level: 'Intermediate',
+    daysPerWeek: 4,
+    routines: [
+      routine('ul-upper-a', 'Upper A (Strength)', 'Bench Press', 'Bent Over Row', 'Overhead Press', 'Lat Pulldown', 'EZ-Bar Curl', 'Skull Crushers'),
+      routine('ul-lower-a', 'Lower A (Strength)', 'Squat', 'Romanian Deadlift', 'Leg Press', 'Standing Calf Raise', 'Hanging Leg Raise'),
+      routine('ul-upper-b', 'Upper B (Volume)', 'Incline Dumbbell Press', 'Seated Cable Row', 'Seated Dumbbell Press', 'Cable Flyes', 'Hammer Curl', 'Rope Pushdown'),
+      routine('ul-lower-b', 'Lower B (Volume)', 'Deadlift', 'Bulgarian Split Squat', 'Leg Curl', 'Hip Thrust', 'Seated Calf Raise', 'Cable Crunch'),
     ]
-  }
+  },
+  {
+    id: 'plan-fb',
+    name: 'Full Body 3x',
+    description: 'Hit every muscle three times a week. The most efficient start for new lifters.',
+    category: 'Foundation',
+    level: 'Beginner',
+    daysPerWeek: 3,
+    routines: [
+      routine('fb-a', 'Full Body A', 'Squat', 'Bench Press', 'Seated Cable Row', 'Lateral Raises', 'Plank'),
+      routine('fb-b', 'Full Body B', 'Deadlift', 'Overhead Press', 'Lat Pulldown', 'Leg Curl', 'Crunches'),
+      routine('fb-c', 'Full Body C', 'Leg Press', 'Incline Dumbbell Press', 'Dumbbell Row', 'Dumbbell Curl', 'Russian Twist'),
+    ]
+  },
+  {
+    id: 'plan-5x5',
+    name: 'StrongLifts 5x5',
+    description: 'Pure barbell strength. Alternate A and B, 3 days a week, add weight every session.',
+    category: 'Strength',
+    level: 'Beginner',
+    daysPerWeek: 3,
+    routines: [
+      routine('sl-a', 'Workout A (5x5)', 'Squat', 'Bench Press', 'Bent Over Row'),
+      routine('sl-b', 'Workout B (5x5)', 'Squat', 'Overhead Press', 'Deadlift'),
+    ]
+  },
+  {
+    id: 'plan-bro',
+    name: 'Bro Split',
+    description: 'One muscle group per day, maximum pump. The bodybuilding classic.',
+    category: 'Hypertrophy',
+    level: 'Intermediate',
+    daysPerWeek: 5,
+    routines: [
+      routine('bro-chest', 'Chest Day', 'Bench Press', 'Incline Dumbbell Press', 'Cable Flyes', 'Pec Deck Machine', 'Push-ups'),
+      routine('bro-back', 'Back Day', 'Deadlift', 'Pull-ups', 'Bent Over Row', 'Seated Cable Row', 'Straight-Arm Pulldown'),
+      routine('bro-shoulders', 'Shoulder Day', 'Overhead Press', 'Arnold Press', 'Lateral Raises', 'Rear Delt Flyes', 'Face Pull', 'Barbell Shrugs'),
+      routine('bro-arms', 'Arm Day', 'Close-Grip Bench Press', 'Barbell Curl', 'Skull Crushers', 'Hammer Curl', 'Rope Pushdown', 'Wrist Curl'),
+      routine('bro-legs', 'Leg Day', 'Squat', 'Leg Press', 'Romanian Deadlift', 'Leg Extension', 'Leg Curl', 'Standing Calf Raise'),
+    ]
+  },
+  {
+    id: 'plan-core',
+    name: 'Core & Conditioning',
+    description: 'Athletic core strength plus engine-building cardio. Stack onto any plan.',
+    category: 'Conditioning',
+    level: 'Beginner',
+    daysPerWeek: 2,
+    routines: [
+      routine('cc-core', 'Core Circuit', 'Plank', 'Hanging Leg Raise', 'Cable Crunch', 'Russian Twist', 'Dead Bug', 'Side Plank'),
+      routine('cc-hiit', 'HIIT Engine', 'HIIT Sprints', 'Battle Ropes', 'Assault Bike', 'Jump Rope', 'Mountain Climbers'),
+    ]
+  },
 ];

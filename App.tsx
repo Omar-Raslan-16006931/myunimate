@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { AlertCircle, RefreshCw } from 'lucide-react';
 import { Toaster, toast } from 'react-hot-toast';
 import { supabase } from './lib/supabase';
-import { ViewState, ScheduleEvent, ScheduleProfile, EventColorMap, EventType, PeriodDefinition, Announcement, ThemeMode, FoodItem, WaterLog, WorkoutSession, WorkoutRoutine, ExerciseDefinition, GymSettings, ActiveGymState, CourseGrade, ToDoItem, MaterialFile } from './types';
+import { ViewState, ScheduleEvent, ScheduleProfile, EventColorMap, EventType, PeriodDefinition, Announcement, ThemeMode, FoodItem, WaterLog, WorkoutSession, WorkoutRoutine, ExerciseDefinition, GymSettings, ActiveGymState, CourseGrade, ToDoItem, MaterialFile, BodyLog } from './types';
 import { INITIAL_EVENTS, INITIAL_PROFILES, INITIAL_COLORS, INITIAL_PERIODS, DEFAULT_GYM_SETTINGS, DEFAULT_ROUTINES, INITIAL_FILES, generateId } from './constants';
 import { styles } from './theme';
 import { isCachedData, isScheduleEvent, isCourseGrade, isToDoItem } from './utils/schemas';
@@ -126,9 +126,53 @@ export const App: React.FC = () => {
   const [workoutSessions, setWorkoutSessions] = useState<WorkoutSession[]>([]);
   const [gymRoutines, setGymRoutines] = useState<WorkoutRoutine[]>(DEFAULT_ROUTINES);
   const [customExercises, setCustomExercises] = useState<ExerciseDefinition[]>([]);
+  const [bodyLogs, setBodyLogs] = useState<BodyLog[]>([]);
   const [activeGymState, setActiveGymState] = useState<ActiveGymState>({
     session: null, activeTimers: {}, restExpiry: null, lastValues: {}
   });
+  const gymHydratedRef = useRef(false);
+
+  // Gym data lives in localStorage (it is device-local, not synced to Supabase).
+  // Without this, every refresh wiped all workouts, meals and settings.
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('unimate_gym_v1');
+      if (raw) {
+        const g = JSON.parse(raw);
+        if (g.settings) setGymSettings({ ...DEFAULT_GYM_SETTINGS, ...g.settings, targets: { ...DEFAULT_GYM_SETTINGS.targets, ...(g.settings.targets || {}) } });
+        if (Array.isArray(g.foodLogs)) setFoodLogs(g.foodLogs);
+        if (Array.isArray(g.waterLogs)) setWaterLogs(g.waterLogs);
+        if (Array.isArray(g.workoutSessions)) setWorkoutSessions(g.workoutSessions);
+        if (Array.isArray(g.routines)) setGymRoutines(g.routines);
+        if (Array.isArray(g.customExercises)) setCustomExercises(g.customExercises);
+        if (Array.isArray(g.bodyLogs)) setBodyLogs(g.bodyLogs);
+        if (g.activeGymState && typeof g.activeGymState === 'object') {
+          setActiveGymState({ session: null, activeTimers: {}, restExpiry: null, lastValues: {}, ...g.activeGymState });
+        }
+      }
+    } catch (e) {
+      logError("GYM_CACHE", e);
+    }
+    gymHydratedRef.current = true;
+  }, []);
+
+  useEffect(() => {
+    if (!gymHydratedRef.current) return;
+    try {
+      localStorage.setItem('unimate_gym_v1', JSON.stringify({
+        settings: gymSettings,
+        foodLogs,
+        waterLogs,
+        workoutSessions,
+        routines: gymRoutines,
+        customExercises,
+        bodyLogs,
+        activeGymState: { ...activeGymState, activeTimers: {} } // running set-timers don't survive reloads
+      }));
+    } catch (e) {
+      logError("GYM_CACHE", e);
+    }
+  }, [gymSettings, foodLogs, waterLogs, workoutSessions, gymRoutines, customExercises, bodyLogs, activeGymState]);
 
   // Grades, Courses & ToDo
   const [courses, setCourses] = useState<CourseGrade[]>([]);
@@ -882,7 +926,7 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleGymUpdate = (updates: Partial<ActiveGymState>) => setActiveGymState({ ...activeGymState, ...updates });
+  const handleGymUpdate = (updates: Partial<ActiveGymState>) => setActiveGymState(prev => ({ ...prev, ...updates }));
 
   const isAppReady = !loading || (!session && !loading); // If loading is done, ready. If not logged in and loading checked, ready.
 
@@ -1014,22 +1058,25 @@ export const App: React.FC = () => {
             workoutSessions={workoutSessions}
             routines={gymRoutines}
             customExercises={customExercises}
+            bodyLogs={bodyLogs}
             settings={gymSettings}
             activeGymState={activeGymState}
             onUpdateActiveGymState={handleGymUpdate}
-            addFoodLog={(item) => setFoodLogs([...foodLogs, item])}
-            updateFoodLog={(item) => setFoodLogs(foodLogs.map(l => l.id === item.id ? item : l))}
-            deleteFoodLog={(id) => setFoodLogs(foodLogs.filter(l => l.id !== id))}
-            addWaterLog={(amount) => setWaterLogs([...waterLogs, { id: Date.now().toString(), amount, timestamp: Date.now() }])}
-            addWorkoutSession={(s) => setWorkoutSessions([s, ...workoutSessions])}
-            deleteWorkoutSession={(id) => setWorkoutSessions(workoutSessions.filter(s => s.id !== id))}
+            addFoodLog={(item) => setFoodLogs(prev => [...prev, item])}
+            updateFoodLog={(item) => setFoodLogs(prev => prev.map(l => l.id === item.id ? item : l))}
+            deleteFoodLog={(id) => setFoodLogs(prev => prev.filter(l => l.id !== id))}
+            addWaterLog={(amount) => setWaterLogs(prev => [...prev, { id: Date.now().toString(), amount, timestamp: Date.now() }])}
+            addWorkoutSession={(s) => setWorkoutSessions(prev => [s, ...prev])}
+            deleteWorkoutSession={(id) => setWorkoutSessions(prev => prev.filter(s => s.id !== id))}
             saveRoutine={(r) => {
-                const exists = gymRoutines.find(rout => rout.id === r.id);
-                if (exists) setGymRoutines(gymRoutines.map(rout => rout.id === r.id ? r : rout));
-                else setGymRoutines([...gymRoutines, r]);
+                setGymRoutines(prev => prev.find(rout => rout.id === r.id)
+                    ? prev.map(rout => rout.id === r.id ? r : rout)
+                    : [...prev, r]);
             }}
-            deleteRoutine={(id) => setGymRoutines(gymRoutines.filter(r => r.id !== id))}
-            addCustomExercise={(ex) => setCustomExercises([...customExercises, ex])}
+            deleteRoutine={(id) => setGymRoutines(prev => prev.filter(r => r.id !== id))}
+            addCustomExercise={(ex) => setCustomExercises(prev => [...prev, ex])}
+            addBodyLog={(log) => setBodyLogs(prev => [...prev, log])}
+            deleteBodyLog={(id) => setBodyLogs(prev => prev.filter(l => l.id !== id))}
             updateSettings={setGymSettings}
         />;
       case 'courses':
@@ -1340,7 +1387,7 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div style={styles.container} className={themeMode}>
+    <div style={styles.container} className={`${themeMode} app-shell`}>
       {((isSyncing) || (isSyncingPhase2 && view === 'materials')) && !loading && (
         <div className="fixed top-20 right-4 z-[2000] flex items-center gap-2 bg-slate-900/80 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-full shadow-2xl animate-in fade-in slide-in-from-top-2 duration-300">
            <div className={`w-1.5 h-1.5 ${isSyncing ? 'bg-emerald-500' : 'bg-violet-500'} rounded-full animate-pulse`}></div>

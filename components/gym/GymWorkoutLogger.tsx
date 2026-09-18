@@ -1,14 +1,13 @@
-
-
-import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Plus, Check, Clock, Trash2, 
-  Dumbbell, Play, ArrowLeft, Search, X, 
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import {
+  Plus, Check, Clock, Trash2,
+  Dumbbell, Play, ArrowLeft, Search, X,
   Timer, Flame, Repeat,
-  Minimize2, Pencil, AlertTriangle, Book, LayoutGrid, ChevronDown
+  Minimize2, Pencil, AlertTriangle, Book, LayoutGrid, ChevronDown,
+  Calculator, Sparkles, ListPlus, CalendarRange, Layers
 } from 'lucide-react';
-import { WorkoutSession, WorkoutExercise, MuscleGroup, WorkoutRoutine, ExerciseDefinition, GymSettings, ExerciseSet, ActiveGymState } from '../../types';
-import { generateId } from '../../constants';
+import { WorkoutSession, WorkoutExercise, MuscleGroup, WorkoutRoutine, ExerciseDefinition, GymSettings, ExerciseSet, ActiveGymState, Equipment, PresetPlan } from '../../types';
+import { generateId, PRESET_PLANS } from '../../constants';
 
 // --- HELPERS ---
 
@@ -39,6 +38,19 @@ const parseToMinutes = (str: string) => {
   return parseFloat(str) || 0;
 };
 
+const EQUIPMENT_OPTIONS: Equipment[] = ['Barbell', 'Dumbbell', 'Machine', 'Bodyweight', 'Cable', 'Other'];
+
+const MUSCLE_FILTERS: { label: string; groups: string[] }[] = [
+  { label: 'All', groups: [] },
+  { label: 'Chest', groups: [MuscleGroup.CHEST] },
+  { label: 'Back', groups: [MuscleGroup.BACK] },
+  { label: 'Shoulders', groups: [MuscleGroup.SHOULDERS] },
+  { label: 'Arms', groups: [MuscleGroup.BICEPS, MuscleGroup.TRICEPS, MuscleGroup.FOREARMS] },
+  { label: 'Legs', groups: [MuscleGroup.QUADRICEPS, MuscleGroup.HAMSTRINGS, MuscleGroup.GLUTES, MuscleGroup.CALVES, MuscleGroup.ADDUCTORS] },
+  { label: 'Core', groups: [MuscleGroup.ABS, MuscleGroup.CORE] },
+  { label: 'Cardio', groups: [MuscleGroup.CARDIO] },
+];
+
 // --- SUBCOMPONENTS ---
 
 const MuscleIcon = ({ group }: { group: string }) => {
@@ -49,21 +61,21 @@ const MuscleIcon = ({ group }: { group: string }) => {
         [MuscleGroup.BICEPS]: "text-rose-400",
         [MuscleGroup.TRICEPS]: "text-purple-400",
         [MuscleGroup.FOREARMS]: "text-teal-400",
-        
+
         [MuscleGroup.QUADRICEPS]: "text-blue-400",
         [MuscleGroup.HAMSTRINGS]: "text-pink-400",
         [MuscleGroup.GLUTES]: "text-fuchsia-400",
         [MuscleGroup.CALVES]: "text-emerald-400",
         [MuscleGroup.ADDUCTORS]: "text-lime-400",
-        
+
         [MuscleGroup.ABS]: "text-orange-400",
         [MuscleGroup.CORE]: "text-orange-400",
         [MuscleGroup.CARDIO]: "text-red-400"
     };
     const color = colorMap[group] || "text-white";
-    
+
     return (
-        <div className={`w-8 h-8 rounded-full bg-white/5 flex items-center justify-center border border-white/10 ${color}`}>
+        <div className={`w-8 h-8 rounded-full bg-white/5 flex items-center justify-center border border-white/10 shrink-0 ${color}`}>
             <Dumbbell size={14} />
         </div>
     );
@@ -79,9 +91,8 @@ const RestTimerInput = ({ value, onChange }: { value: number, onChange: (val: nu
         e.stopPropagation();
         if (!isOpen && buttonRef.current) {
             const rect = buttonRef.current.getBoundingClientRect();
-            // Calculate position to ensure it fits on screen
             let left = rect.left;
-            if (left + 128 > window.innerWidth) { // 128px is approx dropdown width
+            if (left + 128 > window.innerWidth) {
                 left = window.innerWidth - 138;
             }
             setPosition({ top: rect.bottom + 6, left: left });
@@ -91,7 +102,7 @@ const RestTimerInput = ({ value, onChange }: { value: number, onChange: (val: nu
 
     return (
         <>
-            <button 
+            <button
                 ref={buttonRef}
                 onClick={toggle}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${isOpen ? 'bg-indigo-500/20 border-indigo-500 text-indigo-300' : 'bg-white/5 border-white/10 text-white/60 hover:text-white hover:bg-white/10'}`}
@@ -104,7 +115,7 @@ const RestTimerInput = ({ value, onChange }: { value: number, onChange: (val: nu
             {isOpen && (
                 <>
                     <div className="fixed inset-0 z-[2000]" onClick={(e) => { e.stopPropagation(); setIsOpen(false); }} />
-                    <div 
+                    <div
                         className="fixed bg-[#1c1c1e] border border-white/10 rounded-xl shadow-2xl z-[2001] overflow-hidden flex flex-col py-1 w-32 animate-in fade-in zoom-in-95 duration-100"
                         style={{ top: position.top, left: position.left }}
                     >
@@ -124,8 +135,8 @@ const RestTimerInput = ({ value, onChange }: { value: number, onChange: (val: nu
                         <div className="px-2 py-1.5" onClick={e => e.stopPropagation()}>
                             <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-lg px-2 py-1">
                                 <span className="text-[10px] text-white/40 font-bold">CUSTOM</span>
-                                <input 
-                                    type="number" 
+                                <input
+                                    type="number"
                                     placeholder={value.toString()}
                                     className="w-full bg-transparent text-xs text-white outline-none font-bold text-right"
                                     onKeyDown={(e) => {
@@ -148,11 +159,11 @@ const RestTimerInput = ({ value, onChange }: { value: number, onChange: (val: nu
     );
 };
 
-const TimeInput = ({ 
-    value, 
-    onChange, 
-    onToggleTimer, 
-    isTimerActive, 
+const TimeInput = ({
+    value,
+    onChange,
+    onToggleTimer,
+    isTimerActive,
     timerStart,
     now,
     completed,
@@ -175,9 +186,9 @@ const TimeInput = ({
         const m = Math.floor(diff / 60);
         const s = diff % 60;
         const display = `${m}:${s.toString().padStart(2, '0')}`;
-        
+
         return (
-            <button 
+            <button
                 onClick={onToggleTimer}
                 className="w-full h-9 bg-red-500/20 text-red-400 border border-red-500/50 rounded-xl flex items-center justify-center gap-2 font-mono font-bold text-sm animate-pulse transition-all hover:bg-red-500/30"
             >
@@ -189,7 +200,7 @@ const TimeInput = ({
 
     return (
         <div className="relative w-full h-9 group">
-            <input 
+            <input
                 type="text"
                 value={localValue}
                 onChange={(e) => setLocalValue(e.target.value)}
@@ -198,12 +209,379 @@ const TimeInput = ({
                 placeholder={placeholder || "0:00"}
                 className={`w-full h-full bg-black/20 rounded-xl py-2 text-center text-white font-bold text-sm outline-none focus:ring-1 focus:ring-cyan-500/50 transition-all pr-8 ${completed ? 'text-emerald-300' : ''} placeholder:text-white/20`}
             />
-            <button 
+            <button
                 onClick={onToggleTimer}
                 className="absolute right-1 top-1/2 -translate-y-1/2 p-1.5 text-white/30 hover:text-cyan-400 transition hover:scale-110 active:scale-95"
             >
                 <Timer size={14} />
             </button>
+        </div>
+    );
+};
+
+// --- PLATE CALCULATOR ---
+
+const PLATES = [25, 20, 15, 10, 5, 2.5, 1.25];
+const PLATE_COLORS: Record<number, string> = {
+    25: 'bg-red-500', 20: 'bg-blue-500', 15: 'bg-yellow-500',
+    10: 'bg-green-500', 5: 'bg-white text-black', 2.5: 'bg-slate-500', 1.25: 'bg-slate-600'
+};
+
+const PlateCalculatorModal = ({ onClose }: { onClose: () => void }) => {
+    const [target, setTarget] = useState('100');
+    const [bar, setBar] = useState(20);
+
+    const targetNum = parseFloat(target) || 0;
+    const perSide = Math.max(0, (targetNum - bar) / 2);
+
+    const plates: number[] = [];
+    let remaining = perSide;
+    for (const p of PLATES) {
+        while (remaining >= p - 0.001) {
+            plates.push(p);
+            remaining -= p;
+        }
+    }
+    const achievable = targetNum >= bar && remaining < 0.001;
+    const loaded = bar + plates.reduce((a, b) => a + b, 0) * 2;
+
+    return (
+        <div className="fixed inset-0 z-[2100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200" onClick={onClose}>
+            <div className="bg-[#1c1c1e] border border-white/10 rounded-3xl p-6 max-w-sm w-full shadow-2xl animate-in zoom-in-95" onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-bold text-white flex items-center gap-2"><Calculator size={18} className="text-cyan-400" /> Plate Calculator</h3>
+                    <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-white/40 hover:text-white transition"><X size={16} /></button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                    <div>
+                        <label className="block text-[9px] font-bold text-white/40 uppercase tracking-wider mb-1">Target (kg)</label>
+                        <input type="number" autoFocus value={target} onChange={e => setTarget(e.target.value)}
+                            className="w-full bg-black/30 border border-white/10 rounded-xl p-3 text-white font-black text-lg text-center outline-none focus:border-cyan-500/60 transition" />
+                    </div>
+                    <div>
+                        <label className="block text-[9px] font-bold text-white/40 uppercase tracking-wider mb-1">Bar (kg)</label>
+                        <div className="grid grid-cols-3 gap-1">
+                            {[20, 15, 10].map(b => (
+                                <button key={b} onClick={() => setBar(b)}
+                                    className={`py-3.5 rounded-xl text-xs font-bold transition border ${bar === b ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-300' : 'bg-white/[0.03] border-white/5 text-white/40'}`}>
+                                    {b}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Bar visualization */}
+                <div className="bg-black/30 rounded-2xl p-4 mb-3 flex items-center justify-center min-h-[72px] overflow-x-auto">
+                    {targetNum > bar ? (
+                        <div className="flex items-center">
+                            <div className="h-2 w-8 bg-slate-400 rounded-l" />
+                            <div className="h-5 w-1.5 bg-slate-300" />
+                            {plates.map((p, i) => (
+                                <div key={i}
+                                    className={`${PLATE_COLORS[p] || 'bg-slate-500'} rounded-sm mx-px flex items-end justify-center text-[7px] font-black text-white/90 pb-0.5`}
+                                    style={{ height: `${24 + (p / 25) * 32}px`, width: p >= 10 ? '11px' : '8px' }}>
+                                </div>
+                            ))}
+                            <div className="h-2 w-10 bg-slate-400 rounded-r" />
+                        </div>
+                    ) : (
+                        <span className="text-white/30 text-xs">Just the bar — {bar}kg</span>
+                    )}
+                </div>
+
+                <div className="flex flex-wrap gap-1.5 justify-center mb-3">
+                    {plates.length === 0 && targetNum > bar && <span className="text-white/30 text-xs">No plates fit</span>}
+                    {Object.entries(plates.reduce((acc: Record<string, number>, p) => { acc[p] = (acc[p] || 0) + 1; return acc; }, {})).map(([p, count]) => (
+                        <span key={p} className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-[10px] font-bold text-white">
+                            {count} × {p}kg
+                        </span>
+                    ))}
+                </div>
+
+                <div className={`text-center text-xs font-bold ${achievable ? 'text-emerald-400' : 'text-amber-400'}`}>
+                    {targetNum < bar
+                        ? 'Target is below bar weight'
+                        : achievable
+                            ? <>Per side shown above • Total {loaded}kg</>
+                            : <>Closest: {loaded}kg (can't make {targetNum}kg exactly)</>}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// --- EXERCISE PICKER (search + filters + create custom) ---
+
+interface ExercisePickerProps {
+    exercises: ExerciseDefinition[];
+    onSelect: (ex: ExerciseDefinition) => void;
+    onClose: () => void;
+    onCreateCustom: (ex: ExerciseDefinition) => void;
+    title?: string;
+    selectedNames?: string[];
+}
+
+const ExercisePickerModal: React.FC<ExercisePickerProps> = ({ exercises, onSelect, onClose, onCreateCustom, title = 'Add Exercise', selectedNames = [] }) => {
+    const [query, setQuery] = useState('');
+    const [muscleFilter, setMuscleFilter] = useState('All');
+    const [equipFilter, setEquipFilter] = useState<Equipment | 'All'>('All');
+    const [creating, setCreating] = useState(false);
+    const [customForm, setCustomForm] = useState({ name: '', muscleGroup: MuscleGroup.CHEST as MuscleGroup, equipment: 'Barbell' as Equipment });
+
+    const filtered = useMemo(() => {
+        const filterDef = MUSCLE_FILTERS.find(f => f.label === muscleFilter);
+        return exercises.filter(e => {
+            if (query && !e.name.toLowerCase().includes(query.toLowerCase())) return false;
+            if (filterDef && filterDef.groups.length > 0 && !filterDef.groups.includes(e.muscleGroup)) return false;
+            if (equipFilter !== 'All' && e.equipment !== equipFilter) return false;
+            return true;
+        });
+    }, [exercises, query, muscleFilter, equipFilter]);
+
+    const submitCustom = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!customForm.name.trim()) return;
+        const newEx: ExerciseDefinition = {
+            id: generateId(),
+            name: customForm.name.trim(),
+            muscleGroup: customForm.muscleGroup,
+            equipment: customForm.equipment,
+            isCustom: true,
+            restTime: 60
+        };
+        onCreateCustom(newEx);
+        onSelect(newEx);
+    };
+
+    return (
+        <div className="fixed inset-0 z-[2000] bg-[#0c0a14]/97 backdrop-blur-xl flex flex-col animate-in slide-in-from-bottom-10 duration-300">
+            <div className="p-4 border-b border-white/10 bg-[#16102a]/60">
+                <div className="flex items-center gap-3 mb-3">
+                    <button onClick={onClose} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/50 hover:text-white transition shrink-0"><ArrowLeft size={20} /></button>
+                    <h2 className="text-base font-bold text-white flex-1">{title}</h2>
+                    <button onClick={() => setCreating(!creating)}
+                        className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-bold transition border ${creating ? 'bg-violet-500/20 border-violet-500/50 text-violet-300' : 'bg-white/5 border-white/10 text-white/60 hover:text-white'}`}>
+                        <Sparkles size={12} /> CUSTOM
+                    </button>
+                </div>
+
+                {creating ? (
+                    <form onSubmit={submitCustom} className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                        <input autoFocus value={customForm.name} onChange={e => setCustomForm({ ...customForm, name: e.target.value })}
+                            placeholder="Exercise name (e.g. Landmine Press)"
+                            className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 px-4 text-white placeholder-white/30 focus:outline-none focus:border-violet-500/50 transition-all text-sm" />
+                        <div className="grid grid-cols-2 gap-2">
+                            <select value={customForm.muscleGroup} onChange={e => setCustomForm({ ...customForm, muscleGroup: e.target.value as MuscleGroup })}
+                                className="bg-white/5 border border-white/10 rounded-xl py-2.5 px-3 text-white text-xs focus:outline-none appearance-none">
+                                {Object.values(MuscleGroup).map(g => <option key={g} value={g} className="bg-[#1c1c1e]">{g}</option>)}
+                            </select>
+                            <select value={customForm.equipment} onChange={e => setCustomForm({ ...customForm, equipment: e.target.value as Equipment })}
+                                className="bg-white/5 border border-white/10 rounded-xl py-2.5 px-3 text-white text-xs focus:outline-none appearance-none">
+                                {EQUIPMENT_OPTIONS.map(eq => <option key={eq} value={eq} className="bg-[#1c1c1e]">{eq}</option>)}
+                            </select>
+                        </div>
+                        <button type="submit" className="w-full py-3 bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-bold rounded-2xl text-xs transition active:scale-[0.98]">
+                            Create & Add
+                        </button>
+                    </form>
+                ) : (
+                    <>
+                        <div className="relative mb-3">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" size={16} />
+                            <input autoFocus value={query} onChange={e => setQuery(e.target.value)} placeholder="Find exercise..."
+                                className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-10 pr-4 text-white placeholder-white/30 focus:outline-none focus:border-cyan-500/50 transition-all" />
+                        </div>
+                        <div className="flex gap-1.5 overflow-x-auto hide-scroll pb-1">
+                            {MUSCLE_FILTERS.map(f => (
+                                <button key={f.label} onClick={() => setMuscleFilter(f.label)}
+                                    className={`px-3 py-1.5 rounded-full text-[10px] font-bold whitespace-nowrap transition border ${muscleFilter === f.label ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-300' : 'bg-white/5 border-white/5 text-white/40 hover:text-white/70'}`}>
+                                    {f.label}
+                                </button>
+                            ))}
+                            <div className="w-px bg-white/10 shrink-0 my-1" />
+                            {(['All', ...EQUIPMENT_OPTIONS] as const).map(eq => (
+                                <button key={eq} onClick={() => setEquipFilter(eq as Equipment | 'All')}
+                                    className={`px-3 py-1.5 rounded-full text-[10px] font-bold whitespace-nowrap transition border ${equipFilter === eq ? 'bg-violet-500/20 border-violet-500/50 text-violet-300' : 'bg-white/5 border-white/5 text-white/40 hover:text-white/70'}`}>
+                                    {eq}
+                                </button>
+                            ))}
+                        </div>
+                    </>
+                )}
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 space-y-2 pb-24 custom-scrollbar">
+                {filtered.length === 0 && (
+                    <div className="text-center py-12 text-white/30 text-sm">
+                        <Search size={24} className="mx-auto mb-2 opacity-40" />
+                        No exercises match. Try "Custom" to create one.
+                    </div>
+                )}
+                {filtered.map(ex => {
+                    const alreadyIn = selectedNames.includes(ex.name);
+                    return (
+                        <button key={ex.id} onClick={() => onSelect(ex)}
+                            className={`w-full bg-white/5 hover:bg-white/10 border rounded-2xl p-3.5 flex items-center gap-3 transition group text-left ${alreadyIn ? 'border-emerald-500/30' : 'border-white/5'}`}>
+                            <MuscleIcon group={ex.muscleGroup} />
+                            <div className="flex-1 min-w-0">
+                                <div className="font-bold text-white text-sm truncate flex items-center gap-2">
+                                    {ex.name}
+                                    {ex.isCustom && <span className="text-[8px] bg-violet-500/20 text-violet-300 px-1.5 py-0.5 rounded font-black uppercase">Custom</span>}
+                                </div>
+                                <div className="text-[10px] text-white/40 uppercase tracking-wider mt-0.5">{ex.muscleGroup} • {ex.equipment}</div>
+                            </div>
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center transition shrink-0 ${alreadyIn ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/5 text-white/30 group-hover:bg-cyan-500 group-hover:text-white'}`}>
+                                {alreadyIn ? <Check size={15} /> : <Plus size={16} />}
+                            </div>
+                        </button>
+                    );
+                })}
+            </div>
+        </div>
+    );
+};
+
+// --- ROUTINE BUILDER ---
+
+interface RoutineBuilderProps {
+    initial?: WorkoutRoutine | null;
+    exercises: ExerciseDefinition[];
+    onSave: (routine: WorkoutRoutine) => void;
+    onClose: () => void;
+    onCreateCustom: (ex: ExerciseDefinition) => void;
+}
+
+const RoutineBuilderModal: React.FC<RoutineBuilderProps> = ({ initial, exercises, onSave, onClose, onCreateCustom }) => {
+    const [name, setName] = useState(initial?.name || '');
+    const [chosen, setChosen] = useState<ExerciseDefinition[]>(initial?.exercises || []);
+    const [pickerOpen, setPickerOpen] = useState(false);
+
+    const move = (idx: number, dir: -1 | 1) => {
+        const next = [...chosen];
+        const target = idx + dir;
+        if (target < 0 || target >= next.length) return;
+        [next[idx], next[target]] = [next[target], next[idx]];
+        setChosen(next);
+    };
+
+    const save = () => {
+        if (!name.trim() || chosen.length === 0) return;
+        onSave({
+            id: initial?.id || generateId(),
+            name: name.trim(),
+            exercises: chosen,
+            lastPerformed: initial?.lastPerformed
+        });
+        onClose();
+    };
+
+    return (
+        <div className="fixed inset-0 z-[1900] bg-[#0c0a14]/97 backdrop-blur-xl flex flex-col animate-in slide-in-from-bottom-10 duration-300">
+            <div className="p-4 border-b border-white/10 bg-[#16102a]/60 flex items-center gap-3">
+                <button onClick={onClose} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/50 hover:text-white transition shrink-0"><ArrowLeft size={20} /></button>
+                <div className="flex-1">
+                    <h2 className="text-base font-bold text-white">{initial ? 'Edit Routine' : 'New Routine'}</h2>
+                    <p className="text-[10px] text-white/40">{chosen.length} exercises</p>
+                </div>
+                <button onClick={save} disabled={!name.trim() || chosen.length === 0}
+                    className="h-10 px-5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 disabled:pointer-events-none text-white font-bold rounded-full text-xs flex items-center gap-1.5 transition shadow-lg shadow-indigo-500/20 active:scale-95">
+                    <Check size={14} strokeWidth={3} /> SAVE
+                </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 pb-32 custom-scrollbar space-y-3">
+                <input value={name} onChange={e => setName(e.target.value)} placeholder="Routine name (e.g. Push Day)"
+                    autoFocus={!initial}
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 px-4 text-white font-bold placeholder-white/25 focus:outline-none focus:border-indigo-500/50 transition-all" />
+
+                {chosen.length === 0 ? (
+                    <div className="text-center py-10 bg-white/[0.02] border border-dashed border-white/10 rounded-3xl">
+                        <Layers size={28} className="mx-auto text-white/15 mb-2" />
+                        <p className="text-white/40 text-xs">Add exercises to build your routine.</p>
+                    </div>
+                ) : (
+                    <div className="space-y-2">
+                        {chosen.map((ex, i) => (
+                            <div key={`${ex.id}-${i}`} className="bg-white/[0.03] border border-white/5 rounded-2xl p-3 flex items-center gap-3 animate-in fade-in slide-in-from-bottom-1">
+                                <div className="flex flex-col gap-0.5 shrink-0">
+                                    <button onClick={() => move(i, -1)} disabled={i === 0} className="text-white/20 hover:text-white disabled:opacity-20 p-0.5"><ChevronDown size={12} className="rotate-180" /></button>
+                                    <button onClick={() => move(i, 1)} disabled={i === chosen.length - 1} className="text-white/20 hover:text-white disabled:opacity-20 p-0.5"><ChevronDown size={12} /></button>
+                                </div>
+                                <MuscleIcon group={ex.muscleGroup} />
+                                <div className="flex-1 min-w-0">
+                                    <div className="font-bold text-white text-sm truncate">{ex.name}</div>
+                                    <div className="text-[9px] text-white/40 uppercase tracking-wider">{ex.muscleGroup}</div>
+                                </div>
+                                <button onClick={() => setChosen(chosen.filter((_, idx) => idx !== i))} className="p-2 text-white/20 hover:text-red-400 transition"><Trash2 size={15} /></button>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                <button onClick={() => setPickerOpen(true)}
+                    className="w-full py-4 rounded-3xl border border-dashed border-white/15 text-white/40 text-xs font-bold uppercase tracking-widest hover:text-white hover:border-white/30 hover:bg-white/5 transition flex items-center justify-center gap-2">
+                    <Plus size={14} /> Add Exercise
+                </button>
+            </div>
+
+            {pickerOpen && (
+                <ExercisePickerModal
+                    exercises={exercises}
+                    selectedNames={chosen.map(c => c.name)}
+                    onSelect={(ex) => setChosen(prev => [...prev, ex])}
+                    onClose={() => setPickerOpen(false)}
+                    onCreateCustom={onCreateCustom}
+                    title="Add to Routine"
+                />
+            )}
+        </div>
+    );
+};
+
+// --- PRESET PLAN DETAILS ---
+
+const PresetPlanModal = ({ plan, onAdd, onClose }: { plan: PresetPlan; onAdd: (plan: PresetPlan) => void; onClose: () => void }) => {
+    const [added, setAdded] = useState(false);
+    return (
+        <div className="fixed inset-0 z-[2000] bg-[#0c0a14]/97 backdrop-blur-xl flex flex-col animate-in slide-in-from-bottom-10 duration-300">
+            <div className="p-4 border-b border-white/10 bg-[#16102a]/60 flex items-center gap-3">
+                <button onClick={onClose} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/50 hover:text-white transition shrink-0"><ArrowLeft size={20} /></button>
+                <div className="flex-1 min-w-0">
+                    <h2 className="text-base font-bold text-white truncate">{plan.name}</h2>
+                    <p className="text-[10px] text-white/40">{plan.category} • {plan.level} • {plan.daysPerWeek} days/week</p>
+                </div>
+                <button
+                    onClick={() => { onAdd(plan); setAdded(true); setTimeout(onClose, 900); }}
+                    disabled={added}
+                    className={`h-10 px-4 font-bold rounded-full text-xs flex items-center gap-1.5 transition active:scale-95 ${added ? 'bg-emerald-600 text-white' : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20'}`}>
+                    {added ? <><Check size={14} strokeWidth={3} /> ADDED</> : <><ListPlus size={14} /> USE PLAN</>}
+                </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 pb-32 custom-scrollbar space-y-4">
+                <p className="text-white/50 text-sm leading-relaxed">{plan.description}</p>
+                {plan.routines.map((r, i) => (
+                    <div key={r.id} className="bg-white/[0.03] border border-white/5 rounded-3xl overflow-hidden animate-in fade-in slide-in-from-bottom-2" style={{ animationDelay: `${i * 60}ms` }}>
+                        <div className="px-4 py-3 bg-gradient-to-r from-indigo-500/10 to-transparent border-b border-white/5 flex items-center justify-between">
+                            <h3 className="text-white font-bold text-sm">{r.name}</h3>
+                            <span className="text-[9px] font-bold text-white/40 bg-white/5 px-2 py-1 rounded-lg">{r.exercises.length} exercises</span>
+                        </div>
+                        <div className="p-2">
+                            {r.exercises.map(ex => (
+                                <div key={ex.id} className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-white/[0.03] transition">
+                                    <MuscleIcon group={ex.muscleGroup} />
+                                    <div className="flex-1 min-w-0">
+                                        <div className="text-white/90 text-xs font-bold truncate">{ex.name}</div>
+                                        <div className="text-[9px] text-white/35 uppercase tracking-wider">{ex.muscleGroup} • {ex.equipment}</div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                ))}
+            </div>
         </div>
     );
 };
@@ -226,20 +604,20 @@ interface WorkoutLoggerProps {
 
 // --- MAIN COMPONENT ---
 
-export const GymWorkoutLogger: React.FC<WorkoutLoggerProps> = ({ 
-    history, routines, exercises, saveWorkout, deleteWorkoutSession, saveRoutine, deleteRoutine, settings, activeGymState, onUpdateActiveGymState 
+export const GymWorkoutLogger: React.FC<WorkoutLoggerProps> = ({
+    history, routines, exercises, saveWorkout, deleteWorkoutSession, saveRoutine, deleteRoutine, addCustomExercise, settings, activeGymState, onUpdateActiveGymState
 }) => {
   const [view, setView] = useState<'hub' | 'active'>('hub');
   const [showLibrary, setShowLibrary] = useState(false);
   const [showAllHistory, setShowAllHistory] = useState(false);
-  
+
   const [duration, setDuration] = useState(0);
-  
+
   const [isExerciseModalOpen, setIsExerciseModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   const [isRestMinimized, setIsRestMinimized] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(0); // Display time for rest timer
+  const [timeLeft, setTimeLeft] = useState(0);
 
   const [now, setNow] = useState(Date.now());
 
@@ -256,8 +634,13 @@ export const GymWorkoutLogger: React.FC<WorkoutLoggerProps> = ({
   const [finishModalOpen, setFinishModalOpen] = useState(false);
   const [updateRoutineChecked, setUpdateRoutineChecked] = useState(false);
 
-  // New State for History Details Modal
   const [viewingHistorySession, setViewingHistorySession] = useState<WorkoutSession | null>(null);
+
+  // New feature modals
+  const [builderOpen, setBuilderOpen] = useState(false);
+  const [editingRoutine, setEditingRoutine] = useState<WorkoutRoutine | null>(null);
+  const [viewingPlan, setViewingPlan] = useState<PresetPlan | null>(null);
+  const [plateCalcOpen, setPlateCalcOpen] = useState(false);
 
   // Initialize view based on active session
   useEffect(() => {
@@ -311,7 +694,6 @@ export const GymWorkoutLogger: React.FC<WorkoutLoggerProps> = ({
   }, [activeGymState.activeTimers]);
 
   const findLastSets = (name: string): ExerciseSet[] | null => {
-      // History passed from App is ordered new -> old
       for (const s of history) {
           const found = s.exercises.find(e => e.name === name);
           if (found && found.sets.length > 0) return found.sets;
@@ -327,7 +709,6 @@ export const GymWorkoutLogger: React.FC<WorkoutLoggerProps> = ({
 
     if (previousSession) {
         sessionName = previousSession.name;
-        // Keep reps/weight/time from previous session as targets (Pre-filled)
         initialExercises = previousSession.exercises.map(ex => ({
             ...ex,
             id: generateId(),
@@ -337,20 +718,19 @@ export const GymWorkoutLogger: React.FC<WorkoutLoggerProps> = ({
         sessionName = routine.name;
         routineId = routine.id;
         initialExercises = routine.exercises.map(ex => {
-            // Find last stats for placeholder
             const lastSets = findLastSets(ex.name);
             if (lastSets) newLastValues[ex.name] = lastSets;
 
             return {
                 id: generateId(), name: ex.name, muscleGroup: ex.muscleGroup,
-                sets: [{ id: generateId(), weight: 0, reps: 0, completed: false }], 
-                restTime: ex.restTime 
+                sets: [{ id: generateId(), weight: 0, reps: 0, completed: false }],
+                restTime: ex.restTime
             };
         });
     }
 
     const newSession: WorkoutSession = {
-      id: generateId(), name: sessionName, 
+      id: generateId(), name: sessionName,
       startTime: Date.now(), endTime: 0, exercises: initialExercises, routineId: routineId
     };
 
@@ -373,18 +753,16 @@ export const GymWorkoutLogger: React.FC<WorkoutLoggerProps> = ({
 
   const confirmFinish = () => {
     if (!activeSession) return;
-    
-    // Save the workout session history
+
     saveWorkout({ ...activeSession, endTime: Date.now() });
 
-    // Handle Routine Update
     if (updateRoutineChecked && activeSession.routineId) {
         const existingRoutine = routines.find(r => r.id === activeSession.routineId);
         if (existingRoutine) {
             const updatedExercises: ExerciseDefinition[] = activeSession.exercises.map(ex => {
                 const originalDef = exercises.find(e => e.name === ex.name);
                 return {
-                    id: ex.id, 
+                    id: ex.id,
                     name: ex.name,
                     muscleGroup: ex.muscleGroup as MuscleGroup,
                     equipment: originalDef?.equipment || 'Other',
@@ -400,7 +778,6 @@ export const GymWorkoutLogger: React.FC<WorkoutLoggerProps> = ({
             });
         }
     } else if (updateRoutineChecked && !activeSession.routineId) {
-        // Save as NEW routine
         const newRoutine: WorkoutRoutine = {
             id: generateId(),
             name: activeSession.name,
@@ -427,7 +804,7 @@ export const GymWorkoutLogger: React.FC<WorkoutLoggerProps> = ({
 
   const addExercise = (exDef: ExerciseDefinition) => {
       if (!activeSession) return;
-      
+
       const lastSets = findLastSets(exDef.name);
       let updatedLastValues = activeGymState.lastValues;
       if (lastSets) {
@@ -436,17 +813,17 @@ export const GymWorkoutLogger: React.FC<WorkoutLoggerProps> = ({
 
       const newEx: WorkoutExercise = {
           id: generateId(), name: exDef.name, muscleGroup: exDef.muscleGroup,
-          sets: [{ id: generateId(), weight: 0, reps: 0, completed: false }], 
+          sets: [{ id: generateId(), weight: 0, reps: 0, completed: false }],
           restTime: exDef.restTime
       };
-      
+
       onUpdateActiveGymState({
           ...activeGymState,
           session: { ...activeSession, exercises: [...activeSession.exercises, newEx] },
           lastValues: updatedLastValues
       });
 
-      setIsExerciseModalOpen(false); 
+      setIsExerciseModalOpen(false);
       setSearchQuery('');
   };
 
@@ -469,30 +846,28 @@ export const GymWorkoutLogger: React.FC<WorkoutLoggerProps> = ({
     const newExs = [...activeSession.exercises];
     const set = newExs[exIdx].sets[setIdx];
     set.completed = !set.completed;
-    
+
     let newTimers = activeGymState.activeTimers;
     let newRestExpiry = activeGymState.restExpiry;
 
     if (set.completed) {
-        // Stop timer if running
         if (newTimers[set.id]) {
              const startTime = newTimers[set.id];
              const seconds = (Date.now() - startTime) / 1000;
-             const totalMin = Number((seconds / 60)); 
-             set.reps = totalMin; // store result
+             const totalMin = Number((seconds / 60));
+             set.reps = totalMin;
              const temp = {...newTimers};
              delete temp[set.id];
              newTimers = temp;
         }
-        
-        // Start Rest Timer
+
         const time = newExs[exIdx].restTime || settings?.defaultRestTimer || 60;
         newRestExpiry = Date.now() + (time * 1000);
         setIsRestMinimized(false);
     }
 
-    onUpdateActiveGymState({ 
-        ...activeGymState, 
+    onUpdateActiveGymState({
+        ...activeGymState,
         session: { ...activeSession, exercises: newExs },
         activeTimers: newTimers,
         restExpiry: newRestExpiry
@@ -502,17 +877,15 @@ export const GymWorkoutLogger: React.FC<WorkoutLoggerProps> = ({
   const toggleCardioTimer = (exIdx: number, setIdx: number) => {
       if (!activeSession) return;
       const set = activeSession.exercises[exIdx].sets[setIdx];
-      
+
       let newTimers = { ...activeGymState.activeTimers };
       if (newTimers[set.id]) {
-          // Stop
           const startTime = newTimers[set.id];
           const seconds = (Date.now() - startTime) / 1000;
-          const totalMin = Number((seconds / 60)); 
+          const totalMin = Number((seconds / 60));
           updateSet(exIdx, setIdx, 'reps', totalMin);
           delete newTimers[set.id];
       } else {
-          // Start
           newTimers[set.id] = Date.now();
       }
       onUpdateActiveGymState({ ...activeGymState, activeTimers: newTimers });
@@ -530,7 +903,7 @@ export const GymWorkoutLogger: React.FC<WorkoutLoggerProps> = ({
       if (!activeSession) return;
       const newExs = [...activeSession.exercises];
       if (newExs[exIdx].sets.length <= 1) return;
-      
+
       const setId = newExs[exIdx].sets[setIdx].id;
       let newTimers = activeGymState.activeTimers;
       if (newTimers[setId]) {
@@ -598,6 +971,17 @@ export const GymWorkoutLogger: React.FC<WorkoutLoggerProps> = ({
       setConfirmation(null);
   }
 
+  // Copies all routines of a preset plan into "My Routines" with fresh ids
+  const addPlanToRoutines = (plan: PresetPlan) => {
+      plan.routines.forEach(r => {
+          saveRoutine({
+              id: generateId(),
+              name: r.name,
+              exercises: r.exercises.map(e => ({ ...e }))
+          });
+      });
+  };
+
   if (view === 'active' && activeSession) {
       return (
           <div className="relative flex flex-col w-full">
@@ -605,7 +989,7 @@ export const GymWorkoutLogger: React.FC<WorkoutLoggerProps> = ({
               <div className="sticky top-2 z-40 px-3 pt-2 mb-4">
                   <div className="bg-[#1c1c1e]/80 backdrop-blur-xl border border-white/10 rounded-[20px] p-2 pl-3 pr-2 shadow-2xl flex items-center justify-between">
                       <div className="flex items-center gap-3 overflow-hidden">
-                          <div className="w-10 h-10 rounded-full bg-[#2c2c2e] flex items-center justify-center border border-white/5 relative group">
+                          <div className="w-10 h-10 rounded-full bg-[#2c2c2e] flex items-center justify-center border border-white/5 relative group shrink-0">
                               <div className="absolute inset-0 rounded-full border border-indigo-500/30 animate-pulse"></div>
                               <div className="text-[10px] font-mono font-bold text-white">{formatSeconds(duration)}</div>
                           </div>
@@ -617,19 +1001,22 @@ export const GymWorkoutLogger: React.FC<WorkoutLoggerProps> = ({
                               </div>
                           </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 shrink-0">
+                          <button onClick={() => setPlateCalcOpen(true)} title="Plate Calculator" className="w-9 h-9 rounded-full bg-white/5 hover:bg-cyan-500/10 text-white/30 hover:text-cyan-400 flex items-center justify-center transition-all"><Calculator size={15} /></button>
                           <button onClick={() => setConfirmation({isOpen: true, title: "Discard Workout?", message: "Data will be lost.", onConfirm: handleDiscardSession})} className="w-9 h-9 rounded-full bg-white/5 hover:bg-red-500/10 text-white/30 hover:text-red-400 flex items-center justify-center transition-all"><X size={16} /></button>
                           <button onClick={handleFinishClick} className="h-9 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-full text-xs flex items-center gap-1.5 transition-all shadow-lg shadow-indigo-500/20 active:scale-95"><Check size={14} strokeWidth={3} /> FINISH</button>
                       </div>
                   </div>
               </div>
 
+              {plateCalcOpen && <PlateCalculatorModal onClose={() => setPlateCalcOpen(false)} />}
+
               {/* --- FINISH MODAL --- */}
               {finishModalOpen && (
                   <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
                       <div className="bg-[#1c1c1e] border border-white/10 rounded-2xl p-6 max-w-sm w-full shadow-2xl animate-in zoom-in-95">
                           <h3 className="text-lg font-bold text-white mb-4">Workout Complete!</h3>
-                          
+
                           <div className="bg-white/5 rounded-xl p-4 mb-4 flex items-center gap-3">
                               <div className="p-2 bg-green-500/20 rounded-lg text-green-400"><Check size={20} /></div>
                               <div>
@@ -676,8 +1063,8 @@ export const GymWorkoutLogger: React.FC<WorkoutLoggerProps> = ({
               {isResting && (
                   <div className={`
                       fixed z-50 left-1/2 -translate-x-1/2 transition-all duration-500 ease-out
-                      ${isRestMinimized 
-                          ? 'bottom-32 w-12 h-12 rounded-full bg-indigo-600 shadow-lg border border-white/20 flex items-center justify-center cursor-pointer' 
+                      ${isRestMinimized
+                          ? 'bottom-32 w-12 h-12 rounded-full bg-indigo-600 shadow-lg border border-white/20 flex items-center justify-center cursor-pointer'
                           : 'bottom-32 w-[90%] max-w-sm bg-[#130f1c]/90 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-2xl'}
                   `} style={{zIndex: 2000}}>
                       {isRestMinimized ? (
@@ -712,9 +1099,16 @@ export const GymWorkoutLogger: React.FC<WorkoutLoggerProps> = ({
 
               {/* --- EXERCISE STREAM --- */}
               <div className="pb-48 px-1 space-y-6">
+                  {activeSession.exercises.length === 0 && (
+                      <div className="text-center py-12 bg-white/[0.02] border border-dashed border-white/10 rounded-3xl animate-in fade-in">
+                          <Dumbbell size={32} className="mx-auto text-white/20 mb-3" />
+                          <p className="text-white/40 text-sm">Empty session — add your first exercise.</p>
+                      </div>
+                  )}
                   {activeSession.exercises.map((ex, exIdx) => {
                       const isCardio = ex.muscleGroup === MuscleGroup.CARDIO;
                       const prevSets = activeGymState.lastValues[ex.name] || [];
+                      const doneCount = ex.sets.filter(s => s.completed).length;
 
                       return (
                       <div key={ex.id} className="bg-white/[0.03] backdrop-blur-md border border-white/5 rounded-3xl animate-scale-in relative">
@@ -730,7 +1124,10 @@ export const GymWorkoutLogger: React.FC<WorkoutLoggerProps> = ({
                                       </div>
                                   </div>
                               </div>
-                              <button onClick={() => deleteExercise(exIdx)} className="p-2 text-white/20 hover:text-red-400 transition"><Trash2 size={16} /></button>
+                              <div className="flex items-center gap-1">
+                                  <span className="text-[9px] font-bold text-white/30 bg-white/5 px-2 py-1 rounded-lg">{doneCount}/{ex.sets.length}</span>
+                                  <button onClick={() => deleteExercise(exIdx)} className="p-2 text-white/20 hover:text-red-400 transition"><Trash2 size={16} /></button>
+                              </div>
                           </div>
                           <div className="p-2 space-y-1">
                               <div className="grid grid-cols-[24px_1fr_1fr_40px] gap-2 px-3 py-1 text-[9px] font-bold text-white/30 uppercase tracking-widest text-center">
@@ -740,7 +1137,6 @@ export const GymWorkoutLogger: React.FC<WorkoutLoggerProps> = ({
                                   <div>LOG</div>
                               </div>
                               {ex.sets.map((set, sIdx) => {
-                                  // Determine placeholder values from last history
                                   const prevSet = prevSets[sIdx];
                                   const weightPlaceholder = prevSet ? prevSet.weight.toString() : '';
                                   const repsPlaceholder = prevSet ? (isCardio ? formatMinutes(prevSet.reps) : prevSet.reps.toString()) : '';
@@ -749,24 +1145,24 @@ export const GymWorkoutLogger: React.FC<WorkoutLoggerProps> = ({
                                   <div key={set.id} className={`grid grid-cols-[24px_1fr_1fr_40px] gap-2 items-center px-3 py-2 rounded-2xl transition-all duration-300 ${set.completed ? 'bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/20' : 'bg-white/[0.02] border border-transparent'}`}>
                                       <button onClick={() => removeSet(exIdx, sIdx)} className={`text-xs font-bold transition-colors ${set.completed ? 'text-emerald-400' : 'text-white/30 hover:text-red-400'}`}>{sIdx + 1}</button>
                                       <div className="relative">
-                                          <input 
-                                            type="number" 
-                                            value={set.weight || ''} 
-                                            onChange={e => updateSet(exIdx, sIdx, 'weight', Number(e.target.value))} 
-                                            placeholder={weightPlaceholder || (isCardio ? "0.0" : "0")} 
-                                            className={`w-full bg-black/20 rounded-xl py-2 text-center text-white font-bold text-sm outline-none focus:ring-1 focus:ring-cyan-500/50 transition-all placeholder:text-white/20 ${set.completed ? 'text-emerald-300' : ''}`} 
+                                          <input
+                                            type="number"
+                                            value={set.weight || ''}
+                                            onChange={e => updateSet(exIdx, sIdx, 'weight', Number(e.target.value))}
+                                            placeholder={weightPlaceholder || (isCardio ? "0.0" : "0")}
+                                            className={`w-full bg-black/20 rounded-xl py-2 text-center text-white font-bold text-sm outline-none focus:ring-1 focus:ring-cyan-500/50 transition-all placeholder:text-white/20 ${set.completed ? 'text-emerald-300' : ''}`}
                                           />
                                       </div>
                                       <div className="relative h-9">
                                           {isCardio ? (
                                               <TimeInput value={set.reps} onChange={(val: number) => updateSet(exIdx, sIdx, 'reps', val)} onToggleTimer={() => toggleCardioTimer(exIdx, sIdx)} isTimerActive={!!activeGymState.activeTimers[set.id]} timerStart={activeGymState.activeTimers[set.id]} now={now} completed={set.completed} placeholder={repsPlaceholder} />
                                           ) : (
-                                              <input 
-                                                type="number" 
-                                                value={set.reps || ''} 
-                                                onChange={e => updateSet(exIdx, sIdx, 'reps', Number(e.target.value))} 
-                                                placeholder={repsPlaceholder || "0"} 
-                                                className={`w-full h-full bg-black/20 rounded-xl py-2 text-center text-white font-bold text-sm outline-none focus:ring-1 focus:ring-cyan-500/50 transition-all placeholder:text-white/20 ${set.completed ? 'text-emerald-300' : ''}`} 
+                                              <input
+                                                type="number"
+                                                value={set.reps || ''}
+                                                onChange={e => updateSet(exIdx, sIdx, 'reps', Number(e.target.value))}
+                                                placeholder={repsPlaceholder || "0"}
+                                                className={`w-full h-full bg-black/20 rounded-xl py-2 text-center text-white font-bold text-sm outline-none focus:ring-1 focus:ring-cyan-500/50 transition-all placeholder:text-white/20 ${set.completed ? 'text-emerald-300' : ''}`}
                                               />
                                           )}
                                       </div>
@@ -781,30 +1177,25 @@ export const GymWorkoutLogger: React.FC<WorkoutLoggerProps> = ({
               </div>
 
               {isExerciseModalOpen && (
-                  <div className="fixed inset-0 z-[2000] bg-[#0f172a]/95 backdrop-blur-xl flex flex-col animate-in slide-in-from-bottom-10">
-                      <div className="p-4 border-b border-white/10 bg-[#1e0a45]/50 flex items-center gap-4">
-                          <button onClick={() => setIsExerciseModalOpen(false)} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/50 hover:text-white transition"><ArrowLeft size={20} /></button>
-                          <div className="flex-1 relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" size={16} /><input autoFocus value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Find exercise..." className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-10 pr-4 text-white placeholder-white/30 focus:outline-none focus:border-cyan-500/50 transition-all" /></div>
-                      </div>
-                      <div className="flex-1 overflow-y-auto p-4 space-y-2 pb-24">
-                          {exercises.filter(e => e.name.toLowerCase().includes(searchQuery.toLowerCase())).map(ex => (
-                              <button key={ex.id} onClick={() => addExercise(ex)} className="w-full bg-white/5 hover:bg-white/10 border border-white/5 rounded-2xl p-4 flex items-center gap-4 transition group text-left"><MuscleIcon group={ex.muscleGroup} /><div className="flex-1"><div className="font-bold text-white text-sm">{ex.name}</div><div className="text-[10px] text-white/40 uppercase tracking-wider mt-0.5">{ex.muscleGroup}</div></div><div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-white/30 group-hover:bg-cyan-500 group-hover:text-white transition"><Plus size={16} /></div></button>
-                          ))}
-                      </div>
-                  </div>
+                  <ExercisePickerModal
+                      exercises={exercises}
+                      onSelect={addExercise}
+                      onClose={() => setIsExerciseModalOpen(false)}
+                      onCreateCustom={addCustomExercise}
+                  />
               )}
           </div>
       );
   }
 
   // --- HUB VIEW ---
-  
+
   const displayedHistory = showAllHistory ? history : history.slice(0, 3);
 
   return (
       <div className="flex flex-col px-1 relative">
-          
-          {/* CONFIRMATION MODAL - Added here to ensure visibility in HUB view if needed, though mostly used in active */}
+
+          {/* CONFIRMATION MODAL */}
           {confirmation && confirmation.isOpen && (
               <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
                   <div className="bg-[#1c1c1e] border border-white/10 rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl animate-in zoom-in-95" onClick={e => e.stopPropagation()}>
@@ -833,14 +1224,14 @@ export const GymWorkoutLogger: React.FC<WorkoutLoggerProps> = ({
                           </div>
                       </div>
                       <div className="flex items-center gap-2">
-                          <button 
+                          <button
                               onClick={() => handleDeleteWorkout(viewingHistorySession.id)}
                               className="p-2 text-white/40 hover:text-red-400 bg-white/5 hover:bg-red-500/10 rounded-xl transition"
                               title="Delete Workout"
                           >
                               <Trash2 size={16} />
                           </button>
-                          <button 
+                          <button
                               onClick={() => startSession(undefined, viewingHistorySession)}
                               className="bg-white text-black px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-gray-200 transition"
                           >
@@ -848,7 +1239,7 @@ export const GymWorkoutLogger: React.FC<WorkoutLoggerProps> = ({
                           </button>
                       </div>
                   </div>
-                  
+
                   <div className="flex-1 overflow-y-auto p-4 custom-scrollbar pb-32 space-y-4">
                       <div className="grid grid-cols-2 gap-3 mb-4">
                           <div className="bg-white/5 rounded-xl p-3 border border-white/5">
@@ -895,12 +1286,16 @@ export const GymWorkoutLogger: React.FC<WorkoutLoggerProps> = ({
               </div>
           )}
 
+          {/* EXERCISE LIBRARY (read-only browser) */}
           {showLibrary && (
-              <div className="fixed inset-0 z-[2000] bg-[#0f172a] overflow-hidden flex flex-col animate-in slide-in-from-bottom-5">
+              <div className="fixed inset-0 z-[2000] bg-[#0c0a14] overflow-hidden flex flex-col animate-in slide-in-from-bottom-5">
                   <div className="p-4 border-b border-white/10 flex items-center justify-between bg-[#130f1c]">
                       <div className="flex items-center gap-3">
                           <button onClick={() => setShowLibrary(false)} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition"><ArrowLeft size={20} className="text-white" /></button>
-                          <h2 className="text-lg font-bold text-white">Exercise Library</h2>
+                          <div>
+                              <h2 className="text-lg font-bold text-white">Exercise Library</h2>
+                              <p className="text-[10px] text-white/40">{exercises.length} exercises</p>
+                          </div>
                       </div>
                   </div>
                   <div className="flex-1 overflow-y-auto p-4 custom-scrollbar pb-40">
@@ -921,17 +1316,17 @@ export const GymWorkoutLogger: React.FC<WorkoutLoggerProps> = ({
                               return (
                                   <div key={section}>
                                       <div className="flex items-center gap-2 mb-4 px-1"><div className="h-px bg-white/10 flex-1"></div><span className="text-xs font-bold text-white/40 uppercase tracking-widest">{section}</span><div className="h-px bg-white/10 flex-1"></div></div>
-                                      <div className="grid gap-3">
+                                      <div className="grid gap-3 md:grid-cols-2">
                                           {groups.map(group => {
                                               const groupExs = sectionExercises.filter(e => e.muscleGroup === group);
                                               if (groupExs.length === 0) return null;
                                               return (
                                                   <div key={group} className="bg-white/5 rounded-2xl p-4 border border-white/5">
-                                                      <div className="flex items-center gap-3 mb-3"><MuscleIcon group={group} /><h3 className="text-sm font-bold text-white uppercase tracking-wide">{group}</h3></div>
+                                                      <div className="flex items-center gap-3 mb-3"><MuscleIcon group={group} /><h3 className="text-sm font-bold text-white uppercase tracking-wide">{group}</h3><span className="ml-auto text-[9px] font-bold text-white/30 bg-white/5 px-2 py-0.5 rounded-lg">{groupExs.length}</span></div>
                                                       <div className="grid gap-2">
                                                           {groupExs.map(ex => (
                                                               <div key={ex.id} className="text-sm text-white/70 py-1.5 px-2 hover:bg-white/5 rounded-lg transition-colors flex justify-between items-center">
-                                                                  <span>{ex.name}</span>
+                                                                  <span className="flex items-center gap-2">{ex.name}{ex.isCustom && <span className="text-[8px] bg-violet-500/20 text-violet-300 px-1.5 py-0.5 rounded font-black uppercase">Custom</span>}</span>
                                                                   <span className="text-[10px] text-white/20 bg-white/5 px-2 py-0.5 rounded">{ex.equipment}</span>
                                                               </div>
                                                           ))}
@@ -948,26 +1343,107 @@ export const GymWorkoutLogger: React.FC<WorkoutLoggerProps> = ({
               </div>
           )}
 
-          <div className="mb-8 pt-4">
+          {/* ROUTINE BUILDER */}
+          {(builderOpen || editingRoutine) && (
+              <RoutineBuilderModal
+                  initial={editingRoutine}
+                  exercises={exercises}
+                  onSave={saveRoutine}
+                  onClose={() => { setBuilderOpen(false); setEditingRoutine(null); }}
+                  onCreateCustom={addCustomExercise}
+              />
+          )}
+
+          {/* PRESET PLAN DETAILS */}
+          {viewingPlan && (
+              <PresetPlanModal plan={viewingPlan} onAdd={addPlanToRoutines} onClose={() => setViewingPlan(null)} />
+          )}
+
+          <div className="mb-6 pt-4">
               <h1 className="text-3xl font-black text-white tracking-tight mb-1">Gym Hub</h1>
               <div className="flex items-center gap-2 text-white/50 text-xs font-medium"><Flame size={12} className="text-orange-500" /><span>{history.length} Workouts completed</span></div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 mb-10">
-              <div className="relative group cursor-pointer" onClick={() => startSession()}><div className="absolute inset-0 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-3xl blur-xl opacity-40 group-hover:opacity-60 transition duration-500"></div><div className="relative bg-gradient-to-br from-slate-900 to-slate-950 border border-white/10 rounded-3xl p-5 flex flex-col justify-between h-32 overflow-hidden"><div className="absolute top-0 right-0 w-20 h-20 bg-white/5 rounded-full blur-2xl -mr-6 -mt-6 pointer-events-none"></div><div className="w-10 h-10 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-xl flex items-center justify-center shadow-lg shadow-cyan-500/20 text-white mb-2"><Play size={20} fill="currentColor" /></div><div><h2 className="text-base font-bold text-white leading-tight">Quick Start</h2><p className="text-white/50 text-[10px] mt-0.5">Empty Session</p></div></div></div>
-              <div className="relative group cursor-pointer" onClick={() => { setShowLibrary(true); setSearchQuery(''); }}><div className="absolute inset-0 bg-gradient-to-r from-violet-500 to-fuchsia-600 rounded-3xl blur-xl opacity-20 group-hover:opacity-40 transition duration-500"></div><div className="relative bg-gradient-to-br from-slate-900 to-slate-950 border border-white/10 rounded-3xl p-5 flex flex-col justify-between h-32 overflow-hidden"><div className="absolute bottom-0 left-0 w-24 h-24 bg-violet-500/10 rounded-full blur-2xl -ml-6 -mb-6 pointer-events-none"></div><div className="w-10 h-10 bg-gradient-to-br from-violet-400 to-fuchsia-500 rounded-xl flex items-center justify-center shadow-lg shadow-violet-500/20 text-white mb-2"><Book size={20} /></div><div><h2 className="text-base font-bold text-white leading-tight">Exercises</h2><p className="text-white/50 text-[10px] mt-0.5">Browse Library</p></div></div></div>
+          {/* Quick actions */}
+          <div className="grid grid-cols-3 gap-3 mb-8 stagger-children">
+              <div className="relative group cursor-pointer" onClick={() => startSession()}>
+                  <div className="absolute inset-0 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-3xl blur-xl opacity-30 group-hover:opacity-50 transition duration-500"></div>
+                  <div className="relative bg-gradient-to-br from-slate-900 to-slate-950 border border-white/10 rounded-3xl p-4 flex flex-col justify-between h-28 overflow-hidden">
+                      <div className="w-9 h-9 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-xl flex items-center justify-center shadow-lg shadow-cyan-500/20 text-white"><Play size={17} fill="currentColor" /></div>
+                      <div><h2 className="text-sm font-bold text-white leading-tight">Quick Start</h2><p className="text-white/50 text-[9px] mt-0.5">Empty session</p></div>
+                  </div>
+              </div>
+              <div className="relative group cursor-pointer" onClick={() => setBuilderOpen(true)}>
+                  <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-violet-600 rounded-3xl blur-xl opacity-20 group-hover:opacity-40 transition duration-500"></div>
+                  <div className="relative bg-gradient-to-br from-slate-900 to-slate-950 border border-white/10 rounded-3xl p-4 flex flex-col justify-between h-28 overflow-hidden">
+                      <div className="w-9 h-9 bg-gradient-to-br from-indigo-400 to-violet-500 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20 text-white"><ListPlus size={17} /></div>
+                      <div><h2 className="text-sm font-bold text-white leading-tight">Build Routine</h2><p className="text-white/50 text-[9px] mt-0.5">Custom plan</p></div>
+                  </div>
+              </div>
+              <div className="relative group cursor-pointer" onClick={() => { setShowLibrary(true); setSearchQuery(''); }}>
+                  <div className="absolute inset-0 bg-gradient-to-r from-violet-500 to-fuchsia-600 rounded-3xl blur-xl opacity-20 group-hover:opacity-40 transition duration-500"></div>
+                  <div className="relative bg-gradient-to-br from-slate-900 to-slate-950 border border-white/10 rounded-3xl p-4 flex flex-col justify-between h-28 overflow-hidden">
+                      <div className="w-9 h-9 bg-gradient-to-br from-violet-400 to-fuchsia-500 rounded-xl flex items-center justify-center shadow-lg shadow-violet-500/20 text-white"><Book size={17} /></div>
+                      <div><h2 className="text-sm font-bold text-white leading-tight">Exercises</h2><p className="text-white/50 text-[9px] mt-0.5">{exercises.length} moves</p></div>
+                  </div>
+              </div>
           </div>
 
+          {/* PRESET PLANS */}
+          <div className="mb-8">
+              <div className="flex justify-between items-center mb-3 px-1">
+                  <h3 className="text-xs font-bold text-white/40 uppercase tracking-widest flex items-center gap-1.5"><Sparkles size={11} className="text-amber-400" /> Preset Plans</h3>
+                  <span className="text-[9px] text-white/25 font-bold">Tap to preview</span>
+              </div>
+              <div className="flex gap-3 overflow-x-auto hide-scroll pb-2 -mx-1 px-1 snap-x">
+                  {PRESET_PLANS.map(plan => (
+                      <button key={plan.id} onClick={() => setViewingPlan(plan)}
+                          className="shrink-0 w-44 snap-start bg-white/[0.03] hover:bg-white/[0.06] border border-white/5 hover:border-indigo-500/30 rounded-3xl p-4 text-left transition active:scale-[0.97] relative overflow-hidden group">
+                          <div className="absolute -top-8 -right-8 w-20 h-20 bg-indigo-500/10 rounded-full blur-2xl group-hover:bg-indigo-500/20 transition pointer-events-none" />
+                          <div className="flex items-center gap-1.5 mb-2">
+                              <span className={`text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded ${
+                                  plan.level === 'Beginner' ? 'bg-emerald-500/15 text-emerald-300' :
+                                  plan.level === 'Advanced' ? 'bg-rose-500/15 text-rose-300' : 'bg-amber-500/15 text-amber-300'
+                              }`}>{plan.level}</span>
+                          </div>
+                          <h4 className="text-white font-bold text-sm leading-tight mb-1">{plan.name}</h4>
+                          <p className="text-white/35 text-[9px] leading-relaxed line-clamp-2 mb-3">{plan.description}</p>
+                          <div className="flex items-center gap-2 text-[9px] font-bold text-white/40">
+                              <span className="flex items-center gap-1"><CalendarRange size={10} /> {plan.daysPerWeek}d/wk</span>
+                              <span className="flex items-center gap-1"><Layers size={10} /> {plan.routines.length} routines</span>
+                          </div>
+                      </button>
+                  ))}
+              </div>
+          </div>
+
+          {/* YOUR ROUTINES */}
           <div className="flex-1">
-              <div className="flex justify-between items-center mb-4 px-1"><h3 className="text-xs font-bold text-white/40 uppercase tracking-widest">Your Routines</h3><button onClick={() => startSession()} className="text-[10px] font-bold text-cyan-400 hover:text-cyan-300 bg-cyan-400/10 px-3 py-1.5 rounded-lg border border-cyan-400/20 transition">+ NEW</button></div>
-              {routines.length === 0 ? <div className="text-center py-12 bg-white/[0.02] border border-dashed border-white/10 rounded-3xl"><LayoutGrid size={32} className="mx-auto text-white/20 mb-3" /><p className="text-white/40 text-sm">No routines yet.</p></div> : (
-                  <div className="grid gap-3">
+              <div className="flex justify-between items-center mb-4 px-1"><h3 className="text-xs font-bold text-white/40 uppercase tracking-widest">Your Routines</h3><button onClick={() => setBuilderOpen(true)} className="text-[10px] font-bold text-cyan-400 hover:text-cyan-300 bg-cyan-400/10 px-3 py-1.5 rounded-lg border border-cyan-400/20 transition">+ NEW</button></div>
+              {routines.length === 0 ? <div className="text-center py-12 bg-white/[0.02] border border-dashed border-white/10 rounded-3xl"><LayoutGrid size={32} className="mx-auto text-white/20 mb-3" /><p className="text-white/40 text-sm">No routines yet — build one or pick a preset plan above.</p></div> : (
+                  <div className="grid gap-3 md:grid-cols-2">
                       {routines.map(routine => (
                           <div key={routine.id} onClick={() => { if(renamingId !== routine.id) startSession(routine); }} className="bg-white/[0.03] backdrop-blur-md border border-white/5 hover:border-white/10 rounded-2xl p-4 group cursor-pointer transition-all active:scale-[0.98] relative overflow-hidden">
                               {renamingId === routine.id ? (
                                   <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}><input autoFocus className="bg-transparent border-b border-cyan-500 text-white font-bold text-base outline-none w-full pb-1" value={renameValue} onChange={e => setRenameValue(e.target.value)} onKeyDown={e => { if(e.key === 'Enter') handleSaveRename(routine.id); }} onClick={e => e.stopPropagation()} /><button onClick={(e) => { e.stopPropagation(); handleSaveRename(routine.id); }} className="p-2 bg-green-500/20 text-green-400 rounded-lg hover:bg-green-500/30 transition"><Check size={14} /></button><button onClick={(e) => { e.stopPropagation(); setRenamingId(null); }} className="p-2 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition"><X size={14} /></button></div>
                               ) : (
-                                  <div className="flex justify-between items-center w-full"><div><div className="flex items-center gap-2 mb-1"><h3 className="text-white font-bold text-base truncate max-w-[150px]">{routine.name}</h3><div className="flex opacity-0 group-hover:opacity-100 transition-opacity gap-1"><button type="button" onClick={(e) => { e.stopPropagation(); handleStartRename(routine); }} className="text-white/20 hover:text-white transition p-1 bg-white/5 rounded-md" title="Rename"><Pencil size={10} /></button><button type="button" onClick={(e) => { e.stopPropagation(); handleDeleteRoutine(routine.id); }} className="text-white/20 hover:text-red-400 transition p-1 bg-white/5 rounded-md" title="Delete"><Trash2 size={10} /></button></div></div><div className="flex gap-2"><span className="text-[10px] font-bold text-white/40 bg-white/5 px-2 py-0.5 rounded border border-white/5">{routine.exercises.length} Exercises</span></div></div><div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/30 group-hover:bg-indigo-500 group-hover:text-white transition shadow-lg"><Play size={16} fill="currentColor" /></div></div>
+                                  <div className="flex justify-between items-center w-full">
+                                      <div className="min-w-0">
+                                          <div className="flex items-center gap-2 mb-1">
+                                              <h3 className="text-white font-bold text-base truncate max-w-[150px]">{routine.name}</h3>
+                                              <div className="flex opacity-0 group-hover:opacity-100 transition-opacity gap-1">
+                                                  <button type="button" onClick={(e) => { e.stopPropagation(); handleStartRename(routine); }} className="text-white/20 hover:text-white transition p-1 bg-white/5 rounded-md" title="Rename"><Pencil size={10} /></button>
+                                                  <button type="button" onClick={(e) => { e.stopPropagation(); setEditingRoutine(routine); }} className="text-white/20 hover:text-cyan-300 transition p-1 bg-white/5 rounded-md" title="Edit Exercises"><ListPlus size={10} /></button>
+                                                  <button type="button" onClick={(e) => { e.stopPropagation(); handleDeleteRoutine(routine.id); }} className="text-white/20 hover:text-red-400 transition p-1 bg-white/5 rounded-md" title="Delete"><Trash2 size={10} /></button>
+                                              </div>
+                                          </div>
+                                          <div className="flex gap-2 items-center">
+                                              <span className="text-[10px] font-bold text-white/40 bg-white/5 px-2 py-0.5 rounded border border-white/5">{routine.exercises.length} Exercises</span>
+                                              {routine.lastPerformed && <span className="text-[9px] text-white/25 font-medium">Last: {new Date(routine.lastPerformed).toLocaleDateString(undefined, {month:'short', day:'numeric'})}</span>}
+                                          </div>
+                                      </div>
+                                      <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/30 group-hover:bg-indigo-500 group-hover:text-white transition shadow-lg shrink-0"><Play size={16} fill="currentColor" /></div>
+                                  </div>
                               )}
                           </div>
                       ))}
@@ -975,24 +1451,25 @@ export const GymWorkoutLogger: React.FC<WorkoutLoggerProps> = ({
               )}
           </div>
 
+          {/* RECENT ACTIVITY */}
           {history.length > 0 && (
               <div className="mt-8 mb-20">
                   <div className="flex justify-between items-center mb-4 px-1">
                       <h3 className="text-xs font-bold text-white/40 uppercase tracking-widest">Recent Activity</h3>
                       {history.length > 3 && (
-                          <button 
-                              onClick={() => setShowAllHistory(!showAllHistory)} 
+                          <button
+                              onClick={() => setShowAllHistory(!showAllHistory)}
                               className="text-[10px] font-bold text-white/40 hover:text-white transition flex items-center gap-1"
                           >
                               {showAllHistory ? 'Show Less' : 'View All'}
-                              {showAllHistory ? <ChevronDown size={12} className="rotate-180" /> : <ChevronDown size={12} />}
+                              <ChevronDown size={12} className={showAllHistory ? 'rotate-180' : ''} />
                           </button>
                       )}
                   </div>
                   <div className="space-y-3">
                       {displayedHistory.map(session => (
-                          <div 
-                              key={session.id} 
+                          <div
+                              key={session.id}
                               onClick={() => setViewingHistorySession(session)}
                               className="flex items-center gap-4 p-3 rounded-2xl hover:bg-white/5 transition border border-transparent hover:border-white/5 cursor-pointer group"
                           >
@@ -1009,15 +1486,15 @@ export const GymWorkoutLogger: React.FC<WorkoutLoggerProps> = ({
                                   </div>
                               </div>
                               <div className="flex items-center gap-2">
-                                  <button 
-                                      onClick={(e) => { e.stopPropagation(); handleDeleteWorkout(session.id); }} 
+                                  <button
+                                      onClick={(e) => { e.stopPropagation(); handleDeleteWorkout(session.id); }}
                                       className="p-2 text-white/20 hover:text-red-400 hover:bg-white/10 rounded-lg transition"
                                       title="Delete"
                                   >
                                       <Trash2 size={16} />
                                   </button>
-                                  <button 
-                                      onClick={(e) => { e.stopPropagation(); startSession(undefined, session); }} 
+                                  <button
+                                      onClick={(e) => { e.stopPropagation(); startSession(undefined, session); }}
                                       className="p-2 text-white/20 hover:text-white hover:bg-white/10 rounded-lg transition"
                                       title="Repeat Workout"
                                   >
@@ -1029,6 +1506,11 @@ export const GymWorkoutLogger: React.FC<WorkoutLoggerProps> = ({
                   </div>
               </div>
           )}
+
+          <button onClick={() => setPlateCalcOpen(true)} className="fixed bottom-32 right-5 md:right-[max(1.25rem,calc(50%-370px))] w-11 h-11 rounded-full bg-[#1c1c1e]/90 backdrop-blur-xl border border-white/10 text-cyan-400 shadow-2xl flex items-center justify-center z-40 transition hover:scale-105 active:scale-95" title="Plate Calculator">
+              <Calculator size={18} />
+          </button>
+          {plateCalcOpen && <PlateCalculatorModal onClose={() => setPlateCalcOpen(false)} />}
       </div>
   );
 };
