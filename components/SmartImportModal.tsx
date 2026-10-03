@@ -2,7 +2,56 @@
 import React, { useState } from 'react';
 import { X, Brain, Sparkles, Copy, Check, Info, AlertCircle, Calendar, Clock, MapPin, Loader2 } from 'lucide-react';
 import { ExtractedScheduleItem, ScheduleEvent, EventType, ScheduleProfile } from '../types';
-import { theme, styles } from '../theme';
+
+// ── Design tokens ─────────────────────────────────────────────────────────────
+const INK       = '#1A1730';
+const CARD_BG   = '#FAFAF6';
+const HL_YELLOW = '#F6DF63';
+const HL_BLUE   = '#9ECFFF';
+const HL_GREEN  = '#8CE3B7';
+const HL_RED    = '#E56A5A';
+
+const inputStyle: React.CSSProperties = {
+  background: 'rgba(26,23,48,0.06)',
+  border: `1.5px solid ${INK}`,
+  borderRadius: '8px',
+  padding: '12px 14px',
+  color: INK,
+  fontFamily: "'Instrument Sans', 'Inter', sans-serif",
+  fontSize: '0.9rem',
+  outline: 'none',
+  width: '100%',
+  boxSizing: 'border-box',
+};
+
+const labelStyle: React.CSSProperties = {
+  display: 'block',
+  fontSize: '0.68rem',
+  fontWeight: 700,
+  letterSpacing: '0.5px',
+  textTransform: 'uppercase',
+  color: `${INK}80`,
+  fontFamily: "'Instrument Sans', 'Inter', sans-serif",
+  marginBottom: '8px',
+};
+
+const primaryBtn: React.CSSProperties = {
+  background: INK,
+  color: '#fff',
+  border: `1.5px solid ${INK}`,
+  borderRadius: '10px',
+  fontWeight: 700,
+  boxShadow: `4px 4px 0 ${HL_YELLOW}`,
+  cursor: 'pointer',
+  padding: '12px 18px',
+  fontFamily: "'Bricolage Grotesque', 'Inter', sans-serif",
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: '8px',
+  fontSize: '0.9rem',
+  width: '100%',
+};
 
 interface SmartImportModalProps {
   onClose: () => void;
@@ -21,36 +70,9 @@ const SmartImportModal: React.FC<SmartImportModalProps> = ({ onClose, onImport, 
   const [selectedProfileId, setSelectedProfileId] = useState(activeProfileId);
   const [addToCourses, setAddToCourses] = useState(true);
 
-  const weeklyPrompt = `I am sending you an image of my university schedule. Please extract all the courses and their details into a valid JSON array. Each object in the array should follow this structure:
-[
-  {
-    "day": "Monday",
-    "period_number": 1,
-    "time_start": "08:30",
-    "time_end": "10:00",
-    "course_name": "Course Name",
-    "course_code": "CODE123",
-    "room": "Room 101",
-    "type": "lecture"
-  }
-]
-Valid types: lecture, tutorial, lab, quiz, assignment, exam, study, other.
-Return ONLY the JSON array.`;
+  const weeklyPrompt = `I am sending you an image of my university schedule. Please extract all the courses and their details into a valid JSON array. Each object in the array should follow this structure:\n[\n  {\n    "day": "Monday",\n    "period_number": 1,\n    "time_start": "08:30",\n    "time_end": "10:00",\n    "course_name": "Course Name",\n    "course_code": "CODE123",\n    "room": "Room 101",\n    "type": "lecture"\n  }\n]\nValid types: lecture, tutorial, lab, quiz, assignment, exam, study, other.\nReturn ONLY the JSON array.`;
 
-  const examPrompt = `I am sending you an image of my exam schedule. Please extract all the exams and their details into a valid JSON array. Each object in the array should follow this structure:
-[
-  {
-    "date": "2026-05-15",
-    "day": "Friday",
-    "time_start": "09:00",
-    "time_end": "12:00",
-    "course_name": "Information Security",
-    "course_code": "INCS407",
-    "room": "A3.228",
-    "type": "exam"
-  }
-]
-Return ONLY the JSON array. Ensure the date is in YYYY-MM-DD format.`;
+  const examPrompt = `I am sending you an image of my exam schedule. Please extract all the exams and their details into a valid JSON array. Each object in the array should follow this structure:\n[\n  {\n    "date": "2026-05-15",\n    "day": "Friday",\n    "time_start": "09:00",\n    "time_end": "12:00",\n    "course_name": "Information Security",\n    "course_code": "INCS407",\n    "room": "A3.228",\n    "type": "exam"\n  }\n]\nReturn ONLY the JSON array. Ensure the date is in YYYY-MM-DD format.`;
 
   const promptText = importType === 'weekly' ? weeklyPrompt : examPrompt;
 
@@ -142,92 +164,92 @@ Return ONLY the JSON array. Ensure the date is in YYYY-MM-DD format.`;
     setParsedItems(prev => prev.filter((_, i) => i !== index));
   };
 
+  // Toggle button helper
+  const toggleBtn = (active: boolean): React.CSSProperties => ({
+    flex: 1,
+    padding: '9px',
+    borderRadius: '8px',
+    border: active ? `1.5px solid ${INK}` : '1.5px solid transparent',
+    background: active ? HL_YELLOW : 'transparent',
+    color: INK,
+    fontSize: '0.78rem',
+    fontWeight: 700,
+    cursor: 'pointer',
+    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+    transition: 'all 0.15s',
+    fontFamily: "'Instrument Sans', 'Inter', sans-serif",
+  });
+
   return (
-    <div style={styles.modalOverlay} onClick={onClose}>
+    <div
+      style={{
+        position: 'fixed', inset: 0, zIndex: 2000,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '12px',
+        background: 'rgba(26,23,48,0.6)',
+      }}
+      onClick={onClose}
+    >
       <div 
         style={{
-          ...styles.modalContent, 
-          width: '95%', 
-          maxWidth: '600px', 
-          maxHeight: '85vh', 
-          display: 'flex', 
+          background: CARD_BG,
+          border: `1.5px solid ${INK}`,
+          borderRadius: '14px',
+          boxShadow: `8px 10px 0 ${INK}`,
+          width: '95%',
+          maxWidth: '580px',
+          maxHeight: '88vh',
+          display: 'flex',
           flexDirection: 'column',
-          padding: 0,
-          overflow: 'hidden'
+          overflow: 'hidden',
         }} 
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div style={{padding: '20px', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)'}}>
+        <div style={{
+          padding: '16px 20px',
+          borderBottom: `1.5px solid rgba(26,23,48,0.12)`,
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          background: `${HL_YELLOW}40`,
+          flexShrink: 0,
+        }}>
           <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
-            <div style={{background: theme.accent, padding: '8px', borderRadius: '12px', color: '#fff'}}>
-              <Brain size={20} />
+            <div style={{background: INK, padding: '8px', borderRadius: '10px', display: 'flex', border: `1.5px solid ${INK}`}}>
+              <Brain size={19} color="#fff" />
             </div>
             <div>
-              <h2 style={{margin: 0, fontSize: '1.2rem', fontWeight: 800}}>Smart Schedule Import</h2>
-              <p style={{margin: 0, fontSize: '0.75rem', color: theme.textMuted}}>Import from any AI using JSON</p>
+              <h2 style={{margin: 0, fontSize: '1.1rem', fontWeight: 800, color: INK, fontFamily: "'Bricolage Grotesque', 'Inter', sans-serif"}}>Smart Schedule Import</h2>
+              <p style={{margin: 0, fontSize: '0.72rem', color: `${INK}70`, fontFamily: "'Instrument Sans', 'Inter', sans-serif"}}>Import from any AI using JSON</p>
             </div>
           </div>
-          <button onClick={onClose} style={{background: 'rgba(255,255,255,0.05)', border: 'none', color: '#fff', cursor: 'pointer', padding: '8px', borderRadius: '50%'}}>
-            <X size={20} />
+          <button
+            onClick={onClose}
+            style={{background: 'rgba(26,23,48,0.07)', border: `1.5px solid ${INK}`, color: INK, cursor: 'pointer', padding: '6px', borderRadius: '8px', display: 'flex'}}
+          >
+            <X size={18} color={INK} />
           </button>
         </div>
 
+        {/* Scrollable body */}
         <div style={{flex: 1, overflowY: 'auto', padding: '20px'}}>
           {parsedItems.length === 0 ? (
-            <div style={{display: 'flex', flexDirection: 'column', gap: '24px'}}>
+            <div style={{display: 'flex', flexDirection: 'column', gap: '20px'}}>
               {/* Import Type Toggle */}
-              <div style={{background: 'rgba(255,255,255,0.03)', padding: '4px', borderRadius: '14px', display: 'flex', border: '1px solid rgba(255,255,255,0.05)'}}>
-                <button 
-                  onClick={() => setImportType('weekly')}
-                  style={{
-                    flex: 1,
-                    padding: '10px',
-                    borderRadius: '10px',
-                    border: 'none',
-                    background: importType === 'weekly' ? theme.accent : 'transparent',
-                    color: '#fff',
-                    fontSize: '0.8rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  <Calendar size={14} /> Weekly Schedule
+              <div style={{background: 'rgba(26,23,48,0.04)', padding: '4px', borderRadius: '12px', display: 'flex', border: `1.5px solid rgba(26,23,48,0.12)`}}>
+                <button onClick={() => setImportType('weekly')} style={toggleBtn(importType === 'weekly')}>
+                  <Calendar size={13} /> Weekly Schedule
                 </button>
-                <button 
-                  onClick={() => setImportType('exam')}
-                  style={{
-                    flex: 1,
-                    padding: '10px',
-                    borderRadius: '10px',
-                    border: 'none',
-                    background: importType === 'exam' ? theme.accent : 'transparent',
-                    color: '#fff',
-                    fontSize: '0.8rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  <Sparkles size={14} /> Exam Schedule
+                <button onClick={() => setImportType('exam')} style={toggleBtn(importType === 'exam')}>
+                  <Sparkles size={13} /> Exam Schedule
                 </button>
               </div>
 
               {/* Instructions */}
-              <div style={{background: 'rgba(139, 92, 246, 0.1)', border: '1px solid rgba(139, 92, 246, 0.2)', borderRadius: '20px', padding: '20px'}}>
-                <h3 style={{margin: '0 0 12px 0', fontSize: '0.9rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: theme.accent}}>
-                  <Info size={16} /> How it works
+              <div style={{background: `${HL_BLUE}40`, border: `1.5px solid ${INK}`, borderRadius: '12px', padding: '16px', boxShadow: `3px 3px 0 ${INK}`}}>
+                <h3 style={{margin: '0 0 10px 0', fontSize: '0.88rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '7px', color: INK, fontFamily: "'Bricolage Grotesque', 'Inter', sans-serif"}}>
+                  <Info size={15} color={INK} /> How it works
                 </h3>
-                <ol style={{margin: 0, paddingLeft: '20px', fontSize: '0.85rem', color: 'rgba(255,255,255,0.8)', display: 'flex', flexDirection: 'column', gap: '8px'}}>
+                <ol style={{margin: 0, paddingLeft: '18px', fontSize: '0.84rem', color: `${INK}90`, display: 'flex', flexDirection: 'column', gap: '6px', fontFamily: "'Instrument Sans', 'Inter', sans-serif", lineHeight: 1.5}}>
                   <li>Take a clear photo or screenshot of your {importType === 'weekly' ? 'weekly' : 'exam'} schedule.</li>
                   <li>Copy the AI Prompt below.</li>
                   <li>Send the photo and the prompt to ChatGPT, Gemini, or Claude.</li>
@@ -237,145 +259,116 @@ Return ONLY the JSON array. Ensure the date is in YYYY-MM-DD format.`;
 
               {/* Prompt Section */}
               <div>
-                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px'}}>
-                  <label style={{fontSize: '0.8rem', fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase'}}>AI Prompt</label>
+                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
+                  <label style={labelStyle}>AI Prompt</label>
                   <button 
                     onClick={handleCopyPrompt}
                     style={{
-                      background: copied ? 'rgba(34, 197, 94, 0.2)' : 'rgba(255,255,255,0.05)', 
-                      border: '1px solid rgba(255,255,255,0.1)', 
-                      color: copied ? '#4ade80' : '#fff', 
-                      padding: '6px 12px', 
-                      borderRadius: '10px', 
-                      fontSize: '0.75rem', 
-                      fontWeight: 600, 
+                      background: copied ? `${HL_GREEN}40` : 'rgba(26,23,48,0.06)', 
+                      border: `1.5px solid ${copied ? HL_GREEN : INK}`,
+                      color: INK, 
+                      padding: '5px 12px', 
+                      borderRadius: '8px', 
+                      fontSize: '0.72rem', 
+                      fontWeight: 700, 
                       cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      transition: 'all 0.2s'
+                      display: 'flex', alignItems: 'center', gap: '5px',
+                      fontFamily: "'Instrument Sans', 'Inter', sans-serif",
                     }}
                   >
-                    {copied ? <Check size={14} /> : <Copy size={14} />}
+                    {copied ? <Check size={13} /> : <Copy size={13} />}
                     {copied ? 'Copied!' : 'Copy Prompt'}
                   </button>
                 </div>
-                <div style={{background: 'rgba(0,0,0,0.3)', padding: '12px', borderRadius: '12px', fontSize: '0.75rem', color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.05)', fontFamily: 'monospace', whiteSpace: 'pre-wrap'}}>
+                <div style={{
+                  background: 'rgba(26,23,48,0.04)', padding: '14px', borderRadius: '10px',
+                  fontSize: '0.72rem', color: `${INK}90`,
+                  border: `1.5px solid rgba(26,23,48,0.12)`,
+                  fontFamily: "'Space Mono', monospace",
+                  whiteSpace: 'pre-wrap', lineHeight: 1.6,
+                }}>
                   {promptText}
                 </div>
               </div>
 
-              {/* Input Section */}
+              {/* JSON Input */}
               <div>
-                <label style={{fontSize: '0.8rem', fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', marginBottom: '10px', display: 'block'}}>Paste JSON Here</label>
+                <label style={labelStyle}>Paste JSON Here</label>
                 <textarea 
                   value={jsonInput}
                   onChange={e => setJsonInput(e.target.value)}
                   placeholder='[ { "day": "Monday", ... } ]'
                   style={{
-                    width: '100%',
-                    height: '150px',
-                    background: 'rgba(255,255,255,0.03)',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: '16px',
-                    color: '#fff',
-                    padding: '16px',
-                    fontSize: '0.85rem',
-                    fontFamily: 'monospace',
-                    outline: 'none',
+                    ...inputStyle,
+                    height: '140px',
+                    fontFamily: "'Space Mono', monospace",
+                    fontSize: '0.82rem',
                     resize: 'none',
-                    boxSizing: 'border-box'
+                    lineHeight: 1.5,
                   }}
                 />
                 {error && (
-                  <div style={{marginTop: '10px', color: theme.danger, fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px'}}>
-                    <AlertCircle size={14} /> {error}
+                  <div style={{marginTop: '8px', color: HL_RED, fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px', fontFamily: "'Instrument Sans', 'Inter', sans-serif"}}>
+                    <AlertCircle size={13} /> {error}
                   </div>
                 )}
                 <button 
                   onClick={handleParse}
                   disabled={!jsonInput.trim()}
                   style={{
-                    ...styles.button, 
-                    width: '100%', 
-                    marginTop: '16px', 
-                    opacity: jsonInput.trim() ? 1 : 0.5,
-                    cursor: jsonInput.trim() ? 'pointer' : 'not-allowed'
+                    ...primaryBtn, 
+                    marginTop: '14px',
+                    opacity: jsonInput.trim() ? 1 : 0.45,
+                    cursor: jsonInput.trim() ? 'pointer' : 'not-allowed',
                   }}
                 >
-                  <Sparkles size={18} /> Preview Import
+                  <Sparkles size={17} /> Preview Import
                 </button>
               </div>
             </div>
           ) : (
-            <div style={{display: 'flex', flexDirection: 'column', gap: '20px'}}>
+            <div style={{display: 'flex', flexDirection: 'column', gap: '18px'}}>
               <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                <h3 style={{margin: 0, fontSize: '1rem', fontWeight: 700}}>Preview ({parsedItems.length} items)</h3>
-                <button onClick={() => setParsedItems([])} style={{background: 'transparent', border: 'none', color: theme.accent, fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer'}}>Start Over</button>
+                <h3 style={{margin: 0, fontSize: '1rem', fontWeight: 800, color: INK, fontFamily: "'Bricolage Grotesque', 'Inter', sans-serif"}}>Preview ({parsedItems.length} items)</h3>
+                <button
+                  onClick={() => setParsedItems([])}
+                  style={{background: 'transparent', border: 'none', color: INK, fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', fontFamily: "'Instrument Sans', 'Inter', sans-serif"}}
+                >
+                  Start Over
+                </button>
               </div>
 
               {/* Import Mode Toggle */}
-              <div style={{background: 'rgba(255,255,255,0.03)', padding: '4px', borderRadius: '14px', display: 'flex', border: '1px solid rgba(255,255,255,0.05)'}}>
-                <button 
-                  onClick={() => setImportMode('full')}
-                  style={{
-                    flex: 1,
-                    padding: '10px',
-                    borderRadius: '10px',
-                    border: 'none',
-                    background: importMode === 'full' ? theme.accent : 'transparent',
-                    color: '#fff',
-                    fontSize: '0.8rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  <Clock size={14} /> Timings & Slots
+              <div style={{background: 'rgba(26,23,48,0.04)', padding: '4px', borderRadius: '12px', display: 'flex', border: `1.5px solid rgba(26,23,48,0.12)`}}>
+                <button onClick={() => setImportMode('full')} style={toggleBtn(importMode === 'full')}>
+                  <Clock size={13} /> Timings & Slots
                 </button>
-                <button 
-                  onClick={() => setImportMode('slots-only')}
-                  style={{
-                    flex: 1,
-                    padding: '10px',
-                    borderRadius: '10px',
-                    border: 'none',
-                    background: importMode === 'slots-only' ? theme.accent : 'transparent',
-                    color: '#fff',
-                    fontSize: '0.8rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  <Calendar size={14} /> Slots Only
+                <button onClick={() => setImportMode('slots-only')} style={toggleBtn(importMode === 'slots-only')}>
+                  <Calendar size={13} /> Slots Only
                 </button>
               </div>
 
               {/* Import Settings */}
-              <div style={{display: 'flex', flexDirection: 'column', gap: '12px', background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)'}}>
-                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                  <label style={{fontSize: '0.85rem', fontWeight: 600, color: '#fff'}}>Import to Schedule</label>
+              <div style={{
+                display: 'flex', flexDirection: 'column', gap: '14px',
+                background: 'rgba(26,23,48,0.04)', padding: '14px', borderRadius: '10px',
+                border: `1.5px solid rgba(26,23,48,0.12)`,
+              }}>
+                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px'}}>
+                  <label style={{fontSize: '0.875rem', fontWeight: 600, color: INK, fontFamily: "'Instrument Sans', 'Inter', sans-serif"}}>Import to Schedule</label>
                   <select 
                     value={selectedProfileId}
                     onChange={(e) => setSelectedProfileId(e.target.value)}
                     style={{
-                      background: 'rgba(255,255,255,0.05)', 
-                      border: '1px solid rgba(255,255,255,0.1)', 
-                      color: '#fff', 
+                      background: 'rgba(26,23,48,0.06)', 
+                      border: `1.5px solid ${INK}`, 
+                      color: INK, 
                       fontSize: '0.8rem', 
-                      padding: '8px 12px', 
-                      borderRadius: '10px', 
+                      padding: '7px 12px', 
+                      borderRadius: '8px', 
                       outline: 'none', 
-                      cursor: 'pointer'
+                      cursor: 'pointer',
+                      fontFamily: "'Instrument Sans', 'Inter', sans-serif",
                     }}
                   >
                     {profiles.map(p => (
@@ -383,22 +376,29 @@ Return ONLY the JSON array. Ensure the date is in YYYY-MM-DD format.`;
                     ))}
                   </select>
                 </div>
-                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                  <label style={{fontSize: '0.85rem', fontWeight: 600, color: '#fff', display: 'flex', alignItems: 'center', gap: '8px'}}>
+                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px'}}>
+                  <label style={{fontSize: '0.875rem', fontWeight: 600, color: INK, fontFamily: "'Instrument Sans', 'Inter', sans-serif"}}>
                     Add distinct courses to Grades section
                   </label>
                   <input 
                     type="checkbox" 
                     checked={addToCourses}
                     onChange={(e) => setAddToCourses(e.target.checked)}
-                    style={{width: '18px', height: '18px', cursor: 'pointer', accentColor: theme.accent}}
+                    style={{width: '18px', height: '18px', cursor: 'pointer', accentColor: INK, flexShrink: 0}}
                   />
                 </div>
               </div>
 
+              {/* Preview items */}
               <div style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
                 {parsedItems.map((item, idx) => (
-                  <div key={idx} style={{background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '16px', padding: '14px', display: 'flex', gap: '12px', alignItems: 'flex-start'}}>
+                  <div key={idx} style={{
+                    background: CARD_BG,
+                    border: `1.5px solid rgba(26,23,48,0.2)`,
+                    borderRadius: '12px', padding: '12px 14px',
+                    display: 'flex', gap: '12px', alignItems: 'flex-start',
+                    boxShadow: `2px 2px 0 rgba(26,23,48,0.12)`,
+                  }}>
                     <div style={{flex: 1}}>
                       <div style={{display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '8px'}}>
                         <input 
@@ -408,7 +408,12 @@ Return ONLY the JSON array. Ensure the date is in YYYY-MM-DD format.`;
                             newItems[idx].course_name = e.target.value;
                             setParsedItems(newItems);
                           }}
-                          style={{background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', fontSize: '0.85rem', fontWeight: 700, padding: '4px 8px', borderRadius: '6px', flex: 1}}
+                          style={{
+                            background: 'rgba(26,23,48,0.05)', border: `1.5px solid rgba(26,23,48,0.2)`,
+                            color: INK, fontSize: '0.85rem', fontWeight: 700,
+                            padding: '5px 9px', borderRadius: '6px', flex: 1,
+                            outline: 'none', fontFamily: "'Instrument Sans', 'Inter', sans-serif",
+                          }}
                         />
                         <input 
                           value={item.course_code || ''}
@@ -418,12 +423,17 @@ Return ONLY the JSON array. Ensure the date is in YYYY-MM-DD format.`;
                             newItems[idx].course_code = e.target.value;
                             setParsedItems(newItems);
                           }}
-                          style={{background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: theme.textMuted, fontSize: '0.7rem', padding: '4px 8px', borderRadius: '6px', width: '80px'}}
+                          style={{
+                            background: 'rgba(26,23,48,0.05)', border: `1.5px solid rgba(26,23,48,0.2)`,
+                            color: `${INK}80`, fontSize: '0.72rem',
+                            padding: '5px 9px', borderRadius: '6px', width: '80px',
+                            outline: 'none', fontFamily: "'Space Mono', monospace",
+                          }}
                         />
                       </div>
-                      <div style={{display: 'flex', flexWrap: 'wrap', gap: '12px', fontSize: '0.75rem', color: theme.textMuted}}>
+                      <div style={{display: 'flex', flexWrap: 'wrap', gap: '12px', fontSize: '0.75rem', color: `${INK}70`}}>
                         <div style={{display: 'flex', alignItems: 'center', gap: '4px'}}>
-                          <Calendar size={12} />
+                          <Calendar size={11} color={`${INK}70`} />
                           {importType === 'exam' ? (
                             <input 
                               type="date"
@@ -433,7 +443,7 @@ Return ONLY the JSON array. Ensure the date is in YYYY-MM-DD format.`;
                                 newItems[idx].date = e.target.value;
                                 setParsedItems(newItems);
                               }}
-                              style={{background: 'transparent', border: 'none', color: theme.textMuted, fontSize: '0.75rem', outline: 'none', cursor: 'pointer'}}
+                              style={{background: 'transparent', border: 'none', color: `${INK}80`, fontSize: '0.75rem', outline: 'none', cursor: 'pointer', fontFamily: "'Instrument Sans', 'Inter', sans-serif"}}
                             />
                           ) : (
                             <select 
@@ -443,7 +453,7 @@ Return ONLY the JSON array. Ensure the date is in YYYY-MM-DD format.`;
                                 newItems[idx].day = e.target.value;
                                 setParsedItems(newItems);
                               }}
-                              style={{background: 'transparent', border: 'none', color: theme.textMuted, fontSize: '0.75rem', outline: 'none', cursor: 'pointer'}}
+                              style={{background: 'transparent', border: 'none', color: `${INK}80`, fontSize: '0.75rem', outline: 'none', cursor: 'pointer', fontFamily: "'Instrument Sans', 'Inter', sans-serif"}}
                             >
                               {['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].map(d => (
                                 <option key={d} value={d}>{d}</option>
@@ -453,7 +463,7 @@ Return ONLY the JSON array. Ensure the date is in YYYY-MM-DD format.`;
                         </div>
                         {importMode === 'full' && (
                           <div style={{display: 'flex', alignItems: 'center', gap: '4px'}}>
-                            <Clock size={12} />
+                            <Clock size={11} color={`${INK}70`} />
                             <input 
                               type="time"
                               value={item.time_start}
@@ -462,9 +472,9 @@ Return ONLY the JSON array. Ensure the date is in YYYY-MM-DD format.`;
                                 newItems[idx].time_start = e.target.value;
                                 setParsedItems(newItems);
                               }}
-                              style={{background: 'transparent', border: 'none', color: theme.textMuted, fontSize: '0.75rem', outline: 'none'}}
+                              style={{background: 'transparent', border: 'none', color: `${INK}80`, fontSize: '0.75rem', outline: 'none', fontFamily: "'Instrument Sans', 'Inter', sans-serif"}}
                             />
-                            -
+                            –
                             <input 
                               type="time"
                               value={item.time_end}
@@ -473,12 +483,12 @@ Return ONLY the JSON array. Ensure the date is in YYYY-MM-DD format.`;
                                 newItems[idx].time_end = e.target.value;
                                 setParsedItems(newItems);
                               }}
-                              style={{background: 'transparent', border: 'none', color: theme.textMuted, fontSize: '0.75rem', outline: 'none'}}
+                              style={{background: 'transparent', border: 'none', color: `${INK}80`, fontSize: '0.75rem', outline: 'none', fontFamily: "'Instrument Sans', 'Inter', sans-serif"}}
                             />
                           </div>
                         )}
                         <div style={{display: 'flex', alignItems: 'center', gap: '4px'}}>
-                          <MapPin size={12} />
+                          <MapPin size={11} color={`${INK}70`} />
                           <input 
                             value={item.room || ''}
                             placeholder="Room"
@@ -487,18 +497,23 @@ Return ONLY the JSON array. Ensure the date is in YYYY-MM-DD format.`;
                               newItems[idx].room = e.target.value;
                               setParsedItems(newItems);
                             }}
-                            style={{background: 'transparent', border: 'none', color: theme.textMuted, fontSize: '0.75rem', outline: 'none', width: '80px'}}
+                            style={{background: 'transparent', border: 'none', color: `${INK}80`, fontSize: '0.75rem', outline: 'none', width: '80px', fontFamily: "'Instrument Sans', 'Inter', sans-serif"}}
                           />
                         </div>
                       </div>
                     </div>
-                    <button onClick={() => removeItem(idx)} style={{background: 'rgba(239, 68, 68, 0.1)', border: 'none', color: theme.danger, cursor: 'pointer', padding: '8px', borderRadius: '10px'}}><X size={18} /></button>
+                    <button
+                      onClick={() => removeItem(idx)}
+                      style={{background: `${HL_RED}18`, border: `1.5px solid ${HL_RED}60`, color: HL_RED, cursor: 'pointer', padding: '7px', borderRadius: '8px', display: 'flex', flexShrink: 0}}
+                    >
+                      <X size={16} />
+                    </button>
                   </div>
                 ))}
               </div>
 
             {importError && (
-              <div style={{color: theme.danger, fontSize: '0.85rem', marginTop: '10px', padding: '12px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '12px', textAlign: 'center'}}>
+              <div style={{color: HL_RED, fontSize: '0.85rem', marginTop: '8px', padding: '10px 14px', background: `${HL_RED}15`, borderRadius: '10px', textAlign: 'center', border: `1px solid ${HL_RED}50`, fontFamily: "'Instrument Sans', 'Inter', sans-serif"}}>
                 {importError}
               </div>
             )}
@@ -506,14 +521,15 @@ Return ONLY the JSON array. Ensure the date is in YYYY-MM-DD format.`;
             <button 
               onClick={handleFinalImport}
               disabled={isImporting}
-              style={{...styles.button, width: '100%', marginTop: '10px', opacity: isImporting ? 0.7 : 1, justifyContent: 'center'}}
+              style={{...primaryBtn, marginTop: '6px', opacity: isImporting ? 0.7 : 1, cursor: isImporting ? 'not-allowed' : 'pointer'}}
             >
-              {isImporting ? <Loader2 size={20} className="spin" style={{animation: "spin 1s linear infinite"}} /> : `Finalize Import (${parsedItems.length} items)`}
+              {isImporting ? <Loader2 size={18} style={{animation: "spin 1s linear infinite"}} /> : `Finalize Import (${parsedItems.length} items)`}
             </button>
             </div>
           )}
         </div>
       </div>
+      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 };

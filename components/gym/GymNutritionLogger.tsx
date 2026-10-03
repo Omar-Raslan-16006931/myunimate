@@ -3,6 +3,46 @@ import { FoodItem, GymSettings, WaterLog } from '../../types';
 import { analyzeFoodImage, analyzeFoodText } from '../../services/geminiService';
 import { Camera, Send, Loader2, Image as ImageIcon, Droplets, X, Check, PenTool, AlertCircle, Pencil, Trash2, UtensilsCrossed, Apple, Sparkles } from 'lucide-react';
 
+const INK = '#1A1730';
+const CARD_BG = '#FAFAF6';
+const HL_YELLOW = '#F6DF63';
+const HL_GREEN = '#8CE3B7';
+const HL_BLUE = '#9ECFFF';
+const HL_ORANGE = '#F4BE8A';
+const HL_PINK = '#eea8f2';
+const HL_RED = '#E56A5A';
+
+const card: React.CSSProperties = {
+  background: CARD_BG,
+  border: `1.5px solid ${INK}`,
+  borderRadius: 10,
+  boxShadow: `4px 5px 0 ${INK}`,
+};
+
+const inputStyle: React.CSSProperties = {
+  background: `${INK}0a`,
+  border: `1.5px solid ${INK}`,
+  borderRadius: 8,
+  padding: '10px 14px',
+  color: INK,
+  fontFamily: "'Instrument Sans', sans-serif",
+  fontSize: '0.9rem',
+  outline: 'none',
+  width: '100%',
+  boxSizing: 'border-box',
+};
+
+const labelStyle: React.CSSProperties = {
+  display: 'block',
+  color: `${INK}80`,
+  fontSize: 9,
+  textTransform: 'uppercase',
+  fontWeight: 700,
+  marginBottom: 4,
+  letterSpacing: '0.5px',
+  fontFamily: "'Instrument Sans', sans-serif",
+};
+
 interface NutritionLoggerProps {
   logs: FoodItem[];
   waterLogs: WaterLog[];
@@ -158,77 +198,58 @@ export const GymNutritionLogger: React.FC<NutritionLoggerProps> = ({ logs, water
   const leftF = settings.targets.fat - totalMacros.fat;
 
   const macroChips = [
-    { label: 'Protein', left: leftP, color: 'text-sky-300' },
-    { label: 'Carbs', left: leftC, color: 'text-emerald-300' },
-    { label: 'Fat', left: leftF, color: 'text-pink-300' },
+    { label: 'Protein', left: leftP, color: HL_BLUE },
+    { label: 'Carbs', left: leftC, color: HL_GREEN },
+    { label: 'Fat', left: leftF, color: HL_PINK },
   ];
 
   return (
     <div className="pb-24 space-y-4 relative">
+      {/* Manual entry modal */}
       {showManualEntry && (
-          <div className="fixed inset-0 z-[2000] flex items-end sm:items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-              <div className="bg-[#1c1c1e] border border-white/10 w-full max-w-sm rounded-3xl p-6 shadow-2xl animate-in slide-in-from-bottom-10">
+          <div style={{ position: 'fixed', inset: 0, zIndex: 2000, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: 16, background: `${INK}99` }} className="sm:items-center animate-in fade-in duration-200">
+              <div style={{ background: CARD_BG, border: `1.5px solid ${INK}`, width: '100%', maxWidth: 400, borderRadius: 14, padding: 24, boxShadow: `8px 10px 0 ${INK}` }} className="animate-in slide-in-from-bottom-10">
                   <div className="flex justify-between items-center mb-4">
-                      <h3 className="text-lg font-bold text-white">{editingId ? 'Edit Food' : 'Manual Food Entry'}</h3>
-                      <button onClick={() => setShowManualEntry(false)} className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-white/40 hover:text-white transition"><X size={16} /></button>
+                      <h3 style={{ fontSize: 18, fontWeight: 700, color: INK, fontFamily: "'Bricolage Grotesque', sans-serif" }}>{editingId ? 'Edit Food' : 'Manual Food Entry'}</h3>
+                      <button onClick={() => setShowManualEntry(false)} style={{ width: 32, height: 32, borderRadius: '50%', background: `${INK}10`, border: `1px solid ${INK}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: `${INK}80`, cursor: 'pointer' }}><X size={16} /></button>
                   </div>
                   <form onSubmit={handleManualSubmit} className="space-y-3">
                       <div>
-                          <label className="block text-[9px] font-bold text-white/40 uppercase tracking-wider mb-1">Food Name</label>
+                          <label style={labelStyle}>Food Name</label>
                           <input
                             type="text"
                             autoFocus
                             placeholder="e.g. Chicken Rice Bowl"
                             value={manualFood.name}
                             onChange={e => setManualFood({...manualFood, name: e.target.value})}
-                            className="w-full bg-black/30 border border-white/10 rounded-xl p-3 text-white focus:border-indigo-500/60 outline-none text-sm transition placeholder:text-white/20"
+                            style={inputStyle}
                             required
                           />
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                            <div>
-                              <label className="block text-[9px] font-bold text-orange-400 uppercase tracking-wider mb-1">Calories</label>
-                              <input
-                                type="number"
-                                placeholder="0"
-                                value={manualFood.calories}
-                                onChange={e => setManualFood({...manualFood, calories: e.target.value})}
-                                className="w-full bg-black/30 border border-white/10 rounded-xl p-3 text-white focus:border-orange-500/60 outline-none text-sm transition placeholder:text-white/20"
-                                required
-                              />
+                              <label style={{ ...labelStyle, color: HL_ORANGE }}>Calories</label>
+                              <input type="number" placeholder="0" value={manualFood.calories} onChange={e => setManualFood({...manualFood, calories: e.target.value})} style={inputStyle} required />
                            </div>
                            <div>
-                              <label className="block text-[9px] font-bold text-sky-400 uppercase tracking-wider mb-1">Protein (g)</label>
-                              <input
-                                type="number"
-                                placeholder="0"
-                                value={manualFood.protein}
-                                onChange={e => setManualFood({...manualFood, protein: e.target.value})}
-                                className="w-full bg-black/30 border border-white/10 rounded-xl p-3 text-white focus:border-sky-500/60 outline-none text-sm transition placeholder:text-white/20"
-                              />
+                              <label style={{ ...labelStyle, color: HL_BLUE }}>Protein (g)</label>
+                              <input type="number" placeholder="0" value={manualFood.protein} onChange={e => setManualFood({...manualFood, protein: e.target.value})} style={inputStyle} />
                            </div>
                            <div>
-                              <label className="block text-[9px] font-bold text-emerald-400 uppercase tracking-wider mb-1">Carbs (g)</label>
-                              <input
-                                type="number"
-                                placeholder="0"
-                                value={manualFood.carbs}
-                                onChange={e => setManualFood({...manualFood, carbs: e.target.value})}
-                                className="w-full bg-black/30 border border-white/10 rounded-xl p-3 text-white focus:border-emerald-500/60 outline-none text-sm transition placeholder:text-white/20"
-                              />
+                              <label style={{ ...labelStyle, color: HL_GREEN }}>Carbs (g)</label>
+                              <input type="number" placeholder="0" value={manualFood.carbs} onChange={e => setManualFood({...manualFood, carbs: e.target.value})} style={inputStyle} />
                            </div>
                            <div>
-                              <label className="block text-[9px] font-bold text-pink-400 uppercase tracking-wider mb-1">Fat (g)</label>
-                              <input
-                                type="number"
-                                placeholder="0"
-                                value={manualFood.fat}
-                                onChange={e => setManualFood({...manualFood, fat: e.target.value})}
-                                className="w-full bg-black/30 border border-white/10 rounded-xl p-3 text-white focus:border-pink-500/60 outline-none text-sm transition placeholder:text-white/20"
-                              />
+                              <label style={{ ...labelStyle, color: HL_PINK }}>Fat (g)</label>
+                              <input type="number" placeholder="0" value={manualFood.fat} onChange={e => setManualFood({...manualFood, fat: e.target.value})} style={inputStyle} />
                            </div>
                       </div>
-                      <button type="submit" className="w-full py-3.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:brightness-110 text-white font-bold rounded-2xl mt-2 transition text-sm shadow-lg shadow-indigo-900/30 active:scale-[0.98]">
+                      <button type="submit" style={{
+                          width: '100%', padding: '12px 0', background: INK, color: CARD_BG,
+                          border: `1.5px solid ${INK}`, borderRadius: 10, fontWeight: 700, fontSize: 14,
+                          cursor: 'pointer', boxShadow: `4px 4px 0 ${HL_YELLOW}`, fontFamily: "'Bricolage Grotesque', sans-serif",
+                          marginTop: 8
+                      }}>
                           {editingId ? 'Update Food' : 'Add Food'}
                       </button>
                   </form>
@@ -236,16 +257,17 @@ export const GymNutritionLogger: React.FC<NutritionLoggerProps> = ({ logs, water
           </div>
       )}
 
+      {/* Header */}
       <header className="pt-2">
         <div className="flex justify-between items-start mb-3">
             <div>
-              <h1 className="text-2xl font-black text-white tracking-tight">Nutrition</h1>
-              <p className="text-white/40 text-xs mt-0.5">Track your fuel</p>
+              <h1 style={{ fontSize: 24, fontWeight: 800, color: INK, fontFamily: "'Bricolage Grotesque', sans-serif" }}>Nutrition</h1>
+              <p style={{ color: `${INK}60`, fontSize: 12, marginTop: 2, fontFamily: "'Instrument Sans', sans-serif" }}>Track your fuel</p>
             </div>
-            <div className="text-right">
-              <span className={`text-2xl font-black ${remainingCalories < 0 ? 'text-rose-400' : 'text-white'} animate-count`}>{Math.round(totalMacros.calories)}</span>
-              <span className="text-[10px] text-white/40 block"> / {settings.targets.calories} kcal</span>
-              <span className={`text-[10px] font-bold block mt-0.5 ${remainingCalories >= 0 ? 'text-emerald-400' : 'text-rose-400 flex items-center justify-end gap-1'}`}>
+            <div style={{ textAlign: 'right' }}>
+              <span style={{ fontSize: 24, fontWeight: 900, color: remainingCalories < 0 ? HL_RED : INK, fontFamily: "'Bricolage Grotesque', sans-serif" }}>{Math.round(totalMacros.calories)}</span>
+              <span style={{ fontSize: 10, color: `${INK}60`, display: 'block', fontFamily: "'Instrument Sans', sans-serif" }}>/ {settings.targets.calories} kcal</span>
+              <span style={{ fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 2, color: remainingCalories >= 0 ? HL_GREEN : HL_RED, fontFamily: "'Instrument Sans', sans-serif" }}>
                   {remainingCalories >= 0 ? (
                       `${Math.round(remainingCalories)} Remaining`
                   ) : (
@@ -257,9 +279,12 @@ export const GymNutritionLogger: React.FC<NutritionLoggerProps> = ({ logs, water
 
         <div className="flex gap-2">
             {macroChips.map(m => (
-                <div key={m.label} className={`flex-1 bg-white/[0.03] rounded-xl p-2 text-center border ${m.left < 0 ? 'border-rose-500/40' : 'border-white/5'}`}>
-                    <div className="text-[9px] text-white/35 uppercase font-bold tracking-wider">{m.label}</div>
-                    <div className={`${m.left < 0 ? 'text-rose-400' : m.color} font-bold text-xs`}>
+                <div key={m.label} style={{
+                  flex: 1, background: `${m.color}50`, borderRadius: 10, padding: '8px 6px', textAlign: 'center',
+                  border: `1.5px solid ${m.left < 0 ? HL_RED : INK}`,
+                }}>
+                    <div style={{ fontSize: 9, color: `${INK}70`, textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px', fontFamily: "'Instrument Sans', sans-serif" }}>{m.label}</div>
+                    <div style={{ color: m.left < 0 ? HL_RED : INK, fontWeight: 700, fontSize: 12, fontFamily: "'Bricolage Grotesque', sans-serif" }}>
                         {m.left < 0 ? `${Math.abs(Math.round(m.left))}g over` : `${Math.round(m.left)}g left`}
                     </div>
                 </div>
@@ -268,54 +293,52 @@ export const GymNutritionLogger: React.FC<NutritionLoggerProps> = ({ logs, water
       </header>
 
       {/* WATER */}
-      <div className="bg-gradient-to-br from-sky-950/60 to-cyan-950/30 rounded-3xl p-4 border border-sky-500/15 relative overflow-hidden">
-        <div className="absolute -bottom-12 -right-8 w-32 h-32 bg-sky-500/10 rounded-full blur-2xl pointer-events-none" />
-        <div className="flex justify-between items-center mb-3 relative z-10">
+      <div style={{ ...card, padding: 16, background: `${HL_BLUE}50` }}>
+        <div className="flex justify-between items-center mb-3">
            <div className="flex items-center gap-2">
-             <div className="p-1.5 bg-sky-500/15 rounded-lg">
-               <Droplets className="text-sky-400" size={16} />
+             <div style={{ padding: 6, background: `${INK}10`, border: `1px solid ${INK}20`, borderRadius: 8 }}>
+               <Droplets style={{ color: INK }} size={16} />
              </div>
              <div>
-               <h3 className="text-white font-bold text-sm">Water Intake</h3>
-               <p className="text-sky-300/60 text-[10px]">{currentWater}ml / {settings.waterTarget}ml</p>
+               <h3 style={{ color: INK, fontWeight: 700, fontSize: 14, fontFamily: "'Bricolage Grotesque', sans-serif" }}>Water Intake</h3>
+               <p style={{ color: `${INK}70`, fontSize: 10, fontFamily: "'Instrument Sans', sans-serif" }}>{currentWater}ml / {settings.waterTarget}ml</p>
              </div>
            </div>
-           <span className="text-lg font-black text-sky-400 animate-count">{Math.round(waterPercentage)}%</span>
+           <span style={{ fontSize: 18, fontWeight: 900, color: INK, fontFamily: "'Bricolage Grotesque', sans-serif" }}>{Math.round(waterPercentage)}%</span>
         </div>
 
-        <div className="w-full bg-black/30 h-2.5 rounded-full overflow-hidden mb-3 relative z-10 border border-white/5">
+        <div style={{ width: '100%', background: `${INK}20`, height: 10, borderRadius: 99, overflow: 'hidden', marginBottom: 12, border: `1px solid ${INK}30` }}>
           <div
-             className="h-full bg-gradient-to-r from-sky-500 to-cyan-400 transition-all duration-700 ease-out rounded-full"
-             style={{ width: `${waterPercentage}%` }}
+             style={{ height: '100%', background: INK, transition: 'width 0.7s ease-out', borderRadius: 99, width: `${waterPercentage}%` }}
           ></div>
         </div>
 
         {!showCustomWater ? (
-          <div className="flex gap-2 relative z-10">
-            <button onClick={() => addWater(250)} className="flex-1 py-2 bg-sky-500/10 hover:bg-sky-500/20 text-sky-200 text-xs font-bold rounded-xl border border-sky-500/20 transition active:scale-95">
+          <div className="flex gap-2">
+            <button onClick={() => addWater(250)} style={{ flex: 1, padding: '8px 0', background: CARD_BG, color: INK, fontSize: 12, fontWeight: 700, borderRadius: 8, border: `1.5px solid ${INK}`, cursor: 'pointer', fontFamily: "'Instrument Sans', sans-serif" }}>
               + 250ml
             </button>
-            <button onClick={() => addWater(500)} className="flex-1 py-2 bg-sky-500/10 hover:bg-sky-500/20 text-sky-200 text-xs font-bold rounded-xl border border-sky-500/20 transition active:scale-95">
+            <button onClick={() => addWater(500)} style={{ flex: 1, padding: '8px 0', background: CARD_BG, color: INK, fontSize: 12, fontWeight: 700, borderRadius: 8, border: `1.5px solid ${INK}`, cursor: 'pointer', fontFamily: "'Instrument Sans', sans-serif" }}>
               + 500ml
             </button>
-            <button onClick={() => setShowCustomWater(true)} className="px-3 py-2 bg-white/5 hover:bg-white/10 text-white/50 text-xs font-bold rounded-xl border border-white/5 transition active:scale-95">
+            <button onClick={() => setShowCustomWater(true)} style={{ padding: '8px 12px', background: `${INK}10`, color: `${INK}80`, fontSize: 12, fontWeight: 700, borderRadius: 8, border: `1px solid ${INK}30`, cursor: 'pointer', fontFamily: "'Instrument Sans', sans-serif" }}>
               Other...
             </button>
           </div>
         ) : (
-          <form onSubmit={handleCustomWaterSubmit} className="flex gap-2 relative z-10 animate-in fade-in slide-in-from-bottom-1 duration-200">
+          <form onSubmit={handleCustomWaterSubmit} className="flex gap-2 animate-in fade-in slide-in-from-bottom-1 duration-200">
              <input
                type="number"
                autoFocus
                placeholder="Amount (ml)"
                value={customAmount}
                onChange={(e) => setCustomAmount(e.target.value)}
-               className="flex-1 bg-black/40 border border-sky-500/30 rounded-xl px-3 py-2 text-white placeholder-white/30 focus:outline-none focus:border-sky-400 text-sm transition"
+               style={{ ...inputStyle, flex: 1 }}
              />
-             <button type="submit" className="p-2 bg-sky-600 hover:bg-sky-500 text-white rounded-xl transition active:scale-95">
+             <button type="submit" style={{ padding: 8, background: INK, color: CARD_BG, borderRadius: 8, border: `1.5px solid ${INK}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                <Check size={16} />
              </button>
-             <button type="button" onClick={() => setShowCustomWater(false)} className="p-2 bg-white/5 hover:bg-white/10 text-white/50 rounded-xl transition active:scale-95">
+             <button type="button" onClick={() => setShowCustomWater(false)} style={{ padding: 8, background: `${INK}10`, color: `${INK}80`, borderRadius: 8, border: `1px solid ${INK}30`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                <X size={16} />
              </button>
           </form>
@@ -323,25 +346,30 @@ export const GymNutritionLogger: React.FC<NutritionLoggerProps> = ({ logs, water
       </div>
 
       {/* AI LOGGING */}
-      <div className="bg-white/[0.03] backdrop-blur-md p-4 rounded-3xl border border-white/5">
+      <div style={{ ...card, padding: 16 }}>
         <form onSubmit={handleTextSubmit} className="space-y-3">
           <div className="flex items-center gap-2 mb-1">
-            <Sparkles size={13} className="text-violet-400" />
-            <span className="text-white/60 text-[10px] uppercase tracking-wide font-bold">AI Food Logging</span>
+            <Sparkles size={13} style={{ color: INK }} />
+            <span style={{ color: `${INK}80`, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 700, fontFamily: "'Instrument Sans', sans-serif" }}>AI Food Logging</span>
           </div>
-          <div className="relative">
+          <div style={{ position: 'relative' }}>
             <input
               type="text"
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               placeholder="e.g., 2 eggs and toast..."
-              className="w-full bg-black/30 text-white rounded-2xl pl-4 pr-12 py-3 border border-white/10 focus:border-violet-500/60 focus:outline-none placeholder-white/25 text-sm transition"
+              style={{ ...inputStyle, paddingRight: 48 }}
               disabled={isAnalyzing}
             />
             <button
               type="submit"
               disabled={!inputText || isAnalyzing}
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-violet-600 rounded-xl text-white disabled:opacity-40 hover:bg-violet-500 transition active:scale-90"
+              style={{
+                position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)',
+                padding: 8, background: INK, borderRadius: 8, color: CARD_BG,
+                border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                opacity: !inputText || isAnalyzing ? 0.4 : 1,
+              }}
             >
               {isAnalyzing ? <Loader2 className="animate-spin" size={15} /> : <Send size={15} />}
             </button>
@@ -352,77 +380,64 @@ export const GymNutritionLogger: React.FC<NutritionLoggerProps> = ({ logs, water
               type="button"
               onClick={() => cameraInputRef.current?.click()}
               disabled={isAnalyzing}
-              className="flex flex-col items-center justify-center gap-1.5 py-3 bg-white/[0.04] hover:bg-white/[0.08] border border-white/5 rounded-2xl text-[10px] font-bold text-white/70 transition disabled:opacity-50 active:scale-95"
+              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '12px 0', background: `${HL_BLUE}40`, border: `1.5px solid ${INK}`, borderRadius: 10, fontSize: 10, fontWeight: 700, color: INK, cursor: 'pointer', fontFamily: "'Instrument Sans', sans-serif", opacity: isAnalyzing ? 0.5 : 1 }}
             >
-              <Camera size={17} className="text-indigo-400" />
+              <Camera size={17} style={{ color: INK }} />
               <span>Camera</span>
             </button>
-             <input
-              type="file"
-              ref={cameraInputRef}
-              onChange={handleImageUpload}
-              accept="image/*"
-              capture="environment"
-              className="hidden"
-            />
+             <input type="file" ref={cameraInputRef} onChange={handleImageUpload} accept="image/*" capture="environment" className="hidden" />
              <button
               type="button"
               onClick={() => galleryInputRef.current?.click()}
               disabled={isAnalyzing}
-              className="flex flex-col items-center justify-center gap-1.5 py-3 bg-white/[0.04] hover:bg-white/[0.08] border border-white/5 rounded-2xl text-[10px] font-bold text-white/70 transition disabled:opacity-50 active:scale-95"
+              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '12px 0', background: `${HL_GREEN}40`, border: `1.5px solid ${INK}`, borderRadius: 10, fontSize: 10, fontWeight: 700, color: INK, cursor: 'pointer', fontFamily: "'Instrument Sans', sans-serif", opacity: isAnalyzing ? 0.5 : 1 }}
             >
-              <ImageIcon size={17} className="text-emerald-400" />
+              <ImageIcon size={17} style={{ color: INK }} />
               <span>Gallery</span>
             </button>
-             <input
-              type="file"
-              ref={galleryInputRef}
-              onChange={handleImageUpload}
-              accept="image/*"
-              className="hidden"
-            />
+             <input type="file" ref={galleryInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
              <button
               type="button"
               onClick={openAddModal}
               disabled={isAnalyzing}
-              className="flex flex-col items-center justify-center gap-1.5 py-3 bg-white/[0.04] hover:bg-white/[0.08] border border-white/5 rounded-2xl text-[10px] font-bold text-white/70 transition disabled:opacity-50 active:scale-95"
+              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '12px 0', background: `${HL_PINK}40`, border: `1.5px solid ${INK}`, borderRadius: 10, fontSize: 10, fontWeight: 700, color: INK, cursor: 'pointer', fontFamily: "'Instrument Sans', sans-serif", opacity: isAnalyzing ? 0.5 : 1 }}
             >
-              <PenTool size={17} className="text-pink-400" />
+              <PenTool size={17} style={{ color: INK }} />
               <span>Manual</span>
             </button>
           </div>
         </form>
         {isAnalyzing && (
-          <div className="flex items-center justify-center gap-2 mt-3 text-violet-300 text-xs animate-in fade-in">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 12, color: INK, fontSize: 12, fontFamily: "'Instrument Sans', sans-serif" }} className="animate-in fade-in">
             <Loader2 className="animate-spin" size={13} /> Analyzing nutrition...
           </div>
         )}
-        {error && <p className="text-rose-400 text-xs mt-2 text-center animate-in fade-in slide-in-from-top-1">{error}</p>}
+        {error && <p style={{ color: HL_RED, fontSize: 12, marginTop: 8, textAlign: 'center' }} className="animate-in fade-in slide-in-from-top-1">{error}</p>}
       </div>
 
       {/* MEALS */}
       <div className="space-y-3">
-        <h3 className="text-xs font-bold text-white/40 uppercase tracking-widest px-1">Today's Meals</h3>
+        <h3 style={{ fontSize: 10, fontWeight: 700, color: `${INK}60`, textTransform: 'uppercase', letterSpacing: '1px', paddingLeft: 4, fontFamily: "'Instrument Sans', sans-serif" }}>Today's Meals</h3>
         {logs.length === 0 ? (
-          <div className="text-center py-10 text-white/35 bg-white/[0.02] rounded-3xl border border-dashed border-white/10 text-sm">
-            <Apple size={32} className="mx-auto text-white/15 mb-2" />
-            <p className="mt-1">No meals logged yet today.</p>
+          <div style={{ textAlign: 'center', padding: '40px 0', color: `${INK}50`, background: `${INK}05`, borderRadius: 12, border: `1.5px dashed ${INK}30`, fontSize: 14 }}>
+            <Apple size={32} style={{ margin: '0 auto 8px', color: `${INK}30` }} />
+            <p style={{ marginTop: 4 }}>No meals logged yet today.</p>
           </div>
         ) : (
           <div className="space-y-2 stagger-children">
             {logs.slice().reverse().map((item) => (
-              <div key={item.id} className="bg-white/[0.03] rounded-2xl p-3 flex gap-3 items-center border border-white/5 group hover:bg-white/[0.05] transition">
+              <div key={item.id} style={{ ...card, padding: 12, display: 'flex', gap: 12, alignItems: 'center' }} className="group">
                 {item.imageUri ? (
-                  <img src={item.imageUri} alt={item.name} className="w-12 h-12 rounded-xl object-cover bg-black/30" />
+                  <img src={item.imageUri} alt={item.name} style={{ width: 48, height: 48, borderRadius: 10, objectFit: 'cover', border: `1px solid ${INK}20` }} />
                 ) : (
-                  <div className="w-12 h-12 rounded-xl bg-indigo-500/15 flex items-center justify-center text-indigo-400 flex-shrink-0">
+                  <div style={{ width: 48, height: 48, borderRadius: 10, background: `${HL_ORANGE}50`, border: `1.5px solid ${INK}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: INK, flexShrink: 0 }}>
                     <UtensilsCrossed size={20} />
                   </div>
                 )}
-                <div className="flex-1 min-w-0">
-                  <h4 className="font-bold text-white truncate text-sm">{item.name}</h4>
-                  <div className="flex gap-2 mt-0.5 text-[10px] text-white/40">
-                    <span className="text-orange-300 font-bold">{item.calories} kcal</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <h4 style={{ fontWeight: 700, color: INK, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: "'Bricolage Grotesque', sans-serif" }}>{item.name}</h4>
+                  <div style={{ display: 'flex', gap: 8, marginTop: 2, fontSize: 10, color: `${INK}60`, fontFamily: "'Instrument Sans', sans-serif" }}>
+                    <span style={{ color: HL_ORANGE, fontWeight: 700 }}>{item.calories} kcal</span>
                     <span>P: {item.protein}g</span>
                     <span>C: {item.carbs}g</span>
                     <span>F: {item.fat}g</span>
@@ -431,13 +446,13 @@ export const GymNutritionLogger: React.FC<NutritionLoggerProps> = ({ logs, water
                 <div className="flex gap-1.5 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                     <button
                         onClick={() => openEditModal(item)}
-                        className="p-2 bg-white/5 rounded-xl text-white/40 hover:text-white hover:bg-white/10 transition"
+                        style={{ padding: 8, background: `${INK}08`, border: `1px solid ${INK}20`, borderRadius: 8, color: `${INK}60`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     >
                         <Pencil size={13} />
                     </button>
                     <button
                         onClick={() => deleteLog(item.id)}
-                        className="p-2 bg-white/5 rounded-xl text-white/40 hover:text-rose-400 hover:bg-white/10 transition"
+                        style={{ padding: 8, background: `${HL_RED}15`, border: `1px solid ${HL_RED}40`, borderRadius: 8, color: HL_RED, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     >
                         <Trash2 size={13} />
                     </button>

@@ -1048,8 +1048,6 @@ export const App: React.FC = () => {
             }}
             periods={currentPeriods}
         />;
-      case 'ai':
-        return <AIChat onAddEvent={onAddEvent} periods={currentPeriods} />;
       case 'gym':
         return <GymView 
             onBack={() => setView('dashboard')}

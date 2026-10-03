@@ -8,6 +8,25 @@ import { ScheduleEvent, EventColorMap, PeriodDefinition, Announcement } from '..
 import { getLocalISOString } from '../constants';
 import { theme, styles } from '../theme';
 
+// ─── Design tokens ────────────────────────────────────────────────────────────
+const INK        = '#1A1730';
+const CARD_BG    = '#FAFAF6';
+const HL_YELLOW  = '#F6DF63';
+const HL_PINK    = '#eea8f2';
+const HL_GREEN   = '#8CE3B7';
+const HL_BLUE    = '#9ECFFF';
+const HL_ORANGE  = '#F4BE8A';
+const HL_RED     = '#E56A5A';
+const MUTED      = 'rgba(26,23,48,0.55)';
+
+const card = {
+  background: CARD_BG,
+  border: `1.5px solid ${INK}`,
+  borderRadius: 10,
+  boxShadow: `4px 5px 0 ${INK}`,
+} as const;
+
+// ─── Props ────────────────────────────────────────────────────────────────────
 interface DashboardProps {
   events: ScheduleEvent[];
   eventColors: EventColorMap;
@@ -23,13 +42,21 @@ interface DashboardProps {
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
-export const Dashboard: React.FC<DashboardProps> = ({ events, eventColors, onNavigate, onEventClick, onAddEventClick, onSmartImportClick, periods, announcement, username, onSync }) => {
+export const Dashboard: React.FC<DashboardProps> = ({
+  events, eventColors, onNavigate, onEventClick,
+  onAddEventClick, onSmartImportClick, periods,
+  announcement, username, onSync,
+}) => {
   const [syncStatus, setSyncStatus] = useState<'idle' | 'loading' | 'success'>('idle');
   const [greeting, setGreeting] = useState('Good Morning');
   const [currentTime, setCurrentTime] = useState('');
   const [currentDate, setCurrentDate] = useState('');
-  const [dismissedAnnouncementId, setDismissedAnnouncementId] = useState(() => localStorage.getItem('dismissed_announcement_id'));
-  const [quickNotes, setQuickNotes] = useState(() => localStorage.getItem('quick_notes') || '');
+  const [dismissedAnnouncementId, setDismissedAnnouncementId] = useState(
+    () => localStorage.getItem('dismissed_announcement_id'),
+  );
+  const [quickNotes, setQuickNotes] = useState(
+    () => localStorage.getItem('quick_notes') || '',
+  );
 
   const handleNotesChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
@@ -99,7 +126,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ events, eventColors, onNav
     }
   };
 
-  const showAnnouncement = announcement && announcement.is_active && announcement.id !== dismissedAnnouncementId;
+  const showAnnouncement =
+    announcement && announcement.is_active && announcement.id !== dismissedAnnouncementId;
 
   const now = new Date();
   const todayName = now.toLocaleDateString('en-US', { weekday: 'long' });
@@ -115,7 +143,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ events, eventColors, onNav
     const [h, m] = e.startTime.split(':').map(Number);
     if (isNaN(h) || isNaN(m)) return false;
     const startVal = h + m / 60;
-    const endVal = startVal + ((e.durationMinutes || 0) / 60);
+    const endVal = startVal + (e.durationMinutes || 0) / 60;
     return currentTimeVal >= startVal && currentTimeVal < endVal;
   });
 
@@ -136,7 +164,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ events, eventColors, onNav
     .filter(e => {
       const eventDate = e.date || todayStr;
       if (eventDate > todayStr) return true;
-      if (eventDate === todayStr && e.startTime > now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })) return true;
+      if (
+        eventDate === todayStr &&
+        e.startTime > now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+      )
+        return true;
       return false;
     })
     .sort((a, b) => {
@@ -146,73 +178,233 @@ export const Dashboard: React.FC<DashboardProps> = ({ events, eventColors, onNav
       return a.startTime.localeCompare(b.startTime);
     });
 
+  // ── Framer variants ──────────────────────────────────────────────────────
   const fadeUp = {
     hidden: { opacity: 0, y: 22, filter: 'blur(5px)' },
-    show: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { duration: 0.55, ease: EASE } },
+    show: {
+      opacity: 1, y: 0, filter: 'blur(0px)',
+      transition: { duration: 0.55, ease: EASE },
+    },
   };
 
+  // ── Highlighter tints mapped to event types ──────────────────────────────
+  const eventTypeTints: Record<string, string> = {
+    lecture: `${HL_BLUE}55`,
+    lab: `${HL_GREEN}55`,
+    tutorial: `${HL_YELLOW}55`,
+    quiz: `${HL_ORANGE}55`,
+    exam: `${HL_RED}55`,
+    assignment: `${HL_PINK}55`,
+    class: `${HL_YELLOW}55`,
+  };
+
+  const eventTypeBorders: Record<string, string> = {
+    lecture: HL_BLUE,
+    lab: HL_GREEN,
+    tutorial: HL_YELLOW,
+    quiz: HL_ORANGE,
+    exam: HL_RED,
+    assignment: HL_PINK,
+    class: HL_YELLOW,
+  };
+
+  // ── Main event card ──────────────────────────────────────────────────────
   const renderEventCard = (event: ScheduleEvent | undefined, title: string, isNow: boolean) => {
     const slotName = event ? getSlotName(event.startTime) : '';
-    const color = event ? (eventColors[event.type] || theme.accent) : theme.cardBg;
+    const tint = event ? (eventTypeTints[event.type] || `${HL_YELLOW}55`) : `${HL_YELLOW}40`;
+    const accentBorder = event ? (eventTypeBorders[event.type] || HL_YELLOW) : INK;
 
     return (
       <motion.div
         variants={fadeUp}
-        whileHover={event ? { scale: 1.012, y: -2 } : {}}
-        whileTap={event ? { scale: 0.99 } : {}}
+        whileHover={event ? { y: -3, boxShadow: `6px 8px 0 ${INK}` } : {}}
+        whileTap={event ? { y: 1, boxShadow: `2px 3px 0 ${INK}` } : {}}
         onClick={() => event && onEventClick(event)}
-        className="relative overflow-hidden rounded-[24px] p-[14px] cursor-pointer"
         style={{
-          minHeight: '108px',
-          background: event ? `linear-gradient(135deg, ${color}E6 0%, ${color}55 100%)` : 'var(--card-bg)',
-          border: event ? `1px solid ${color}66` : 'var(--glass-border)',
-          boxShadow: event ? `0 18px 46px ${color}40` : 'none',
+          ...card,
+          background: tint,
+          borderLeft: `4px solid ${accentBorder}`,
+          minHeight: 108,
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
+          cursor: event ? 'pointer' : 'default',
+          padding: 14,
+          position: 'relative',
+          overflow: 'hidden',
         }}
       >
-        {/* sheen sweep */}
-        {event && (
-          <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[24px]">
-            <div className="absolute top-0 -left-1/2 h-full w-1/2 bg-white/10 blur-md" style={{ animation: 'fx-shine 4.5s ease-in-out infinite' }} />
-          </div>
-        )}
-
+        {/* LIVE badge */}
         {isNow && (
-          <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-black/30 backdrop-blur-md rounded-full pl-1.5 pr-2.5 py-1 border border-white/15">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
+          <div
+            style={{
+              position: 'absolute',
+              top: 10,
+              right: 10,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 5,
+              background: `${HL_RED}22`,
+              border: `1.5px solid ${HL_RED}`,
+              borderRadius: 30,
+              padding: '2px 8px 2px 5px',
+            }}
+          >
+            <span style={{ position: 'relative', width: 8, height: 8, display: 'inline-flex' }}>
+              <span
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  borderRadius: '50%',
+                  background: HL_RED,
+                  opacity: 0.5,
+                  animation: 'ping 1.2s cubic-bezier(0,0,.2,1) infinite',
+                }}
+              />
+              <span
+                style={{
+                  position: 'relative',
+                  display: 'inline-flex',
+                  borderRadius: '50%',
+                  width: 8,
+                  height: 8,
+                  background: HL_RED,
+                }}
+              />
             </span>
-            <span className="text-[8px] font-black uppercase tracking-wider text-white/90">Live</span>
+            <span
+              style={{
+                fontSize: '0.6rem',
+                fontWeight: 900,
+                letterSpacing: '1.2px',
+                textTransform: 'uppercase',
+                color: HL_RED,
+                fontFamily: "'Instrument Sans', sans-serif",
+              }}
+            >
+              Live
+            </span>
           </div>
         )}
 
-        <div className="relative z-10">
-          <h3 className="m-0 uppercase font-black" style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.6rem', letterSpacing: '1.4px' }}>{title}</h3>
+        <div>
+          <div
+            style={{
+              fontSize: '0.6rem',
+              fontWeight: 700,
+              letterSpacing: '1.2px',
+              textTransform: 'uppercase',
+              color: MUTED,
+              fontFamily: "'Instrument Sans', sans-serif",
+              marginBottom: 4,
+            }}
+          >
+            {title}
+          </div>
           {event ? (
             <>
-              <h2 className="font-black leading-tight mt-1" style={{ fontSize: '1.3rem', textShadow: '0 2px 12px rgba(0,0,0,0.35)' }}>{event.title}</h2>
-              <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                <span className="bg-white/15 rounded-md px-1.5 py-0.5 text-[0.65rem] font-semibold text-white/90">{event.code || 'No Code'}</span>
-                {event.group && <span className="bg-white/15 rounded-md px-1.5 py-0.5 text-[0.65rem] font-semibold text-white/90">Grp {event.group}</span>}
+              <h2
+                style={{
+                  margin: 0,
+                  fontFamily: "'Bricolage Grotesque', 'Inter', sans-serif",
+                  fontWeight: 800,
+                  fontSize: '1.25rem',
+                  color: INK,
+                  lineHeight: 1.2,
+                }}
+              >
+                {event.title}
+              </h2>
+              <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+                <span
+                  style={{
+                    background: `${INK}12`,
+                    border: `1px solid ${INK}33`,
+                    borderRadius: 6,
+                    padding: '2px 7px',
+                    fontSize: '0.65rem',
+                    fontWeight: 700,
+                    color: INK,
+                    fontFamily: "'Instrument Sans', sans-serif",
+                  }}
+                >
+                  {event.code || 'No Code'}
+                </span>
+                {event.group && (
+                  <span
+                    style={{
+                      background: `${INK}12`,
+                      border: `1px solid ${INK}33`,
+                      borderRadius: 6,
+                      padding: '2px 7px',
+                      fontSize: '0.65rem',
+                      fontWeight: 700,
+                      color: INK,
+                      fontFamily: "'Instrument Sans', sans-serif",
+                    }}
+                  >
+                    Grp {event.group}
+                  </span>
+                )}
               </div>
             </>
           ) : (
-            <div className="py-2 text-sm font-medium" style={{ color: 'var(--text-muted)' }}>Nothing scheduled. Enjoy! 🎉</div>
+            <div
+              style={{
+                padding: '8px 0',
+                fontSize: '0.85rem',
+                fontWeight: 500,
+                color: MUTED,
+                fontFamily: "'Instrument Sans', sans-serif",
+              }}
+            >
+              Nothing scheduled. Enjoy! 🎉
+            </div>
           )}
         </div>
 
         {event && (
-          <div className="relative z-10 flex gap-1.5 items-center text-white flex-wrap mt-2">
-            <div className="flex flex-col bg-black/40 backdrop-blur-md rounded-lg px-2 py-1 border border-white/10">
-              <div className="text-[0.7rem] font-black text-white flex items-center gap-1.5">{slotName || 'Event'}</div>
-              <div className="text-[0.6rem] text-white/80 font-semibold">{to12h(event.startTime)} – {to12h(getEndTime(event.startTime, event.durationMinutes))}</div>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginTop: 10 }}>
+            <div
+              style={{
+                background: `${INK}10`,
+                border: `1px solid ${INK}25`,
+                borderRadius: 8,
+                padding: '4px 8px',
+              }}
+            >
+              <div
+                style={{
+                  fontSize: '0.68rem',
+                  fontWeight: 800,
+                  color: INK,
+                  fontFamily: "'Instrument Sans', sans-serif",
+                }}
+              >
+                {slotName || 'Event'}
+              </div>
+              <div style={{ fontSize: '0.6rem', color: MUTED, fontFamily: "'Space Mono', monospace" }}>
+                {to12h(event.startTime)} – {to12h(getEndTime(event.startTime, event.durationMinutes))}
+              </div>
             </div>
             {event.location && (
-              <div className="flex items-center gap-1 bg-black/40 backdrop-blur-md rounded-lg px-1.5 py-1 text-[0.7rem] font-semibold border border-white/10 self-center">
-                <MapPin size={10} className="text-white/90" /> {event.location}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  background: `${INK}10`,
+                  border: `1px solid ${INK}25`,
+                  borderRadius: 8,
+                  padding: '4px 8px',
+                  fontSize: '0.68rem',
+                  fontWeight: 600,
+                  color: INK,
+                  fontFamily: "'Instrument Sans', sans-serif",
+                }}
+              >
+                <MapPin size={10} color={INK} />
+                {event.location}
               </div>
             )}
           </div>
@@ -221,231 +413,624 @@ export const Dashboard: React.FC<DashboardProps> = ({ events, eventColors, onNav
     );
   };
 
+  // ── Quick-action tile (paper card style) ──────────────────────────────────
   const AppTile = ({
-    onClick, icon, label, sub, gradient, glow,
+    onClick, icon, label, sub, tintColor,
   }: {
-    onClick: () => void; icon: React.ReactNode; label: string; sub: string;
-    gradient: string; glow: string;
+    onClick: () => void;
+    icon: React.ReactNode;
+    label: string;
+    sub: string;
+    tintColor: string;
   }) => (
     <motion.button
       variants={fadeUp}
-      whileHover={{ scale: 1.04, y: -3 }}
-      whileTap={{ scale: 0.96 }}
+      whileHover={{ y: -3, boxShadow: `6px 8px 0 ${INK}` }}
+      whileTap={{ y: 2, boxShadow: `2px 3px 0 ${INK}` }}
       onClick={onClick}
-      className="relative overflow-hidden rounded-[18px] p-[11px] text-left group"
       style={{
-        minHeight: '82px', background: gradient, border: '1px solid rgba(255,255,255,0.12)',
-        boxShadow: `0 8px 22px ${glow}`, display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+        ...card,
+        background: `${tintColor}50`,
+        minHeight: 82,
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        padding: 11,
+        cursor: 'pointer',
+        textAlign: 'left',
+        width: '100%',
       }}
     >
-      <div className="absolute -top-6 -right-6 w-16 h-16 rounded-full bg-white/10 blur-xl opacity-60 group-hover:opacity-100 transition-opacity" />
-      <div className="relative z-10 w-fit p-1.5 rounded-[10px] bg-white/15 backdrop-blur-sm">
+      <div
+        style={{
+          background: `${tintColor}90`,
+          border: `1.5px solid ${INK}`,
+          borderRadius: 8,
+          padding: 6,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
         {icon}
       </div>
-      <div className="relative z-10">
-        <h3 className="m-0 font-black text-white" style={{ fontSize: '0.8rem' }}>{label}</h3>
-        <p className="m-0 text-white/70" style={{ fontSize: '0.6rem' }}>{sub}</p>
+      <div>
+        <h3
+          style={{
+            margin: 0,
+            fontFamily: "'Bricolage Grotesque', 'Inter', sans-serif",
+            fontWeight: 800,
+            fontSize: '0.8rem',
+            color: INK,
+          }}
+        >
+          {label}
+        </h3>
+        <p style={{ margin: 0, fontSize: '0.6rem', color: MUTED, fontFamily: "'Instrument Sans', sans-serif" }}>
+          {sub}
+        </p>
       </div>
     </motion.button>
   );
 
+  // ── Ink primary button style ──────────────────────────────────────────────
+  const inkBtn: React.CSSProperties = {
+    background: INK,
+    color: '#fff',
+    border: `1.5px solid ${INK}`,
+    borderRadius: 10,
+    fontWeight: 700,
+    boxShadow: `4px 4px 0 ${HL_YELLOW}`,
+    cursor: 'pointer',
+    padding: '10px 18px',
+    fontFamily: "'Bricolage Grotesque', sans-serif",
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    fontSize: '0.78rem',
+  };
+
   return (
     <div style={styles.scrollableContent} className="custom-scrollbar">
-      <motion.div initial="hidden" animate="show" variants={{ show: { transition: { staggerChildren: 0.06 } } }} className="max-w-3xl mx-auto w-full">
-
-        {/* Announcement */}
+      <motion.div
+        initial="hidden"
+        animate="show"
+        variants={{ show: { transition: { staggerChildren: 0.07 } } }}
+        className="max-w-3xl mx-auto w-full"
+        style={{ paddingBottom: 100 }}
+      >
+        {/* ── Announcement banner ── */}
         <AnimatePresence>
           {showAnnouncement && (
             <motion.div
               initial={{ opacity: 0, y: -16, height: 0 }}
               animate={{ opacity: 1, y: 0, height: 'auto' }}
               exit={{ opacity: 0, y: -16, height: 0 }}
-              className="mb-3.5 rounded-xl p-2.5 flex items-start justify-between relative overflow-hidden"
-              style={{ background: 'linear-gradient(135deg, #a855f7 0%, #d946ef 100%)', boxShadow: '0 8px 30px rgba(168,85,247,0.4)', color: '#fff' }}
+              style={{
+                ...card,
+                background: `${HL_ORANGE}55`,
+                borderLeft: `4px solid ${HL_ORANGE}`,
+                display: 'flex',
+                alignItems: 'flex-start',
+                justifyContent: 'space-between',
+                gap: 10,
+                padding: '10px 12px',
+                marginBottom: 14,
+                boxShadow: `3px 4px 0 ${INK}`,
+              }}
             >
-              <div className="absolute -top-3 -left-2 w-24 h-24 bg-white/10 rounded-full blur-2xl" />
-              <div className="flex gap-2 relative z-10">
-                <div className="bg-white/20 p-1.5 rounded-full h-fit"><Megaphone size={14} className="text-white" fill="white" /></div>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                <div
+                  style={{
+                    background: `${HL_ORANGE}`,
+                    border: `1.5px solid ${INK}`,
+                    borderRadius: 8,
+                    padding: '5px 6px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  <Megaphone size={13} color={INK} fill={INK} />
+                </div>
                 <div>
-                  <h4 className="m-0 mb-0.5 text-[0.75rem] font-black uppercase opacity-90">Announcement</h4>
-                  <p className="m-0 text-[0.8rem] font-semibold leading-snug">{announcement!.message}</p>
+                  <div
+                    style={{
+                      fontSize: '0.6rem',
+                      fontWeight: 700,
+                      letterSpacing: '0.8px',
+                      textTransform: 'uppercase',
+                      color: MUTED,
+                      fontFamily: "'Instrument Sans', sans-serif",
+                      marginBottom: 2,
+                    }}
+                  >
+                    Announcement
+                  </div>
+                  <p
+                    style={{
+                      margin: 0,
+                      fontSize: '0.82rem',
+                      fontWeight: 600,
+                      color: INK,
+                      lineHeight: 1.4,
+                      fontFamily: "'Instrument Sans', sans-serif",
+                    }}
+                  >
+                    {announcement!.message}
+                  </p>
                 </div>
               </div>
-              <button onClick={handleDismissAnnouncement} className="bg-black/15 hover:bg-black/30 transition rounded-full p-1 text-white flex items-center justify-center min-w-[22px] min-h-[22px]"><X size={12} /></button>
+              <button
+                onClick={handleDismissAnnouncement}
+                style={{
+                  background: `${INK}15`,
+                  border: `1px solid ${INK}30`,
+                  borderRadius: '50%',
+                  width: 22,
+                  height: 22,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  color: INK,
+                  flexShrink: 0,
+                }}
+              >
+                <X size={11} />
+              </button>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Header */}
-        <motion.div variants={fadeUp} className="mb-4 pt-1 relative">
+        {/* ── Header ── */}
+        <motion.div variants={fadeUp} style={{ marginBottom: 20, paddingTop: 4, position: 'relative' }}>
           <div
-            className="font-black leading-none tracking-tight"
             style={{
-              fontSize: '2rem',
-              backgroundImage: 'linear-gradient(110deg, var(--text-primary), var(--text-muted))',
-              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+              fontFamily: "'Bricolage Grotesque', 'Inter', sans-serif",
+              fontWeight: 800,
+              fontSize: '2.4rem',
+              color: INK,
+              lineHeight: 1,
+              letterSpacing: '-1px',
             }}
           >
             {currentTime}
           </div>
-          <div className="text-[0.8rem] font-bold mt-0.5" style={{ color: theme.accent }}>{currentDate}</div>
-          <p className="mt-0.5 text-[0.78rem] font-medium" style={{ color: 'var(--text-muted)' }}>
-            {greeting}, <span style={{ color: 'var(--text-primary)' }} className="font-bold">{username || 'Student'}</span>
+          <div
+            style={{
+              fontSize: '0.78rem',
+              fontWeight: 700,
+              marginTop: 3,
+              color: MUTED,
+              fontFamily: "'Instrument Sans', sans-serif",
+              letterSpacing: '0.2px',
+            }}
+          >
+            {currentDate}
+          </div>
+          <p
+            style={{
+              margin: '4px 0 0',
+              fontSize: '0.82rem',
+              fontWeight: 500,
+              color: MUTED,
+              fontFamily: "'Instrument Sans', sans-serif",
+            }}
+          >
+            {greeting},{' '}
+            <span style={{ color: INK, fontWeight: 800 }}>{username || 'Student'}</span> 👋
           </p>
 
-          <div className="absolute top-1 right-0 flex items-center gap-2 z-20">
+          {/* Sync + AI buttons */}
+          <div
+            style={{
+              position: 'absolute',
+              top: 4,
+              right: 0,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              zIndex: 20,
+            }}
+          >
             {onSync && (
               <motion.button
                 onClick={async () => {
                   if (syncStatus !== 'idle') return;
                   setSyncStatus('loading');
                   const success = await onSync();
-                  if (success) { setSyncStatus('success'); setTimeout(() => setSyncStatus('idle'), 2500); }
-                  else setSyncStatus('idle');
+                  if (success) {
+                    setSyncStatus('success');
+                    setTimeout(() => setSyncStatus('idle'), 2500);
+                  } else {
+                    setSyncStatus('idle');
+                  }
                 }}
-                className={`relative flex items-center justify-center w-9 h-9 rounded-full transition-all duration-500 border border-white/10 overflow-hidden ${
-                  syncStatus === 'success' ? 'bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.45)]'
-                  : syncStatus === 'loading' ? 'bg-white/10 ring-2 ring-white/10' : 'bg-white/5 hover:bg-white/10'
-                }`}
                 whileTap={{ scale: 0.9 }}
                 whileHover={syncStatus === 'idle' ? { scale: 1.08 } : {}}
                 disabled={syncStatus !== 'idle'}
                 title="Sync"
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: '50%',
+                  border: `1.5px solid ${INK}`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: syncStatus !== 'idle' ? 'default' : 'pointer',
+                  background:
+                    syncStatus === 'success'
+                      ? HL_GREEN
+                      : syncStatus === 'loading'
+                      ? `${INK}15`
+                      : CARD_BG,
+                  boxShadow: `2px 3px 0 ${INK}`,
+                  overflow: 'hidden',
+                  position: 'relative',
+                }}
               >
                 <AnimatePresence mode="wait">
                   {syncStatus === 'loading' ? (
-                    <motion.div key="l" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                    <motion.div
+                      key="l"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      style={{
+                        width: 14,
+                        height: 14,
+                        border: `2px solid ${INK}30`,
+                        borderTopColor: INK,
+                        borderRadius: '50%',
+                        animation: 'spin 0.7s linear infinite',
+                      }}
+                    />
                   ) : syncStatus === 'success' ? (
-                    <motion.div key="s" initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.4, opacity: 0 }} transition={{ type: 'spring', damping: 14 }}>
-                      <Check size={15} color="#fff" strokeWidth={3} />
+                    <motion.div
+                      key="s"
+                      initial={{ scale: 0.4, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      exit={{ scale: 0.4, opacity: 0 }}
+                      transition={{ type: 'spring', damping: 14 }}
+                    >
+                      <Check size={15} color={INK} strokeWidth={3} />
                     </motion.div>
                   ) : (
-                    <motion.div key="i" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}><Save size={15} color="#fff" /></motion.div>
+                    <motion.div
+                      key="i"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                    >
+                      <Save size={15} color={INK} />
+                    </motion.div>
                   )}
                 </AnimatePresence>
               </motion.button>
             )}
+
+            {/* AI button */}
             <motion.button
               whileTap={{ scale: 0.9 }}
               whileHover={{ scale: 1.08, rotate: 8 }}
               onClick={() => onNavigate('ai')}
-              className="w-9 h-9 rounded-full flex items-center justify-center shadow-lg cursor-pointer relative overflow-hidden"
-              style={{ background: 'linear-gradient(135deg, #8b5cf6, #d946ef)', boxShadow: '0 4px 14px rgba(139,92,246,0.45)' }}
               title="AI Assistant"
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: '50%',
+                border: `1.5px solid ${INK}`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                background: HL_YELLOW,
+                boxShadow: `2px 3px 0 ${INK}`,
+              }}
             >
-              <motion.span className="absolute inset-0 opacity-60" style={{ background: 'radial-gradient(circle at 30% 30%, rgba(255,255,255,0.5), transparent 60%)' }} animate={{ opacity: [0.3, 0.7, 0.3] }} transition={{ duration: 2.5, repeat: Infinity }} />
-              <Sparkles size={15} color="#fff" className="relative z-10" />
+              <Sparkles size={15} color={INK} />
             </motion.button>
           </div>
         </motion.div>
 
         <div className="flex flex-col gap-3">
+          {/* ── Main event card ── */}
           {renderEventCard(mainCardEvent, isHappeningNow ? 'Happening Now' : 'Up Next', isHappeningNow)}
 
+          {/* ── Next-up strip ── */}
           {showNextUpTab && nextEvent && (
             <motion.div
               variants={fadeUp}
-              whileHover={{ x: 3 }}
+              whileHover={{ x: 3, boxShadow: `6px 7px 0 ${INK}` }}
+              whileTap={{ x: 1 }}
               onClick={() => onEventClick(nextEvent)}
-              className="rounded-2xl p-2.5 flex items-center justify-between cursor-pointer"
-              style={{ background: 'var(--card-bg)', border: 'var(--glass-border)' }}
+              style={{
+                ...card,
+                background: `${HL_BLUE}35`,
+                padding: '10px 14px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                cursor: 'pointer',
+              }}
             >
-              <div className="flex items-center gap-2">
-                <div className="bg-white/10 p-1.5 rounded-lg"><ArrowRight size={14} color={theme.accent} /></div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div
+                  style={{
+                    background: HL_BLUE,
+                    border: `1.5px solid ${INK}`,
+                    borderRadius: 8,
+                    padding: '5px 6px',
+                    display: 'flex',
+                  }}
+                >
+                  <ArrowRight size={13} color={INK} />
+                </div>
                 <div>
-                  <div className="text-[0.6rem] uppercase font-bold tracking-wide" style={{ color: 'var(--text-muted)' }}>Then</div>
-                  <div className="text-[0.85rem] font-bold" style={{ color: 'var(--text-primary)' }}>{nextEvent.title}</div>
+                  <div
+                    style={{
+                      fontSize: '0.58rem',
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.8px',
+                      color: MUTED,
+                      fontFamily: "'Instrument Sans', sans-serif",
+                    }}
+                  >
+                    Then
+                  </div>
+                  <div
+                    style={{
+                      fontSize: '0.87rem',
+                      fontWeight: 700,
+                      color: INK,
+                      fontFamily: "'Bricolage Grotesque', 'Inter', sans-serif",
+                    }}
+                  >
+                    {nextEvent.title}
+                  </div>
                 </div>
               </div>
-              <div className="text-right">
-                <div className="text-[0.75rem] font-semibold flex items-center gap-1 justify-end" style={{ color: 'var(--text-primary)' }}><Clock size={10} /> {to12h(nextEvent.startTime)}</div>
-                <div className="text-[0.65rem]" style={{ color: 'var(--text-muted)' }}>{nextEvent.location}</div>
+              <div style={{ textAlign: 'right' }}>
+                <div
+                  style={{
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    color: INK,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    fontFamily: "'Space Mono', monospace",
+                  }}
+                >
+                  <Clock size={10} color={INK} /> {to12h(nextEvent.startTime)}
+                </div>
+                {nextEvent.location && (
+                  <div
+                    style={{
+                      fontSize: '0.65rem',
+                      color: MUTED,
+                      fontFamily: "'Instrument Sans', sans-serif",
+                    }}
+                  >
+                    {nextEvent.location}
+                  </div>
+                )}
               </div>
             </motion.div>
           )}
 
-          {/* App grid */}
+          {/* ── App tiles grid ── */}
           <div className="grid grid-cols-2 gap-2">
-            {/* GYM — now unlocked */}
             <AppTile
               onClick={() => onNavigate('gym')}
-              icon={<Dumbbell size={16} color="#fff" />}
+              icon={<Dumbbell size={16} color={INK} />}
               label="Gym"
               sub="Train & Track"
-              gradient="linear-gradient(135deg, rgba(37,99,235,0.6), rgba(29,78,216,0.35))"
-              glow="rgba(37,99,235,0.3)"
+              tintColor={HL_BLUE}
             />
             <AppTile
               onClick={() => onNavigate('grades')}
-              icon={<Calculator size={16} color="#fff" />}
+              icon={<Calculator size={16} color={INK} />}
               label="Grades"
               sub="GPA Calculator"
-              gradient="linear-gradient(135deg, rgba(13,148,136,0.6), rgba(17,94,89,0.35))"
-              glow="rgba(13,148,136,0.3)"
+              tintColor={HL_GREEN}
             />
             <AppTile
               onClick={() => onNavigate('todo')}
-              icon={<CheckSquare size={16} color="#fff" />}
+              icon={<CheckSquare size={16} color={INK} />}
               label="To-Do"
               sub="Task Manager"
-              gradient="linear-gradient(135deg, rgba(236,72,153,0.6), rgba(219,39,119,0.35))"
-              glow="rgba(236,72,153,0.3)"
+              tintColor={HL_PINK}
             />
 
+            {/* Add Event + Smart Import */}
             <div className="flex gap-2">
               <motion.button
                 variants={fadeUp}
-                whileHover={{ scale: 1.04, y: -3 }}
-                whileTap={{ scale: 0.96 }}
+                whileHover={{ y: -3, boxShadow: `6px 8px 0 ${INK}` }}
+                whileTap={{ y: 2, boxShadow: `2px 3px 0 ${INK}` }}
                 onClick={onAddEventClick}
-                className="flex-1 rounded-[18px] p-[11px] flex flex-col items-center justify-center text-center"
-                style={{ minHeight: '82px', background: 'var(--card-bg)', border: '1px dashed rgba(139,92,246,0.35)' }}
+                style={{
+                  ...card,
+                  flex: 1,
+                  minHeight: 82,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 4,
+                  cursor: 'pointer',
+                  background: `${HL_YELLOW}40`,
+                  padding: 10,
+                }}
               >
-                <div className="bg-violet-500/15 p-2 rounded-full mb-1"><Plus size={16} color={theme.accent} /></div>
-                <span className="text-[0.68rem] font-bold" style={{ color: 'var(--text-muted)' }}>Add Event</span>
+                <div
+                  style={{
+                    background: HL_YELLOW,
+                    border: `1.5px solid ${INK}`,
+                    borderRadius: 8,
+                    padding: '5px 6px',
+                    display: 'flex',
+                  }}
+                >
+                  <Plus size={14} color={INK} />
+                </div>
+                <span
+                  style={{
+                    fontSize: '0.65rem',
+                    fontWeight: 700,
+                    color: INK,
+                    fontFamily: "'Instrument Sans', sans-serif",
+                    textAlign: 'center',
+                  }}
+                >
+                  Add Event
+                </span>
               </motion.button>
 
               <motion.button
                 variants={fadeUp}
-                whileHover={{ scale: 1.04, y: -3 }}
-                whileTap={{ scale: 0.96 }}
+                whileHover={{ y: -3, boxShadow: `6px 8px 0 ${INK}` }}
+                whileTap={{ y: 2, boxShadow: `2px 3px 0 ${INK}` }}
                 onClick={onSmartImportClick}
-                className="flex-1 rounded-[18px] p-[11px] flex flex-col items-center justify-center text-center relative overflow-hidden"
-                style={{ minHeight: '82px', background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.22)' }}
+                style={{
+                  ...card,
+                  flex: 1,
+                  minHeight: 82,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 4,
+                  cursor: 'pointer',
+                  background: `${HL_PINK}40`,
+                  padding: 10,
+                }}
               >
-                <div className="bg-violet-500/20 p-2 rounded-full mb-1"><Brain size={16} color={theme.accent} /></div>
-                <span className="text-[0.68rem] font-bold" style={{ color: theme.accent }}>Smart Import</span>
+                <div
+                  style={{
+                    background: HL_PINK,
+                    border: `1.5px solid ${INK}`,
+                    borderRadius: 8,
+                    padding: '5px 6px',
+                    display: 'flex',
+                  }}
+                >
+                  <Brain size={14} color={INK} />
+                </div>
+                <span
+                  style={{
+                    fontSize: '0.65rem',
+                    fontWeight: 700,
+                    color: INK,
+                    fontFamily: "'Instrument Sans', sans-serif",
+                    textAlign: 'center',
+                  }}
+                >
+                  Smart Import
+                </span>
               </motion.button>
             </div>
           </div>
 
-          {/* Quick notes */}
+          {/* ── Quick Notes ── */}
           <motion.div variants={fadeUp}>
-            <div className="flex items-center gap-1.5 mb-2 pl-1">
-              <StickyNote size={14} color={theme.accent} />
-              <h3 className="m-0 text-[0.85rem] font-bold" style={{ color: 'var(--text-primary)' }}>Quick Notes</h3>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                marginBottom: 8,
+                paddingLeft: 2,
+              }}
+            >
+              <StickyNote size={14} color={INK} />
+              <h3
+                style={{
+                  margin: 0,
+                  fontSize: '0.88rem',
+                  fontWeight: 700,
+                  color: INK,
+                  fontFamily: "'Bricolage Grotesque', 'Inter', sans-serif",
+                }}
+              >
+                Quick Notes
+              </h3>
             </div>
-            <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--card-bg)', border: 'var(--glass-border)' }}>
+            <div
+              style={{
+                ...card,
+                overflow: 'hidden',
+                background: CARD_BG,
+              }}
+            >
               <textarea
                 value={quickNotes}
                 onChange={handleNotesChange}
-                placeholder="Jot down quick reminders here..."
-                className="w-full min-h-[80px] bg-transparent border-none p-3 text-[0.8rem] resize-y outline-none"
-                style={{ color: 'var(--text-primary)', fontFamily: 'inherit' }}
+                placeholder="Jot down quick reminders here…"
+                style={{
+                  width: '100%',
+                  minHeight: 90,
+                  background: 'transparent',
+                  /* lined paper effect */
+                  backgroundImage: `repeating-linear-gradient(
+                    to bottom,
+                    transparent,
+                    transparent 27px,
+                    rgba(26,23,48,0.12) 27px,
+                    rgba(26,23,48,0.12) 28px
+                  )`,
+                  border: 'none',
+                  outline: 'none',
+                  padding: '8px 12px',
+                  boxSizing: 'border-box',
+                  resize: 'vertical',
+                  fontSize: '0.82rem',
+                  lineHeight: '28px',
+                  color: INK,
+                  fontFamily: "'Instrument Sans', 'Inter', sans-serif",
+                  fontWeight: 500,
+                }}
               />
             </div>
           </motion.div>
 
-          {/* Upcoming tests */}
+          {/* ── Upcoming Tests ── */}
           <motion.div variants={fadeUp}>
-            <div className="flex items-center gap-1.5 mb-2 pl-1">
-              <ClipboardList size={14} color={theme.accent} />
-              <h3 className="m-0 text-[0.85rem] font-bold" style={{ color: 'var(--text-primary)' }}>Upcoming Tests</h3>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                marginBottom: 8,
+                paddingLeft: 2,
+              }}
+            >
+              <ClipboardList size={14} color={INK} />
+              <h3
+                style={{
+                  margin: 0,
+                  fontSize: '0.88rem',
+                  fontWeight: 700,
+                  color: INK,
+                  fontFamily: "'Bricolage Grotesque', 'Inter', sans-serif",
+                }}
+              >
+                Upcoming Tests
+              </h3>
             </div>
+
             {upcomingDeadlines.length > 0 ? (
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-2">
                 {upcomingDeadlines.map((task, i) => {
-                  const color = eventColors[task.type] || '#64748b';
+                  const accentColor =
+                    eventTypeBorders[task.type] || HL_ORANGE;
                   const slotName = getSlotName(task.startTime);
                   return (
                     <motion.div
@@ -453,30 +1038,112 @@ export const Dashboard: React.FC<DashboardProps> = ({ events, eventColors, onNav
                       initial={{ opacity: 0, x: -16 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: i * 0.05, ease: EASE }}
-                      whileHover={{ x: 3 }}
+                      whileHover={{ x: 3, boxShadow: `6px 7px 0 ${INK}` }}
+                      whileTap={{ x: 1 }}
                       onClick={() => onEventClick(task)}
-                      className="rounded-2xl p-2.5 flex justify-between items-center cursor-pointer"
-                      style={{ background: 'var(--card-bg)', borderLeft: `3px solid ${color}`, border: 'var(--glass-border)', borderLeftWidth: '3px', borderLeftColor: color }}
+                      style={{
+                        ...card,
+                        borderLeft: `4px solid ${accentColor}`,
+                        padding: '10px 14px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        cursor: 'pointer',
+                        background: `${accentColor}22`,
+                      }}
                     >
                       <div>
-                        <div className="text-[0.6rem] font-bold uppercase tracking-wide mb-0.5" style={{ color }}>{task.type}</div>
-                        <div className="text-[0.85rem] font-bold" style={{ color: 'var(--text-primary)' }}>{task.title}</div>
-                        <div className="text-[0.7rem]" style={{ color: 'var(--text-muted)' }}>{task.code}</div>
-                      </div>
-                      <div className="text-right flex items-center gap-2">
-                        <div>
-                          <div className="text-[0.75rem] font-bold" style={{ color: 'var(--text-primary)' }}>{new Date(task.date || '').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
-                          <div className="text-[0.65rem] mt-0.5" style={{ color: 'var(--text-muted)' }}>{to12h(task.startTime)}</div>
-                          {slotName && <div className="text-[0.55rem] mt-0.5 font-semibold" style={{ color: theme.accent }}>{slotName}</div>}
+                        <div
+                          style={{
+                            fontSize: '0.58rem',
+                            fontWeight: 700,
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.8px',
+                            color: accentColor,
+                            marginBottom: 2,
+                            fontFamily: "'Instrument Sans', sans-serif",
+                          }}
+                        >
+                          {task.type}
                         </div>
-                        <ChevronRight size={14} style={{ color: 'var(--text-muted)' }} />
+                        <div
+                          style={{
+                            fontSize: '0.87rem',
+                            fontWeight: 700,
+                            color: INK,
+                            fontFamily: "'Bricolage Grotesque', 'Inter', sans-serif",
+                          }}
+                        >
+                          {task.title}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: '0.7rem',
+                            color: MUTED,
+                            fontFamily: "'Instrument Sans', sans-serif",
+                          }}
+                        >
+                          {task.code}
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'right', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div>
+                          <div
+                            style={{
+                              fontSize: '0.75rem',
+                              fontWeight: 700,
+                              color: INK,
+                              fontFamily: "'Space Mono', monospace",
+                            }}
+                          >
+                            {new Date(task.date || '').toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                            })}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: '0.65rem',
+                              color: MUTED,
+                              marginTop: 2,
+                              fontFamily: "'Space Mono', monospace",
+                            }}
+                          >
+                            {to12h(task.startTime)}
+                          </div>
+                          {slotName && (
+                            <div
+                              style={{
+                                fontSize: '0.55rem',
+                                marginTop: 2,
+                                fontWeight: 700,
+                                color: accentColor,
+                                fontFamily: "'Instrument Sans', sans-serif",
+                              }}
+                            >
+                              {slotName}
+                            </div>
+                          )}
+                        </div>
+                        <ChevronRight size={14} color={MUTED} />
                       </div>
                     </motion.div>
                   );
                 })}
               </div>
             ) : (
-              <div className="p-3.5 text-center rounded-xl text-[0.8rem]" style={{ color: 'var(--text-muted)', background: 'rgba(255,255,255,0.02)', border: 'var(--glass-border)' }}>
+              <div
+                style={{
+                  ...card,
+                  background: `${HL_GREEN}30`,
+                  padding: '14px',
+                  textAlign: 'center',
+                  fontSize: '0.82rem',
+                  color: MUTED,
+                  fontFamily: "'Instrument Sans', sans-serif",
+                  fontWeight: 500,
+                }}
+              >
                 No upcoming quizzes or exams. 🎯
               </div>
             )}

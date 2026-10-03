@@ -6,6 +6,16 @@ import { getLocalISOString } from '../constants';
 import { theme, styles } from '../theme';
 import SyncCalendarModal from './SyncCalendarModal';
 
+// ─── Design tokens ────────────────────────────────────────────────────────────
+const INK        = '#1A1730';
+const PAPER_BG   = '#C7B2DB';
+const CARD_BG    = '#FAFAF6';
+const HL_YELLOW  = '#F6DF63';
+const HL_GREEN   = '#8CE3B7';
+const HL_BLUE    = '#9ECFFF';
+const HL_RED     = '#E56A5A';
+// ──────────────────────────────────────────────────────────────────────────────
+
 interface ScheduleProps {
   events: ScheduleEvent[];
   profiles: ScheduleProfile[];
@@ -46,7 +56,7 @@ const Schedule: React.FC<ScheduleProps> = ({
     try {
         const { toPng } = await import('html-to-image');
         const dataUrl = await toPng(scheduleRef.current, { 
-            backgroundColor: '#0f172a',
+            backgroundColor: CARD_BG,
             pixelRatio: 2,
             style: { overflow: 'visible' }
         });
@@ -251,8 +261,7 @@ const Schedule: React.FC<ScheduleProps> = ({
          onDragEnd={handleDragEnd}
          onClick={() => onEventClick(ev)} 
          style={{
-           ...styles.eventCard, 
-           backgroundColor: bg, 
+           backgroundColor: bg,
            color: txtColor,
            marginBottom: 0,
            height: '100%',
@@ -266,8 +275,14 @@ const Schedule: React.FC<ScheduleProps> = ({
            cursor: isDragging ? 'grabbing' : (isSmall ? 'pointer' : 'grab'),
            transform: isDragging ? 'scale(0.95)' : 'scale(1)',
            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-           boxShadow: isDragging ? '0 10px 25px rgba(0,0,0,0.4)' : '0 4px 12px rgba(0,0,0,0.15)',
-           zIndex: isDragging ? 50 : 1
+           /* Paper & Highlighter depth — keep event's own color, add INK border + shadow */
+           border: `1.5px solid ${INK}`,
+           borderRadius: '8px',
+           boxShadow: isDragging
+             ? `4px 5px 0 ${INK}`
+             : `2px 3px 0 ${INK}`,
+           zIndex: isDragging ? 50 : 1,
+           fontFamily: "'Instrument Sans', 'Inter', sans-serif",
          }}
        >
          {/* Title (Course Name) */}
@@ -279,7 +294,8 @@ const Schedule: React.FC<ScheduleProps> = ({
              whiteSpace: 'nowrap', 
              overflow: 'hidden', 
              textOverflow: 'ellipsis', 
-             width: '95%' 
+             width: '95%',
+             fontFamily: "'Bricolage Grotesque', 'Inter', sans-serif",
          }}>
             {ev.title}
          </div>
@@ -323,7 +339,7 @@ const Schedule: React.FC<ScheduleProps> = ({
              right: padding,
              padding: '2px 6px', 
              borderRadius: '5px', 
-             backgroundColor: 'rgba(0,0,0,0.2)', 
+             backgroundColor: 'rgba(0,0,0,0.18)', 
              fontSize: '0.45rem', 
              fontWeight: 800, 
              textTransform: 'uppercase',
@@ -347,256 +363,640 @@ const Schedule: React.FC<ScheduleProps> = ({
   const gridTemplateColumns = `54px ${periods.map(p => p.isBreak ? '13px' : '1fr').join(' ')}`;
 
   return (
-    <div style={{height: "100%", display: "flex", flexDirection: "column", padding: "10px 10px 100px 10px", overflow: "hidden"}}>
-        <div style={{...styles.header, marginBottom: '10px'}}>
-          <div>
-             <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
-                <h1 style={styles.title}>Schedule</h1>
-                <div style={{position: 'relative'}}>
-                   <select value={activeProfileId} onChange={(e) => onProfileChange(e.target.value)} style={{appearance: 'none', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.05)', color: theme.text, fontSize: '0.8rem', padding: '6px 24px 6px 10px', borderRadius: '12px', outline: 'none', fontWeight: 600, cursor: 'pointer', backdropFilter: 'blur(10px)'}}>
-                     {profiles.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                   </select>
-                   <ChevronDown size={14} style={{position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)', color: theme.textMuted, pointerEvents: 'none'}} />
-                </div>
-             </div>
-             <div style={{display: 'flex', alignItems: 'center', gap: '16px', marginTop: '8px'}}>
-                 <button onClick={() => handleNavWeek('prev')} style={{background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '4px', border: 'none', color: theme.text, cursor: 'pointer'}}><ChevronLeft size={18}/></button>
-                 <span style={{fontSize: '0.85rem', color: theme.textMuted, fontWeight: 600, letterSpacing: '0.5px'}}>
-                   {formatDate(currentWeekStart)} - {formatDate(weekEnd)}
-                 </span>
-                 <button onClick={() => handleNavWeek('next')} style={{background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '4px', border: 'none', color: theme.text, cursor: 'pointer'}}><ChevronRight size={18}/></button>
-                 
-                 {!isCurrentWeek && (
-                    <button 
-                        onClick={handleReturnToCurrentWeek}
-                        style={{
-                            background: 'rgba(139, 92, 246, 0.2)', 
-                            border: '1px solid rgba(139, 92, 246, 0.4)', 
-                            borderRadius: '8px', 
-                            padding: '4px 8px', 
-                            color: theme.accent, 
-                            cursor: 'pointer',
-                            fontSize: '0.75rem',
-                            fontWeight: 600,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            marginLeft: '8px',
-                            animation: 'fadeIn 0.2s'
-                        }}
-                    >
-                        <RotateCcw size={12} /> Current Week
-                    </button>
-                 )}
-             </div>
-           </div>
-           <div style={{position: 'relative'}}>
-               <button 
-                onClick={() => setIsActionsMenuOpen(!isActionsMenuOpen)}
+    <div style={{height: "100%", display: "flex", flexDirection: "column", padding: "10px 10px 100px 10px", overflow: "hidden", background: 'transparent'}}>
+
+      {/* ── Toolbar card ──────────────────────────────────────────────────── */}
+      <div style={{
+        background: CARD_BG,
+        border: `1.5px solid ${INK}`,
+        borderRadius: '12px',
+        boxShadow: `3px 4px 0 ${INK}`,
+        padding: '12px 14px',
+        marginBottom: '12px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        gap: '8px',
+      }}>
+        {/* Left: title + profile selector + week nav */}
+        <div style={{display: 'flex', flexDirection: 'column', gap: '8px', flex: 1, minWidth: 0}}>
+          {/* Row 1: Title + profile */}
+          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
+            <h1 style={{
+              margin: 0,
+              fontSize: '1.25rem',
+              fontWeight: 800,
+              color: INK,
+              fontFamily: "'Bricolage Grotesque', 'Inter', sans-serif",
+              letterSpacing: '-0.3px',
+            }}>Schedule</h1>
+
+            {/* Profile selector */}
+            <div style={{position: 'relative'}}>
+              <select
+                value={activeProfileId}
+                onChange={(e) => onProfileChange(e.target.value)}
                 style={{
-                    background: 'rgba(255,255,255,0.1)', 
-                    border: '1px solid rgba(255,255,255,0.2)', 
-                    borderRadius: '50%', 
-                    width: '36px', 
-                    height: '36px', 
-                    padding: 0, 
-                    justifyContent: 'center', 
-                    display: 'flex',
-                    alignItems: 'center',
-                    color: '#fff',
-                    cursor: 'pointer',
-                    boxShadow: '0 5px 15px rgba(0,0,0,0.2)',
-                    transition: 'all 0.2s'
+                  appearance: 'none',
+                  background: `rgba(26,23,48,0.06)`,
+                  border: `1.5px solid ${INK}`,
+                  color: INK,
+                  fontSize: '0.78rem',
+                  padding: '5px 24px 5px 10px',
+                  borderRadius: '8px',
+                  outline: 'none',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  fontFamily: "'Instrument Sans', 'Inter', sans-serif",
                 }}
-                title="Actions"
-               >
-                <MoreHorizontal size={18} />
-               </button>
+              >
+                {profiles.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+              <ChevronDown size={13} style={{position: 'absolute', right: '7px', top: '50%', transform: 'translateY(-50%)', color: INK, pointerEvents: 'none'}} />
+            </div>
+          </div>
 
-               {isActionsMenuOpen && (
-                   <>
-                       <div className="fixed inset-0 z-[1999]" onClick={() => setIsActionsMenuOpen(false)} />
-                       <div className="absolute right-0 mt-2 w-48 bg-[#1e0a45] border border-white/10 rounded-xl shadow-2xl z-[2000] overflow-hidden py-1 animate-in fade-in slide-in-from-top-2">
-                           <button 
-                               onClick={() => { onAddEventClick(); setIsActionsMenuOpen(false); }}
-                               className="w-full px-4 py-3 text-left text-sm font-semibold text-white hover:bg-white/10 flex items-center gap-3 transition-colors"
-                           >
-                               <Plus size={16} className="text-white" /> Add Event
-                           </button>
-                           <button 
-                               onClick={() => { onSmartImportClick(); setIsActionsMenuOpen(false); }}
-                               className="w-full px-4 py-3 text-left text-sm font-semibold text-white hover:bg-white/10 flex items-center gap-3 transition-colors"
-                           >
-                               <Brain size={16} className="text-violet-400" /> Smart Import
-                           </button>
-                           <button 
-                               onClick={() => { setIsSyncModalOpen(true); setIsActionsMenuOpen(false); }}
-                               className="w-full px-4 py-3 text-left text-sm font-semibold text-white hover:bg-white/10 flex items-center gap-3 transition-colors"
-                           >
-                               <Download size={16} className="text-emerald-400" /> Export (ICS)
-                           </button>
-                           <button 
-                               onClick={() => { handleExportImage(); setIsActionsMenuOpen(false); }}
-                               className="w-full px-4 py-3 text-left text-sm font-semibold text-white hover:bg-white/10 flex items-center gap-3 transition-colors"
-                           >
-                               <Download size={16} className="text-blue-400" /> Export (Image)
-                           </button>
-                           <div className="h-px bg-white/10 my-1"></div>
-                           <button 
-                               onClick={() => { onClearScheduleClick(); setIsActionsMenuOpen(false); }}
-                               className="w-full px-4 py-3 text-left text-sm font-semibold text-red-400 hover:bg-white/10 flex items-center gap-3 transition-colors"
-                           >
-                               <Trash2 size={16} /> Clear Schedule
-                           </button>
-                       </div>
-                   </>
-               )}
-           </div>
-        </div>
+          {/* Row 2: Week navigation */}
+          <div style={{display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap'}}>
+            {/* Prev week */}
+            <button
+              onClick={() => handleNavWeek('prev')}
+              style={{
+                background: `rgba(26,23,48,0.07)`,
+                border: `1.5px solid ${INK}`,
+                borderRadius: '8px',
+                padding: '4px 6px',
+                color: INK,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                lineHeight: 1,
+              }}
+            >
+              <ChevronLeft size={16}/>
+            </button>
 
-        <div ref={scrollContainerRef} style={{...styles.scheduleWrapper, borderRadius: '16px'}}>
-            <div ref={scheduleRef} style={{...styles.scheduleContainer, gridTemplateColumns: gridTemplateColumns, minWidth: periods.length * 80 + 'px'}}>
-             <div style={styles.scheduleHeaderCell}></div>
-             {periods.map((p, _i) => (
-               p.isBreak ? <div key={p.id} style={styles.scheduleBreakHeader}>{p.label}</div> : 
-                 <div key={p.id} style={styles.scheduleHeaderCell}>
-                   <span style={{color: theme.accent, fontSize: "0.7rem", fontWeight: 800, textTransform: 'uppercase', marginBottom: '2px'}}>{p.label}</span>
-                   <span style={{color: "rgba(255,255,255,0.7)", fontSize: "0.6rem", fontWeight: 600}}>
-                     {to12h(p.startTime || "")} - {to12h(p.endTime || "")}
-                   </span>
-                 </div>
-             ))}
+            {/* Date range label */}
+            <span style={{
+              fontSize: '0.82rem',
+              color: `rgba(26,23,48,0.65)`,
+              fontWeight: 600,
+              letterSpacing: '0.3px',
+              fontFamily: "'Instrument Sans', 'Inter', sans-serif",
+            }}>
+              {formatDate(currentWeekStart)} – {formatDate(weekEnd)}
+            </span>
 
-             {days.map((dayName, dayIndex) => {
-               const rowDate = addDays(currentWeekStart, dayIndex);
-               const rowDateStr = getLocalISOString(rowDate);
-               const isToday = getLocalISOString() === rowDateStr;
-               const rowStyle = isToday ? { backgroundColor: `${theme.accent}1a` } : {};
+            {/* Next week */}
+            <button
+              onClick={() => handleNavWeek('next')}
+              style={{
+                background: `rgba(26,23,48,0.07)`,
+                border: `1.5px solid ${INK}`,
+                borderRadius: '8px',
+                padding: '4px 6px',
+                color: INK,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                lineHeight: 1,
+              }}
+            >
+              <ChevronRight size={16}/>
+            </button>
 
-               return (
-                 <React.Fragment key={dayName}>
-                   <div style={{...styles.scheduleDayCell, ...rowStyle, borderLeft: isToday ? `4px solid ${theme.accent}` : "none", color: isToday ? theme.accent : theme.text}}>
-                     <span style={{fontSize: "0.7rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: '0.5px'}}>{dayName.slice(0, 3)}</span>
-                     <span style={styles.dateBadge}>{formatDate(rowDate)}</span>
-                   </div>
-                   {periods.map((p, pIdx) => {
-                      if (p.isBreak) return <div key={`${dayName}-${p.id}`} style={{...styles.scheduleBreakCell, ...rowStyle}}></div>;
-                      
-                      const cellEvents = events.filter(e => {
-                         if (e.scheduleId !== activeProfileId) return false;
-                         const isCorrectPeriod = getEventPeriodIndex(e.startTime) === pIdx;
-                         if (!isCorrectPeriod) return false;
-                         if (e.isRecurring && e.dayOfWeek === dayName) return true;
-                         if (!e.isRecurring && e.date === rowDateStr) return true;
-                         return false;
-                      });
-
-                      const isDraggedOver = draggedOverCell?.day === dayName && draggedOverCell?.periodIdx === pIdx;
-                      const cellHighlightStyle = isDraggedOver ? { 
-                          backgroundColor: 'rgba(139, 92, 246, 0.2)',
-                          boxShadow: 'inset 0 0 0 2px rgba(139, 92, 246, 0.5)',
-                          zIndex: 10
-                      } : {};
-
-                      return (
-                        <div 
-                            key={`${dayName}-${p.id}`} 
-                            style={{...styles.scheduleContentCell, ...rowStyle, ...cellHighlightStyle, transition: 'all 0.2s'}}
-                            onDragOver={(e) => handleDragOver(e, dayName, pIdx)}
-                            onDrop={(e) => handleDrop(e, dayName, rowDateStr, pIdx)}
-                        >
-                           {cellEvents.length > 0 && (
-                               cellEvents.length === 1 ? (
-                                   renderEventCard(cellEvents[0])
-                               ) : (
-                                   <div style={{display: 'flex', gap: '3px', width: '100%', height: '100%'}}>
-                                       <div style={{flex: 1, minWidth: 0}}>
-                                           {renderEventCard(cellEvents[0], true)}
-                                       </div>
-                                       <div 
-                                           onClick={(e) => { e.stopPropagation(); setExpandedSlot(cellEvents); }}
-                                           style={{
-                                               width: '24px', 
-                                               borderRadius: '7px', 
-                                               backgroundColor: 'rgba(255,255,255,0.1)', 
-                                               border: '1px solid rgba(255,255,255,0.1)', 
-                                               display: 'flex', 
-                                               alignItems: 'center', 
-                                               justifyContent: 'center', 
-                                               cursor: 'pointer', 
-                                               color: '#fff', 
-                                               fontWeight: 800, 
-                                               fontSize: '0.65rem',
-                                               flexShrink: 0,
-                                               transition: 'background 0.2s',
-                                               boxShadow: '0 4px 10px rgba(0,0,0,0.2)'
-                                           }}
-                                           onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.2)'}
-                                           onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'}
-                                       >
-                                           +{cellEvents.length - 1}
-                                       </div>
-                                   </div>
-                               )
-                           )}
-                        </div>
-                      );
-                   })}
-                 </React.Fragment>
-               );
-             })}
+            {/* Return to current week */}
+            {!isCurrentWeek && (
+              <button
+                onClick={handleReturnToCurrentWeek}
+                style={{
+                  background: `${HL_YELLOW}55`,
+                  border: `1.5px solid ${INK}`,
+                  borderRadius: '8px',
+                  padding: '4px 9px',
+                  color: INK,
+                  cursor: 'pointer',
+                  fontSize: '0.73rem',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  fontFamily: "'Instrument Sans', 'Inter', sans-serif",
+                  animation: 'fadeIn 0.2s',
+                }}
+              >
+                <RotateCcw size={12} /> Current Week
+              </button>
+            )}
           </div>
         </div>
 
-        {expandedSlot && (
-            <div style={styles.modalOverlay} onClick={() => setExpandedSlot(null)}>
-                <div style={{...styles.modalContent, width: '90%', maxWidth: '320px'}} onClick={e => e.stopPropagation()}>
-                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px'}}>
-                        <h3 style={{margin: 0, fontSize: '1rem', fontWeight: 800}}>Time Slot Events</h3>
-                        <button onClick={() => setExpandedSlot(null)} style={{background: 'none', border: 'none', color: theme.textMuted, cursor: 'pointer'}}><X size={18}/></button>
-                    </div>
-                    <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
-                        {expandedSlot.map(ev => {
-                             const bg = eventColors[ev.type] || '#64748b';
-                             const txtColor = getContrastColor(bg);
-                             return (
-                                 <div 
-                                    key={ev.id} 
-                                    onClick={() => { setExpandedSlot(null); onEventClick(ev); }}
-                                    style={{
-                                        backgroundColor: bg, 
-                                        borderRadius: '10px', 
-                                        padding: '10px', 
-                                        cursor: 'pointer',
-                                        display: 'flex', 
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center',
-                                        boxShadow: '0 4px 10px rgba(0,0,0,0.2)'
-                                    }}
-                                 >
-                                     <div>
-                                         <div style={{fontSize: '0.65rem', fontWeight: 800, opacity: 0.8, textTransform: 'uppercase', color: txtColor}}>{ev.type}</div>
-                                         <div style={{fontSize: '0.9rem', fontWeight: 700, color: txtColor}}>{ev.title}</div>
-                                         <div style={{fontSize: '0.75rem', opacity: 0.9, marginTop: '2px', color: txtColor}}>{ev.location}</div>
-                                     </div>
-                                     <div style={{background: 'rgba(0,0,0,0.2)', padding: '5px 8px', borderRadius: '7px', fontSize: '0.75rem', fontWeight: 600, color: txtColor}}>
-                                         {to12h(ev.startTime)}
-                                     </div>
-                                 </div>
-                             )
-                        })}
-                    </div>
-                </div>
-            </div>
-        )}
+        {/* Right: actions menu button */}
+        <div style={{position: 'relative', flexShrink: 0}}>
+          <button
+            onClick={() => setIsActionsMenuOpen(!isActionsMenuOpen)}
+            style={{
+              background: isActionsMenuOpen ? INK : `rgba(26,23,48,0.07)`,
+              border: `1.5px solid ${INK}`,
+              borderRadius: '50%',
+              width: '36px',
+              height: '36px',
+              padding: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: isActionsMenuOpen ? CARD_BG : INK,
+              cursor: 'pointer',
+              boxShadow: isActionsMenuOpen ? `2px 2px 0 ${INK}` : `3px 3px 0 ${INK}`,
+              transition: 'all 0.15s',
+            }}
+            title="Actions"
+          >
+            <MoreHorizontal size={18} />
+          </button>
 
-        <SyncCalendarModal 
-            isOpen={isSyncModalOpen} 
-            onClose={() => setIsSyncModalOpen(false)} 
-            events={events} 
-        />
+          {isActionsMenuOpen && (
+            <>
+              <div className="fixed inset-0 z-[1999]" onClick={() => setIsActionsMenuOpen(false)} />
+              <div style={{
+                position: 'absolute',
+                right: 0,
+                top: 'calc(100% + 6px)',
+                width: '192px',
+                background: CARD_BG,
+                border: `1.5px solid ${INK}`,
+                borderRadius: '12px',
+                boxShadow: `5px 6px 0 ${INK}`,
+                zIndex: 2000,
+                overflow: 'hidden',
+                paddingTop: '4px',
+                paddingBottom: '4px',
+              }}>
+                {/* Add Event */}
+                <button
+                  onClick={() => { onAddEventClick(); setIsActionsMenuOpen(false); }}
+                  style={menuItemStyle}
+                  onMouseEnter={e => (e.currentTarget.style.background = `${HL_YELLOW}55`)}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                >
+                  <Plus size={15} style={{color: INK, flexShrink: 0}} /> Add Event
+                </button>
+
+                {/* Smart Import */}
+                <button
+                  onClick={() => { onSmartImportClick(); setIsActionsMenuOpen(false); }}
+                  style={menuItemStyle}
+                  onMouseEnter={e => (e.currentTarget.style.background = `${HL_YELLOW}55`)}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                >
+                  <Brain size={15} style={{color: INK, flexShrink: 0}} /> Smart Import
+                </button>
+
+                {/* Export ICS */}
+                <button
+                  onClick={() => { setIsSyncModalOpen(true); setIsActionsMenuOpen(false); }}
+                  style={menuItemStyle}
+                  onMouseEnter={e => (e.currentTarget.style.background = `${HL_YELLOW}55`)}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                >
+                  <Download size={15} style={{color: INK, flexShrink: 0}} /> Export (ICS)
+                </button>
+
+                {/* Export Image */}
+                <button
+                  onClick={() => { handleExportImage(); setIsActionsMenuOpen(false); }}
+                  style={menuItemStyle}
+                  onMouseEnter={e => (e.currentTarget.style.background = `${HL_YELLOW}55`)}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                >
+                  <Download size={15} style={{color: INK, flexShrink: 0}} /> Export (Image)
+                </button>
+
+                {/* Divider */}
+                <div style={{height: '1px', background: `rgba(26,23,48,0.12)`, margin: '4px 0'}} />
+
+                {/* Clear Schedule */}
+                <button
+                  onClick={() => { onClearScheduleClick(); setIsActionsMenuOpen(false); }}
+                  style={{...menuItemStyle, color: HL_RED}}
+                  onMouseEnter={e => (e.currentTarget.style.background = `${HL_RED}22`)}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                >
+                  <Trash2 size={15} style={{color: HL_RED, flexShrink: 0}} /> Clear Schedule
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* ── Schedule grid wrapper ──────────────────────────────────────────── */}
+      <div
+        ref={scrollContainerRef}
+        style={{
+          flex: 1,
+          overflow: 'auto',
+          background: CARD_BG,
+          border: `1.5px solid ${INK}`,
+          borderRadius: '10px',
+          boxShadow: `4px 6px 0 ${INK}`,
+          /* Ruled lines on scroll area */
+          backgroundImage: `repeating-linear-gradient(
+            to bottom,
+            transparent,
+            transparent 71px,
+            rgba(26,23,48,0.08) 71px,
+            rgba(26,23,48,0.08) 72px
+          )`,
+        }}
+      >
+        <div
+          ref={scheduleRef}
+          style={{
+            display: 'grid',
+            gridTemplateColumns: gridTemplateColumns,
+            minWidth: periods.length * 80 + 'px',
+          }}
+        >
+          {/* ── Period header row ── */}
+          {/* Top-left corner cell */}
+          <div style={cornerCellStyle} />
+
+          {periods.map((p, _i) =>
+            p.isBreak ? (
+              <div key={p.id} style={breakHeaderStyle}>{p.label}</div>
+            ) : (
+              <div key={p.id} style={periodHeaderCellStyle}>
+                <span style={{
+                  color: INK,
+                  fontSize: '0.68rem',
+                  fontWeight: 800,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.6px',
+                  fontFamily: "'Bricolage Grotesque', 'Inter', sans-serif",
+                  marginBottom: '2px',
+                }}>
+                  {p.label}
+                </span>
+                <span style={{
+                  color: `rgba(26,23,48,0.6)`,
+                  fontSize: '0.58rem',
+                  fontWeight: 600,
+                  fontFamily: "'Instrument Sans', 'Inter', sans-serif",
+                }}>
+                  {to12h(p.startTime || "")} – {to12h(p.endTime || "")}
+                </span>
+              </div>
+            )
+          )}
+
+          {/* ── Day rows ── */}
+          {days.map((dayName, dayIndex) => {
+            const rowDate = addDays(currentWeekStart, dayIndex);
+            const rowDateStr = getLocalISOString(rowDate);
+            const isToday = getLocalISOString() === rowDateStr;
+
+            const todayRowBg = isToday ? `${HL_YELLOW}30` : 'transparent';
+
+            return (
+              <React.Fragment key={dayName}>
+                {/* Day label cell */}
+                <div style={{
+                  ...dayCellStyle,
+                  background: isToday ? `${HL_YELLOW}55` : CARD_BG,
+                  borderLeft: isToday ? `3px solid ${INK}` : `1px solid rgba(26,23,48,0.12)`,
+                  color: INK,
+                }}>
+                  <span style={{
+                    fontSize: '0.68rem',
+                    fontWeight: 800,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    fontFamily: "'Bricolage Grotesque', 'Inter', sans-serif",
+                    color: isToday ? INK : `rgba(26,23,48,0.75)`,
+                  }}>
+                    {dayName.slice(0, 3)}
+                  </span>
+                  <span style={{
+                    fontSize: '0.58rem',
+                    fontWeight: 600,
+                    color: `rgba(26,23,48,0.5)`,
+                    fontFamily: "'Instrument Sans', 'Inter', sans-serif",
+                    marginTop: '2px',
+                  }}>
+                    {formatDate(rowDate)}
+                  </span>
+                </div>
+
+                {/* Period cells in this row */}
+                {periods.map((p, pIdx) => {
+                  if (p.isBreak) return (
+                    <div key={`${dayName}-${p.id}`} style={{
+                      ...breakCellStyle,
+                      background: isToday ? `${HL_YELLOW}22` : 'transparent',
+                    }} />
+                  );
+
+                  const cellEvents = events.filter(e => {
+                    if (e.scheduleId !== activeProfileId) return false;
+                    const isCorrectPeriod = getEventPeriodIndex(e.startTime) === pIdx;
+                    if (!isCorrectPeriod) return false;
+                    if (e.isRecurring && e.dayOfWeek === dayName) return true;
+                    if (!e.isRecurring && e.date === rowDateStr) return true;
+                    return false;
+                  });
+
+                  const isDraggedOver = draggedOverCell?.day === dayName && draggedOverCell?.periodIdx === pIdx;
+
+                  return (
+                    <div
+                      key={`${dayName}-${p.id}`}
+                      style={{
+                        padding: '3px',
+                        minHeight: '72px',
+                        background: isDraggedOver
+                          ? `${HL_BLUE}55`
+                          : isToday
+                            ? `${HL_YELLOW}22`
+                            : CARD_BG,
+                        borderTop: `1px solid rgba(26,23,48,0.08)`,
+                        borderLeft: `1px solid rgba(26,23,48,0.08)`,
+                        boxShadow: isDraggedOver
+                          ? `inset 0 0 0 2px ${INK}`
+                          : 'none',
+                        transition: 'all 0.15s',
+                        zIndex: isDraggedOver ? 10 : undefined,
+                      }}
+                      onDragOver={(e) => handleDragOver(e, dayName, pIdx)}
+                      onDrop={(e) => handleDrop(e, dayName, rowDateStr, pIdx)}
+                    >
+                      {cellEvents.length > 0 && (
+                        cellEvents.length === 1 ? (
+                          renderEventCard(cellEvents[0])
+                        ) : (
+                          <div style={{display: 'flex', gap: '3px', width: '100%', height: '100%'}}>
+                            <div style={{flex: 1, minWidth: 0}}>
+                              {renderEventCard(cellEvents[0], true)}
+                            </div>
+                            {/* Overflow badge */}
+                            <div
+                              onClick={(e) => { e.stopPropagation(); setExpandedSlot(cellEvents); }}
+                              style={{
+                                width: '22px',
+                                borderRadius: '7px',
+                                background: `rgba(26,23,48,0.08)`,
+                                border: `1.5px solid ${INK}`,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                color: INK,
+                                fontWeight: 800,
+                                fontSize: '0.62rem',
+                                flexShrink: 0,
+                                transition: 'background 0.15s',
+                                fontFamily: "'Space Mono', monospace",
+                              }}
+                              onMouseEnter={e => e.currentTarget.style.background = `${HL_YELLOW}88`}
+                              onMouseLeave={e => e.currentTarget.style.background = `rgba(26,23,48,0.08)`}
+                            >
+                              +{cellEvents.length - 1}
+                            </div>
+                          </div>
+                        )
+                      )}
+                    </div>
+                  );
+                })}
+              </React.Fragment>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── Expanded slot modal ───────────────────────────────────────────── */}
+      {expandedSlot && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(26,23,48,0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 3000,
+          }}
+          onClick={() => setExpandedSlot(null)}
+        >
+          <div
+            style={{
+              background: CARD_BG,
+              border: `1.5px solid ${INK}`,
+              borderRadius: '14px',
+              boxShadow: `8px 10px 0 ${INK}`,
+              padding: '20px',
+              width: '90%',
+              maxWidth: '320px',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px'}}>
+              <h3 style={{
+                margin: 0,
+                fontSize: '1rem',
+                fontWeight: 800,
+                color: INK,
+                fontFamily: "'Bricolage Grotesque', 'Inter', sans-serif",
+              }}>
+                Time Slot Events
+              </h3>
+              <button
+                onClick={() => setExpandedSlot(null)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: `rgba(26,23,48,0.5)`,
+                  cursor: 'pointer',
+                  padding: '2px',
+                  display: 'flex',
+                  alignItems: 'center',
+                }}
+              >
+                <X size={18}/>
+              </button>
+            </div>
+
+            {/* Event list */}
+            <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
+              {expandedSlot.map(ev => {
+                const bg = eventColors[ev.type] || '#64748b';
+                const txtColor = getContrastColor(bg);
+                return (
+                  <div
+                    key={ev.id}
+                    onClick={() => { setExpandedSlot(null); onEventClick(ev); }}
+                    style={{
+                      backgroundColor: bg,
+                      border: `1.5px solid ${INK}`,
+                      borderRadius: '10px',
+                      padding: '10px 12px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      boxShadow: `2px 3px 0 ${INK}`,
+                      transition: 'transform 0.1s, box-shadow 0.1s',
+                    }}
+                    onMouseEnter={e => {
+                      (e.currentTarget as HTMLDivElement).style.transform = 'translate(-1px,-1px)';
+                      (e.currentTarget as HTMLDivElement).style.boxShadow = `3px 4px 0 ${INK}`;
+                    }}
+                    onMouseLeave={e => {
+                      (e.currentTarget as HTMLDivElement).style.transform = '';
+                      (e.currentTarget as HTMLDivElement).style.boxShadow = `2px 3px 0 ${INK}`;
+                    }}
+                  >
+                    <div>
+                      <div style={{
+                        fontSize: '0.6rem',
+                        fontWeight: 800,
+                        opacity: 0.8,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px',
+                        color: txtColor,
+                        fontFamily: "'Instrument Sans', 'Inter', sans-serif",
+                      }}>
+                        {ev.type}
+                      </div>
+                      <div style={{
+                        fontSize: '0.9rem',
+                        fontWeight: 700,
+                        color: txtColor,
+                        fontFamily: "'Bricolage Grotesque', 'Inter', sans-serif",
+                      }}>
+                        {ev.title}
+                      </div>
+                      <div style={{fontSize: '0.75rem', opacity: 0.9, marginTop: '2px', color: txtColor}}>
+                        {ev.location}
+                      </div>
+                    </div>
+                    <div style={{
+                      background: 'rgba(0,0,0,0.15)',
+                      border: `1px solid rgba(0,0,0,0.2)`,
+                      padding: '5px 8px',
+                      borderRadius: '7px',
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      color: txtColor,
+                      fontFamily: "'Space Mono', monospace",
+                      whiteSpace: 'nowrap',
+                    }}>
+                      {to12h(ev.startTime)}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <SyncCalendarModal
+        isOpen={isSyncModalOpen}
+        onClose={() => setIsSyncModalOpen(false)}
+        events={events}
+      />
     </div>
   );
+};
+
+// ─── Shared style objects (defined outside component to avoid recreating) ────
+
+const menuItemStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '10px 14px',
+  textAlign: 'left',
+  fontSize: '0.84rem',
+  fontWeight: 600,
+  color: '#1A1730',
+  background: 'transparent',
+  border: 'none',
+  cursor: 'pointer',
+  display: 'flex',
+  alignItems: 'center',
+  gap: '10px',
+  transition: 'background 0.12s',
+  fontFamily: "'Instrument Sans', 'Inter', sans-serif",
+};
+
+/** Top-left corner empty cell */
+const cornerCellStyle: React.CSSProperties = {
+  background: '#C7B2DB',
+  borderBottom: '1.5px solid #1A1730',
+  borderRight: '1px solid rgba(26,23,48,0.15)',
+  position: 'sticky',
+  left: 0,
+  top: 0,
+  zIndex: 30,
+};
+
+/** Period header cells (top row, non-break) */
+const periodHeaderCellStyle: React.CSSProperties = {
+  background: '#C7B2DB',
+  borderBottom: '1.5px solid #1A1730',
+  borderLeft: '1px solid rgba(26,23,48,0.15)',
+  padding: '6px 4px',
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  position: 'sticky',
+  top: 0,
+  zIndex: 20,
+  textAlign: 'center',
+};
+
+/** Break header cell (narrow column in header row) */
+const breakHeaderStyle: React.CSSProperties = {
+  background: '#C7B2DB',
+  borderBottom: '1.5px solid #1A1730',
+  borderLeft: '1px solid rgba(26,23,48,0.12)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  writingMode: 'vertical-rl',
+  fontSize: '0.5rem',
+  fontWeight: 700,
+  color: 'rgba(26,23,48,0.5)',
+  textTransform: 'uppercase',
+  letterSpacing: '0.5px',
+  position: 'sticky',
+  top: 0,
+  zIndex: 20,
+};
+
+/** Day label cell (left-most column per row) */
+const dayCellStyle: React.CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: '6px 4px',
+  minHeight: '72px',
+  borderTop: '1px solid rgba(26,23,48,0.08)',
+  position: 'sticky',
+  left: 0,
+  zIndex: 10,
+};
+
+/** Break cell body (per day row) */
+const breakCellStyle: React.CSSProperties = {
+  minHeight: '72px',
+  borderTop: '1px solid rgba(26,23,48,0.08)',
+  borderLeft: '1px solid rgba(26,23,48,0.08)',
 };
 
 export default Schedule;

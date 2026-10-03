@@ -6,6 +6,15 @@ import {
 } from 'recharts';
 import { Activity, Flame, Droplets, TrendingUp, BarChart3, ChevronDown, ChevronRight, AlertCircle, Plus, Dumbbell, Apple, LineChart, Play, Scale } from 'lucide-react';
 
+const INK = '#1A1730';
+const CARD_BG = '#FAFAF6';
+const HL_YELLOW = '#F6DF63';
+const HL_GREEN = '#8CE3B7';
+const HL_BLUE = '#9ECFFF';
+const HL_ORANGE = '#F4BE8A';
+const HL_PINK = '#eea8f2';
+const HL_RED = '#E56A5A';
+
 interface GymDashboardProps {
   foodLogs: FoodItem[];
   waterLogs: WaterLog[];
@@ -17,7 +26,7 @@ interface GymDashboardProps {
 }
 
 // Animated SVG progress ring
-const Ring = ({ size, stroke, pct, color, track = 'rgba(255,255,255,0.07)', children }: {
+const Ring = ({ size, stroke, pct, color, track = `${INK}18`, children }: {
   size: number; stroke: number; pct: number; color: string; track?: string; children?: React.ReactNode;
 }) => {
   const r = (size - stroke) / 2;
@@ -41,6 +50,13 @@ const Ring = ({ size, stroke, pct, color, track = 'rgba(255,255,255,0.07)', chil
   );
 };
 
+const card: React.CSSProperties = {
+  background: CARD_BG,
+  border: `1.5px solid ${INK}`,
+  borderRadius: 10,
+  boxShadow: `4px 5px 0 ${INK}`,
+};
+
 export const GymDashboard: React.FC<GymDashboardProps> = ({ foodLogs, waterLogs, workoutSessions, bodyLogs, settings, setView, activeSession }) => {
   // --- NUTRITION ---
   const totalMacros = foodLogs.reduce(
@@ -60,9 +76,9 @@ export const GymDashboard: React.FC<GymDashboardProps> = ({ foodLogs, waterLogs,
   const isOverCalories = remainingCalories < 0;
 
   const macroRows = [
-    { label: 'Protein', value: totalMacros.protein, target: settings.targets.protein, color: 'bg-sky-500', text: 'text-sky-300' },
-    { label: 'Carbs', value: totalMacros.carbs, target: settings.targets.carbs, color: 'bg-emerald-500', text: 'text-emerald-300' },
-    { label: 'Fat', value: totalMacros.fat, target: settings.targets.fat, color: 'bg-pink-500', text: 'text-pink-300' },
+    { label: 'Protein', value: totalMacros.protein, target: settings.targets.protein, color: HL_BLUE },
+    { label: 'Carbs', value: totalMacros.carbs, target: settings.targets.carbs, color: HL_GREEN },
+    { label: 'Fat', value: totalMacros.fat, target: settings.targets.fat, color: HL_PINK },
   ];
 
   // --- GREETING ---
@@ -134,9 +150,9 @@ export const GymDashboard: React.FC<GymDashboardProps> = ({ foodLogs, waterLogs,
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-[#1c1c1e] border border-white/10 p-2 rounded-lg shadow-xl text-xs">
-          <p className="text-white/50 mb-1">{label}</p>
-          <p className="text-white font-bold">
+        <div style={{ background: CARD_BG, border: `1.5px solid ${INK}`, borderRadius: 8, padding: '6px 10px', fontSize: 11, boxShadow: `2px 3px 0 ${INK}` }}>
+          <p style={{ color: `${INK}80`, marginBottom: 2 }}>{label}</p>
+          <p style={{ color: INK, fontWeight: 700 }}>
             {payload[0].value} {payload[0].dataKey === 'volume' ? 'kg' : 'Workouts'}
           </p>
         </div>
@@ -150,80 +166,104 @@ export const GymDashboard: React.FC<GymDashboardProps> = ({ foodLogs, waterLogs,
 
       <header className="flex justify-between items-center mb-2 pt-2">
         <div>
-          <p className="text-white/40 text-xs font-medium">{greeting},</p>
-          <h1 className="text-2xl font-black text-white tracking-tight leading-tight">{settings.name} <span className="inline-block animate-float">💪</span></h1>
+          <p style={{ color: `${INK}60`, fontSize: 12, fontWeight: 500, fontFamily: "'Instrument Sans', sans-serif" }}>{greeting},</p>
+          <h1 style={{ fontSize: 24, fontWeight: 800, color: INK, fontFamily: "'Bricolage Grotesque', sans-serif", lineHeight: 1.1 }}>
+            {settings.name} <span className="inline-block animate-float">💪</span>
+          </h1>
         </div>
-        <div className="relative">
-          <div className="h-11 w-11 bg-gradient-to-br from-violet-500 to-indigo-600 rounded-2xl flex items-center justify-center text-white font-black text-base shadow-lg shadow-indigo-900/40 animate-glow">
-            {settings.name.charAt(0).toUpperCase()}
-          </div>
+        <div
+          style={{
+            width: 44, height: 44,
+            background: HL_YELLOW,
+            border: `1.5px solid ${INK}`,
+            borderRadius: 14,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontWeight: 900,
+            fontSize: 18,
+            color: INK,
+            boxShadow: `3px 3px 0 ${INK}`,
+            fontFamily: "'Bricolage Grotesque', sans-serif",
+          }}
+        >
+          {settings.name.charAt(0).toUpperCase()}
         </div>
       </header>
 
       {/* Resume active workout banner */}
       {activeSession && (
         <button onClick={() => setView(GymViewType.WORKOUT)}
-          className="w-full bg-gradient-to-r from-emerald-600/30 to-teal-600/20 border border-emerald-500/40 rounded-3xl p-4 flex items-center gap-3 transition active:scale-[0.98] animate-in fade-in slide-in-from-top-2">
-          <div className="w-10 h-10 rounded-2xl bg-emerald-500 flex items-center justify-center text-white shadow-lg shadow-emerald-900/40">
+          style={{
+            width: '100%',
+            background: `${HL_GREEN}40`,
+            border: `1.5px solid ${INK}`,
+            borderRadius: 14,
+            padding: '12px 16px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            cursor: 'pointer',
+            boxShadow: `3px 3px 0 ${INK}`,
+          }}>
+          <div style={{ width: 40, height: 40, borderRadius: 12, background: HL_GREEN, border: `1.5px solid ${INK}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: INK, boxShadow: `2px 2px 0 ${INK}` }}>
             <Play size={18} fill="currentColor" />
           </div>
-          <div className="flex-1 text-left">
-            <div className="text-white font-bold text-sm flex items-center gap-2">
+          <div style={{ flex: 1, textAlign: 'left' }}>
+            <div style={{ color: INK, fontWeight: 700, fontSize: 14, display: 'flex', alignItems: 'center', gap: 8, fontFamily: "'Bricolage Grotesque', sans-serif" }}>
               {activeSession.name}
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} className="animate-ping" />
             </div>
-            <div className="text-emerald-200/60 text-[10px] font-bold uppercase tracking-wider">Workout in progress — tap to resume</div>
+            <div style={{ color: `${INK}80`, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', fontFamily: "'Instrument Sans', sans-serif" }}>Workout in progress — tap to resume</div>
           </div>
-          <ChevronRight size={18} className="text-emerald-300" />
+          <ChevronRight size={18} style={{ color: INK }} />
         </button>
       )}
 
       {/* HERO: Calories ring + water */}
       <div className="grid grid-cols-2 gap-3">
-        <div className="bg-white/[0.03] backdrop-blur-md rounded-3xl p-4 border border-white/5 relative overflow-hidden group">
-          <div className="absolute -top-10 -right-10 w-28 h-28 bg-orange-500/10 rounded-full blur-2xl pointer-events-none" />
+        <div style={{ ...card, padding: 16, position: 'relative', overflow: 'hidden' }}>
           <button onClick={() => setView(GymViewType.NUTRITION)}
-            className="absolute top-3 right-3 p-1.5 bg-white/5 hover:bg-white/15 rounded-full text-white/50 z-20 transition active:scale-90">
+            style={{ position: 'absolute', top: 8, right: 8, padding: 6, background: `${INK}10`, border: `1px solid ${INK}20`, borderRadius: '50%', cursor: 'pointer', color: INK, zIndex: 2, display: 'flex' }}>
             <Plus size={13} />
           </button>
           <div className="flex flex-col items-center">
-            <Ring size={110} stroke={9} pct={caloriePct} color={isOverCalories ? '#f43f5e' : '#fb923c'}>
+            <Ring size={110} stroke={9} pct={caloriePct} color={isOverCalories ? HL_RED : HL_ORANGE}>
               {isOverCalories
-                ? <AlertCircle size={14} className="text-rose-400 mb-0.5" />
-                : <Flame size={14} className="text-orange-400 mb-0.5" />}
-              <span className="text-lg font-black text-white leading-none animate-count">{Math.round(totalMacros.calories)}</span>
-              <span className="text-[8px] text-white/40 font-bold uppercase tracking-wider mt-0.5">/ {settings.targets.calories}</span>
+                ? <AlertCircle size={14} style={{ color: HL_RED, marginBottom: 2 }} />
+                : <Flame size={14} style={{ color: HL_ORANGE, marginBottom: 2 }} />}
+              <span style={{ fontSize: 20, fontWeight: 900, color: INK, lineHeight: 1, fontFamily: "'Bricolage Grotesque', sans-serif" }}>{Math.round(totalMacros.calories)}</span>
+              <span style={{ fontSize: 9, color: `${INK}50`, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: 2 }}>/ {settings.targets.calories}</span>
             </Ring>
-            <div className={`mt-2 text-[10px] font-bold ${isOverCalories ? 'text-rose-400' : 'text-white/50'}`}>
+            <div style={{ marginTop: 8, fontSize: 10, fontWeight: 700, color: isOverCalories ? HL_RED : `${INK}60`, fontFamily: "'Instrument Sans', sans-serif" }}>
               {isOverCalories ? `${Math.abs(Math.round(remainingCalories))} kcal over` : `${Math.round(remainingCalories)} kcal left`}
             </div>
           </div>
         </div>
 
-        <div className="bg-white/[0.03] backdrop-blur-md rounded-3xl p-4 border border-white/5 relative overflow-hidden group">
-          <div className="absolute -bottom-10 -left-10 w-28 h-28 bg-sky-500/10 rounded-full blur-2xl pointer-events-none" />
+        <div style={{ ...card, padding: 16, position: 'relative', overflow: 'hidden' }}>
           <button onClick={() => setView(GymViewType.NUTRITION)}
-            className="absolute top-3 right-3 p-1.5 bg-white/5 hover:bg-white/15 rounded-full text-white/50 z-20 transition active:scale-90">
+            style={{ position: 'absolute', top: 8, right: 8, padding: 6, background: `${INK}10`, border: `1px solid ${INK}20`, borderRadius: '50%', cursor: 'pointer', color: INK, zIndex: 2, display: 'flex' }}>
             <Plus size={13} />
           </button>
           <div className="flex flex-col items-center">
-            <Ring size={110} stroke={9} pct={waterPct} color="#38bdf8">
-              <Droplets size={14} className="text-sky-400 mb-0.5" />
-              <span className="text-lg font-black text-white leading-none animate-count">{(totalWater / 1000).toFixed(1)}L</span>
-              <span className="text-[8px] text-white/40 font-bold uppercase tracking-wider mt-0.5">/ {(settings.waterTarget / 1000).toFixed(1)}L</span>
+            <Ring size={110} stroke={9} pct={waterPct} color={HL_BLUE}>
+              <Droplets size={14} style={{ color: HL_BLUE, marginBottom: 2 }} />
+              <span style={{ fontSize: 20, fontWeight: 900, color: INK, lineHeight: 1, fontFamily: "'Bricolage Grotesque', sans-serif" }}>{(totalWater / 1000).toFixed(1)}L</span>
+              <span style={{ fontSize: 9, color: `${INK}50`, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: 2 }}>/ {(settings.waterTarget / 1000).toFixed(1)}L</span>
             </Ring>
-            <div className="mt-2 text-[10px] font-bold text-white/50">{Math.round(waterPct)}% hydrated</div>
+            <div style={{ marginTop: 8, fontSize: 10, fontWeight: 700, color: `${INK}60`, fontFamily: "'Instrument Sans', sans-serif" }}>{Math.round(waterPct)}% hydrated</div>
           </div>
         </div>
       </div>
 
       {/* Macro bars */}
-      <div className="bg-white/[0.03] backdrop-blur-md rounded-3xl p-4 border border-white/5">
+      <div style={{ ...card, padding: 16 }}>
         <div className="flex items-center justify-between mb-3">
-          <h3 className="font-bold text-white text-xs flex items-center gap-2">
-            <Apple size={14} className="text-white/40" /> Macros Today
+          <h3 style={{ fontWeight: 700, color: INK, fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, fontFamily: "'Bricolage Grotesque', sans-serif" }}>
+            <Apple size={14} style={{ color: `${INK}60` }} /> Macros Today
           </h3>
-          <button onClick={() => setView(GymViewType.NUTRITION)} className="text-[10px] font-bold text-indigo-300 hover:text-indigo-200 transition flex items-center gap-0.5">
+          <button onClick={() => setView(GymViewType.NUTRITION)} style={{ fontSize: 10, fontWeight: 700, color: INK, background: `${HL_YELLOW}60`, border: `1px solid ${INK}30`, borderRadius: 6, padding: '2px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 2 }}>
             Log food <ChevronRight size={11} />
           </button>
         </div>
@@ -234,18 +274,17 @@ export const GymDashboard: React.FC<GymDashboardProps> = ({ foodLogs, waterLogs,
             return (
               <div key={m.label}>
                 <div className="flex justify-between text-[10px] mb-1">
-                  <span className={`font-bold ${m.text}`}>{m.label}</span>
-                  <span className="text-white/40">
+                  <span style={{ fontWeight: 700, color: INK, fontFamily: "'Instrument Sans', sans-serif" }}>{m.label}</span>
+                  <span style={{ color: `${INK}60`, fontFamily: "'Instrument Sans', sans-serif" }}>
                     {Math.round(m.value)} / {m.target}g
                     {left < 0
-                      ? <span className="text-rose-400 ml-1 font-bold">{Math.abs(Math.round(left))}g over</span>
-                      : <span className="text-white/30 ml-1">({Math.round(left)}g left)</span>}
+                      ? <span style={{ color: HL_RED, marginLeft: 4, fontWeight: 700 }}>{Math.abs(Math.round(left))}g over</span>
+                      : <span style={{ color: `${INK}40`, marginLeft: 4 }}>({Math.round(left)}g left)</span>}
                   </span>
                 </div>
-                <div className="h-2 w-full bg-black/30 rounded-full overflow-hidden border border-white/5">
+                <div style={{ height: 8, width: '100%', background: `${INK}12`, borderRadius: 99, overflow: 'hidden', border: `1px solid ${INK}20` }}>
                   <div
-                    className={`h-full rounded-full transition-all duration-1000 ease-out ${left < 0 ? 'bg-rose-500' : m.color}`}
-                    style={{ width: `${Math.min(pct, 100)}%` }}
+                    style={{ height: '100%', borderRadius: 99, background: left < 0 ? HL_RED : m.color, width: `${Math.min(pct, 100)}%`, transition: 'width 1s ease-out' }}
                   />
                 </div>
               </div>
@@ -255,104 +294,119 @@ export const GymDashboard: React.FC<GymDashboardProps> = ({ foodLogs, waterLogs,
       </div>
 
       {/* Quick stats row */}
-      <div className="grid grid-cols-3 gap-2 stagger-children">
-        <button onClick={() => setView(GymViewType.WORKOUT)} className="bg-white/[0.03] border border-white/5 hover:border-indigo-500/30 rounded-2xl p-3 text-center transition active:scale-95">
-          <Dumbbell size={15} className="mx-auto text-indigo-400 mb-1.5" />
-          <div className="text-white font-black text-sm leading-none">{thisWeekCount}</div>
-          <div className="text-[8px] text-white/30 uppercase font-bold tracking-wider mt-1">This week</div>
+      <div className="grid grid-cols-3 gap-2">
+        <button onClick={() => setView(GymViewType.WORKOUT)} style={{ ...card, padding: 12, textAlign: 'center', cursor: 'pointer', background: `${HL_YELLOW}50` }}>
+          <Dumbbell size={15} style={{ margin: '0 auto', color: INK, marginBottom: 6 }} />
+          <div style={{ color: INK, fontWeight: 900, fontSize: 15, lineHeight: 1, fontFamily: "'Bricolage Grotesque', sans-serif" }}>{thisWeekCount}</div>
+          <div style={{ fontSize: 8, color: `${INK}60`, textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px', marginTop: 4, fontFamily: "'Instrument Sans', sans-serif" }}>This week</div>
         </button>
-        <button onClick={() => setView(GymViewType.ANALYSIS)} className="bg-white/[0.03] border border-white/5 hover:border-violet-500/30 rounded-2xl p-3 text-center transition active:scale-95">
-          <Scale size={15} className="mx-auto text-violet-400 mb-1.5" />
-          <div className="text-white font-black text-sm leading-none">{latestWeight ? `${latestWeight.weight}kg` : '—'}</div>
-          <div className="text-[8px] text-white/30 uppercase font-bold tracking-wider mt-1">Weight</div>
+        <button onClick={() => setView(GymViewType.ANALYSIS)} style={{ ...card, padding: 12, textAlign: 'center', cursor: 'pointer', background: `${HL_GREEN}50` }}>
+          <Scale size={15} style={{ margin: '0 auto', color: INK, marginBottom: 6 }} />
+          <div style={{ color: INK, fontWeight: 900, fontSize: 15, lineHeight: 1, fontFamily: "'Bricolage Grotesque', sans-serif" }}>{latestWeight ? `${latestWeight.weight}kg` : '—'}</div>
+          <div style={{ fontSize: 8, color: `${INK}60`, textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px', marginTop: 4, fontFamily: "'Instrument Sans', sans-serif" }}>Weight</div>
         </button>
-        <button onClick={() => setView(GymViewType.ANALYSIS)} className="bg-white/[0.03] border border-white/5 hover:border-cyan-500/30 rounded-2xl p-3 text-center transition active:scale-95">
-          <LineChart size={15} className="mx-auto text-cyan-400 mb-1.5" />
-          <div className="text-white font-black text-sm leading-none">{workoutSessions.length}</div>
-          <div className="text-[8px] text-white/30 uppercase font-bold tracking-wider mt-1">Total logs</div>
+        <button onClick={() => setView(GymViewType.ANALYSIS)} style={{ ...card, padding: 12, textAlign: 'center', cursor: 'pointer', background: `${HL_BLUE}50` }}>
+          <LineChart size={15} style={{ margin: '0 auto', color: INK, marginBottom: 6 }} />
+          <div style={{ color: INK, fontWeight: 900, fontSize: 15, lineHeight: 1, fontFamily: "'Bricolage Grotesque', sans-serif" }}>{workoutSessions.length}</div>
+          <div style={{ fontSize: 8, color: `${INK}60`, textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px', marginTop: 4, fontFamily: "'Instrument Sans', sans-serif" }}>Total logs</div>
         </button>
       </div>
 
       {/* Last workout */}
       {lastWorkout && !activeSession && (
         <button onClick={() => setView(GymViewType.WORKOUT)}
-          className="w-full bg-white/[0.03] border border-white/5 hover:border-white/10 rounded-3xl p-4 flex items-center gap-3 transition active:scale-[0.98] text-left">
-          <div className="w-11 h-11 rounded-2xl bg-white/5 border border-white/10 flex flex-col items-center justify-center text-white shrink-0">
-            <span className="text-[8px] font-bold uppercase opacity-50">{new Date(lastWorkout.startTime).toLocaleDateString(undefined, { month: 'short' })}</span>
-            <span className="text-base font-black leading-none">{new Date(lastWorkout.startTime).getDate()}</span>
+          style={{ ...card, width: '100%', padding: 16, display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', textAlign: 'left' }}>
+          <div style={{ width: 44, height: 44, borderRadius: 10, background: `${INK}08`, border: `1.5px solid ${INK}20`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: INK, flexShrink: 0 }}>
+            <span style={{ fontSize: 8, fontWeight: 700, textTransform: 'uppercase', opacity: 0.5 }}>{new Date(lastWorkout.startTime).toLocaleDateString(undefined, { month: 'short' })}</span>
+            <span style={{ fontSize: 18, fontWeight: 900, lineHeight: 1 }}>{new Date(lastWorkout.startTime).getDate()}</span>
           </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-[9px] text-white/30 uppercase font-bold tracking-wider">Last workout</div>
-            <div className="text-white font-bold text-sm truncate">{lastWorkout.name}</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 9, color: `${INK}50`, textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px', fontFamily: "'Instrument Sans', sans-serif" }}>Last workout</div>
+            <div style={{ color: INK, fontWeight: 700, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: "'Bricolage Grotesque', sans-serif" }}>{lastWorkout.name}</div>
           </div>
-          <ChevronRight size={16} className="text-white/30" />
+          <ChevronRight size={16} style={{ color: `${INK}40` }} />
         </button>
       )}
 
       {/* Charts: side by side on desktop */}
       <div className="grid md:grid-cols-2 gap-4">
         {/* Weekly Consistency */}
-        <div className="bg-white/[0.03] backdrop-blur-md rounded-3xl p-4 border border-white/5">
+        <div style={{ ...card, padding: 16 }}>
           <div className="flex justify-between items-center mb-2">
-            <h3 className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Consistency</h3>
-            <div className="flex items-center gap-1 text-emerald-400 text-[10px] font-bold">
+            <h3 style={{ fontSize: 10, fontWeight: 700, color: `${INK}60`, textTransform: 'uppercase', letterSpacing: '1px', fontFamily: "'Instrument Sans', sans-serif" }}>Consistency</h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: INK, fontSize: 10, fontWeight: 700 }}>
               <TrendingUp size={10} />
               {weeklyData[3]?.workouts || 0} this week
             </div>
           </div>
-          <div className="h-24 w-full">
+          <div style={{ height: 96, width: '100%' }}>
             <ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <BarChart data={weeklyData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#27272f" vertical={false} />
-                <XAxis dataKey="short" stroke="#64748b" fontSize={9} tickLine={false} axisLine={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke={`${INK}15`} vertical={false} />
+                <XAxis dataKey="short" stroke={`${INK}50`} fontSize={9} tickLine={false} axisLine={false} />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'transparent' }} />
-                <Bar dataKey="workouts" fill="#6366f1" radius={[4, 4, 4, 4]} maxBarSize={32} />
+                <Bar dataKey="workouts" fill={HL_YELLOW} radius={[4, 4, 4, 4]} maxBarSize={32} stroke={INK} strokeWidth={1} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         {/* Volume Progress */}
-        <div className="bg-white/[0.03] backdrop-blur-md rounded-3xl p-4 border border-white/5">
+        <div style={{ ...card, padding: 16 }}>
           <div className="flex justify-between items-center mb-2">
             <div className="flex items-center gap-2">
-              <Activity className="text-pink-400" size={14} />
-              <h3 className="text-xs font-bold text-white">Volume Progress</h3>
+              <Activity style={{ color: HL_PINK }} size={14} />
+              <h3 style={{ fontSize: 12, fontWeight: 700, color: INK, fontFamily: "'Bricolage Grotesque', sans-serif" }}>Volume Progress</h3>
             </div>
             {uniqueExercises.length > 0 && (
-              <div className="relative">
+              <div style={{ position: 'relative' }}>
                 <select
                   value={selectedExercise}
                   onChange={(e) => setSelectedExercise(e.target.value)}
-                  className="bg-black/30 border border-white/10 text-white text-[10px] rounded-lg pl-2 pr-6 py-1 appearance-none focus:outline-none focus:border-indigo-500 max-w-[130px]"
+                  style={{
+                    background: `${INK}08`,
+                    border: `1.5px solid ${INK}`,
+                    color: INK,
+                    fontSize: 10,
+                    borderRadius: 8,
+                    paddingLeft: 8,
+                    paddingRight: 24,
+                    paddingTop: 4,
+                    paddingBottom: 4,
+                    appearance: 'none',
+                    outline: 'none',
+                    maxWidth: 130,
+                    fontFamily: "'Instrument Sans', sans-serif",
+                    fontWeight: 600,
+                  }}
                 >
                   {uniqueExercises.map(ex => (
                     <option key={ex} value={ex}>{ex}</option>
                   ))}
                 </select>
-                <ChevronDown className="absolute right-2 top-1.5 text-white/40 pointer-events-none" size={10} />
+                <ChevronDown style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', color: `${INK}60`, pointerEvents: 'none' }} size={10} />
               </div>
             )}
           </div>
-          <div className="h-32 w-full">
+          <div style={{ height: 128, width: '100%' }}>
             {exerciseProgressData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                 <AreaChart data={exerciseProgressData}>
                   <defs>
                     <linearGradient id="colorVolume" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#ec4899" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#ec4899" stopOpacity={0}/>
+                      <stop offset="5%" stopColor={HL_PINK} stopOpacity={0.5}/>
+                      <stop offset="95%" stopColor={HL_PINK} stopOpacity={0}/>
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#27272f" vertical={false} />
-                  <XAxis dataKey="date" stroke="#64748b" fontSize={9} tickLine={false} axisLine={false} />
-                  <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#ec4899', strokeWidth: 1, strokeDasharray: '4 4' }} />
-                  <Area type="monotone" dataKey="volume" stroke="#ec4899" strokeWidth={2} fillOpacity={1} fill="url(#colorVolume)" />
+                  <CartesianGrid strokeDasharray="3 3" stroke={`${INK}15`} vertical={false} />
+                  <XAxis dataKey="date" stroke={`${INK}50`} fontSize={9} tickLine={false} axisLine={false} />
+                  <Tooltip content={<CustomTooltip />} cursor={{ stroke: INK, strokeWidth: 1, strokeDasharray: '4 4' }} />
+                  <Area type="monotone" dataKey="volume" stroke={INK} strokeWidth={2} fillOpacity={1} fill="url(#colorVolume)" />
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-full flex flex-col items-center justify-center text-white/30 text-xs">
-                <BarChart3 size={20} className="mb-2 opacity-50" />
+              <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: `${INK}40`, fontSize: 12 }}>
+                <BarChart3 size={20} style={{ marginBottom: 8, opacity: 0.5 }} />
                 <p>Complete workouts to track volume</p>
               </div>
             )}
