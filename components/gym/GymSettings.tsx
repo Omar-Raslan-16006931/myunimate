@@ -141,7 +141,7 @@ export const GymSettingsComponent: React.FC<SettingsProps> = ({ settings, update
       </div>
 
       {/* --- MACRO CALCULATOR --- */}
-      <div className="bg-gradient-to-br from-indigo-950/60 to-violet-950/40 backdrop-blur-md border border-indigo-500/20 rounded-3xl p-4">
+      <div className="bg-gradient-to-br from-indigo-950/60 to-teal-950/40 backdrop-blur-md border border-indigo-500/20 rounded-3xl p-4">
         <div className="flex items-center gap-2 mb-3">
           <div className="p-1.5 bg-indigo-500/20 rounded-lg text-indigo-300"><Calculator size={15} /></div>
           <h3 className="text-xs font-bold text-white">Macro Calculator</h3>
@@ -242,7 +242,7 @@ export const GymSettingsComponent: React.FC<SettingsProps> = ({ settings, update
         </div>
 
         <div>
-          <label className="flex items-center gap-1.5 text-violet-400 text-[9px] font-bold mb-1 uppercase tracking-wider">
+          <label className="flex items-center gap-1.5 text-teal-400 text-[9px] font-bold mb-1 uppercase tracking-wider">
             <Clock size={11} /> Default Rest Timer (seconds)
           </label>
           <div className="grid grid-cols-5 gap-2">
@@ -250,7 +250,7 @@ export const GymSettingsComponent: React.FC<SettingsProps> = ({ settings, update
               <button key={s} onClick={() => setFormData({ ...formData, defaultRestTimer: s })}
                 className={`py-2 rounded-xl text-xs font-bold transition-all active:scale-95 border ${
                   formData.defaultRestTimer === s
-                    ? 'bg-violet-500/20 border-violet-500/50 text-violet-300'
+                    ? 'bg-teal-500/20 border-teal-500/50 text-teal-300'
                     : 'bg-white/[0.03] border-white/5 text-white/40 hover:text-white/70'
                 }`}>{s}s</button>
             ))}
@@ -261,7 +261,7 @@ export const GymSettingsComponent: React.FC<SettingsProps> = ({ settings, update
       <button
         onClick={handleSave}
         className={`w-full py-3.5 rounded-2xl font-bold flex justify-center items-center gap-2 transition-all shadow-lg text-sm active:scale-[0.98] ${
-          saved ? 'bg-emerald-600 text-white shadow-emerald-900/20' : 'bg-gradient-to-r from-violet-600 to-indigo-600 hover:brightness-110 text-white shadow-indigo-900/30'
+          saved ? 'bg-emerald-600 text-white shadow-emerald-900/20' : 'bg-gradient-to-r from-teal-600 to-indigo-600 hover:brightness-110 text-white shadow-indigo-900/30'
         }`}
       >
         <Save size={16} />

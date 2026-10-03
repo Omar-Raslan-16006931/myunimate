@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import { Plus, Trash2, Palette, Layers, Loader2, LogOut, ChevronDown, AlertTriangle, User, Check, X, Shield, Search, Ban, Send, ArrowLeft, MessageSquare, ChevronRight, Heart, Columns } from 'lucide-react';
 import { ScheduleProfile, EventColorMap, EventType, ScheduleEvent, PeriodDefinition, ThemeMode, AppFeedback, FeedbackReply, ViewState } from '../types';
@@ -9,225 +8,9 @@ import ScheduleSettings from './ScheduleSettings';
 import FeedbackModal from './FeedbackModal';
 import AdminInbox from './AdminInbox';
 
-// ─── Design tokens ───────────────────────────────────────────────────────────
-const INK       = '#1A1730';
-const CARD_BG   = '#FAFAF6';
-const HL_YELLOW = '#F6DF63';
-const HL_GREEN  = '#8CE3B7';
-const HL_BLUE   = '#9ECFFF';
-const HL_RED    = '#E56A5A';
-const DIVIDER   = 'rgba(26,23,48,0.1)';
-const MUTED     = 'rgba(26,23,48,0.5)';
+// --- SUPPORTING COMPONENTS ---
 
-// ─── Shared card style ────────────────────────────────────────────────────────
-const cardStyle: React.CSSProperties = {
-    background: CARD_BG,
-    border: `1.5px solid ${INK}`,
-    borderRadius: 14,
-    boxShadow: `4px 5px 0 ${INK}`,
-    overflow: 'hidden',
-};
-
-// ─── Toggle Switch ────────────────────────────────────────────────────────────
-const Toggle = ({ on, onToggle }: { on: boolean; onToggle: () => void }) => (
-    <button
-        onClick={onToggle}
-        style={{
-            width: 44,
-            height: 26,
-            borderRadius: 999,
-            border: `1.5px solid ${INK}`,
-            background: on ? HL_GREEN : 'rgba(26,23,48,0.1)',
-            position: 'relative',
-            cursor: 'pointer',
-            flexShrink: 0,
-            transition: 'background 0.2s',
-        }}
-    >
-        <motion.div
-            layout
-            transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-            style={{
-                position: 'absolute',
-                top: 3,
-                left: on ? 'calc(100% - 21px)' : 3,
-                width: 18,
-                height: 18,
-                borderRadius: '50%',
-                background: INK,
-            }}
-        />
-    </button>
-);
-
-// ─── Section label ────────────────────────────────────────────────────────────
-const SectionLabel = ({ children }: { children: React.ReactNode }) => (
-    <p style={{
-        fontFamily: "'Instrument Sans', sans-serif",
-        fontSize: '0.65rem',
-        fontWeight: 700,
-        letterSpacing: '0.08em',
-        textTransform: 'uppercase',
-        color: MUTED,
-        padding: '16px 18px 8px',
-    }}>
-        {children}
-    </p>
-);
-
-// ─── Row divider ──────────────────────────────────────────────────────────────
-const RowDivider = () => (
-    <div style={{ height: 1, background: DIVIDER, margin: '0 18px' }} />
-);
-
-// ─── Collapsible section header ───────────────────────────────────────────────
-const SectionHeader = ({ icon: Icon, color, title, isExpanded, onToggle, rightElement }: any) => (
-    <motion.div
-        onClick={onToggle}
-        whileTap={{ scale: 0.98 }}
-        style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '14px 18px',
-            cursor: 'pointer',
-        }}
-    >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{
-                width: 36,
-                height: 36,
-                borderRadius: 10,
-                background: `${color}22`,
-                color,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-            }}>
-                <Icon size={18} />
-            </div>
-            <span style={{
-                fontFamily: "'Bricolage Grotesque', sans-serif",
-                fontWeight: 700,
-                fontSize: '0.95rem',
-                color: INK,
-            }}>
-                {title}
-            </span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {rightElement}
-            <motion.div
-                animate={{ rotate: isExpanded ? 180 : 0 }}
-                transition={{ duration: 0.25 }}
-                style={{ color: MUTED, display: 'flex' }}
-            >
-                <ChevronDown size={18} />
-            </motion.div>
-        </div>
-    </motion.div>
-);
-
-// ─── Paper card group ─────────────────────────────────────────────────────────
-const GroupCard = ({ children, accentColor }: { children: React.ReactNode; accentColor?: string }) => (
-    <div style={{
-        ...cardStyle,
-        ...(accentColor ? { borderColor: accentColor, boxShadow: `4px 5px 0 ${accentColor}` } : {}),
-    }}>
-        {children}
-    </div>
-);
-
-// ─── Input style helper ───────────────────────────────────────────────────────
-const inputStyle: React.CSSProperties = {
-    background: 'rgba(26,23,48,0.06)',
-    border: `1.5px solid ${INK}`,
-    borderRadius: 8,
-    padding: '10px 14px',
-    color: INK,
-    fontFamily: "'Instrument Sans', sans-serif",
-    fontSize: '0.9rem',
-    outline: 'none',
-    width: '100%',
-    boxSizing: 'border-box',
-};
-
-// ─── Primary button ───────────────────────────────────────────────────────────
-const PrimaryBtn = ({ onClick, disabled, children, style: extraStyle = {} }: any) => (
-    <motion.button
-        onClick={onClick}
-        disabled={disabled}
-        whileHover={!disabled ? { x: -2, y: -2, boxShadow: `7px 7px 0 ${HL_YELLOW}` } : {}}
-        whileTap={!disabled ? { x: 2, y: 2, boxShadow: `1px 1px 0 ${HL_YELLOW}` } : {}}
-        style={{
-            background: INK,
-            color: '#fff',
-            border: `1.5px solid ${INK}`,
-            borderRadius: 10,
-            fontWeight: 700,
-            boxShadow: `4px 4px 0 ${HL_YELLOW}`,
-            cursor: disabled ? 'not-allowed' : 'pointer',
-            padding: '10px 18px',
-            fontFamily: "'Bricolage Grotesque', sans-serif",
-            fontSize: '0.85rem',
-            opacity: disabled ? 0.5 : 1,
-            ...extraStyle,
-        }}
-    >
-        {children}
-    </motion.button>
-);
-
-// ─── Danger button ────────────────────────────────────────────────────────────
-const DangerBtn = ({ onClick, children, style: extraStyle = {} }: any) => (
-    <motion.button
-        onClick={onClick}
-        whileHover={{ x: -2, y: -2, boxShadow: `7px 7px 0 ${INK}` }}
-        whileTap={{ x: 2, y: 2, boxShadow: `1px 1px 0 ${INK}` }}
-        style={{
-            background: HL_RED,
-            color: '#fff',
-            border: `1.5px solid ${INK}`,
-            borderRadius: 10,
-            fontWeight: 700,
-            boxShadow: `4px 4px 0 ${INK}`,
-            cursor: 'pointer',
-            padding: '10px 18px',
-            fontFamily: "'Bricolage Grotesque', sans-serif",
-            fontSize: '0.85rem',
-            ...extraStyle,
-        }}
-    >
-        {children}
-    </motion.button>
-);
-
-// ─── Ghost button ─────────────────────────────────────────────────────────────
-const GhostBtn = ({ onClick, children, style: extraStyle = {} }: any) => (
-    <motion.button
-        onClick={onClick}
-        whileTap={{ scale: 0.97 }}
-        style={{
-            background: 'rgba(26,23,48,0.07)',
-            color: INK,
-            border: `1.5px solid ${INK}`,
-            borderRadius: 10,
-            fontWeight: 600,
-            cursor: 'pointer',
-            padding: '10px 18px',
-            fontFamily: "'Instrument Sans', sans-serif",
-            fontSize: '0.85rem',
-            ...extraStyle,
-        }}
-    >
-        {children}
-    </motion.button>
-);
-
-// ─────────────────────────────────────────────────────────────────────────────
-//  SupportHistoryModal
-// ─────────────────────────────────────────────────────────────────────────────
-const SupportHistoryModal = ({ isOpen, onClose, userId }: { isOpen: boolean; onClose: () => void; userId?: string }) => {
+const SupportHistoryModal = ({ isOpen, onClose, userId }: { isOpen: boolean, onClose: () => void, userId?: string }) => {
     const [tickets, setTickets] = useState<AppFeedback[]>([]);
     const [loading, setLoading] = useState(false);
     const [activeTicket, setActiveTicket] = useState<AppFeedback | null>(null);
@@ -327,302 +110,113 @@ const SupportHistoryModal = ({ isOpen, onClose, userId }: { isOpen: boolean; onC
 
     if (!isOpen) return null;
 
-    const categoryChip = (cat: string) => {
-        const map: Record<string, { bg: string; color: string }> = {
-            'Bug': { bg: `${HL_RED}22`, color: HL_RED },
-            'Feature Request': { bg: `${HL_GREEN}33`, color: '#1a7a4a' },
-        };
-        const s = map[cat] || { bg: `${HL_BLUE}33`, color: '#1a4a7a' };
-        return (
-            <span style={{
-                background: s.bg,
-                color: s.color,
-                fontFamily: "'Instrument Sans', sans-serif",
-                fontSize: '0.6rem',
-                fontWeight: 700,
-                letterSpacing: '0.06em',
-                textTransform: 'uppercase',
-                padding: '2px 8px',
-                borderRadius: 6,
-                border: `1px solid ${INK}`,
-            }}>
-                {cat}
-            </span>
-        );
-    };
-
     return createPortal(
-        <div
-            style={{
-                position: 'fixed', inset: 0, zIndex: 9999,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                padding: 16,
-                background: 'rgba(26,23,48,0.6)',
-            }}
-            onClick={onClose}
-        >
-            <motion.div
-                initial={{ scale: 0.95, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.95, opacity: 0 }}
-                transition={{ duration: 0.2 }}
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200" onClick={onClose}>
+            <div
+                className="w-full max-w-md h-[85vh] bg-[#0f172a] rounded-[32px] border border-white/10 shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-300"
                 onClick={e => e.stopPropagation()}
-                style={{
-                    width: '100%',
-                    maxWidth: 440,
-                    height: '82vh',
-                    background: CARD_BG,
-                    borderRadius: 16,
-                    border: `1.5px solid ${INK}`,
-                    boxShadow: `8px 10px 0 ${INK}`,
-                    overflow: 'hidden',
-                    display: 'flex',
-                    flexDirection: 'column',
-                }}
             >
-                {/* Header */}
-                <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '16px 20px',
-                    borderBottom: `1.5px solid ${DIVIDER}`,
-                    flexShrink: 0,
-                }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div className="flex items-center justify-between px-5 py-4 border-b border-white/5 bg-[#12141a] shrink-0">
+                    <div className="flex items-center gap-3">
                         {activeTicket ? (
-                            <button
-                                onClick={() => setActiveTicket(null)}
-                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: INK, display: 'flex', padding: 4 }}
-                            >
+                            <button onClick={() => setActiveTicket(null)} className="p-1.5 -ml-2 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition">
                                 <ArrowLeft size={20} />
                             </button>
                         ) : (
-                            <div style={{
-                                width: 32, height: 32, borderRadius: 8,
-                                background: `${HL_BLUE}55`, color: INK,
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            }}>
-                                <MessageSquare size={16} />
+                            <div className="p-2 bg-indigo-500/10 rounded-xl text-indigo-400">
+                                <MessageSquare size={20} />
                             </div>
                         )}
-                        <h3 style={{
-                            fontFamily: "'Bricolage Grotesque', sans-serif",
-                            fontWeight: 800, fontSize: '1rem', color: INK, margin: 0,
-                        }}>
+                        <h3 className="text-lg font-bold text-white leading-none">
                             {activeTicket ? 'Support Chat' : 'Support Inbox'}
                         </h3>
                     </div>
-                    <button
-                        onClick={onClose}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: MUTED, display: 'flex' }}
-                    >
+                    <button onClick={onClose} className="p-2 text-white/40 hover:text-white hover:bg-white/5 rounded-full transition-colors">
                         <X size={20} />
                     </button>
                 </div>
 
-                {/* Body */}
-                <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
+                <div className="flex-1 overflow-hidden relative bg-[#0f172a]">
                     {!activeTicket ? (
-                        <div style={{ position: 'absolute', inset: 0, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        <div className="absolute inset-0 overflow-y-auto p-4 space-y-3 custom-scrollbar">
                             {loading ? (
-                                <div style={{ display: 'flex', justifyContent: 'center', padding: 32 }}>
-                                    <Loader2 className="animate-spin" style={{ color: INK }} />
-                                </div>
+                                <div className="flex justify-center py-10"><Loader2 className="animate-spin text-indigo-500" /></div>
                             ) : tickets.length === 0 ? (
-                                <p style={{ textAlign: 'center', color: MUTED, fontSize: '0.85rem', padding: 32 }}>No support tickets found.</p>
+                                <div className="text-center text-white/30 py-12 text-sm italic">No support tickets found.</div>
                             ) : (
                                 tickets.map(t => (
-                                    <motion.div
-                                        key={t.id}
-                                        whileTap={{ scale: 0.98 }}
-                                        onClick={() => setActiveTicket(t)}
-                                        style={{
-                                            background: CARD_BG,
-                                            border: `1.5px solid ${INK}`,
-                                            borderRadius: 12,
-                                            padding: '12px 14px',
-                                            cursor: 'pointer',
-                                            boxShadow: `3px 3px 0 ${INK}`,
-                                        }}
-                                    >
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                                {categoryChip(t.category)}
-                                                <span style={{ fontSize: '0.7rem', color: MUTED, fontFamily: "'Instrument Sans', sans-serif" }}>
-                                                    {new Date(t.created_at).toLocaleDateString()}
-                                                </span>
+                                    <div key={t.id} onClick={() => setActiveTicket(t)} className="group bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/10 rounded-2xl p-4 cursor-pointer transition-all active:scale-[0.98]">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <div className="flex items-center gap-2">
+                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${t.category === 'Bug' ? 'text-red-400 bg-red-400/10' : t.category === 'Feature Request' ? 'text-green-400 bg-green-400/10' : 'text-blue-400 bg-blue-400/10'}`}>{t.category}</span>
+                                                <span className="text-[10px] text-white/30">{new Date(t.created_at).toLocaleDateString()}</span>
                                             </div>
-                                            <ChevronRight size={16} style={{ color: MUTED }} />
+                                            <ChevronRight size={16} className="text-white/20 group-hover:text-white/60 transition-colors" />
                                         </div>
-                                        <p style={{ fontSize: '0.88rem', color: INK, fontFamily: "'Instrument Sans', sans-serif", fontWeight: 500, margin: 0, lineHeight: 1.5 }}>
-                                            {t.message}
-                                        </p>
-                                    </motion.div>
+                                        <p className="text-sm text-white/90 font-medium line-clamp-2 leading-relaxed">{t.message}</p>
+                                    </div>
                                 ))
                             )}
                         </div>
                     ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-                            <div style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-                                {/* Original message */}
-                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                                    <div style={{
-                                        background: INK, color: '#fff',
-                                        padding: '10px 14px', borderRadius: '12px 12px 2px 12px',
-                                        maxWidth: '85%', fontSize: '0.88rem',
-                                        fontFamily: "'Instrument Sans', sans-serif", lineHeight: 1.5,
-                                    }}>
-                                        {activeTicket.message}
-                                    </div>
-                                    <span style={{ fontSize: '0.65rem', color: MUTED, marginTop: 4, fontFamily: "'Instrument Sans', sans-serif" }}>
-                                        {new Date(activeTicket.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                    </span>
+                        <div className="flex flex-col h-full">
+                            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-[#0f172a] to-[#12141a] custom-scrollbar">
+                                <div className="flex flex-col items-end animate-in slide-in-from-bottom-2">
+                                    <div className="bg-indigo-600 text-white px-4 py-3 rounded-2xl rounded-tr-none max-w-[85%] text-sm shadow-md leading-relaxed">{activeTicket.message}</div>
+                                    <span className="text-[10px] text-white/20 mt-1 mr-1">{new Date(activeTicket.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                 </div>
                                 {replies.map(reply => {
                                     const isMe = !reply.is_admin;
                                     return (
-                                        <div key={reply.id} style={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start' }}>
-                                            <div style={{
-                                                background: isMe ? INK : `${HL_BLUE}55`,
-                                                color: isMe ? '#fff' : INK,
-                                                border: `1.5px solid ${INK}`,
-                                                padding: '10px 14px',
-                                                borderRadius: isMe ? '12px 12px 2px 12px' : '12px 12px 12px 2px',
-                                                maxWidth: '85%', fontSize: '0.88rem',
-                                                fontFamily: "'Instrument Sans', sans-serif", lineHeight: 1.5,
-                                            }}>
-                                                {reply.message}
-                                            </div>
-                                            <span style={{ fontSize: '0.65rem', color: MUTED, marginTop: 4, fontFamily: "'Instrument Sans', sans-serif" }}>
-                                                {isMe ? 'You' : 'Support'} • {new Date(reply.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                            </span>
+                                        <div key={reply.id} className={`flex flex-col animate-in slide-in-from-bottom-2 ${isMe ? 'items-end' : 'items-start'}`}>
+                                            <div className={`px-4 py-3 rounded-2xl max-w-[85%] text-sm shadow-md leading-relaxed ${isMe ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-white/10 text-white/90 rounded-tl-none border border-white/5'}`}>{reply.message}</div>
+                                            <span className={`text-[10px] text-white/20 mt-1 ${isMe ? 'mr-1' : 'ml-1'}`}>{isMe ? 'You' : 'Support'} • {new Date(reply.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                         </div>
                                     );
                                 })}
                                 <div ref={replyEndRef} />
                             </div>
-                            <div style={{ padding: 12, borderTop: `1.5px solid ${DIVIDER}`, flexShrink: 0, display: 'flex', gap: 8, alignItems: 'flex-end' }}>
-                                <textarea
-                                    value={replyText}
-                                    onChange={e => setReplyText(e.target.value)}
-                                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendReply(); } }}
-                                    placeholder="Type a message..."
-                                    rows={1}
-                                    style={{
-                                        ...inputStyle,
-                                        resize: 'none',
-                                        maxHeight: 100,
-                                        minHeight: 42,
-                                        flex: 1,
-                                        width: 'auto',
-                                        borderRadius: 10,
-                                    }}
-                                />
-                                <motion.button
-                                    onClick={handleSendReply}
-                                    disabled={!replyText.trim() || sendingReply}
-                                    whileTap={{ scale: 0.93 }}
-                                    style={{
-                                        width: 42, height: 42, borderRadius: 10,
-                                        border: `1.5px solid ${INK}`,
-                                        background: replyText.trim() ? INK : 'rgba(26,23,48,0.1)',
-                                        color: replyText.trim() ? '#fff' : MUTED,
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        cursor: replyText.trim() ? 'pointer' : 'default',
-                                        flexShrink: 0,
-                                    }}
-                                >
-                                    {sendingReply ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
-                                </motion.button>
+                            <div className="p-3 bg-[#12141a] border-t border-white/5 shrink-0">
+                                <div className="flex gap-2 items-end bg-white/5 rounded-3xl p-1 border border-white/10 focus-within:border-indigo-500/50 transition-colors">
+                                    <textarea value={replyText} onChange={e => setReplyText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendReply(); } }} placeholder="Type a message..." className="flex-1 bg-transparent border-none text-white text-sm px-4 py-3 focus:outline-none resize-none max-h-[100px] min-h-[44px] placeholder-white/30" rows={1} />
+                                    <button onClick={handleSendReply} disabled={!replyText.trim() || sendingReply} className={`w-10 h-10 rounded-full flex items-center justify-center transition-all shrink-0 ${(!replyText.trim() || sendingReply) ? 'bg-white/5 text-white/20' : 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-900/20'}`}>
+                                        {sendingReply ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} className={replyText.trim() ? 'ml-0.5' : ''} />}
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     )}
                 </div>
-            </motion.div>
+            </div>
         </div>,
         document.body
     );
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  BanModal
-// ─────────────────────────────────────────────────────────────────────────────
-const BanModal = ({ isOpen, onClose, onConfirm, username }: { isOpen: boolean; onClose: () => void; onConfirm: (duration: string | null) => void; username: string }) => {
+const BanModal = ({ isOpen, onClose, onConfirm, username }: { isOpen: boolean, onClose: () => void, onConfirm: (duration: string | null) => void, username: string }) => {
     if (!isOpen) return null;
-
-    const durationBtnStyle: React.CSSProperties = {
-        padding: '10px 8px',
-        background: 'rgba(26,23,48,0.07)',
-        border: `1.5px solid ${INK}`,
-        borderRadius: 8,
-        color: INK,
-        fontFamily: "'Instrument Sans', sans-serif",
-        fontWeight: 600,
-        fontSize: '0.85rem',
-        cursor: 'pointer',
-    };
-
-    return createPortal(
-        <div
-            style={{
-                position: 'fixed', inset: 0, zIndex: 9999,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                padding: 16, background: 'rgba(26,23,48,0.6)',
-            }}
-            onClick={onClose}
-        >
-            <motion.div
-                initial={{ scale: 0.95, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                onClick={e => e.stopPropagation()}
-                style={{
-                    ...cardStyle,
-                    maxWidth: 320,
-                    width: '100%',
-                    padding: 24,
-                    textAlign: 'center',
-                }}
-            >
-                <div style={{
-                    width: 52, height: 52, borderRadius: '50%',
-                    background: `${HL_RED}22`,
-                    border: `1.5px solid ${INK}`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: HL_RED, margin: '0 auto 16px',
-                }}>
+    return (
+        <div style={styles.modalOverlay} onClick={onClose}>
+            <div style={{ ...styles.modalContent, maxWidth: '300px', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+                <div style={{ margin: '0 auto 16px', width: '50px', height: '50px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.danger }}>
                     <Ban size={24} />
                 </div>
-                <h3 style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontWeight: 800, fontSize: '1.1rem', color: INK, margin: '0 0 8px' }}>
-                    Suspend {username}?
-                </h3>
-                <p style={{ fontSize: '0.85rem', color: MUTED, marginBottom: 20, fontFamily: "'Instrument Sans', sans-serif" }}>
-                    Select suspension duration.
-                </p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
-                    <button onClick={() => onConfirm('1d')} style={durationBtnStyle}>1 Day</button>
-                    <button onClick={() => onConfirm('3d')} style={durationBtnStyle}>3 Days</button>
-                    <button onClick={() => onConfirm('1w')} style={durationBtnStyle}>1 Week</button>
-                    <button onClick={() => onConfirm('1m')} style={durationBtnStyle}>1 Month</button>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 800, margin: '0 0 8px 0' }}>Suspend {username}?</h3>
+                <p style={{ fontSize: '0.85rem', color: theme.textMuted, marginBottom: '20px' }}>Select suspension duration.</p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '12px' }}>
+                    <button onClick={() => onConfirm('1d')} style={{ padding: '8px', background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '0.8rem' }}>1 Day</button>
+                    <button onClick={() => onConfirm('3d')} style={{ padding: '8px', background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '0.8rem' }}>3 Days</button>
+                    <button onClick={() => onConfirm('1w')} style={{ padding: '8px', background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '0.8rem' }}>1 Week</button>
+                    <button onClick={() => onConfirm('1m')} style={{ padding: '8px', background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '0.8rem' }}>1 Month</button>
                 </div>
-                <DangerBtn onClick={() => onConfirm(null)} style={{ width: '100%', marginBottom: 8 }}>
-                    Permanent Ban
-                </DangerBtn>
-                <button
-                    onClick={onClose}
-                    style={{ width: '100%', padding: '10px', background: 'transparent', color: MUTED, border: 'none', cursor: 'pointer', fontFamily: "'Instrument Sans', sans-serif", fontSize: '0.85rem' }}
-                >
-                    Cancel
-                </button>
-            </motion.div>
-        </div>,
-        document.body
+                <button onClick={() => onConfirm(null)} style={{ width: '100%', padding: '10px', background: 'rgba(239, 68, 68, 0.2)', color: theme.danger, border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '8px', fontWeight: 700, marginBottom: '8px' }}>Permanent Ban</button>
+                <button onClick={onClose} style={{ width: '100%', padding: '10px', background: 'transparent', color: theme.textMuted, border: 'none' }}>Cancel</button>
+            </div>
+        </div>
     );
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Main Settings component
-// ─────────────────────────────────────────────────────────────────────────────
+// --- MAIN SETTINGS COMPONENT ---
 
 interface SettingsProps {
     profiles: ScheduleProfile[];
@@ -650,8 +244,35 @@ interface SettingsProps {
     onNavigate: (view: ViewState) => void;
 }
 
+const SectionHeader = ({ icon: Icon, color, title, isExpanded, onToggle, rightElement }: any) => {
+    return (
+        <div onClick={onToggle} className="flex items-center justify-between cursor-pointer p-4 group">
+            <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-300 group-hover:scale-110" style={{ background: `${color}15`, color: color }}>
+                    <Icon size={20} />
+                </div>
+                <h3 className="text-[15px] font-bold text-white tracking-tight">{title}</h3>
+            </div>
+            <div className="flex items-center gap-3">
+                {rightElement}
+                <div className={`text-white/20 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
+                    <ChevronDown size={18} />
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const GroupCard = ({ children, className = "" }: any) => {
+    return (
+        <div className={`bg-white/[0.03] backdrop-blur-xl border border-white/[0.05] rounded-[28px] overflow-hidden shadow-2xl ${className}`}>
+            {children}
+        </div>
+    );
+};
+
 const Settings: React.FC<SettingsProps> = ({
-    profiles, activeProfileId, eventColors, onAddProfile, onSwitchProfile, onDeleteProfile, onUpdateColor, onResetApp, onSignOut, periods, setPeriods, accountInfo, onUpdateAccount,
+    profiles, activeProfileId, eventColors, onAddProfile, onSwitchProfile, onDeleteProfile, onUpdateColor, onResetApp, onSignOut, periods, setPeriods, accountInfo, onUpdateAccount, 
 }) => {
     const [newProfileName, setNewProfileName] = useState('');
     const [isScheduleSettingsExpanded, setIsScheduleSettingsExpanded] = useState(false);
@@ -669,7 +290,7 @@ const Settings: React.FC<SettingsProps> = ({
     const [userSearch, setUserSearch] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [isLoadingUsers, setIsLoadingUsers] = useState(false);
-    const [banModalUser, setBanModalUser] = useState<{ id: string; username: string } | null>(null);
+    const [banModalUser, setBanModalUser] = useState<{ id: string, username: string } | null>(null);
     const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
     const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
 
@@ -734,570 +355,274 @@ const Settings: React.FC<SettingsProps> = ({
     const canEditUsername = !accountInfo?.lastUsernameChange || (new Date().getTime() - new Date(accountInfo.lastUsernameChange).getTime()) > 14 * 24 * 60 * 60 * 1000;
     const isSaveDisabled = isCheckingUsername || (usernameAvailable === false && editForm.username !== accountInfo?.username) || (editForm.username && editForm.username.length < 4);
 
-    // ─── Shared expand panel styles ───────────────────────────────────────
-    const expandedPanelStyle: React.CSSProperties = {
-        padding: '0 18px 20px',
-    };
-
-    // ─── Info tile ────────────────────────────────────────────────────────
-    const InfoTile = ({ label, value, children }: { label: string; value?: string; children?: React.ReactNode }) => (
-        <div style={{
-            background: 'rgba(26,23,48,0.04)',
-            border: `1px solid ${DIVIDER}`,
-            borderRadius: 10,
-            padding: '10px 14px',
-        }}>
-            <p style={{ fontFamily: "'Instrument Sans', sans-serif", fontSize: '0.62rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: MUTED, margin: '0 0 4px' }}>
-                {label}
-            </p>
-            {children || <p style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontWeight: 700, fontSize: '0.9rem', color: INK, margin: 0 }}>{value}</p>}
-        </div>
-    );
-
     return (
-        <div style={styles.scrollableContent}>
-            {/* Page header */}
-            <header style={{ marginBottom: 28, padding: '0 2px' }}>
-                <h1 style={{
-                    fontFamily: "'Bricolage Grotesque', sans-serif",
-                    fontWeight: 800, fontSize: '1.9rem', color: INK,
-                    margin: '0 0 4px', letterSpacing: '-0.02em',
-                }}>
-                    Settings
-                </h1>
-                <p style={{ fontFamily: "'Instrument Sans', sans-serif", fontSize: '0.82rem', color: MUTED, margin: 0 }}>
-                    Manage your university operating system
-                </p>
+        <div style={styles.scrollableContent} className="animate-in fade-in duration-700">
+            <header className="mb-8 px-1">
+                <h1 className="text-3xl font-black text-white tracking-tight leading-tight">Settings</h1>
+                <p className="text-[13px] text-white/40 font-medium tracking-wide">Manage your university operating system</p>
             </header>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <div className="space-y-6">
 
-                {/* ── PERSONAL & IDENTITY ─────────────────────────────────── */}
+                {/* --- PERSONAL GROUP --- */}
                 <GroupCard>
-                    <SectionLabel>Personal &amp; Identity</SectionLabel>
+                    <div className="px-5 pt-6 pb-2">
+                        <div className="flex items-center gap-2 mb-4 opacity-40">
+                            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white">Personal & Identity</span>
+                        </div>
+                    </div>
 
                     {accountInfo && (
-                        <>
+                        <div className="border-b border-white/[0.05] last:border-0">
                             <SectionHeader
                                 icon={User}
-                                color={HL_BLUE}
+                                color="#3b82f6"
                                 title="Account Profile"
                                 isExpanded={isAccountExpanded}
                                 onToggle={() => setIsAccountExpanded(!isAccountExpanded)}
                                 rightElement={!isEditingAccount && (
-                                    <motion.button
-                                        onClick={startEditingAccount}
-                                        whileTap={{ scale: 0.95 }}
-                                        style={{
-                                            padding: '4px 12px',
-                                            background: `${HL_YELLOW}99`,
-                                            border: `1.5px solid ${INK}`,
-                                            borderRadius: 20,
-                                            fontSize: '0.72rem',
-                                            fontWeight: 700,
-                                            color: INK,
-                                            cursor: 'pointer',
-                                            fontFamily: "'Instrument Sans', sans-serif",
-                                        }}
-                                    >
-                                        Edit
-                                    </motion.button>
+                                    <button onClick={startEditingAccount} className="px-3 py-1.5 bg-white/5 rounded-full text-[11px] font-bold text-white/60 hover:text-white transition-colors border border-white/5">Edit</button>
                                 )}
                             />
-
-                            <AnimatePresence initial={false}>
-                                {isAccountExpanded && (
-                                    <motion.div
-                                        key="account-panel"
-                                        initial={{ height: 0, opacity: 0 }}
-                                        animate={{ height: 'auto', opacity: 1 }}
-                                        exit={{ height: 0, opacity: 0 }}
-                                        transition={{ duration: 0.25 }}
-                                        style={{ overflow: 'hidden' }}
-                                    >
-                                        <div style={expandedPanelStyle}>
-                                            {isEditingAccount && (
-                                                <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
-                                                    <PrimaryBtn onClick={saveEditingAccount} disabled={isSaveDisabled} style={{ flex: 1 }}>
-                                                        Save Changes
-                                                    </PrimaryBtn>
-                                                    <GhostBtn onClick={cancelEditingAccount} style={{ flex: 1 }}>
-                                                        Cancel
-                                                    </GhostBtn>
-                                                </div>
-                                            )}
-                                            <div style={{ display: 'grid', gap: 10 }}>
-                                                {/* Username */}
-                                                <InfoTile label="Username">
-                                                    {isEditingAccount ? (
-                                                        <div style={{ position: 'relative' }}>
-                                                            <input
-                                                                value={editForm.username}
-                                                                onChange={e => setEditForm({ ...editForm, username: e.target.value })}
-                                                                disabled={!canEditUsername}
-                                                                style={{ ...inputStyle, padding: '6px 0', background: 'transparent', border: 'none', borderBottom: `1.5px solid ${INK}`, borderRadius: 0, fontWeight: 700, fontSize: '0.9rem' }}
-                                                            />
-                                                            {isCheckingUsername && <Loader2 size={12} className="animate-spin" style={{ position: 'absolute', right: 0, top: 8, color: MUTED }} />}
-                                                            {usernameAvailable === true && <Check size={12} style={{ position: 'absolute', right: 0, top: 8, color: '#1a7a4a' }} />}
-                                                            {usernameAvailable === false && <X size={12} style={{ position: 'absolute', right: 0, top: 8, color: HL_RED }} />}
-                                                        </div>
-                                                    ) : (
-                                                        <p style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontWeight: 700, fontSize: '0.9rem', color: INK, margin: 0 }}>{accountInfo.username}</p>
-                                                    )}
-                                                </InfoTile>
-
-                                                {/* Email */}
-                                                <InfoTile label="Email Address" value={accountInfo.email} />
-
-                                                {/* Gender + Year */}
-                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                                                    <InfoTile label="Gender">
-                                                        {isEditingAccount ? (
-                                                            <select
-                                                                value={editForm.gender || ''}
-                                                                onChange={e => setEditForm({ ...editForm, gender: e.target.value })}
-                                                                style={{ background: 'transparent', border: 'none', borderBottom: `1.5px solid ${INK}`, color: INK, fontFamily: "'Bricolage Grotesque', sans-serif", fontWeight: 700, fontSize: '0.9rem', outline: 'none', width: '100%', padding: '2px 0' }}
-                                                            >
-                                                                <option value="male">Male</option>
-                                                                <option value="female">Female</option>
-                                                            </select>
-                                                        ) : <p style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontWeight: 700, fontSize: '0.9rem', color: INK, margin: 0 }}>{accountInfo.gender || '—'}</p>}
-                                                    </InfoTile>
-                                                    <InfoTile label="Year">
-                                                        {isEditingAccount ? (
-                                                            <select
-                                                                value={editForm.year || ''}
-                                                                onChange={e => setEditForm({ ...editForm, year: e.target.value })}
-                                                                style={{ background: 'transparent', border: 'none', borderBottom: `1.5px solid ${INK}`, color: INK, fontFamily: "'Bricolage Grotesque', sans-serif", fontWeight: 700, fontSize: '0.9rem', outline: 'none', width: '100%', padding: '2px 0' }}
-                                                            >
-                                                                <option value="1">Year 1</option>
-                                                                <option value="2">Year 2</option>
-                                                                <option value="3">Year 3</option>
-                                                                <option value="4">Year 4</option>
-                                                                <option value="5">Year 5+</option>
-                                                            </select>
-                                                        ) : <p style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontWeight: 700, fontSize: '0.9rem', color: INK, margin: 0 }}>Year {accountInfo.year || '—'}</p>}
-                                                    </InfoTile>
-                                                </div>
-
-                                                {/* College / Major */}
-                                                <InfoTile label="College / Major">
-                                                    <p style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontWeight: 700, fontSize: '0.9rem', color: INK, margin: 0 }}>
-                                                        {accountInfo.college || 'Not set'} &bull; <span style={{ color: MUTED }}>{accountInfo.major || 'Not set'}</span>
-                                                    </p>
-                                                </InfoTile>
+                            {isAccountExpanded && (
+                                <div className="px-5 pb-6 pt-2 animate-in slide-in-from-top-2 duration-300">
+                                    {isEditingAccount && (
+                                        <div className="flex gap-2 mb-5">
+                                            <button onClick={saveEditingAccount} disabled={isSaveDisabled} className="flex-1 py-2.5 bg-blue-600 rounded-xl text-xs font-bold text-white shadow-lg shadow-blue-900/20 disabled:opacity-50">Save Changes</button>
+                                            <button onClick={cancelEditingAccount} className="flex-1 py-2.5 bg-white/5 rounded-xl text-xs font-bold text-white/60">Cancel</button>
+                                        </div>
+                                    )}
+                                    <div className="grid gap-3">
+                                        <div className="bg-black/20 rounded-[20px] p-4 border border-white/[0.03] flex items-center gap-4">
+                                            <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/20"><User size={18} /></div>
+                                            <div className="flex-1">
+                                                <p className="text-[9px] font-black text-white/20 uppercase tracking-widest mb-0.5">Username</p>
+                                                {isEditingAccount ? (
+                                                    <div className="relative">
+                                                        <input value={editForm.username} onChange={e => setEditForm({ ...editForm, username: e.target.value })} disabled={!canEditUsername} className="w-full bg-transparent text-sm font-bold text-white outline-none" />
+                                                        {isCheckingUsername && <Loader2 size={12} className="absolute right-0 top-1 animate-spin text-white/40" />}
+                                                    </div>
+                                                ) : <p className="text-sm font-bold text-white">{accountInfo.username}</p>}
                                             </div>
                                         </div>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-                        </>
+                                        <div className="bg-black/20 rounded-[20px] p-4 border border-white/[0.03] flex items-center gap-4">
+                                            <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/20"><MessageSquare size={18} /></div>
+                                            <div className="flex-1 overflow-hidden">
+                                                <p className="text-[9px] font-black text-white/20 uppercase tracking-widest mb-0.5">Email Address</p>
+                                                <p className="text-sm font-bold text-white/60 truncate">{accountInfo.email}</p>
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div className="bg-black/20 rounded-[20px] p-4 border border-white/[0.03]">
+                                                <p className="text-[9px] font-black text-white/20 uppercase tracking-widest mb-1.5">Gender</p>
+                                                {isEditingAccount ? (
+                                                    <select value={editForm.gender || ''} onChange={e => setEditForm({ ...editForm, gender: e.target.value })} className="bg-transparent text-sm font-bold text-white outline-none w-full appearance-none">
+                                                        <option value="male">Male</option>
+                                                        <option value="female">Female</option>
+                                                    </select>
+                                                ) : <p className="text-sm font-bold text-white">{accountInfo.gender || '—'}</p>}
+                                            </div>
+                                            <div className="bg-black/20 rounded-[20px] p-4 border border-white/[0.03]">
+                                                <p className="text-[9px] font-black text-white/20 uppercase tracking-widest mb-1.5">Year</p>
+                                                {isEditingAccount ? (
+                                                    <select value={editForm.year || ''} onChange={e => setEditForm({ ...editForm, year: e.target.value })} className="bg-transparent text-sm font-bold text-white outline-none w-full appearance-none">
+                                                        <option value="1">Year 1</option>
+                                                        <option value="2">Year 2</option>
+                                                        <option value="3">Year 3</option>
+                                                        <option value="4">Year 4</option>
+                                                        <option value="5">Year 5+</option>
+                                                    </select>
+                                                ) : <p className="text-sm font-bold text-white">Year {accountInfo.year || '—'}</p>}
+                                            </div>
+                                        </div>
+                                        <div className="bg-black/20 rounded-[20px] p-4 border border-white/[0.03]">
+                                            <p className="text-[9px] font-black text-white/20 uppercase tracking-widest mb-0.5">College / Major</p>
+                                            <p className="text-sm font-bold text-white">{accountInfo.college || 'Not set'} • <span className="text-white/50">{accountInfo.major || 'Not set'}</span></p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     )}
                 </GroupCard>
 
-                {/* ── ACADEMIC ENGINE ──────────────────────────────────────── */}
+                {/* --- ACADEMIC ENGINE GROUP --- */}
                 <GroupCard>
-                    <SectionLabel>Academic Engine</SectionLabel>
+                    <div className="px-5 pt-6 pb-2">
+                        <div className="flex items-center gap-2 mb-4 opacity-40">
+                            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white">Academic Engine</span>
+                        </div>
+                    </div>
 
-                    {/* Schedules & Profiles */}
-                    <SectionHeader
-                        icon={Layers}
-                        color="#8b5cf6"
-                        title="Schedules & Profiles"
-                        isExpanded={isProfilesExpanded}
-                        onToggle={() => setIsProfilesExpanded(!isProfilesExpanded)}
-                        rightElement={
-                            <span style={{
-                                fontSize: '0.65rem', fontWeight: 700, color: MUTED,
-                                background: 'rgba(26,23,48,0.07)',
-                                border: `1px solid ${DIVIDER}`,
-                                borderRadius: 6, padding: '2px 8px',
-                                fontFamily: "'Instrument Sans', sans-serif",
-                            }}>
-                                {profiles.length} Profiles
-                            </span>
-                        }
-                    />
-                    <AnimatePresence initial={false}>
+                    <div className="border-b border-white/[0.05] last:border-0">
+                        <SectionHeader
+                            icon={Layers} color="#19b8a6" title="Schedules & Profiles"
+                            isExpanded={isProfilesExpanded} onToggle={() => setIsProfilesExpanded(!isProfilesExpanded)}
+                            rightElement={<span className="text-[10px] font-bold text-white/30 bg-white/5 px-2 py-0.5 rounded-md">{profiles.length} Profiles</span>}
+                        />
                         {isProfilesExpanded && (
-                            <motion.div key="profiles-panel" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }} style={{ overflow: 'hidden' }}>
-                                <div style={{ ...expandedPanelStyle, display: 'flex', flexDirection: 'column', gap: 12 }}>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                        {profiles.map(s => (
-                                            <motion.div
-                                                key={s.id}
-                                                whileTap={{ scale: 0.98 }}
-                                                onClick={() => onSwitchProfile(s.id)}
-                                                style={{
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                                    padding: '10px 14px',
-                                                    borderRadius: 10,
-                                                    border: `1.5px solid ${s.id === activeProfileId ? INK : DIVIDER}`,
-                                                    background: s.id === activeProfileId ? `${HL_YELLOW}55` : 'transparent',
-                                                    cursor: 'pointer',
-                                                }}
-                                            >
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                                    <div style={{
-                                                        width: 8, height: 8, borderRadius: '50%',
-                                                        background: s.id === activeProfileId ? INK : DIVIDER,
-                                                    }} />
-                                                    <span style={{
-                                                        fontFamily: "'Bricolage Grotesque', sans-serif",
-                                                        fontWeight: 700, fontSize: '0.9rem',
-                                                        color: s.id === activeProfileId ? INK : MUTED,
-                                                    }}>
-                                                        {s.name}
-                                                    </span>
-                                                </div>
-                                                {profiles.length > 1 && (
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); onDeleteProfile(s.id); }}
-                                                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: MUTED, display: 'flex', padding: 4 }}
-                                                    >
-                                                        <Trash2 size={14} />
-                                                    </button>
-                                                )}
-                                            </motion.div>
-                                        ))}
-                                    </div>
-                                    <div style={{ display: 'flex', gap: 8 }}>
-                                        <input
-                                            style={{ ...inputStyle, flex: 1, width: 'auto' }}
-                                            placeholder="Profile name..."
-                                            value={newProfileName}
-                                            onChange={e => setNewProfileName(e.target.value)}
-                                            onKeyDown={e => e.key === 'Enter' && handleCreateProfile()}
-                                        />
-                                        <PrimaryBtn onClick={handleCreateProfile} style={{ padding: '10px 16px' }}>
-                                            <Plus size={18} />
-                                        </PrimaryBtn>
-                                    </div>
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-
-                    <RowDivider />
-
-                    {/* Timeline Grid */}
-                    <SectionHeader
-                        icon={Columns}
-                        color="#ec4899"
-                        title="Timeline Grid"
-                        isExpanded={isScheduleSettingsExpanded}
-                        onToggle={() => setIsScheduleSettingsExpanded(!isScheduleSettingsExpanded)}
-                    />
-                    <AnimatePresence initial={false}>
-                        {isScheduleSettingsExpanded && (
-                            <motion.div key="timeline-panel" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }} style={{ overflow: 'hidden' }}>
-                                <div style={expandedPanelStyle}>
-                                    <ScheduleSettings periods={periods} setPeriods={setPeriods} />
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-
-                    <RowDivider />
-
-                    {/* Theme Colors */}
-                    <SectionHeader
-                        icon={Palette}
-                        color="#f59e0b"
-                        title="Theme Colors"
-                        isExpanded={isColorsExpanded}
-                        onToggle={() => setIsColorsExpanded(!isColorsExpanded)}
-                    />
-                    <AnimatePresence initial={false}>
-                        {isColorsExpanded && (
-                            <motion.div key="colors-panel" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }} style={{ overflow: 'hidden' }}>
-                                <div style={{ ...expandedPanelStyle, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                                    {Object.keys(eventColors).map(key => (
-                                        <div
-                                            key={key}
-                                            style={{
-                                                background: 'rgba(26,23,48,0.04)',
-                                                border: `1px solid ${DIVIDER}`,
-                                                borderRadius: 10,
-                                                padding: '10px 12px',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'space-between',
-                                            }}
-                                        >
-                                            <span style={{ fontFamily: "'Instrument Sans', sans-serif", fontSize: '0.72rem', fontWeight: 700, color: MUTED, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                                {key}
-                                            </span>
-                                            <div style={{ width: 24, height: 24, borderRadius: 6, overflow: 'hidden', border: `1.5px solid ${INK}`, position: 'relative' }}>
-                                                <input
-                                                    type="color"
-                                                    value={eventColors[key as EventType]}
-                                                    onChange={(e) => onUpdateColor(key as EventType, e.target.value)}
-                                                    style={{ position: 'absolute', inset: -10, width: '200%', height: '200%', cursor: 'pointer', border: 'none', padding: 0 }}
-                                                />
+                            <div className="px-5 pb-6 pt-2 animate-in slide-in-from-top-2 duration-300 space-y-4">
+                                <div className="grid gap-2">
+                                    {profiles.map(s => (
+                                        <div key={s.id} className={`flex items-center justify-between p-3 rounded-2xl border transition-all ${s.id === activeProfileId ? 'bg-teal-500/10 border-teal-500/30' : 'bg-white/5 border-transparent'}`} onClick={() => onSwitchProfile(s.id)}>
+                                            <div className="flex items-center gap-3">
+                                                <div className={`w-2 h-2 rounded-full ${s.id === activeProfileId ? 'bg-teal-400 animate-pulse' : 'bg-white/20'}`} />
+                                                <span className={`text-sm font-bold ${s.id === activeProfileId ? 'text-white' : 'text-white/40'}`}>{s.name}</span>
                                             </div>
+                                            {profiles.length > 1 && (
+                                                <button onClick={(e) => { e.stopPropagation(); onDeleteProfile(s.id); }} className="p-2 text-white/20 hover:text-red-400 transition-colors"><Trash2 size={14} /></button>
+                                            )}
                                         </div>
                                     ))}
                                 </div>
-                            </motion.div>
+                                <div className="flex gap-2">
+                                    <input className="flex-1 bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 focus:outline-none focus:border-teal-500/50" placeholder="Profile name..." value={newProfileName} onChange={e => setNewProfileName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleCreateProfile()} />
+                                    <button onClick={handleCreateProfile} className="bg-teal-600 text-white px-4 rounded-xl shadow-lg shadow-teal-900/20 active:scale-95 transition-transform"><Plus size={20} /></button>
+                                </div>
+                            </div>
                         )}
-                    </AnimatePresence>
-                </GroupCard>
+                    </div>
 
-                {/* ── SYSTEM & SUPPORT ─────────────────────────────────────── */}
-                <GroupCard>
-                    <SectionLabel>System &amp; Support</SectionLabel>
+                    <div className="border-b border-white/[0.05] last:border-0">
+                        <SectionHeader icon={Columns} color="#ec4899" title="Timeline Grid" isExpanded={isScheduleSettingsExpanded} onToggle={() => setIsScheduleSettingsExpanded(!isScheduleSettingsExpanded)} />
+                        {isScheduleSettingsExpanded && <div className="px-5 pb-6 pt-2 animate-in slide-in-from-top-2 duration-300"><ScheduleSettings periods={periods} setPeriods={setPeriods} /></div>}
+                    </div>
 
-                    {/* Support Tickets */}
-                    <motion.button
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => setIsHistoryModalOpen(true)}
-                        style={{
-                            width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                            padding: '14px 18px', background: 'none', border: 'none', cursor: 'pointer',
-                        }}
-                    >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                            <div style={{ width: 36, height: 36, borderRadius: 10, background: `${HL_BLUE}55`, border: `1px solid ${DIVIDER}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: INK }}>
-                                <MessageSquare size={18} />
+                    <div className="border-b border-white/[0.05] last:border-0">
+                        <SectionHeader icon={Palette} color="#f59e0b" title="Theme Colors" isExpanded={isColorsExpanded} onToggle={() => setIsColorsExpanded(!isColorsExpanded)} />
+                        {isColorsExpanded && (
+                            <div className="px-5 pb-6 pt-2 animate-in slide-in-from-top-2 duration-300 grid grid-cols-2 gap-2">
+                                {Object.keys(eventColors).map(key => (
+                                    <div key={key} className="bg-black/40 p-2.5 rounded-2xl border border-white/[0.03] flex items-center justify-between">
+                                        <span className="text-[11px] font-bold text-white/40 uppercase tracking-wider pl-1">{key}</span>
+                                        <div className="w-6 h-6 rounded-lg overflow-hidden border border-white/10 relative">
+                                            <input type="color" value={eventColors[key as EventType]} onChange={(e) => onUpdateColor(key as EventType, e.target.value)} className="absolute inset-[-10px] w-[200%] h-[200%] cursor-pointer border-none p-0" />
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
-                            <div style={{ textAlign: 'left' }}>
-                                <p style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontWeight: 700, fontSize: '0.95rem', color: INK, margin: 0 }}>Support Tickets</p>
-                                <p style={{ fontFamily: "'Instrument Sans', sans-serif", fontSize: '0.72rem', color: MUTED, margin: 0 }}>History &amp; Communications</p>
-                            </div>
-                        </div>
-                        <ChevronRight size={16} style={{ color: MUTED }} />
-                    </motion.button>
-
-                    <RowDivider />
-
-                    {/* New Ticket */}
-                    <motion.button
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => setIsFeedbackModalOpen(true)}
-                        style={{
-                            width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                            padding: '14px 18px', background: 'none', border: 'none', cursor: 'pointer',
-                        }}
-                    >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                            <div style={{ width: 36, height: 36, borderRadius: 10, background: `${HL_GREEN}55`, border: `1px solid ${DIVIDER}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: INK }}>
-                                <Plus size={18} />
-                            </div>
-                            <div style={{ textAlign: 'left' }}>
-                                <p style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontWeight: 700, fontSize: '0.95rem', color: INK, margin: 0 }}>New Ticket</p>
-                                <p style={{ fontFamily: "'Instrument Sans', sans-serif", fontSize: '0.72rem', color: MUTED, margin: 0 }}>Feature Request or Bug Report</p>
-                            </div>
-                        </div>
-                        <ChevronRight size={16} style={{ color: MUTED }} />
-                    </motion.button>
-
-                    {/* Sign Out + Factory Reset */}
-                    <div style={{ padding: '8px 18px 18px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        <DangerBtn onClick={onSignOut} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                            <LogOut size={16} /> Sign Out
-                        </DangerBtn>
-                        <button
-                            onClick={() => setShowResetConfirm(true)}
-                            style={{
-                                width: '100%', padding: '10px', background: 'transparent',
-                                color: MUTED, border: 'none', cursor: 'pointer',
-                                fontFamily: "'Instrument Sans', sans-serif",
-                                fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em',
-                            }}
-                        >
-                            Factory Reset
-                        </button>
+                        )}
                     </div>
                 </GroupCard>
 
-                {/* ── ADMIN ZONE ───────────────────────────────────────────── */}
+                {/* --- UTILITIES & SUPPORT GROUP --- */}
+                <GroupCard>
+                    <div className="px-5 pt-6 pb-2">
+                        <div className="flex items-center gap-2 mb-4 opacity-40">
+                            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white">System & Support</span>
+                        </div>
+                    </div>
+
+                    <div className="p-4 px-5 space-y-2">
+                        <button onClick={() => setIsHistoryModalOpen(true)} className="w-full flex items-center justify-between p-4 bg-white/5 rounded-[20px] hover:bg-white/10 transition-all group border border-white/[0.03]">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center group-hover:scale-110 transition-transform"><MessageSquare size={20} /></div>
+                                <div className="text-left">
+                                    <p className="text-[15px] font-bold text-white leading-tight">Support Tickets</p>
+                                    <p className="text-[11px] text-white/30 font-medium">History & Communications</p>
+                                </div>
+                            </div>
+                            <ChevronRight size={18} className="text-white/10" />
+                        </button>
+                        <button onClick={() => setIsFeedbackModalOpen(true)} className="w-full flex items-center justify-between p-4 bg-white/5 rounded-[20px] hover:bg-white/10 transition-all group border border-white/[0.03]">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-2xl bg-white/5 text-white/60 flex items-center justify-center group-hover:scale-110 transition-transform"><Plus size={20} /></div>
+                                <div className="text-left">
+                                    <p className="text-[15px] font-bold text-white leading-tight">New Ticket</p>
+                                    <p className="text-[11px] text-white/30 font-medium">Feature Request or Bug Report</p>
+                                </div>
+                            </div>
+                            <ChevronRight size={18} className="text-white/10" />
+                        </button>
+                    </div>
+
+                    <div className="p-5 pt-0">
+                        <button onClick={onSignOut} className="w-full py-4 bg-red-500/10 text-red-500 rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:bg-red-500/20 transition-all flex items-center justify-center gap-3"><LogOut size={16} /> Sign Out</button>
+                        <button onClick={() => setShowResetConfirm(true)} className="w-full py-3 text-white/20 hover:text-white/40 text-[10px] font-bold uppercase tracking-widest transition-colors mt-2">Factory Reset</button>
+                    </div>
+                </GroupCard>
+
+                {/* --- ADMIN ZONE --- */}
                 {accountInfo?.is_admin && (
-                    <GroupCard accentColor={HL_RED}>
-                        <div style={{ padding: '14px 18px 4px', display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <div style={{ width: 8, height: 8, borderRadius: '50%', background: HL_RED }} className="animate-pulse" />
-                            <span style={{
-                                fontFamily: "'Instrument Sans', sans-serif",
-                                fontSize: '0.65rem', fontWeight: 700,
-                                letterSpacing: '0.08em', textTransform: 'uppercase',
-                                color: HL_RED,
-                            }}>
-                                Restricted Admin Access
-                            </span>
+                    <GroupCard className="border-red-500/20 bg-red-500/[0.02]">
+                        <div className="px-5 pt-6 pb-2">
+                            <div className="flex items-center gap-2 mb-4">
+                                <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-red-400">Restricted Admin Access</span>
+                            </div>
                         </div>
 
-                        {/* User Control */}
-                        <SectionHeader
-                            icon={Shield}
-                            color={HL_RED}
-                            title="User Control"
-                            isExpanded={isUserMgmtExpanded}
-                            onToggle={() => setIsUserMgmtExpanded(!isUserMgmtExpanded)}
-                        />
-                        <AnimatePresence initial={false}>
+                        <div className="border-b border-red-500/10 last:border-0">
+                            <SectionHeader icon={Shield} color="#ef4444" title="User Control" isExpanded={isUserMgmtExpanded} onToggle={() => setIsUserMgmtExpanded(!isUserMgmtExpanded)} />
                             {isUserMgmtExpanded && (
-                                <motion.div key="user-control-panel" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }} style={{ overflow: 'hidden' }}>
-                                    <div style={{ ...expandedPanelStyle }}>
-                                        <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-                                            <input
-                                                placeholder="Search username..."
-                                                value={userSearch}
-                                                onChange={(e) => setUserSearch(e.target.value)}
-                                                onKeyDown={(e) => e.key === 'Enter' && fetchUsers(userSearch)}
-                                                style={{ ...inputStyle, flex: 1, width: 'auto' }}
-                                            />
-                                            <motion.button
-                                                onClick={() => fetchUsers(userSearch)}
-                                                whileTap={{ scale: 0.95 }}
-                                                style={{
-                                                    background: INK, color: '#fff',
-                                                    border: `1.5px solid ${INK}`,
-                                                    borderRadius: 8, padding: '0 12px',
-                                                    cursor: 'pointer', display: 'flex', alignItems: 'center',
-                                                }}
-                                            >
-                                                <Search size={18} />
-                                            </motion.button>
-                                        </div>
-                                        {isLoadingUsers ? (
-                                            <div style={{ display: 'flex', justifyContent: 'center', padding: 20 }}>
-                                                <Loader2 className="animate-spin" style={{ color: MUTED }} />
-                                            </div>
-                                        ) : (
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 300, overflowY: 'auto' }}>
-                                                {users.map(user => (
-                                                    <div
-                                                        key={user.id}
-                                                        style={{
-                                                            background: 'rgba(26,23,48,0.04)',
-                                                            border: `1px solid ${DIVIDER}`,
-                                                            borderRadius: 10,
-                                                            padding: '10px 14px',
-                                                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                                        }}
-                                                    >
-                                                        <div>
-                                                            <p style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontWeight: 700, fontSize: '0.88rem', color: INK, margin: 0 }}>{user.username}</p>
-                                                            <p style={{ fontFamily: "'Instrument Sans', sans-serif", fontSize: '0.7rem', color: MUTED, margin: 0, maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user.email}</p>
-                                                        </div>
-                                                        <div style={{ display: 'flex', gap: 6 }}>
-                                                            {user.is_banned ? (
-                                                                <button
-                                                                    onClick={() => unbanUser(user.id)}
-                                                                    style={{ padding: 6, background: `${HL_GREEN}55`, border: `1px solid ${INK}`, borderRadius: 8, color: INK, cursor: 'pointer', display: 'flex' }}
-                                                                >
-                                                                    <Check size={14} />
-                                                                </button>
-                                                            ) : (
-                                                                <button
-                                                                    onClick={() => setBanModalUser({ id: user.id, username: user.username })}
-                                                                    style={{ padding: 6, background: 'rgba(26,23,48,0.07)', border: `1px solid ${DIVIDER}`, borderRadius: 8, color: MUTED, cursor: 'pointer', display: 'flex' }}
-                                                                >
-                                                                    <Ban size={14} />
-                                                                </button>
-                                                            )}
-                                                            <button
-                                                                onClick={() => deleteUser(user.id)}
-                                                                style={{ padding: 6, background: `${HL_RED}22`, border: `1px solid ${HL_RED}`, borderRadius: 8, color: HL_RED, cursor: 'pointer', display: 'flex' }}
-                                                            >
-                                                                <Trash2 size={14} />
-                                                            </button>
-                                                        </div>
+                                <div className="px-5 pb-6 pt-2 animate-in slide-in-from-top-2 duration-300">
+                                    <div className="flex gap-2 mb-4">
+                                        <input placeholder="Search username..." value={userSearch} onChange={(e) => setUserSearch(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && fetchUsers(userSearch)} className="flex-1 bg-black/40 border border-white/5 rounded-xl px-4 py-2.5 text-sm text-white" />
+                                        <button onClick={() => fetchUsers(userSearch)} className="bg-white/5 hover:bg-white/10 text-white p-2.5 rounded-xl transition-all"><Search size={18} /></button>
+                                    </div>
+                                    {isLoadingUsers ? <div className="text-center py-4"><Loader2 className="animate-spin text-white/20" /></div> : (
+                                        <div className="space-y-2 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
+                                            {users.map(user => (
+                                                <div key={user.id} className="bg-black/40 p-3 rounded-2xl border border-white/[0.03] flex items-center justify-between">
+                                                    <div>
+                                                        <p className="text-xs font-bold text-white">{user.username}</p>
+                                                        <p className="text-[10px] text-white/30 truncate max-w-[120px]">{user.email}</p>
                                                     </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-                                </motion.div>
+                                                    <div className="flex gap-1">
+                                                        {user.is_banned ? (
+                                                            <button onClick={() => unbanUser(user.id)} className="p-1.5 bg-emerald-500/20 text-emerald-400 rounded-lg"><Check size={14} /></button>
+                                                        ) : (
+                                                            <button onClick={() => setBanModalUser({ id: user.id, username: user.username })} className="p-1.5 bg-white/5 text-white/40 rounded-lg"><Ban size={14} /></button>
+                                                        )}
+                                                        <button onClick={() => deleteUser(user.id)} className="p-1.5 bg-red-500/20 text-red-400 rounded-lg"><Trash2 size={14} /></button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
                             )}
-                        </AnimatePresence>
+                        </div>
 
-                        <RowDivider />
-
-                        {/* Feedback Inbox */}
-                        <SectionHeader
-                            icon={MessageSquare}
-                            color={HL_BLUE}
-                            title="Feedback Inbox"
-                            isExpanded={isFeedbackInboxExpanded}
-                            onToggle={() => setIsFeedbackInboxExpanded(!isFeedbackInboxExpanded)}
-                        />
-                        <AnimatePresence initial={false}>
-                            {isFeedbackInboxExpanded && (
-                                <motion.div key="feedback-inbox-panel" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }} style={{ overflow: 'hidden' }}>
-                                    <div style={expandedPanelStyle}>
-                                        <AdminInbox />
-                                    </div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
+                        <div className="border-b border-red-500/10 last:border-0">
+                            <SectionHeader icon={MessageSquare} color="#3b82f6" title="Feedback Inbox" isExpanded={isFeedbackInboxExpanded} onToggle={() => setIsFeedbackInboxExpanded(!isFeedbackInboxExpanded)} />
+                            {isFeedbackInboxExpanded && <div className="px-5 pb-6 pt-2 animate-in slide-in-from-top-2 duration-300"><AdminInbox /></div>}
+                        </div>
                     </GroupCard>
                 )}
 
-                {/* ── Footer ───────────────────────────────────────────────── */}
-                <div style={{ paddingBottom: 48, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-                    <div style={{
-                        display: 'flex', alignItems: 'center', gap: 8,
-                        padding: '6px 16px',
-                        background: CARD_BG,
-                        border: `1.5px solid ${INK}`,
-                        borderRadius: 999,
-                        boxShadow: `2px 2px 0 ${INK}`,
-                    }}>
-                        <Heart size={11} style={{ color: HL_RED, fill: HL_RED }} />
-                        <span style={{ fontFamily: "'Instrument Sans', sans-serif", fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: MUTED }}>
-                            VERSION 3.5 &bull; Made with PASSION
-                        </span>
+                <div className="pt-4 pb-12 text-center flex flex-col items-center gap-3">
+                    <div className="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-full border border-white/5 backdrop-blur-sm">
+                        <Heart size={12} className="text-red-500 fill-red-500" />
+                        <span className="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em]">VERSION 3.5 • Made with PASSION</span>
                     </div>
-                    <div style={{ display: 'flex', gap: 20 }}>
-                        <a href="#" style={{ fontFamily: "'Instrument Sans', sans-serif", fontSize: '0.7rem', fontWeight: 700, color: MUTED, textDecoration: 'underline' }}>Terms of Service</a>
-                        <a href="#" style={{ fontFamily: "'Instrument Sans', sans-serif", fontSize: '0.7rem', fontWeight: 700, color: MUTED, textDecoration: 'underline' }}>Privacy Policy</a>
-                        <a href="https://paypal.me/OmarRaslan298" target="_blank" rel="noopener noreferrer" style={{ fontFamily: "'Instrument Sans', sans-serif", fontSize: '0.7rem', fontWeight: 700, color: INK, textDecoration: 'underline' }}>Support Me</a>
+                    <div className="flex gap-4">
+                        <a href="#" className="text-[10px] font-bold text-white/20 hover:text-white transition-colors underline-offset-4 underline decoration-white/10">Terms of Service</a>
+                        <a href="#" className="text-[10px] font-bold text-white/20 hover:text-white transition-colors underline-offset-4 underline decoration-white/10">Privacy Policy</a>
+                        <a href="https://paypal.me/OmarRaslan298" target="_blank" rel="noopener noreferrer" className="text-[10px] font-bold text-teal-400 hover:text-teal-300 transition-colors underline-offset-4 underline decoration-teal-400/30">Support Me</a>
                     </div>
                 </div>
             </div>
 
-            {/* ── Factory Reset Modal ───────────────────────────────────── */}
-            <AnimatePresence>
-                {showResetConfirm && (
-                    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, background: 'rgba(26,23,48,0.6)' }}>
-                        <motion.div
-                            initial={{ scale: 0.95, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.95, opacity: 0 }}
-                            onClick={e => e.stopPropagation()}
-                            style={{ ...cardStyle, maxWidth: 340, width: '100%', padding: 28, textAlign: 'center' }}
-                        >
-                            <div style={{
-                                width: 60, height: 60, borderRadius: '50%',
-                                background: `${HL_RED}22`,
-                                border: `1.5px solid ${INK}`,
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                color: HL_RED, margin: '0 auto 20px',
-                            }}>
-                                <AlertTriangle size={28} />
+            {showResetConfirm && (
+                <div style={styles.modalOverlay}>
+                    <div style={{ ...styles.modalContent, maxWidth: '320px', padding: '0', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
+                        <div style={{ padding: '32px 24px', textAlign: 'center' }}>
+                            <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-5 text-red-500">
+                                <AlertTriangle size={32} />
                             </div>
-                            <h3 style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontWeight: 800, fontSize: '1.2rem', color: INK, margin: '0 0 10px' }}>
-                                Factory Reset?
-                            </h3>
-                            <p style={{ fontFamily: "'Instrument Sans', sans-serif", fontSize: '0.88rem', color: MUTED, lineHeight: 1.6, margin: '0 0 24px' }}>
-                                This will permanently wipe <strong>all</strong> your courses, logs, and settings. This cannot be undone.
+                            <h3 className="text-xl font-black text-white mb-2">Factory Reset?</h3>
+                            <p className="text-sm text-white/40 leading-relaxed font-medium">
+                                This will permanently wipe <b>all</b> your courses, logs, and settings. This cannot be undone.
                             </p>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                                <DangerBtn
-                                    onClick={() => { onResetApp(); setShowResetConfirm(false); }}
-                                    style={{ width: '100%' }}
-                                >
-                                    Wipe Data
-                                </DangerBtn>
-                                <GhostBtn onClick={() => setShowResetConfirm(false)} style={{ width: '100%' }}>
-                                    Cancel
-                                </GhostBtn>
-                            </div>
-                        </motion.div>
+                        </div>
+                        <div className="flex border-t border-white/5">
+                            <button onClick={() => setShowResetConfirm(false)} className="flex-1 py-5 text-sm font-bold text-white/40 hover:bg-white/5 transition-colors border-r border-white/5">Cancel</button>
+                            <button onClick={() => { setShowResetConfirm(false); onResetApp(); }} className="flex-1 py-5 text-sm font-black text-red-500 hover:bg-red-500/10 transition-colors uppercase tracking-widest">Wipe Data</button>
+                        </div>
                     </div>
-                )}
-            </AnimatePresence>
+                </div>
+            )}
 
             <FeedbackModal isOpen={isFeedbackModalOpen} onClose={() => setIsFeedbackModalOpen(false)} userId={accountInfo?.id} />
             <SupportHistoryModal isOpen={isHistoryModalOpen} onClose={() => setIsHistoryModalOpen(false)} userId={accountInfo?.id} />

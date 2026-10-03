@@ -66,7 +66,7 @@ export const INITIAL_FILES: MaterialFile[] = [
 ];
 
 export const INITIAL_COLORS: Record<EventType, string> = {
-  lecture: "#8b5cf6",      
+  lecture: "#19b8a6",      
   tutorial: "#f59e0b",     
   lab: "#ec4899",          
   quiz: "#ef4444",         
