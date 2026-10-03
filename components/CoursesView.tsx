@@ -560,7 +560,7 @@ const GPACalculator = ({ courses, onBack }: { courses: CourseGrade[], onBack: ()
             </div>
 
             {/* Score Card */}
-            <div className="bg-gradient-to-br from-indigo-900/40 to-[#130f1c] border border-indigo-500/20 rounded-3xl p-6 mb-6 text-center relative overflow-hidden">
+            <div className="bg-gradient-to-br from-indigo-900/40 to-[#12141a] border border-indigo-500/20 rounded-3xl p-6 mb-6 text-center relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 blur-[50px] rounded-full pointer-events-none"></div>
                 <div className="relative z-10">
                     <div className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-2">Cumulative GPA</div>
@@ -795,7 +795,7 @@ const CoursesView: React.FC<CoursesViewProps> = ({ courses, onSelectCourse, onAd
             >
                 <div className="flex justify-between items-start mb-3">
                     <div className="flex items-center gap-3 overflow-hidden">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center text-indigo-400 border border-white/5 shrink-0">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500/20 to-teal-500/20 flex items-center justify-center text-indigo-400 border border-white/5 shrink-0">
                             <BookOpen size={18} />
                         </div>
                         <div className="min-w-0">

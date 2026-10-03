@@ -13,14 +13,14 @@ const HomeTab = () => (
     <div className="flex items-start justify-between mb-3">
       <div>
         <div className="text-white text-2xl font-black leading-none">12:57 AM</div>
-        <div className="text-violet-400 text-xs font-bold mt-0.5">Friday, May 15</div>
+        <div className="text-teal-400 text-xs font-bold mt-0.5">Friday, May 15</div>
         <div className="text-white/50 text-[10px] mt-0.5">Good Morning, <span className="text-white font-bold">Admin</span></div>
       </div>
       <div className="flex gap-2">
         <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
           <FileText size={14} className="text-white/60" />
         </div>
-        <div className="w-8 h-8 rounded-full bg-[#7c3aed] flex items-center justify-center shadow-lg shadow-violet-700/50">
+        <div className="w-8 h-8 rounded-full bg-[#0f9d8d] flex items-center justify-center shadow-lg shadow-teal-700/50">
           <Brain size={14} className="text-white" />
         </div>
       </div>
@@ -66,8 +66,8 @@ const HomeTab = () => (
       </div>
       {/* Smart Import */}
       <div className="col-span-1 rounded-xl bg-[#1a1a2e] border border-white/10 flex flex-col items-center justify-center gap-1 p-2">
-        <Brain size={14} className="text-violet-400" />
-        <span className="text-[8px] text-violet-300 font-bold text-center leading-tight">Smart Import</span>
+        <Brain size={14} className="text-teal-400" />
+        <span className="text-[8px] text-teal-300 font-bold text-center leading-tight">Smart Import</span>
       </div>
     </div>
 
@@ -89,7 +89,7 @@ const HomeTab = () => (
           <div className="text-right">
             <div className="text-white text-[10px] font-bold">{item.date}</div>
             <div className="text-white/40 text-[9px]">{item.time}</div>
-            {item.urgent && <div className="text-violet-400 text-[8px] font-bold">3rd</div>}
+            {item.urgent && <div className="text-teal-400 text-[8px] font-bold">3rd</div>}
           </div>
         </div>
       ))}
@@ -138,7 +138,7 @@ const ScheduleTab = () => {
           <div className="bg-[#0d0b1a]" />
           {periods.map((_, i) => (
             <div key={i} className="bg-[#1a1030] border border-white/5 px-1 py-1.5 text-center">
-              <div className="text-violet-400 font-black">{['1ST', '2ND', '3RD'][i]}</div>
+              <div className="text-teal-400 font-black">{['1ST', '2ND', '3RD'][i]}</div>
               <div className="text-white/30">{['8:30–10:00', '10:15–11:45', '12:00–1:30'][i]}</div>
             </div>
           ))}
@@ -148,8 +148,8 @@ const ScheduleTab = () => {
             const isFriday = di === 5;
             return (
               <React.Fragment key={di}>
-                <div className={`border border-white/5 px-1 py-2 flex flex-col items-center justify-center ${isFriday ? 'border-l-2 border-l-violet-500' : ''}`}>
-                  <span className={`font-black ${isFriday ? 'text-violet-400' : 'text-white/60'}`}>{d}</span>
+                <div className={`border border-white/5 px-1 py-2 flex flex-col items-center justify-center ${isFriday ? 'border-l-2 border-l-teal-500' : ''}`}>
+                  <span className={`font-black ${isFriday ? 'text-teal-400' : 'text-white/60'}`}>{d}</span>
                   <span className="text-white/30 text-[7px]">{date}</span>
                 </div>
                 {[0, 1, 2].map((pi) => {
@@ -190,8 +190,8 @@ const FilesTab = () => (
         </div>
         <div className="text-white/40 text-[10px] ml-6">Documents & Resources</div>
       </div>
-      <div className="bg-[#1a1030] border border-violet-500/30 rounded-full px-2.5 py-1 flex items-center gap-1.5">
-        <div className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
+      <div className="bg-[#1a1030] border border-teal-500/30 rounded-full px-2.5 py-1 flex items-center gap-1.5">
+        <div className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse" />
         <span className="text-[9px] text-white/50 font-bold uppercase tracking-wider">Background Sync</span>
       </div>
     </div>
@@ -221,7 +221,7 @@ const FilesTab = () => (
             <div className="text-white text-[10px] font-bold truncate">{f.name}</div>
             <div className="text-white/30 text-[8px]">{f.size} • {f.date}</div>
           </div>
-          <span className="text-violet-400 text-[10px]">👁</span>
+          <span className="text-teal-400 text-[10px]">👁</span>
         </div>
       ))}
     </div>
@@ -243,7 +243,7 @@ const SettingsTab = () => (
       {
         label: 'Academic Engine',
         items: [
-          { icon: '📚', name: 'Schedules & Profiles', badge: '2 Profiles', color: '#7c3aed' },
+          { icon: '📚', name: 'Schedules & Profiles', badge: '2 Profiles', color: '#0f9d8d' },
           { icon: '📊', name: 'Timeline Grid', badge: '', color: '#ec4899' },
           { icon: '🎨', name: 'Theme Colors', badge: '', color: '#f59e0b' },
         ],
@@ -306,7 +306,7 @@ export const ModernDashboardPreview = () => {
                 onClick={() => handleTabClick(t.id)}
                 className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
                   tab === t.id
-                    ? 'bg-[#7c3aed] text-white shadow-lg shadow-violet-700/40'
+                    ? 'bg-[#0f9d8d] text-white shadow-lg shadow-teal-700/40'
                     : 'text-white/40 hover:text-white/70'
                 }`}
               >

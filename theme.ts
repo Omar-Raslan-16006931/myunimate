@@ -9,8 +9,8 @@ export const theme = {
   glassBorder: "var(--glass-border)",
   text: "var(--text-primary)",
   textMuted: "var(--text-muted)", 
-  accent: "#8b5cf6", // Keeping Hex for JS logic usage, mapped to CSS var visual
-  accentGlow: "0 0 25px rgba(139, 92, 246, 0.2)",
+  accent: "#19b8a6", // Keeping Hex for JS logic usage, mapped to CSS var visual
+  accentGlow: "0 0 25px rgba(25, 184, 166, 0.2)",
   success: "#34d399",
   danger: "#f87171",
   warning: "#fbbf24"
@@ -21,6 +21,8 @@ export const styles: { [key: string]: React.CSSProperties } = {
     display: "flex",
     flexDirection: "column",
     height: "100vh",
+    boxSizing: "border-box",
+    paddingTop: "env(safe-area-inset-top)",
     fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
     background: "var(--bg-gradient)", // Use var
     color: "var(--text-primary)", // Use var
@@ -29,23 +31,20 @@ export const styles: { [key: string]: React.CSSProperties } = {
     transition: "background 0.5s ease",
     maxWidth: "800px",
     margin: "0 auto",
-    boxShadow: "0 0 40px rgba(0,0,0,0.3)",
-    borderLeft: "var(--glass-border)",
-    borderRight: "var(--glass-border)",
   },
   // Floating Navigation Pill - Updated to Fixed Position
   bottomNav: {
     position: "fixed",
-    bottom: "calc(30px + env(safe-area-inset-bottom))",
+    bottom: "calc(14px + env(safe-area-inset-bottom))",
     left: "50%",
     transform: "translateX(-50%)",
-    height: "65px",
+    height: "58px",
     background: "var(--nav-bg)", // Use var
     backdropFilter: "blur(20px)", 
     WebkitBackdropFilter: "blur(20px)",
     borderRadius: "35px",
     border: "var(--glass-border)", // Use var
-    boxShadow: "0 20px 40px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.1)",
+    boxShadow: "0 10px 30px rgba(0,0,0,0.18)",
     display: "flex",
     justifyContent: "space-evenly",
     alignItems: "center",
@@ -61,17 +60,16 @@ export const styles: { [key: string]: React.CSSProperties } = {
     justifyContent: "center",
     cursor: "pointer",
     transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-    color: "var(--text-muted)", // Use var
+    color: "var(--nav-ink)",
     width: "45px",
     height: "45px",
     borderRadius: "50%",
     position: "relative"
   },
   activeNavItem: {
-    color: "var(--text-primary)", // Use var
-    backgroundColor: "var(--nav-active-bg)", // Use var
-    boxShadow: "0 0 15px rgba(139, 92, 246, 0.3)",
-    transform: "scale(1.05)"
+    color: "var(--nav-active-ink)",
+    backgroundColor: "transparent",
+    transform: "none"
   },
   // Main Content - Scaled Down ~10%
   main: {
@@ -88,7 +86,8 @@ export const styles: { [key: string]: React.CSSProperties } = {
   scrollableContent: {
     flex: 1,
     overflowY: "auto",
-    padding: "18px 18px 110px 18px", 
+    padding: "14px 16px calc(92px + env(safe-area-inset-bottom)) 16px", 
+    scrollbarWidth: "none",
     WebkitOverflowScrolling: "touch",
   },
   header: {
@@ -116,10 +115,10 @@ export const styles: { [key: string]: React.CSSProperties } = {
     backgroundColor: "var(--card-bg)", // Use var
     backdropFilter: "blur(40px)",
     WebkitBackdropFilter: "blur(40px)",
-    borderRadius: "8px",
+    borderRadius: "22px",
     padding: "18px",
     border: "var(--card-border)", // Use var
-    boxShadow: "4px 5px 0 var(--ink)",
+    boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
     marginBottom: "14px",
     position: "relative",
     overflow: "hidden",
@@ -133,7 +132,7 @@ export const styles: { [key: string]: React.CSSProperties } = {
     overflow: "auto",
     borderRadius: "22px",
     border: "var(--glass-border)",
-    backgroundColor: "rgba(20,20,30,0.05)", 
+    backgroundColor: "var(--grid-bg)", 
     WebkitOverflowScrolling: "touch",
     backdropFilter: "blur(30px)",
     maxHeight: "calc(100vh - 180px)", 
@@ -203,7 +202,7 @@ export const styles: { [key: string]: React.CSSProperties } = {
   },
   scheduleContentCell: {
     padding: "3px",
-    minHeight: "72px",
+    minHeight: "74px",
     position: "relative",
     display: "flex",
     flexDirection: "column",
@@ -215,14 +214,13 @@ export const styles: { [key: string]: React.CSSProperties } = {
   },
   scheduleBreakCell: {
     backgroundColor: "transparent",
-    backgroundImage: "repeating-linear-gradient(45deg, rgba(100,100,100,0.03), rgba(100,100,100,0.03) 10px, transparent 10px, transparent 20px)",
     borderBottom: "1px solid var(--schedule-grid-lines)",
     borderRight: "1px dashed var(--schedule-grid-lines)",
     borderLeft: "1px dashed var(--schedule-grid-lines)",
   },
   eventCard: {
     padding: "7px",
-    borderRadius: "8px",
+    borderRadius: "9px",
     fontSize: "0.7rem",
     cursor: "pointer",
     transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
@@ -231,18 +229,18 @@ export const styles: { [key: string]: React.CSSProperties } = {
     flexDirection: "column",
     justifyContent: "space-between", 
     position: "relative",
-    boxShadow: "2px 3px 0 var(--ink)", 
+    boxShadow: "0 4px 12px rgba(0,0,0,0.1)", 
     minHeight: "54px",
     flex: 1,
-    border: "1.5px solid var(--ink)",
+    border: "none",
     zIndex: 5,
   },
   // UI Elements - Scaled Down
   input: {
     flex: 1,
     padding: "12px",
-    borderRadius: "8px",
-    border: "1.5px solid var(--ink)",
+    borderRadius: "14px",
+    border: "1px solid rgba(255, 255, 255, 0.1)",
     fontSize: "0.85rem",
     outline: "none",
     backgroundColor: "var(--input-bg)", // Use var
@@ -253,10 +251,10 @@ export const styles: { [key: string]: React.CSSProperties } = {
   },
   button: {
     padding: "10px 16px",
-    backgroundColor: "var(--ink)",
+    backgroundColor: theme.accent,
     color: "white",
-    border: "1.5px solid var(--ink)",
-    borderRadius: "10px",
+    border: "none",
+    borderRadius: "16px",
     fontWeight: 600,
     cursor: "pointer",
     transition: "all 0.2s",
@@ -264,14 +262,14 @@ export const styles: { [key: string]: React.CSSProperties } = {
     alignItems: "center",
     gap: "7px",
     fontSize: "0.85rem",
-    boxShadow: "4px 4px 0 var(--hl-yellow)",
+    boxShadow: theme.accentGlow,
   },
   secondaryButton: {
     padding: "10px 16px",
     backgroundColor: "var(--input-bg)",
     color: "var(--text-primary)",
-    border: "1.5px solid var(--glass-border)",
-    borderRadius: "10px",
+    border: "1px solid var(--glass-border)",
+    borderRadius: "16px",
     fontWeight: 600,
     cursor: "pointer",
     fontSize: "0.85rem",
@@ -304,15 +302,15 @@ export const styles: { [key: string]: React.CSSProperties } = {
   },
   modalContent: {
     backgroundColor: "var(--modal-bg)", 
-    borderRadius: "12px",
+    borderRadius: "28px",
     padding: "24px",
     width: "100%",
     maxWidth: "360px",
     maxHeight: "80vh",
     overflowY: "auto",
     overflowX: "hidden",
-    border: "1.5px solid var(--ink)",
-    boxShadow: "6px 8px 0 var(--ink)",
+    border: "1px solid rgba(255,255,255,0.1)",
+    boxShadow: "0 40px 80px rgba(0,0,0,0.5)",
     animation: "popIn 0.6s cubic-bezier(0.16, 1, 0.3, 1)", // Premium bezier curve
     color: "var(--text-primary)",
     display: "flex",
@@ -334,8 +332,8 @@ export const styles: { [key: string]: React.CSSProperties } = {
   select: {
     width: "100%",
     padding: "12px",
-    borderRadius: "8px",
-    border: "1.5px solid var(--ink)",
+    borderRadius: "14px",
+    border: "1px solid rgba(255,255,255,0.1)",
     backgroundColor: "var(--input-bg)",
     color: "var(--text-primary)",
     fontSize: "0.85rem",

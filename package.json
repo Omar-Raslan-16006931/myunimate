@@ -9,6 +9,9 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
+    "@capacitor/core": "^7.6.9",
+    "@capacitor/ios": "^7.6.9",
+    "@capacitor/local-notifications": "^7.0.7",
     "@google/genai": "^1.30.0",
     "@radix-ui/react-slot": "^1.2.4",
     "@react-three/fiber": "^9.6.1",
@@ -31,9 +34,13 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@capacitor/cli": "^7.6.9",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.6.1",
+    "postcss": "^8.5.28",
+    "tailwindcss": "^3.4.19",
     "typescript": "^5.2.2",
     "vite": "^5.1.4",
     "vite-plugin-pwa": "^1.2.0",
