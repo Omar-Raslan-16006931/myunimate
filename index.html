@@ -61,45 +61,40 @@
     </script>
     <style>
       :root {
-        /* Default (Dark Mode) */
-        --bg-gradient: radial-gradient(circle at 50% -20%, #1e0a45 0%, #0f0f16 60%, #101016 100%);
-        --card-bg: rgba(30, 30, 40, 0.6);
-        --card-border: 1px solid rgba(255, 255, 255, 0.1);
-        --glass-border: 1px solid rgba(255, 255, 255, 0.1);
-        --text-primary: #FFFFFF;
-        --text-muted: rgba(255, 255, 255, 0.6);
-        --accent: #8b5cf6;
-        --nav-bg: linear-gradient(135deg, rgba(30, 10, 60, 0.9), rgba(50, 20, 90, 0.9));
-        --nav-active-bg: rgba(139, 92, 246, 0.2);
-        --input-bg: rgba(255,255,255,0.05);
-        --modal-bg: #130f1c;
-        --schedule-header-bg: rgba(10, 10, 15, 0.95);
-        --schedule-grid-lines: rgba(255,255,255,0.1);
+        --ink: #1A1730;
+        --paper: #C7B2DB;
+        --paper-light: #FAFAF6;
+        --hl-yellow: #F6DF63;
+        
+        --bg-gradient: none;
+        --card-bg: var(--paper-light);
+        --card-border: 1.5px solid var(--ink);
+        --glass-border: 1.5px solid var(--ink);
+        --text-primary: var(--ink);
+        --text-muted: rgba(26, 23, 48, 0.7);
+        --accent: var(--ink);
+        --nav-bg: var(--paper-light);
+        --nav-active-bg: rgba(246, 223, 99, 0.3);
+        --input-bg: rgba(26, 23, 48, 0.05);
+        --modal-bg: var(--paper-light);
+        --schedule-header-bg: var(--paper-light);
+        --schedule-grid-lines: rgba(26, 23, 48, 0.15);
       }
 
       body.light-mode {
-        /* Light Mode Overrides */
-        --bg-gradient: radial-gradient(circle at 50% -20%, #e0e7ff 0%, #f3f4f6 60%, #ffffff 100%);
-        --card-bg: rgba(255, 255, 255, 0.7);
-        --card-border: 1px solid rgba(0, 0, 0, 0.05);
-        --glass-border: 1px solid rgba(0, 0, 0, 0.05);
-        --text-primary: #0f172a;
-        --text-muted: rgba(15, 23, 42, 0.6);
-        --accent: #7c3aed;
-        --nav-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(240, 240, 255, 0.9));
-        --nav-active-bg: rgba(124, 58, 237, 0.1);
-        --input-bg: rgba(0,0,0,0.05);
-        --modal-bg: #ffffff;
-        --schedule-header-bg: rgba(255, 255, 255, 0.95);
-        --schedule-grid-lines: rgba(0,0,0,0.1);
+        /* Already light by default in this style */
       }
 
       body {
-        background-color: #101016;
-        background-image: var(--bg-gradient);
+        background-color: var(--paper);
+        background-image: 
+          linear-gradient(rgba(26, 23, 48, 0.045) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(26, 23, 48, 0.045) 1px, transparent 1px);
+        background-size: 36px 36px;
         color: var(--text-primary);
         overflow-x: hidden;
-        transition: background-image 0.5s ease, color 0.5s ease;
+        transition: background-color 0.5s ease, color 0.5s ease;
+        font-family: 'Instrument Sans', 'Inter', sans-serif;
       }
       
       .hide-scroll::-webkit-scrollbar { display: none; }
@@ -107,8 +102,8 @@
       
       .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
       .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-      .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 10px; }
-      .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.4); }
+      .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(26, 23, 48, 0.2); border-radius: 10px; }
+      .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(26, 23, 48, 0.4); }
 
       /* ============================================================
          Enter/Exit animation utilities (tailwindcss-animate shim)

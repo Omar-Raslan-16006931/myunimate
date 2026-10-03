@@ -18,6 +18,14 @@ interface MaterialsViewProps {
   onFileViewChange?: (isViewing: boolean) => void;
 }
 
+const INK = '#1A1730';
+const CARD_BG = '#FAFAF6';
+const HL_YELLOW = '#F6DF63';
+const HL_GREEN = '#8CE3B7';
+const HL_BLUE = '#9ECFFF';
+const HL_RED = '#E56A5A';
+const HL_ORANGE = '#F4BE8A';
+
 const ExcelViewer: React.FC<{ data: string }> = ({ data }) => {
     const [sheets, setSheets] = useState<{ name: string, data: any[][] }[]>([]);
     const [activeSheet, setActiveSheet] = useState(0);
@@ -37,7 +45,7 @@ const ExcelViewer: React.FC<{ data: string }> = ({ data }) => {
         }
     }, [data]);
 
-    if (sheets.length === 0) return <div className="text-white p-4">Loading Excel data...</div>;
+    if (sheets.length === 0) return <div style={{ color: INK, padding: '16px' }}>Loading Excel data...</div>;
 
     return (
         <div className="w-full h-full flex flex-col bg-white overflow-hidden">
@@ -96,14 +104,14 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
 
   const getIcon = (type: string) => {
       switch(type) {
-          case 'folder': return <Folder size={32} className="text-yellow-400" fill="currentColor" fillOpacity={0.2} />;
-          case 'pdf': return <FileText size={20} className="text-red-400" />;
-          case 'image': return <Image size={20} className="text-blue-400" />;
-          case 'excel': return <FileSpreadsheet size={20} className="text-emerald-400" />;
-          case 'powerpoint': return <FileType size={20} className="text-orange-400" />;
-          case 'word': return <FileText size={20} className="text-blue-500" />;
-          case 'txt': return <FileText size={20} className="text-slate-300" />;
-          default: return <File size={20} className="text-slate-400" />;
+          case 'folder': return <Folder size={32} color="#F4BE8A" fill="#F4BE8A" fillOpacity={0.3} />;
+          case 'pdf': return <FileText size={20} color={HL_RED} />;
+          case 'image': return <Image size={20} color={HL_BLUE} />;
+          case 'excel': return <FileSpreadsheet size={20} color={HL_GREEN} />;
+          case 'powerpoint': return <FileType size={20} color={HL_ORANGE} />;
+          case 'word': return <FileText size={20} color={HL_BLUE} />;
+          case 'txt': return <FileText size={20} color={`rgba(26,23,48,0.5)`} />;
+          default: return <File size={20} color={`rgba(26,23,48,0.4)`} />;
       }
   };
 
@@ -128,7 +136,7 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
       const reader = new FileReader();
       reader.onload = (event) => {
           const base64 = event.target?.result as string;
-          
+
           let type = 'other';
           if (file.type.includes('pdf')) type = 'pdf';
           else if (file.type.includes('image')) type = 'image';
@@ -147,7 +155,7 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
               parentId: currentFolderId || undefined
           };
           onAddFile(newFile);
-          
+
           // Reset input so the same file can be selected again
           if (fileInputRef.current) {
               fileInputRef.current.value = '';
@@ -161,7 +169,7 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
           setCurrentFolderId(file.id);
           return;
       }
-      
+
       // Lazy load content if missing
       let fileContent = file.fileData;
     if (fileContent === undefined) {
@@ -170,7 +178,7 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
           setIsLoadingContent(false);
           if (fileContent === undefined) return; // Error handled in App.tsx
       }
-      
+
       if (file.type === 'txt') {
           setActiveNoteId(file.id);
           setNoteName(file.name);
@@ -193,8 +201,8 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
     if (activeNoteId) {
         // Find the file to update its size based on new content
         const size = (new Blob([noteContent]).size / 1024).toFixed(1) + ' KB';
-        onUpdateFile(activeNoteId, { 
-            name: fileName, 
+        onUpdateFile(activeNoteId, {
+            name: fileName,
             fileData: noteContent,
             size: size
         });
@@ -210,7 +218,7 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
         };
         onAddFile(newFile);
     }
-    
+
     setIsEditingNote(false);
     setActiveNoteId(null);
     setNoteName('');
@@ -237,12 +245,12 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
       if (!file) return;
 
       let newName = editFileName.trim();
-      
+
       // If it's a file (not a folder), preserve the extension
       if (file.type !== 'folder' && file.name.includes('.')) {
           const originalExt = file.name.split('.').pop();
           const newExt = newName.split('.').pop();
-          
+
           if (originalExt && originalExt.toLowerCase() !== newExt?.toLowerCase()) {
               // If the user tried to change the extension, append the original one
               // Unless they completely removed the extension, then we add it back
@@ -265,7 +273,7 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
 
   const handleDownload = (file: MaterialFile) => {
       if (!file.fileData) return;
-      
+
       try {
           // Try converting base64 to blob for more reliable downloading
           if (file.fileData.startsWith('data:')) {
@@ -311,344 +319,794 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
   const items = displayedFiles.filter(f => f.type !== 'folder');
   const allFolders = files.filter(f => f.type === 'folder');
 
+  const sectionLabelStyle: React.CSSProperties = {
+    fontSize: '0.72rem',
+    fontWeight: 700,
+    color: `rgba(26,23,48,0.5)`,
+    marginBottom: '12px',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
+    fontFamily: "'Instrument Sans', 'Inter', sans-serif",
+  };
+
+  const contextMenuStyle: React.CSSProperties = {
+    position: 'absolute',
+    top: '28px',
+    right: '4px',
+    background: CARD_BG,
+    border: `1.5px solid ${INK}`,
+    borderRadius: '10px',
+    boxShadow: `4px 5px 0 ${INK}`,
+    padding: '4px',
+    zIndex: 50,
+    minWidth: '130px',
+  };
+
+  const menuBtnStyle: React.CSSProperties = {
+    width: '100%',
+    textAlign: 'left',
+    padding: '8px 12px',
+    background: 'transparent',
+    border: 'none',
+    color: INK,
+    fontSize: '0.8rem',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    fontFamily: "'Instrument Sans', 'Inter', sans-serif",
+    fontWeight: 600,
+    borderRadius: '6px',
+  };
+
   return (
     <div style={styles.scrollableContent} onClick={() => { setActiveMenuId(null); setIsPlusMenuOpen(false); }}>
-       <div style={{marginBottom: '20px', paddingTop: '8px', display: 'flex', alignItems: 'center', gap: '12px'}}>
-          <button onClick={() => currentFolderId ? setCurrentFolderId(null) : onBack()} style={{background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', padding: 0}}>
-              <ArrowLeft size={24} />
-          </button>
-          <div style={{flex: 1}}>
-              <h1 style={styles.title}>{currentFolderId ? files.find(f => f.id === currentFolderId)?.name : 'Materials'}</h1>
-              <p style={styles.subtitle}>{currentFolderId ? 'Folder Contents' : 'Documents & Resources'}</p>
-          </div>
-       </div>
+      {/* Header */}
+      <div style={{ marginBottom: '20px', paddingTop: '8px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <button
+          onClick={() => currentFolderId ? setCurrentFolderId(null) : onBack()}
+          style={{
+            background: CARD_BG,
+            border: `1.5px solid ${INK}`,
+            borderRadius: '10px',
+            boxShadow: `3px 3px 0 ${INK}`,
+            color: INK,
+            cursor: 'pointer',
+            padding: '6px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <ArrowLeft size={20} />
+        </button>
+        <div style={{ flex: 1 }}>
+          <h1 style={{
+            fontFamily: "'Bricolage Grotesque', 'Inter', sans-serif",
+            fontWeight: 800,
+            fontSize: '1.5rem',
+            color: INK,
+            margin: 0,
+          }}>
+            {currentFolderId ? files.find(f => f.id === currentFolderId)?.name : 'Materials'}
+          </h1>
+          <p style={{ fontFamily: "'Instrument Sans', 'Inter', sans-serif", color: `rgba(26,23,48,0.5)`, fontSize: '0.78rem', margin: 0, fontWeight: 500 }}>
+            {currentFolderId ? 'Folder Contents' : 'Documents & Resources'}
+          </p>
+        </div>
+      </div>
 
-       {isCreatingFolder && (
-           <div style={{marginBottom: '24px', display: 'flex', gap: '8px', background: 'rgba(255,255,255,0.05)', padding: '12px', borderRadius: '16px'}}>
-               <input 
-                   autoFocus
-                   value={newFolderName}
-                   onChange={e => setNewFolderName(e.target.value)}
-                   onKeyDown={e => e.key === 'Enter' && handleCreateFolder()}
-                   placeholder="Folder name..."
-                   style={{...styles.input, flex: 1, marginBottom: 0, padding: '8px 12px'}}
-               />
-               <button onClick={handleCreateFolder} style={{...styles.button, padding: '8px 16px', marginBottom: 0}}>Create</button>
-               <button onClick={() => setIsCreatingFolder(false)} style={{background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '8px 16px', borderRadius: '12px', cursor: 'pointer'}}>Cancel</button>
-           </div>
-       )}
-
-       <div style={{marginBottom: '24px', position: 'relative'}}>
-          <Search size={18} style={{position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: theme.textMuted}} />
-          <input 
-            placeholder="Search files..."
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            style={{...styles.input, width: '100%', paddingLeft: '42px', boxSizing: 'border-box', borderRadius: '16px'}}
+      {/* Create folder row */}
+      {isCreatingFolder && (
+        <div style={{
+          marginBottom: '20px',
+          display: 'flex',
+          gap: '8px',
+          background: `${HL_YELLOW}44`,
+          border: `1.5px solid ${INK}`,
+          padding: '12px',
+          borderRadius: '10px',
+        }}>
+          <input
+            autoFocus
+            value={newFolderName}
+            onChange={e => setNewFolderName(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleCreateFolder()}
+            placeholder="Folder name..."
+            style={{
+              flex: 1,
+              background: CARD_BG,
+              border: `1.5px solid ${INK}`,
+              borderRadius: '8px',
+              padding: '8px 12px',
+              color: INK,
+              fontSize: '0.85rem',
+              outline: 'none',
+              fontFamily: "'Instrument Sans', 'Inter', sans-serif",
+            }}
           />
-       </div>
+          <button
+            onClick={handleCreateFolder}
+            style={{
+              background: INK,
+              color: '#fff',
+              border: `1.5px solid ${INK}`,
+              borderRadius: '8px',
+              fontWeight: 700,
+              boxShadow: `3px 3px 0 ${HL_YELLOW}`,
+              cursor: 'pointer',
+              padding: '8px 14px',
+              fontFamily: "'Bricolage Grotesque', sans-serif",
+              fontSize: '0.8rem',
+            }}
+          >
+            Create
+          </button>
+          <button
+            onClick={() => setIsCreatingFolder(false)}
+            style={{
+              background: 'rgba(26,23,48,0.07)',
+              border: `1.5px solid ${INK}`,
+              borderRadius: '8px',
+              color: INK,
+              padding: '8px 12px',
+              cursor: 'pointer',
+              fontSize: '0.8rem',
+              fontWeight: 600,
+              fontFamily: "'Instrument Sans', 'Inter', sans-serif",
+            }}
+          >
+            Cancel
+          </button>
+        </div>
+      )}
 
-       {isLoadingContent && (
-           <div className="fixed inset-0 z-[11000] flex items-center justify-center bg-black/40 backdrop-blur-sm">
-               <div className="bg-slate-900 border border-white/10 p-6 rounded-3xl flex flex-col items-center gap-4 shadow-2xl">
-                   <RotateCw className="animate-spin text-violet-500" size={32} />
-                   <span className="text-white font-bold text-sm text-center">Downloading file content...<br/><span className="text-[10px] opacity-50">Syncing with server</span></span>
-               </div>
-           </div>
-       )}
+      {/* Search */}
+      <div style={{ marginBottom: '24px', position: 'relative' }}>
+        <Search size={18} color={`rgba(26,23,48,0.4)`} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+        <input
+          placeholder="Search files..."
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          style={{
+            width: '100%',
+            background: 'rgba(26,23,48,0.06)',
+            border: `1.5px solid ${INK}`,
+            borderRadius: '10px',
+            padding: '11px 14px 11px 44px',
+            color: INK,
+            fontFamily: "'Instrument Sans', 'Inter', sans-serif",
+            fontSize: '0.9rem',
+            outline: 'none',
+            boxSizing: 'border-box',
+          }}
+        />
+      </div>
 
-       {folders.length > 0 && (
-           <div style={{marginBottom: '24px'}}>
-                <h3 style={{fontSize: '0.8rem', fontWeight: 800, color: theme.textMuted, marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '1px'}}>Folders</h3>
-                <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: '12px'}}>
-                   {folders.map(folder => (
-                       <div key={folder.id} style={{position: 'relative'}}>
-                           <div onClick={() => openFile(folder)} style={{...styles.card, padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: 0, cursor: 'pointer', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)'}}>
-                              {getIcon(folder.type)}
-                              {editingFileId === folder.id ? (
-                                  <input 
-                                      autoFocus
-                                      value={editFileName}
-                                      onChange={e => setEditFileName(e.target.value)}
-                                      onKeyDown={e => e.key === 'Enter' && handleRename(folder.id)}
-                                      onBlur={() => handleRename(folder.id)}
-                                      onClick={e => e.stopPropagation()}
-                                      style={{width: '100%', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', fontSize: '0.75rem', padding: '2px 4px', borderRadius: '4px', textAlign: 'center'}}
-                                  />
-                              ) : (
-                                  <span style={{fontSize: '0.75rem', fontWeight: 600, color: '#fff', textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%', whiteSpace: 'nowrap'}}>{folder.name}</span>
-                              )}
-                              <span style={{fontSize: '0.6rem', color: theme.textMuted}}>{files.filter(f => f.parentId === folder.id).length} items</span>
-                           </div>
-                           <button 
-                               onClick={(e) => { e.stopPropagation(); setActiveMenuId(activeMenuId === folder.id ? null : folder.id); }}
-                               style={{position: 'absolute', top: '4px', right: '4px', background: 'transparent', border: 'none', color: theme.textMuted, cursor: 'pointer', padding: '4px'}}
-                           >
-                               <MoreVertical size={14} />
-                           </button>
-                           {activeMenuId === folder.id && (
-                               <div style={{position: 'absolute', top: '24px', right: '4px', background: '#1e1e24', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '4px', zIndex: 10, minWidth: '120px', boxShadow: '0 4px 12px rgba(0,0,0,0.5)'}}>
-                                   <button onClick={(e) => { e.stopPropagation(); setEditingFileId(folder.id); setEditFileName(folder.name); setActiveMenuId(null); }} style={{width: '100%', textAlign: 'left', padding: '8px 12px', background: 'transparent', border: 'none', color: '#fff', fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px'}}><Edit2 size={14} /> Rename</button>
-                                   <button onClick={(e) => { e.stopPropagation(); onDeleteFile(folder.id); setActiveMenuId(null); }} style={{width: '100%', textAlign: 'left', padding: '8px 12px', background: 'transparent', border: 'none', color: theme.danger, fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px'}}><Trash2 size={14} /> Delete</button>
-                               </div>
-                           )}
-                       </div>
-                   ))}
-                </div>
-           </div>
-       )}
+      {/* Loading overlay */}
+      {isLoadingContent && (
+        <div className="fixed inset-0 z-[11000] flex items-center justify-center" style={{ background: 'rgba(26,23,48,0.5)' }}>
+          <div style={{
+            background: CARD_BG,
+            border: `1.5px solid ${INK}`,
+            borderRadius: '14px',
+            boxShadow: `8px 10px 0 ${INK}`,
+            padding: '24px 32px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '14px',
+          }}>
+            <RotateCw className="animate-spin" size={28} color={INK} />
+            <span style={{ color: INK, fontWeight: 700, fontSize: '0.9rem', fontFamily: "'Instrument Sans', 'Inter', sans-serif", textAlign: 'center' }}>
+              Downloading file content...<br />
+              <span style={{ opacity: 0.5, fontSize: '0.75rem', fontWeight: 500 }}>Syncing with server</span>
+            </span>
+          </div>
+        </div>
+      )}
 
-       <h3 style={{fontSize: '0.8rem', fontWeight: 800, color: theme.textMuted, marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '1px'}}>Files</h3>
-       <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
-          {items.map(file => (
-             <div key={file.id} style={{position: 'relative', display: 'flex', alignItems: 'center', gap: '14px', padding: '12px 16px', background: 'rgba(255,255,255,0.02)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)'}}>
-                <div style={{width: '42px', height: '42px', borderRadius: '10px', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
-                   {getIcon(file.type)}
+      {/* Folders */}
+      {folders.length > 0 && (
+        <div style={{ marginBottom: '28px' }}>
+          <h3 style={sectionLabelStyle}>Folders</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: '12px' }}>
+            {folders.map(folder => (
+              <div key={folder.id} style={{ position: 'relative' }}>
+                <div
+                  onClick={() => openFile(folder)}
+                  style={{
+                    background: CARD_BG,
+                    border: `1.5px solid ${INK}`,
+                    borderRadius: '10px',
+                    boxShadow: `3px 4px 0 ${INK}`,
+                    padding: '14px 10px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {getIcon(folder.type)}
+                  {editingFileId === folder.id ? (
+                    <input
+                      autoFocus
+                      value={editFileName}
+                      onChange={e => setEditFileName(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && handleRename(folder.id)}
+                      onBlur={() => handleRename(folder.id)}
+                      onClick={e => e.stopPropagation()}
+                      style={{
+                        width: '100%',
+                        background: 'rgba(26,23,48,0.06)',
+                        border: `1.5px solid ${INK}`,
+                        color: INK,
+                        fontSize: '0.72rem',
+                        padding: '2px 4px',
+                        borderRadius: '4px',
+                        textAlign: 'center',
+                        outline: 'none',
+                      }}
+                    />
+                  ) : (
+                    <span style={{ fontSize: '0.72rem', fontWeight: 600, color: INK, textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%', whiteSpace: 'nowrap', fontFamily: "'Instrument Sans', 'Inter', sans-serif" }}>
+                      {folder.name}
+                    </span>
+                  )}
+                  <span style={{ fontSize: '0.6rem', color: `rgba(26,23,48,0.45)`, fontFamily: "'Instrument Sans', 'Inter', sans-serif" }}>
+                    {files.filter(f => f.parentId === folder.id).length} items
+                  </span>
                 </div>
-                <div style={{flex: 1, cursor: 'pointer', minWidth: 0}} onClick={() => openFile(file)}>
-                   {editingFileId === file.id ? (
-                       <input 
-                           autoFocus
-                           value={editFileName}
-                           onChange={e => setEditFileName(e.target.value)}
-                           onKeyDown={e => e.key === 'Enter' && handleRename(file.id)}
-                           onBlur={() => handleRename(file.id)}
-                           onClick={e => e.stopPropagation()}
-                           style={{width: '100%', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', fontSize: '0.9rem', padding: '2px 4px', borderRadius: '4px'}}
-                       />
-                   ) : (
-                       <h4 style={{margin: 0, fontSize: '0.9rem', fontWeight: 600, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}} title={file.name}>{file.name}</h4>
-                   )}
-                   <p style={{margin: 0, fontSize: '0.7rem', color: theme.textMuted}}>{file.size} • {file.dateAdded}</p>
-                </div>
-                <div style={{display: 'flex', gap: '8px'}}>
-                    <button onClick={() => openFile(file)} style={{background: 'transparent', border: 'none', color: theme.accent, cursor: 'pointer', padding: '8px', borderRadius: '50%'}}>
-                       <Eye size={18} />
+                <button
+                  onClick={(e) => { e.stopPropagation(); setActiveMenuId(activeMenuId === folder.id ? null : folder.id); }}
+                  style={{ position: 'absolute', top: '4px', right: '4px', background: 'transparent', border: 'none', color: `rgba(26,23,48,0.4)`, cursor: 'pointer', padding: '4px' }}
+                >
+                  <MoreVertical size={13} />
+                </button>
+                {activeMenuId === folder.id && (
+                  <div style={contextMenuStyle}>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setEditingFileId(folder.id); setEditFileName(folder.name); setActiveMenuId(null); }}
+                      style={menuBtnStyle}
+                    >
+                      <Edit2 size={13} /> Rename
                     </button>
-                    <button onClick={(e) => { e.stopPropagation(); setActiveMenuId(activeMenuId === file.id ? null : file.id); }} style={{background: 'transparent', border: 'none', color: theme.textMuted, cursor: 'pointer', padding: '8px', borderRadius: '50%'}}>
-                       <MoreVertical size={18} />
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onDeleteFile(folder.id); setActiveMenuId(null); }}
+                      style={{ ...menuBtnStyle, color: HL_RED }}
+                    >
+                      <Trash2 size={13} /> Delete
                     </button>
-                </div>
-                {activeMenuId === file.id && (
-                    <div style={{position: 'absolute', top: '40px', right: '16px', background: '#1e1e24', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '4px', zIndex: 10, minWidth: '140px', boxShadow: '0 4px 12px rgba(0,0,0,0.5)'}}>
-                        <button onClick={(e) => { e.stopPropagation(); setEditingFileId(file.id); setEditFileName(file.name); setActiveMenuId(null); }} style={{width: '100%', textAlign: 'left', padding: '8px 12px', background: 'transparent', border: 'none', color: '#fff', fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px'}}><Edit2 size={14} /> Rename</button>
-                        <button onClick={(e) => { e.stopPropagation(); setMovingFileId(file.id); setActiveMenuId(null); }} style={{width: '100%', textAlign: 'left', padding: '8px 12px', background: 'transparent', border: 'none', color: '#fff', fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px'}}><CornerUpLeft size={14} /> Move to...</button>
-                        <button onClick={(e) => { e.stopPropagation(); onDeleteFile(file.id); setActiveMenuId(null); }} style={{width: '100%', textAlign: 'left', padding: '8px 12px', background: 'transparent', border: 'none', color: theme.danger, fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px'}}><Trash2 size={14} /> Delete</button>
-                    </div>
+                  </div>
                 )}
-             </div>
-          ))}
-          {items.length === 0 && <p style={{color: theme.textMuted, fontSize: '0.8rem', fontStyle: 'italic', textAlign: 'center', padding: '20px'}}>No files yet.</p>}
-       </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
-       {movingFileId && (
-           <div style={{position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'}} onClick={() => setMovingFileId(null)}>
-               <div style={{background: '#1e1e24', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '400px', border: '1px solid rgba(255,255,255,0.1)'}} onClick={e => e.stopPropagation()}>
-                   <h3 style={{color: '#fff', fontSize: '1.2rem', fontWeight: 700, marginBottom: '16px'}}>Move File</h3>
-                   <div style={{maxHeight: '300px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px'}}>
-                       <button onClick={() => handleMove(movingFileId, null)} style={{display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '12px', color: '#fff', cursor: 'pointer', textAlign: 'left'}}>
-                           <Folder size={20} className="text-slate-400" /> Root Directory
-                       </button>
-                       {allFolders.filter(f => f.id !== movingFileId).map(folder => (
-                           <button key={folder.id} onClick={() => handleMove(movingFileId, folder.id)} style={{display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '12px', color: '#fff', cursor: 'pointer', textAlign: 'left'}}>
-                               <Folder size={20} className="text-yellow-400" /> {folder.name}
-                           </button>
-                       ))}
-                   </div>
-                   <button onClick={() => setMovingFileId(null)} style={{width: '100%', padding: '12px', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', marginTop: '16px', cursor: 'pointer'}}>Cancel</button>
-               </div>
-           </div>
-       )}
-       
-       <input 
-           type="file" 
-           ref={fileInputRef} 
-           style={{display: 'none'}} 
-           onChange={handleFileChange}
-           accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
-       />
-       <div style={{position: 'fixed', bottom: '100px', right: '20px', zIndex: 100}}>
-           {isPlusMenuOpen && (
-               <div 
-                   className="absolute bottom-16 right-0 bg-[#1e1e24] border border-white/10 rounded-2xl p-2 shadow-2xl min-w-[160px] flex flex-col gap-1 animate-in fade-in slide-in-from-bottom-4 duration-200"
-                   onClick={e => e.stopPropagation()}
-               >
-                   <button 
-                       onClick={() => { setIsPlusMenuOpen(false); fileInputRef.current?.click(); }}
-                       className="flex items-center gap-3 w-full px-4 py-3 hover:bg-white/5 rounded-xl text-white text-sm font-semibold transition-colors"
-                   >
-                       <Plus size={18} className="text-violet-400" />
-                       Upload File
-                   </button>
-                   <button 
-                       onClick={() => { setIsPlusMenuOpen(false); setIsCreatingFolder(true); }}
-                       className="flex items-center gap-3 w-full px-4 py-3 hover:bg-white/5 rounded-xl text-white text-sm font-semibold transition-colors"
-                   >
-                       <FolderPlus size={18} className="text-yellow-400" />
-                       New Folder
-                   </button>
-                   <button 
-                       onClick={() => { setIsPlusMenuOpen(false); setNoteName(''); setNoteContent(''); setActiveNoteId(null); setIsEditingNote(true); }}
-                       className="flex items-center gap-3 w-full px-4 py-3 hover:bg-white/5 rounded-xl text-white text-sm font-semibold transition-colors"
-                   >
-                       <FilePlus size={18} className="text-blue-400" />
-                       New Note
-                   </button>
-               </div>
-           )}
-           <button 
-               onClick={(e) => { e.stopPropagation(); setIsPlusMenuOpen(!isPlusMenuOpen); }}
-               style={{...styles.button, width: '56px', height: '56px', borderRadius: '50%', padding: 0, justifyContent: 'center', boxShadow: '0 8px 30px rgba(139, 92, 246, 0.4)', marginBottom: 0}}
-           >
-              <Plus size={24} className={`transition-transform duration-300 ${isPlusMenuOpen ? 'rotate-45' : ''}`} />
-           </button>
-       </div>
+      {/* Files */}
+      <h3 style={sectionLabelStyle}>Files</h3>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        {items.map(file => (
+          <div
+            key={file.id}
+            style={{
+              position: 'relative',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '14px',
+              padding: '12px 14px',
+              background: CARD_BG,
+              border: `1.5px solid ${INK}`,
+              borderRadius: '10px',
+              boxShadow: `3px 4px 0 ${INK}`,
+            }}
+          >
+            <div style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: '8px',
+              background: `rgba(26,23,48,0.06)`,
+              border: `1px solid rgba(26,23,48,0.12)`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}>
+              {getIcon(file.type)}
+            </div>
+            <div style={{ flex: 1, cursor: 'pointer', minWidth: 0 }} onClick={() => openFile(file)}>
+              {editingFileId === file.id ? (
+                <input
+                  autoFocus
+                  value={editFileName}
+                  onChange={e => setEditFileName(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleRename(file.id)}
+                  onBlur={() => handleRename(file.id)}
+                  onClick={e => e.stopPropagation()}
+                  style={{
+                    width: '100%',
+                    background: 'rgba(26,23,48,0.06)',
+                    border: `1.5px solid ${INK}`,
+                    color: INK,
+                    fontSize: '0.88rem',
+                    padding: '3px 6px',
+                    borderRadius: '6px',
+                    outline: 'none',
+                  }}
+                />
+              ) : (
+                <h4 style={{ margin: 0, fontSize: '0.88rem', fontWeight: 600, color: INK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: "'Instrument Sans', 'Inter', sans-serif" }} title={file.name}>
+                  {file.name}
+                </h4>
+              )}
+              <p style={{ margin: 0, fontSize: '0.68rem', color: `rgba(26,23,48,0.45)`, fontFamily: "'Instrument Sans', 'Inter', sans-serif" }}>
+                {file.size} • {file.dateAdded}
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+              <button
+                onClick={() => openFile(file)}
+                style={{ background: 'transparent', border: 'none', color: INK, cursor: 'pointer', padding: '6px', borderRadius: '6px', display: 'flex' }}
+              >
+                <Eye size={17} />
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); setActiveMenuId(activeMenuId === file.id ? null : file.id); }}
+                style={{ background: 'transparent', border: 'none', color: `rgba(26,23,48,0.45)`, cursor: 'pointer', padding: '6px', borderRadius: '6px', display: 'flex' }}
+              >
+                <MoreVertical size={17} />
+              </button>
+            </div>
+            {activeMenuId === file.id && (
+              <div style={{ ...contextMenuStyle, top: '44px' }}>
+                <button onClick={(e) => { e.stopPropagation(); setEditingFileId(file.id); setEditFileName(file.name); setActiveMenuId(null); }} style={menuBtnStyle}>
+                  <Edit2 size={13} /> Rename
+                </button>
+                <button onClick={(e) => { e.stopPropagation(); setMovingFileId(file.id); setActiveMenuId(null); }} style={menuBtnStyle}>
+                  <CornerUpLeft size={13} /> Move to...
+                </button>
+                <button onClick={(e) => { e.stopPropagation(); onDeleteFile(file.id); setActiveMenuId(null); }} style={{ ...menuBtnStyle, color: HL_RED }}>
+                  <Trash2 size={13} /> Delete
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
+        {items.length === 0 && (
+          <p style={{ color: `rgba(26,23,48,0.4)`, fontSize: '0.8rem', fontStyle: 'italic', textAlign: 'center', padding: '24px', fontFamily: "'Instrument Sans', 'Inter', sans-serif" }}>
+            No files yet.
+          </p>
+        )}
+      </div>
 
-       {isEditingNote && (
-           <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/80 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setIsEditingNote(false)}>
-               <div 
-                   className="w-full h-full md:w-[80%] md:h-[80%] max-w-4xl bg-[#0a0a0c] overflow-hidden flex flex-col shadow-[0_0_50px_rgba(0,0,0,0.5)] md:rounded-3xl border-0 md:border md:border-white/10 animate-in zoom-in-95 duration-300"
-                   onClick={e => e.stopPropagation()}
-               >
-                   <div className="p-3 md:p-4 border-b border-white/5 bg-white/5 flex items-center justify-between shrink-0 gap-2 md:gap-4">
-                       <div className="flex items-center gap-2 md:gap-3 flex-1 min-w-0">
-                           <div className="w-8 h-8 md:w-10 md:h-10 bg-violet-500/20 rounded-lg md:rounded-xl flex items-center justify-center shrink-0">
-                               <FileText className="text-violet-400" size={18} />
-                           </div>
-                           <input 
-                               value={noteName}
-                               onChange={e => setNoteName(e.target.value)}
-                               placeholder="Note Title..."
-                               className="bg-transparent border-none text-white font-bold text-base md:text-lg focus:outline-none flex-1 placeholder:text-white/20 min-w-0"
-                               autoFocus
-                           />
-                       </div>
+      {/* Move file modal */}
+      {movingFileId && (
+        <div
+          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(26,23,48,0.6)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}
+          onClick={() => setMovingFileId(null)}
+        >
+          <div
+            style={{
+              background: CARD_BG,
+              border: `1.5px solid ${INK}`,
+              borderRadius: '14px',
+              boxShadow: `8px 10px 0 ${INK}`,
+              padding: '24px',
+              width: '100%',
+              maxWidth: '360px',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <h3 style={{ color: INK, fontSize: '1.1rem', fontWeight: 800, marginBottom: '16px', fontFamily: "'Bricolage Grotesque', 'Inter', sans-serif" }}>
+              Move File
+            </h3>
+            <div style={{ maxHeight: '280px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <button
+                onClick={() => handleMove(movingFileId, null)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  padding: '12px',
+                  background: 'rgba(26,23,48,0.05)',
+                  border: `1.5px solid rgba(26,23,48,0.15)`,
+                  borderRadius: '10px',
+                  color: INK,
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  fontFamily: "'Instrument Sans', 'Inter', sans-serif",
+                  fontWeight: 600,
+                }}
+              >
+                <Folder size={20} color={`rgba(26,23,48,0.5)`} /> Root Directory
+              </button>
+              {allFolders.filter(f => f.id !== movingFileId).map(folder => (
+                <button
+                  key={folder.id}
+                  onClick={() => handleMove(movingFileId, folder.id)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    padding: '12px',
+                    background: 'rgba(26,23,48,0.05)',
+                    border: `1.5px solid rgba(26,23,48,0.15)`,
+                    borderRadius: '10px',
+                    color: INK,
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    fontFamily: "'Instrument Sans', 'Inter', sans-serif",
+                    fontWeight: 600,
+                  }}
+                >
+                  <Folder size={20} color={HL_ORANGE} /> {folder.name}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setMovingFileId(null)}
+              style={{
+                width: '100%',
+                padding: '11px',
+                background: 'rgba(26,23,48,0.06)',
+                border: `1.5px solid ${INK}`,
+                borderRadius: '10px',
+                color: INK,
+                marginTop: '14px',
+                cursor: 'pointer',
+                fontWeight: 600,
+                fontFamily: "'Instrument Sans', 'Inter', sans-serif",
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
-                       <div className="flex items-center gap-2">
-                           <button 
-                               onClick={handleSaveNote}
-                               className="bg-violet-600 hover:bg-violet-500 text-white px-4 py-2 rounded-xl transition-all flex items-center gap-2 font-bold shadow-lg shadow-violet-600/20 active:scale-95"
-                           >
-                               <Save size={18} /> <span className="hidden xs:inline">Save</span>
-                           </button>
-                           <button 
-                               onClick={() => { setIsEditingNote(false); setActiveNoteId(null); setNoteName(''); setNoteContent(''); }}
-                               className="bg-white/5 hover:bg-white/10 text-white p-2 rounded-xl transition-colors border border-white/10 active:scale-95"
-                           >
-                               <X size={20} />
-                           </button>
-                       </div>
-                   </div>
+      {/* Hidden file input */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        style={{ display: 'none' }}
+        onChange={handleFileChange}
+        accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
+      />
 
-                   <div className="flex-1 relative overflow-hidden flex flex-col">
-                       <textarea 
-                           value={noteContent}
-                           onChange={e => setNoteContent(e.target.value)}
-                           placeholder="Start typing your note here..."
-                           className="flex-1 w-full p-4 md:p-6 bg-transparent text-white/90 text-base md:text-lg leading-relaxed resize-none focus:outline-none placeholder:text-white/10 font-medium"
-                           spellCheck={false}
-                       />
-                       <div className="px-4 md:px-6 py-2 md:py-3 border-t border-white/5 bg-black/40 flex items-center justify-between text-[9px] md:text-[10px] uppercase tracking-widest font-bold text-white/30">
-                           <div className="flex gap-3 md:gap-4">
-                               <span>{noteContent.length} chars</span>
-                               <span>{noteContent.trim() ? noteContent.trim().split(/\s+/).length : 0} words</span>
-                           </div>
-                           <span>Text File (.txt)</span>
-                       </div>
-                   </div>
-               </div>
-           </div>
-       )}
+      {/* FAB + menu */}
+      <div style={{ position: 'fixed', bottom: '100px', right: '20px', zIndex: 100 }}>
+        {isPlusMenuOpen && (
+          <div
+            style={{
+              position: 'absolute',
+              bottom: '68px',
+              right: 0,
+              background: CARD_BG,
+              border: `1.5px solid ${INK}`,
+              borderRadius: '12px',
+              boxShadow: `6px 7px 0 ${INK}`,
+              padding: '6px',
+              minWidth: '160px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '2px',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <button
+              onClick={() => { setIsPlusMenuOpen(false); fileInputRef.current?.click(); }}
+              style={{ ...menuBtnStyle, gap: '10px', padding: '10px 12px' }}
+            >
+              <Plus size={17} color={INK} /> Upload File
+            </button>
+            <button
+              onClick={() => { setIsPlusMenuOpen(false); setIsCreatingFolder(true); }}
+              style={{ ...menuBtnStyle, gap: '10px', padding: '10px 12px' }}
+            >
+              <FolderPlus size={17} color={HL_ORANGE} /> New Folder
+            </button>
+            <button
+              onClick={() => { setIsPlusMenuOpen(false); setNoteName(''); setNoteContent(''); setActiveNoteId(null); setIsEditingNote(true); }}
+              style={{ ...menuBtnStyle, gap: '10px', padding: '10px 12px' }}
+            >
+              <FilePlus size={17} color={HL_BLUE} /> New Note
+            </button>
+          </div>
+        )}
+        <button
+          onClick={(e) => { e.stopPropagation(); setIsPlusMenuOpen(!isPlusMenuOpen); }}
+          style={{
+            width: '56px',
+            height: '56px',
+            borderRadius: '50%',
+            background: INK,
+            color: '#fff',
+            border: `1.5px solid ${INK}`,
+            boxShadow: `4px 4px 0 ${HL_YELLOW}`,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Plus size={24} style={{ transition: 'transform 0.3s', transform: isPlusMenuOpen ? 'rotate(45deg)' : 'rotate(0deg)' }} />
+        </button>
+      </div>
 
-       {viewingFile && (
-           <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/95 backdrop-blur-xl animate-in fade-in duration-300">
-               <div className="w-full h-full max-w-6xl bg-[#0a0a0c] overflow-hidden flex flex-col shadow-[0_0_50px_rgba(0,0,0,0.5)]">
-                   <div className="p-3 border-b border-white/5 bg-black/40 flex items-center justify-between shrink-0 gap-4">
-                       <div className="flex items-center gap-3 min-w-0">
-                           {getIcon(viewingFile.type)}
-                           <div className="min-w-0">
-                               <h2 className="text-white font-bold text-lg truncate" title={viewingFile.name}>{viewingFile.name}</h2>
-                               <p className="text-white/50 text-xs truncate">{viewingFile.size} • {viewingFile.type.toUpperCase()}</p>
-                           </div>
-                       </div>
+      {/* Note editor */}
+      {isEditingNote && (
+        <div
+          className="fixed inset-0 z-[10000] flex items-center justify-center"
+          style={{ background: 'rgba(26,23,48,0.6)' }}
+          onClick={() => setIsEditingNote(false)}
+        >
+          <div
+            className="w-full h-full md:w-[80%] md:h-[80%] max-w-4xl overflow-hidden flex flex-col md:rounded-2xl"
+            style={{
+              background: CARD_BG,
+              border: `1.5px solid ${INK}`,
+              boxShadow: `8px 10px 0 ${INK}`,
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Note header */}
+            <div style={{
+              padding: '12px 16px',
+              borderBottom: `1.5px solid rgba(26,23,48,0.12)`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '12px',
+              background: `${HL_YELLOW}44`,
+              flexShrink: 0,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
+                <div style={{
+                  width: '32px',
+                  height: '32px',
+                  background: `${HL_YELLOW}`,
+                  border: `1.5px solid ${INK}`,
+                  borderRadius: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}>
+                  <FileText size={16} color={INK} />
+                </div>
+                <input
+                  value={noteName}
+                  onChange={e => setNoteName(e.target.value)}
+                  placeholder="Note Title..."
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: INK,
+                    fontWeight: 800,
+                    fontSize: '1rem',
+                    outline: 'none',
+                    flex: 1,
+                    fontFamily: "'Bricolage Grotesque', 'Inter', sans-serif",
+                  }}
+                  autoFocus
+                />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button
+                  onClick={handleSaveNote}
+                  style={{
+                    background: INK,
+                    color: '#fff',
+                    border: `1.5px solid ${INK}`,
+                    borderRadius: '10px',
+                    boxShadow: `3px 3px 0 ${HL_YELLOW}`,
+                    padding: '8px 14px',
+                    cursor: 'pointer',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    fontSize: '0.85rem',
+                    fontFamily: "'Bricolage Grotesque', sans-serif",
+                  }}
+                >
+                  <Save size={16} /> <span className="hidden xs:inline">Save</span>
+                </button>
+                <button
+                  onClick={() => { setIsEditingNote(false); setActiveNoteId(null); setNoteName(''); setNoteContent(''); }}
+                  style={{
+                    background: 'rgba(26,23,48,0.06)',
+                    border: `1.5px solid ${INK}`,
+                    borderRadius: '8px',
+                    color: INK,
+                    padding: '8px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                  }}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
 
-                       <div className="flex items-center gap-2 shrink-0">
-                           {viewingFile.fileData && (
-                               <button 
-                                   onClick={() => handleDownload(viewingFile)}
-                                   className="bg-white/10 hover:bg-white/20 text-white p-2 rounded-lg transition-colors border border-white/10"
-                                   title="Download"
-                               >
-                                   <Download size={18} />
-                               </button>
-                           )}
-                           
-                           <button 
-                               onClick={() => { setViewingFile(null); onFileViewChange?.(false); }}
-                               className="bg-white/10 hover:bg-white/20 text-white p-2 rounded-lg transition-colors border border-white/10"
-                               title="Close"
-                           >
-                               <X size={18} />
-                           </button>
-                       </div>
-                   </div>
-                   
-                    <div className="flex-1 overflow-hidden bg-black relative flex items-center justify-center">
-                       {viewingFile.fileData ? (
-                                                       viewingFile.type === 'image' ? (
-                                <TransformWrapper
-                                    initialScale={1}
-                                    minScale={0.5}
-                                    maxScale={5}
-                                    centerOnInit
-                                    wheel={{ step: 0.1 }}
-                                >
-                                    <TransformComponent wrapperClass="!w-full !h-full" contentClass="!w-full !h-full flex items-center justify-center">
-                                        <img 
-                                            src={viewingFile.fileData} 
-                                            alt={viewingFile.name} 
-                                            className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" 
-                                        />
-                                    </TransformComponent>
-                                </TransformWrapper>
-                             ) : viewingFile.type === 'pdf' ? (
-                                 <PdfViewer file={viewingFile.fileData} />
-                             ) : viewingFile.type === 'excel' ? (
-                                 <ExcelViewer data={viewingFile.fileData} />
-                             ) : viewingFile.type === 'powerpoint' || viewingFile.type === 'word' ? (
-                                 <div className="text-white/50 flex flex-col items-center gap-4">
-                                     <div className="w-20 h-20 bg-white/5 rounded-2xl flex items-center justify-center mb-2">
-                                         {getIcon(viewingFile.type)}
-                                     </div>
-                                     <div className="text-center">
-                                         <p className="text-white font-bold mb-1">Preview not available</p>
-                                         <p className="text-sm opacity-60">Direct preview for {viewingFile.type === 'powerpoint' ? 'PowerPoint' : 'Word'} files is not supported in browser.</p>
-                                     </div>
-                                     <button 
-                                         onClick={() => handleDownload(viewingFile)} 
-                                         className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-2 rounded-xl font-bold transition-all flex items-center gap-2 shadow-lg shadow-emerald-500/20"
-                                     >
-                                         <Download size={18} /> Download to View
-                                     </button>
-                                 </div>
-                             ) : (
-                                 <iframe src={viewingFile.fileData} className="w-full h-full rounded-lg bg-white shadow-2xl border-0" title={viewingFile.name} />
-                             )
-                       ) : viewingFile.webViewLink ? (
-                           <iframe src={viewingFile.webViewLink} className="w-full h-full rounded-lg bg-white shadow-2xl" title={viewingFile.name} />
-                       ) : (
-                           <div className="text-white/50 flex flex-col items-center gap-4">
-                               <File size={48} className="opacity-50" />
-                               <p>Preview not available for this file type.</p>
-                               {viewingFile.fileData && (
-                                   <button onClick={() => handleDownload(viewingFile)} className="text-violet-400 hover:text-violet-300 underline">Download File</button>
-                               )}
-                           </div>
-                       )}
-                   </div>
-               </div>
-           </div>
-       )}
+            {/* Text area */}
+            <div style={{ flex: 1, position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+              <textarea
+                value={noteContent}
+                onChange={e => setNoteContent(e.target.value)}
+                placeholder="Start typing your note here..."
+                style={{
+                  flex: 1,
+                  width: '100%',
+                  padding: '20px 24px',
+                  background: 'transparent',
+                  color: INK,
+                  fontSize: '1rem',
+                  lineHeight: 1.7,
+                  resize: 'none',
+                  outline: 'none',
+                  border: 'none',
+                  fontFamily: "'Instrument Sans', 'Inter', sans-serif",
+                  fontWeight: 500,
+                  boxSizing: 'border-box',
+                }}
+                spellCheck={false}
+              />
+              <div style={{
+                padding: '8px 24px',
+                borderTop: `1.5px solid rgba(26,23,48,0.1)`,
+                background: 'rgba(26,23,48,0.04)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                fontSize: '0.65rem',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+                fontWeight: 700,
+                color: `rgba(26,23,48,0.4)`,
+                fontFamily: "'Instrument Sans', 'Inter', sans-serif",
+              }}>
+                <div style={{ display: 'flex', gap: '16px' }}>
+                  <span>{noteContent.length} chars</span>
+                  <span>{noteContent.trim() ? noteContent.trim().split(/\s+/).length : 0} words</span>
+                </div>
+                <span>Text File (.txt)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* File viewer */}
+      {viewingFile && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.95)' }}>
+          <div className="w-full h-full max-w-6xl overflow-hidden flex flex-col" style={{ background: '#0a0a0c' }}>
+            {/* Viewer header */}
+            <div style={{
+              padding: '10px 16px',
+              borderBottom: `1px solid rgba(255,255,255,0.08)`,
+              background: 'rgba(255,255,255,0.03)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '12px',
+              flexShrink: 0,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+                {getIcon(viewingFile.type)}
+                <div style={{ minWidth: 0 }}>
+                  <h2 style={{ color: '#fff', fontWeight: 700, fontSize: '1rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', margin: 0 }} title={viewingFile.name}>
+                    {viewingFile.name}
+                  </h2>
+                  <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.72rem', margin: 0 }}>
+                    {viewingFile.size} • {viewingFile.type.toUpperCase()}
+                  </p>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                {viewingFile.fileData && (
+                  <button
+                    onClick={() => handleDownload(viewingFile)}
+                    style={{
+                      background: 'rgba(255,255,255,0.1)',
+                      border: '1px solid rgba(255,255,255,0.15)',
+                      borderRadius: '8px',
+                      color: '#fff',
+                      padding: '8px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                    }}
+                    title="Download"
+                  >
+                    <Download size={17} />
+                  </button>
+                )}
+                <button
+                  onClick={() => { setViewingFile(null); onFileViewChange?.(false); }}
+                  style={{
+                    background: 'rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(255,255,255,0.15)',
+                    borderRadius: '8px',
+                    color: '#fff',
+                    padding: '8px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                  }}
+                  title="Close"
+                >
+                  <X size={17} />
+                </button>
+              </div>
+            </div>
+
+            {/* Viewer content */}
+            <div className="flex-1 overflow-hidden relative flex items-center justify-center" style={{ background: '#000' }}>
+              {viewingFile.fileData ? (
+                viewingFile.type === 'image' ? (
+                  <TransformWrapper initialScale={1} minScale={0.5} maxScale={5} centerOnInit wheel={{ step: 0.1 }}>
+                    <TransformComponent wrapperClass="!w-full !h-full" contentClass="!w-full !h-full flex items-center justify-center">
+                      <img src={viewingFile.fileData} alt={viewingFile.name} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" />
+                    </TransformComponent>
+                  </TransformWrapper>
+                ) : viewingFile.type === 'pdf' ? (
+                  <PdfViewer file={viewingFile.fileData} />
+                ) : viewingFile.type === 'excel' ? (
+                  <ExcelViewer data={viewingFile.fileData} />
+                ) : viewingFile.type === 'powerpoint' || viewingFile.type === 'word' ? (
+                  <div style={{ color: 'rgba(255,255,255,0.5)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+                    <div style={{ width: '72px', height: '72px', background: 'rgba(255,255,255,0.05)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {getIcon(viewingFile.type)}
+                    </div>
+                    <div style={{ textAlign: 'center' }}>
+                      <p style={{ color: '#fff', fontWeight: 700, marginBottom: '6px' }}>Preview not available</p>
+                      <p style={{ fontSize: '0.85rem', opacity: 0.6 }}>
+                        Direct preview for {viewingFile.type === 'powerpoint' ? 'PowerPoint' : 'Word'} files is not supported in browser.
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => handleDownload(viewingFile)}
+                      style={{
+                        background: HL_GREEN,
+                        border: `1.5px solid ${INK}`,
+                        borderRadius: '10px',
+                        color: INK,
+                        padding: '10px 20px',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        fontFamily: "'Bricolage Grotesque', sans-serif",
+                        boxShadow: `3px 3px 0 ${INK}`,
+                      }}
+                    >
+                      <Download size={17} /> Download to View
+                    </button>
+                  </div>
+                ) : (
+                  <iframe src={viewingFile.fileData} className="w-full h-full rounded-lg bg-white shadow-2xl border-0" title={viewingFile.name} />
+                )
+              ) : viewingFile.webViewLink ? (
+                <iframe src={viewingFile.webViewLink} className="w-full h-full rounded-lg bg-white shadow-2xl" title={viewingFile.name} />
+              ) : (
+                <div style={{ color: 'rgba(255,255,255,0.5)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+                  <File size={48} style={{ opacity: 0.5 }} color="#fff" />
+                  <p>Preview not available for this file type.</p>
+                  {viewingFile.fileData && (
+                    <button onClick={() => handleDownload(viewingFile)} style={{ color: HL_BLUE, background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>
+                      Download File
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -2,6 +2,12 @@ import React from 'react';
 import { X, Clock, MapPin, BookOpen, Sparkles, Trash2, Edit2 } from 'lucide-react';
 import { ScheduleEvent, EventColorMap } from '../types';
 
+// ── Design tokens ─────────────────────────────────────────────────────────────
+const INK       = '#1A1730';
+const CARD_BG   = '#FAFAF6';
+const HL_YELLOW = '#F6DF63';
+const HL_RED    = '#E56A5A';
+
 interface EventDetailsModalProps {
   event: ScheduleEvent | null;
   onClose: () => void;
@@ -15,7 +21,7 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({ event, onClose, o
   const [showConfirmDelete, setShowConfirmDelete] = React.useState(false);
   if (!event) return null;
 
-  const color = eventColors[event.type] || '#64748b';
+  const color = eventColors[event.type] || '#8CE3B7';
 
   const formatTimeDisplay = (time24?: string) => {
     if (!time24) return '--:--';
@@ -25,92 +31,142 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({ event, onClose, o
     return `${h12}:${m.toString().padStart(2, '0')} ${ampm}`;
   };
 
+  const infoIconBox: React.CSSProperties = {
+    width: '38px',
+    height: '38px',
+    borderRadius: '10px',
+    background: `${color}30`,
+    border: `1.5px solid ${INK}`,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  };
+
   return (
-    <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-lg" onClick={onClose} />
-      <div className="relative bg-[#1e1b2e] w-full max-w-sm rounded-3xl border border-white/10 shadow-2xl overflow-y-auto overflow-x-hidden max-h-[90vh] animate-scale-in custom-scrollbar">
+    <div
+      style={{
+        position: 'fixed', inset: 0, zIndex: 2000,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '16px',
+        background: 'rgba(26,23,48,0.6)',
+      }}
+    >
+      {/* Backdrop */}
+      <div style={{position: 'absolute', inset: 0}} onClick={onClose} />
+
+      {/* Modal card */}
+      <div style={{
+        position: 'relative',
+        background: CARD_BG,
+        width: '100%',
+        maxWidth: '360px',
+        borderRadius: '14px',
+        border: `1.5px solid ${INK}`,
+        boxShadow: `8px 10px 0 ${INK}`,
+        overflow: 'hidden',
+        maxHeight: '90vh',
+        overflowY: 'auto',
+      }}>
         
-        {/* Header Band */}
-        <div className="h-24 w-full flex items-center justify-center relative" style={{ backgroundColor: color }}>
-           <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/40" />
-           
-           <div className="absolute top-4 right-4 z-20 flex gap-2">
-               <button 
-                  onClick={() => onEdit(event)}
-                  className="bg-black/30 text-white p-2 rounded-full backdrop-blur-md hover:bg-black/50 transition-colors"
-                >
-                  <Edit2 size={16} />
-               </button>
-             <button onClick={onClose} className="bg-black/30 text-white p-2 rounded-full backdrop-blur-md hover:bg-black/50 transition-colors">
-              <X size={16} />
-             </button>
-           </div>
-           
-           {/* Icon Watermark */}
-           <BookOpen size={100} className="absolute -bottom-4 -left-4 text-white/10 rotate-12" />
+        {/* Colour band header */}
+        <div style={{height: '88px', width: '100%', background: color, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+          {/* Subtle ink overlay at bottom for readability */}
+          <div style={{position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 40%, rgba(26,23,48,0.18) 100%)'}} />
+
+          {/* Watermark icon */}
+          <BookOpen size={90} style={{position: 'absolute', bottom: '-6px', left: '-8px', color: 'rgba(26,23,48,0.08)', transform: 'rotate(12deg)'}} />
+
+          {/* Action buttons */}
+          <div style={{position: 'absolute', top: '12px', right: '12px', zIndex: 10, display: 'flex', gap: '8px'}}>
+              <button 
+                 onClick={() => onEdit(event)}
+                 style={{background: CARD_BG, border: `1.5px solid ${INK}`, color: INK, padding: '7px', borderRadius: '8px', cursor: 'pointer', display: 'flex', boxShadow: `2px 2px 0 ${INK}`}}
+               >
+                 <Edit2 size={15} color={INK} />
+              </button>
+            <button
+              onClick={onClose}
+              style={{background: CARD_BG, border: `1.5px solid ${INK}`, color: INK, padding: '7px', borderRadius: '8px', cursor: 'pointer', display: 'flex', boxShadow: `2px 2px 0 ${INK}`}}
+            >
+              <X size={15} color={INK} />
+            </button>
+          </div>
         </div>
 
-        <div className="px-6 pb-6 relative z-10 -mt-8">
-           {/* Title Card */}
-           <div className="bg-[#130f1c] border border-white/10 rounded-2xl p-5 shadow-lg mb-6">
+        <div style={{padding: '0 20px 20px 20px', marginTop: '-28px', position: 'relative'}}>
+           {/* Title card */}
+           <div style={{
+             background: CARD_BG,
+             border: `1.5px solid ${INK}`,
+             borderRadius: '12px',
+             padding: '16px',
+             boxShadow: `4px 4px 0 ${INK}`,
+             marginBottom: '20px',
+           }}>
               <span 
-                className="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded mb-3 inline-block text-white shadow-sm"
-                style={{ backgroundColor: color }}
+                style={{
+                  fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase',
+                  letterSpacing: '0.6px', padding: '3px 8px', borderRadius: '4px',
+                  marginBottom: '10px', display: 'inline-block',
+                  background: color, color: INK, border: `1px solid ${INK}`,
+                  fontFamily: "'Instrument Sans', 'Inter', sans-serif",
+                }}
               >
                 {event.type}
               </span>
               
-              <h2 className="text-2xl font-bold text-white leading-tight mb-1">{event.title}</h2>
-              <p className="text-white/50 text-sm font-medium">{event.code}</p>
+              <h2 style={{margin: '0 0 4px 0', fontSize: '1.4rem', fontWeight: 800, color: INK, fontFamily: "'Bricolage Grotesque', 'Inter', sans-serif", lineHeight: 1.2}}>{event.title}</h2>
+              <p style={{margin: 0, color: `${INK}80`, fontSize: '0.88rem', fontFamily: "'Instrument Sans', 'Inter', sans-serif", fontWeight: 500}}>{event.code}</p>
            </div>
 
-           {/* Info List */}
-           <div className="space-y-5 mb-8">
-              <div className="flex gap-4">
-                 <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center text-violet-400 shrink-0">
-                    <Clock size={20} />
+           {/* Info list */}
+           <div style={{display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px'}}>
+              <div style={{display: 'flex', gap: '14px', alignItems: 'flex-start'}}>
+                 <div style={infoIconBox}>
+                    <Clock size={18} color={INK} />
                  </div>
                  <div>
-                    <p className="text-xs text-white/40 font-medium mb-0.5">Time</p>
-                    <p className="text-sm font-bold text-white">
+                    <p style={{margin: '0 0 2px 0', fontSize: '0.68rem', fontWeight: 700, color: `${INK}70`, textTransform: 'uppercase', letterSpacing: '0.4px', fontFamily: "'Instrument Sans', 'Inter', sans-serif"}}>Time</p>
+                    <p style={{margin: '0 0 2px 0', fontSize: '0.9rem', fontWeight: 700, color: INK, fontFamily: "'Instrument Sans', 'Inter', sans-serif"}}>
                        {event.isRecurring ? event.dayOfWeek : event.date}
                     </p>
-                    <p className="text-sm text-white/70">
+                    <p style={{margin: 0, fontSize: '0.85rem', color: `${INK}90`, fontFamily: "'Instrument Sans', 'Inter', sans-serif"}}>
                        {formatTimeDisplay(event.startTime)}
                     </p>
                  </div>
               </div>
 
-              <div className="flex gap-4">
-                 <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center text-violet-400 shrink-0">
-                    <MapPin size={20} />
+              <div style={{display: 'flex', gap: '14px', alignItems: 'flex-start'}}>
+                 <div style={infoIconBox}>
+                    <MapPin size={18} color={INK} />
                  </div>
-                 <div className="flex-1">
-                    <p className="text-xs text-white/40 font-medium mb-0.5">Location</p>
-                    <p className="text-sm font-bold text-white">{event.location}</p>
+                 <div style={{flex: 1}}>
+                    <p style={{margin: '0 0 2px 0', fontSize: '0.68rem', fontWeight: 700, color: `${INK}70`, textTransform: 'uppercase', letterSpacing: '0.4px', fontFamily: "'Instrument Sans', 'Inter', sans-serif"}}>Location</p>
+                    <p style={{margin: 0, fontSize: '0.9rem', fontWeight: 700, color: INK, fontFamily: "'Instrument Sans', 'Inter', sans-serif"}}>{event.location || <span style={{color: `${INK}50`, fontWeight: 400, fontStyle: 'italic'}}>Not specified</span>}</p>
                  </div>
               </div>
 
-              <div className="flex gap-4">
-                 <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center text-violet-400 shrink-0">
-                    <BookOpen size={20} />
+              <div style={{display: 'flex', gap: '14px', alignItems: 'flex-start'}}>
+                 <div style={infoIconBox}>
+                    <BookOpen size={18} color={INK} />
                  </div>
-                 <div className="flex-1">
-                    <p className="text-xs text-white/40 font-medium mb-0.5">Notes</p>
-                    <p className="text-sm text-white/80 leading-relaxed whitespace-pre-wrap">
-                      {event.description || <span className="text-white/20 italic">No notes.</span>}
+                 <div style={{flex: 1}}>
+                    <p style={{margin: '0 0 2px 0', fontSize: '0.68rem', fontWeight: 700, color: `${INK}70`, textTransform: 'uppercase', letterSpacing: '0.4px', fontFamily: "'Instrument Sans', 'Inter', sans-serif"}}>Notes</p>
+                    <p style={{margin: 0, fontSize: '0.85rem', color: `${INK}90`, lineHeight: '1.5', fontFamily: "'Instrument Sans', 'Inter', sans-serif", whiteSpace: 'pre-wrap'}}>
+                      {event.description || <span style={{color: `${INK}40`, fontStyle: 'italic'}}>No notes.</span>}
                     </p>
                  </div>
               </div>
            </div>
 
            {/* Action Buttons */}
-           <div className="grid grid-cols-2 gap-3">
+           <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px'}}>
               {showConfirmDelete ? (
                 <>
                   <button 
                     onClick={() => setShowConfirmDelete(false)}
-                    className="py-3 rounded-xl bg-white/5 border border-white/10 text-white font-bold text-sm"
+                    style={{padding: '12px', borderRadius: '10px', background: 'rgba(26,23,48,0.07)', border: `1.5px solid ${INK}`, color: INK, fontWeight: 700, fontSize: '0.875rem', cursor: 'pointer', fontFamily: "'Bricolage Grotesque', 'Inter', sans-serif"}}
                   >
                     Cancel
                   </button>
@@ -119,7 +175,7 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({ event, onClose, o
                       onDelete(event.id);
                       onClose();
                     }}
-                    className="py-3 rounded-xl bg-red-600 text-white font-bold text-sm shadow-lg shadow-red-900/20"
+                    style={{padding: '12px', borderRadius: '10px', background: HL_RED, border: `1.5px solid ${INK}`, color: '#fff', fontWeight: 700, fontSize: '0.875rem', cursor: 'pointer', boxShadow: `3px 3px 0 ${INK}`, fontFamily: "'Bricolage Grotesque', 'Inter', sans-serif"}}
                   >
                     Confirm Delete
                   </button>
@@ -128,15 +184,15 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({ event, onClose, o
                 <>
                   <button 
                     onClick={() => setShowConfirmDelete(true)}
-                    className="py-3 rounded-xl bg-white/5 border border-white/10 text-white/60 hover:text-red-400 hover:bg-white/10 transition-colors text-sm font-bold flex items-center justify-center gap-2"
+                    style={{padding: '12px', borderRadius: '10px', background: 'rgba(26,23,48,0.05)', border: `1.5px solid rgba(26,23,48,0.3)`, color: `${INK}80`, fontWeight: 700, fontSize: '0.875rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontFamily: "'Bricolage Grotesque', 'Inter', sans-serif"}}
                   >
-                    <Trash2 size={18} /> Delete
+                    <Trash2 size={16} /> Delete
                   </button>
                   <button 
                     onClick={() => onStudyNow(event)}
-                    className="py-3 rounded-xl bg-white text-black hover:bg-gray-200 transition-colors text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-white/10"
+                    style={{padding: '12px', borderRadius: '10px', background: INK, border: `1.5px solid ${INK}`, color: '#fff', fontWeight: 700, fontSize: '0.875rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', boxShadow: `4px 4px 0 ${HL_YELLOW}`, fontFamily: "'Bricolage Grotesque', 'Inter', sans-serif"}}
                   >
-                    <Sparkles size={18} className="text-violet-600" /> Study
+                    <Sparkles size={16} /> Study
                   </button>
                 </>
               )}
