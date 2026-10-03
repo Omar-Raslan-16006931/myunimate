@@ -59,12 +59,12 @@ const MuscleIcon = ({ group }: { group: string }) => {
         [MuscleGroup.BACK]: "text-indigo-400",
         [MuscleGroup.SHOULDERS]: "text-yellow-400",
         [MuscleGroup.BICEPS]: "text-rose-400",
-        [MuscleGroup.TRICEPS]: "text-purple-400",
+        [MuscleGroup.TRICEPS]: "text-teal-400",
         [MuscleGroup.FOREARMS]: "text-teal-400",
 
         [MuscleGroup.QUADRICEPS]: "text-blue-400",
         [MuscleGroup.HAMSTRINGS]: "text-pink-400",
-        [MuscleGroup.GLUTES]: "text-fuchsia-400",
+        [MuscleGroup.GLUTES]: "text-cyan-400",
         [MuscleGroup.CALVES]: "text-emerald-400",
         [MuscleGroup.ADDUCTORS]: "text-lime-400",
 
@@ -362,7 +362,7 @@ const ExercisePickerModal: React.FC<ExercisePickerProps> = ({ exercises, onSelec
                     <button onClick={onClose} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/50 hover:text-white transition shrink-0"><ArrowLeft size={20} /></button>
                     <h2 className="text-base font-bold text-white flex-1">{title}</h2>
                     <button onClick={() => setCreating(!creating)}
-                        className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-bold transition border ${creating ? 'bg-violet-500/20 border-violet-500/50 text-violet-300' : 'bg-white/5 border-white/10 text-white/60 hover:text-white'}`}>
+                        className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-bold transition border ${creating ? 'bg-teal-500/20 border-teal-500/50 text-teal-300' : 'bg-white/5 border-white/10 text-white/60 hover:text-white'}`}>
                         <Sparkles size={12} /> CUSTOM
                     </button>
                 </div>
@@ -371,7 +371,7 @@ const ExercisePickerModal: React.FC<ExercisePickerProps> = ({ exercises, onSelec
                     <form onSubmit={submitCustom} className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
                         <input autoFocus value={customForm.name} onChange={e => setCustomForm({ ...customForm, name: e.target.value })}
                             placeholder="Exercise name (e.g. Landmine Press)"
-                            className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 px-4 text-white placeholder-white/30 focus:outline-none focus:border-violet-500/50 transition-all text-sm" />
+                            className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 px-4 text-white placeholder-white/30 focus:outline-none focus:border-teal-500/50 transition-all text-sm" />
                         <div className="grid grid-cols-2 gap-2">
                             <select value={customForm.muscleGroup} onChange={e => setCustomForm({ ...customForm, muscleGroup: e.target.value as MuscleGroup })}
                                 className="bg-white/5 border border-white/10 rounded-xl py-2.5 px-3 text-white text-xs focus:outline-none appearance-none">
@@ -382,7 +382,7 @@ const ExercisePickerModal: React.FC<ExercisePickerProps> = ({ exercises, onSelec
                                 {EQUIPMENT_OPTIONS.map(eq => <option key={eq} value={eq} className="bg-[#1c1c1e]">{eq}</option>)}
                             </select>
                         </div>
-                        <button type="submit" className="w-full py-3 bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-bold rounded-2xl text-xs transition active:scale-[0.98]">
+                        <button type="submit" className="w-full py-3 bg-gradient-to-r from-teal-600 to-cyan-600 text-white font-bold rounded-2xl text-xs transition active:scale-[0.98]">
                             Create & Add
                         </button>
                     </form>
@@ -403,7 +403,7 @@ const ExercisePickerModal: React.FC<ExercisePickerProps> = ({ exercises, onSelec
                             <div className="w-px bg-white/10 shrink-0 my-1" />
                             {(['All', ...EQUIPMENT_OPTIONS] as const).map(eq => (
                                 <button key={eq} onClick={() => setEquipFilter(eq as Equipment | 'All')}
-                                    className={`px-3 py-1.5 rounded-full text-[10px] font-bold whitespace-nowrap transition border ${equipFilter === eq ? 'bg-violet-500/20 border-violet-500/50 text-violet-300' : 'bg-white/5 border-white/5 text-white/40 hover:text-white/70'}`}>
+                                    className={`px-3 py-1.5 rounded-full text-[10px] font-bold whitespace-nowrap transition border ${equipFilter === eq ? 'bg-teal-500/20 border-teal-500/50 text-teal-300' : 'bg-white/5 border-white/5 text-white/40 hover:text-white/70'}`}>
                                     {eq}
                                 </button>
                             ))}
@@ -428,7 +428,7 @@ const ExercisePickerModal: React.FC<ExercisePickerProps> = ({ exercises, onSelec
                             <div className="flex-1 min-w-0">
                                 <div className="font-bold text-white text-sm truncate flex items-center gap-2">
                                     {ex.name}
-                                    {ex.isCustom && <span className="text-[8px] bg-violet-500/20 text-violet-300 px-1.5 py-0.5 rounded font-black uppercase">Custom</span>}
+                                    {ex.isCustom && <span className="text-[8px] bg-teal-500/20 text-teal-300 px-1.5 py-0.5 rounded font-black uppercase">Custom</span>}
                                 </div>
                                 <div className="text-[10px] text-white/40 uppercase tracking-wider mt-0.5">{ex.muscleGroup} • {ex.equipment}</div>
                             </div>
@@ -1065,7 +1065,7 @@ export const GymWorkoutLogger: React.FC<WorkoutLoggerProps> = ({
                       fixed z-50 left-1/2 -translate-x-1/2 transition-all duration-500 ease-out
                       ${isRestMinimized
                           ? 'bottom-32 w-12 h-12 rounded-full bg-indigo-600 shadow-lg border border-white/20 flex items-center justify-center cursor-pointer'
-                          : 'bottom-32 w-[90%] max-w-sm bg-[#130f1c]/90 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-2xl'}
+                          : 'bottom-32 w-[90%] max-w-sm bg-[#12141a]/90 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-2xl'}
                   `} style={{zIndex: 2000}}>
                       {isRestMinimized ? (
                           <div onClick={() => setIsRestMinimized(false)} className="relative w-full h-full flex items-center justify-center">
@@ -1173,7 +1173,7 @@ export const GymWorkoutLogger: React.FC<WorkoutLoggerProps> = ({
                           </div>
                       </div>
                   )})}
-                  <button onClick={() => setIsExerciseModalOpen(true)} className="w-full py-4 bg-gradient-to-r from-violet-600 to-indigo-600 rounded-3xl shadow-lg shadow-violet-900/20 text-white font-bold text-sm flex items-center justify-center gap-2 transition active:scale-95 hover:brightness-110"><Plus size={18} /> Add Exercise</button>
+                  <button onClick={() => setIsExerciseModalOpen(true)} className="w-full py-4 bg-gradient-to-r from-teal-600 to-indigo-600 rounded-3xl shadow-lg shadow-teal-900/20 text-white font-bold text-sm flex items-center justify-center gap-2 transition active:scale-95 hover:brightness-110"><Plus size={18} /> Add Exercise</button>
               </div>
 
               {isExerciseModalOpen && (
@@ -1215,7 +1215,7 @@ export const GymWorkoutLogger: React.FC<WorkoutLoggerProps> = ({
           {/* HISTORY DETAILS MODAL */}
           {viewingHistorySession && (
               <div className="fixed inset-0 z-[2000] bg-[#0f172a] overflow-hidden flex flex-col animate-in slide-in-from-right-10">
-                  <div className="p-4 border-b border-white/10 bg-[#130f1c] flex items-center justify-between">
+                  <div className="p-4 border-b border-white/10 bg-[#12141a] flex items-center justify-between">
                       <div className="flex items-center gap-3">
                           <button onClick={() => setViewingHistorySession(null)} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition"><ArrowLeft size={20} className="text-white" /></button>
                           <div>
@@ -1289,7 +1289,7 @@ export const GymWorkoutLogger: React.FC<WorkoutLoggerProps> = ({
           {/* EXERCISE LIBRARY (read-only browser) */}
           {showLibrary && (
               <div className="fixed inset-0 z-[2000] bg-[#0c0a14] overflow-hidden flex flex-col animate-in slide-in-from-bottom-5">
-                  <div className="p-4 border-b border-white/10 flex items-center justify-between bg-[#130f1c]">
+                  <div className="p-4 border-b border-white/10 flex items-center justify-between bg-[#12141a]">
                       <div className="flex items-center gap-3">
                           <button onClick={() => setShowLibrary(false)} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition"><ArrowLeft size={20} className="text-white" /></button>
                           <div>
@@ -1326,7 +1326,7 @@ export const GymWorkoutLogger: React.FC<WorkoutLoggerProps> = ({
                                                       <div className="grid gap-2">
                                                           {groupExs.map(ex => (
                                                               <div key={ex.id} className="text-sm text-white/70 py-1.5 px-2 hover:bg-white/5 rounded-lg transition-colors flex justify-between items-center">
-                                                                  <span className="flex items-center gap-2">{ex.name}{ex.isCustom && <span className="text-[8px] bg-violet-500/20 text-violet-300 px-1.5 py-0.5 rounded font-black uppercase">Custom</span>}</span>
+                                                                  <span className="flex items-center gap-2">{ex.name}{ex.isCustom && <span className="text-[8px] bg-teal-500/20 text-teal-300 px-1.5 py-0.5 rounded font-black uppercase">Custom</span>}</span>
                                                                   <span className="text-[10px] text-white/20 bg-white/5 px-2 py-0.5 rounded">{ex.equipment}</span>
                                                               </div>
                                                           ))}
@@ -1374,16 +1374,16 @@ export const GymWorkoutLogger: React.FC<WorkoutLoggerProps> = ({
                   </div>
               </div>
               <div className="relative group cursor-pointer" onClick={() => setBuilderOpen(true)}>
-                  <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-violet-600 rounded-3xl blur-xl opacity-20 group-hover:opacity-40 transition duration-500"></div>
+                  <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-teal-600 rounded-3xl blur-xl opacity-20 group-hover:opacity-40 transition duration-500"></div>
                   <div className="relative bg-gradient-to-br from-slate-900 to-slate-950 border border-white/10 rounded-3xl p-4 flex flex-col justify-between h-28 overflow-hidden">
-                      <div className="w-9 h-9 bg-gradient-to-br from-indigo-400 to-violet-500 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20 text-white"><ListPlus size={17} /></div>
+                      <div className="w-9 h-9 bg-gradient-to-br from-indigo-400 to-teal-500 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20 text-white"><ListPlus size={17} /></div>
                       <div><h2 className="text-sm font-bold text-white leading-tight">Build Routine</h2><p className="text-white/50 text-[9px] mt-0.5">Custom plan</p></div>
                   </div>
               </div>
               <div className="relative group cursor-pointer" onClick={() => { setShowLibrary(true); setSearchQuery(''); }}>
-                  <div className="absolute inset-0 bg-gradient-to-r from-violet-500 to-fuchsia-600 rounded-3xl blur-xl opacity-20 group-hover:opacity-40 transition duration-500"></div>
+                  <div className="absolute inset-0 bg-gradient-to-r from-teal-500 to-cyan-600 rounded-3xl blur-xl opacity-20 group-hover:opacity-40 transition duration-500"></div>
                   <div className="relative bg-gradient-to-br from-slate-900 to-slate-950 border border-white/10 rounded-3xl p-4 flex flex-col justify-between h-28 overflow-hidden">
-                      <div className="w-9 h-9 bg-gradient-to-br from-violet-400 to-fuchsia-500 rounded-xl flex items-center justify-center shadow-lg shadow-violet-500/20 text-white"><Book size={17} /></div>
+                      <div className="w-9 h-9 bg-gradient-to-br from-teal-400 to-cyan-500 rounded-xl flex items-center justify-center shadow-lg shadow-teal-500/20 text-white"><Book size={17} /></div>
                       <div><h2 className="text-sm font-bold text-white leading-tight">Exercises</h2><p className="text-white/50 text-[9px] mt-0.5">{exercises.length} moves</p></div>
                   </div>
               </div>

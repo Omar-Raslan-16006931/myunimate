@@ -2,10 +2,7 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { GymViewType } from '../../types';
 import { LayoutDashboard, Dumbbell, Apple, LineChart, Settings, LogOut } from 'lucide-react';
-
-const INK = '#1A1730';
-const CARD_BG = '#FAFAF6';
-const HL_YELLOW = '#F6DF63';
+import { styles } from '../../theme';
 
 interface NavigationProps {
   currentView: GymViewType;
@@ -23,81 +20,41 @@ export const GymNavigation: React.FC<NavigationProps> = ({ currentView, setView,
   ];
 
   return (
-    <div style={{
-      position: 'fixed',
-      bottom: 'calc(24px + env(safe-area-inset-bottom))',
-      left: '50%',
-      transform: 'translateX(-50%)',
-      background: CARD_BG,
-      border: `1.5px solid ${INK}`,
-      borderRadius: 40,
-      boxShadow: `4px 6px 0 ${INK}`,
-      padding: '0 12px',
-      height: 64,
-      width: '90%',
-      maxWidth: 380,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      zIndex: 100,
-    }}>
+    <div style={styles.bottomNav}>
       {navItems.map((item) => {
         const isActive = currentView === item.view;
         return (
           <div
             key={item.view}
+            style={{
+               ...styles.navItem,
+               ...(isActive ? styles.activeNavItem : {})
+            }}
             onClick={() => setView(item.view)}
             title={item.label}
-            style={{
-              position: 'relative',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 44,
-              height: 44,
-              borderRadius: 30,
-              cursor: 'pointer',
-              color: isActive ? INK : `${INK}60`,
-              transition: 'color 0.2s',
-            }}
           >
             {isActive && (
               <motion.div
                 layoutId="gym-nav-pill"
-                style={{
-                  position: 'absolute',
-                  inset: 0,
-                  background: HL_YELLOW,
-                  borderRadius: 30,
-                  border: `1.5px solid ${INK}`,
-                }}
-                transition={{ type: 'spring', stiffness: 350, damping: 22, mass: 0.8 }}
+                className="absolute inset-0 bg-white/15 rounded-full"
+                transition={{ type: "spring", stiffness: 350, damping: 22, mass: 0.8 }}
               />
             )}
-            <item.icon size={21} strokeWidth={isActive ? 2.5 : 1.5} style={{ position: 'relative', zIndex: 1 }} />
+            <item.icon size={21} strokeWidth={isActive ? 2.5 : 1.5} className="relative z-10" />
           </div>
         );
       })}
 
       {/* Divider */}
-      <div style={{ width: 1, height: 20, background: `${INK}20`, margin: '0 4px' }} />
+      <div style={{width: '1px', height: '20px', background: 'rgba(255,255,255,0.1)', margin: '0 4px'}}></div>
 
       {/* Exit Button */}
       <div
+        style={styles.navItem}
         onClick={onExit}
         title="Exit Gym Mode"
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          width: 44,
-          height: 44,
-          borderRadius: 30,
-          cursor: 'pointer',
-          color: '#E56A5A',
-        }}
       >
-        <LogOut size={20} />
+        <LogOut size={20} color="#f87171" />
       </div>
     </div>
   );

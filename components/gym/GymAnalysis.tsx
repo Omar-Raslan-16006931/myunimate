@@ -256,10 +256,10 @@ export const GymAnalysis: React.FC<GymAnalysisProps> = ({ workoutSessions, bodyL
         <div className="bg-white/[0.03] backdrop-blur-md border border-white/5 rounded-3xl p-4 relative overflow-hidden">
           <div className="flex justify-between items-center mb-3">
             <div className="flex items-center gap-2">
-              <div className="p-1.5 bg-violet-500/10 rounded-lg text-violet-400"><Scale size={15} /></div>
+              <div className="p-1.5 bg-teal-500/10 rounded-lg text-teal-400"><Scale size={15} /></div>
               <h3 className="text-xs font-bold text-white">Body Weight</h3>
             </div>
-            <button onClick={() => setShowLogModal(true)} className="flex items-center gap-1 text-[10px] font-bold text-violet-300 bg-violet-500/10 hover:bg-violet-500/20 border border-violet-500/20 px-2.5 py-1.5 rounded-lg transition active:scale-95">
+            <button onClick={() => setShowLogModal(true)} className="flex items-center gap-1 text-[10px] font-bold text-teal-300 bg-teal-500/10 hover:bg-teal-500/20 border border-teal-500/20 px-2.5 py-1.5 rounded-lg transition active:scale-95">
               <Plus size={11} /> LOG
             </button>
           </div>
@@ -282,14 +282,14 @@ export const GymAnalysis: React.FC<GymAnalysisProps> = ({ workoutSessions, bodyL
                     <AreaChart data={weightData}>
                       <defs>
                         <linearGradient id="weightGrad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.35}/>
-                          <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
+                          <stop offset="5%" stopColor="#19b8a6" stopOpacity={0.35}/>
+                          <stop offset="95%" stopColor="#19b8a6" stopOpacity={0}/>
                         </linearGradient>
                       </defs>
                       <XAxis dataKey="date" stroke="#64748b" fontSize={9} tickLine={false} axisLine={false} />
                       <YAxis domain={['dataMin - 2', 'dataMax + 2']} hide />
-                      <Tooltip content={<ChartTooltip unit="kg" />} cursor={{ stroke: '#8b5cf6', strokeWidth: 1, strokeDasharray: '4 4' }} />
-                      <Area type="monotone" dataKey="weight" stroke="#8b5cf6" strokeWidth={2.5} fill="url(#weightGrad)" />
+                      <Tooltip content={<ChartTooltip unit="kg" />} cursor={{ stroke: '#19b8a6', strokeWidth: 1, strokeDasharray: '4 4' }} />
+                      <Area type="monotone" dataKey="weight" stroke="#19b8a6" strokeWidth={2.5} fill="url(#weightGrad)" />
                     </AreaChart>
                   </ResponsiveContainer>
                 ) : (
@@ -425,7 +425,7 @@ export const GymAnalysis: React.FC<GymAnalysisProps> = ({ workoutSessions, bodyL
       </div>
 
       {/* 1RM Calculator */}
-      <div className="bg-gradient-to-br from-indigo-950/60 to-violet-950/40 backdrop-blur-md border border-indigo-500/20 rounded-3xl p-4">
+      <div className="bg-gradient-to-br from-indigo-950/60 to-teal-950/40 backdrop-blur-md border border-indigo-500/20 rounded-3xl p-4">
         <div className="flex items-center gap-2 mb-3">
           <div className="p-1.5 bg-indigo-500/20 rounded-lg text-indigo-300"><Calculator size={15} /></div>
           <h3 className="text-xs font-bold text-white">1RM Calculator</h3>
@@ -470,18 +470,18 @@ export const GymAnalysis: React.FC<GymAnalysisProps> = ({ workoutSessions, bodyL
             <form onSubmit={submitBodyLog} className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[9px] font-bold text-violet-300 uppercase tracking-wider mb-1">Weight (kg) *</label>
+                  <label className="block text-[9px] font-bold text-teal-300 uppercase tracking-wider mb-1">Weight (kg) *</label>
                   <input type="number" step="0.1" autoFocus required value={form.weight}
                     onChange={e => setForm({ ...form, weight: e.target.value })}
                     placeholder={settings.weight ? settings.weight.toString() : '75'}
-                    className="w-full bg-black/30 border border-white/10 rounded-xl p-3 text-white font-bold text-base outline-none focus:border-violet-500/60 transition placeholder:text-white/20" />
+                    className="w-full bg-black/30 border border-white/10 rounded-xl p-3 text-white font-bold text-base outline-none focus:border-teal-500/60 transition placeholder:text-white/20" />
                 </div>
                 <div>
                   <label className="block text-[9px] font-bold text-white/40 uppercase tracking-wider mb-1">Body Fat %</label>
                   <input type="number" step="0.1" value={form.bodyFat}
                     onChange={e => setForm({ ...form, bodyFat: e.target.value })}
                     placeholder="Optional"
-                    className="w-full bg-black/30 border border-white/10 rounded-xl p-3 text-white font-bold text-base outline-none focus:border-violet-500/60 transition placeholder:text-white/20" />
+                    className="w-full bg-black/30 border border-white/10 rounded-xl p-3 text-white font-bold text-base outline-none focus:border-teal-500/60 transition placeholder:text-white/20" />
                 </div>
               </div>
 
@@ -505,7 +505,7 @@ export const GymAnalysis: React.FC<GymAnalysisProps> = ({ workoutSessions, bodyL
                 </div>
               )}
 
-              <button type="submit" className="w-full py-3.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:brightness-110 text-white font-bold rounded-2xl transition text-sm shadow-lg shadow-violet-900/30 active:scale-[0.98]">
+              <button type="submit" className="w-full py-3.5 bg-gradient-to-r from-teal-600 to-indigo-600 hover:brightness-110 text-white font-bold rounded-2xl transition text-sm shadow-lg shadow-teal-900/30 active:scale-[0.98]">
                 Save Check-in
               </button>
             </form>

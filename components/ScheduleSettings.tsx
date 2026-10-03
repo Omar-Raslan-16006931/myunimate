@@ -2,14 +2,7 @@
 import React from 'react';
 import { PeriodDefinition } from '../types';
 import { Plus, Trash2, Clock, Eye, Coffee } from 'lucide-react';
-import { styles } from '../theme';
-
-// ─── Design tokens ────────────────────────────────────────────────────────────
-const INK       = '#1A1730';
-const CARD_BG   = '#FAFAF6';
-const HL_YELLOW = '#F6DF63';
-const HL_PINK   = '#eea8f2';
-const HL_GREEN  = '#8CE3B7';
+import { theme, styles } from '../theme';
 
 interface ScheduleSettingsProps {
     periods: PeriodDefinition[];
@@ -17,7 +10,7 @@ interface ScheduleSettingsProps {
 }
 
 const ScheduleSettings: React.FC<ScheduleSettingsProps> = ({ periods, setPeriods }) => {
-
+    
     // Helper to calculate minutes from "HH:MM"
     const getMinutes = (time: string) => {
         const [h, m] = time.split(':').map(Number);
@@ -32,7 +25,7 @@ const ScheduleSettings: React.FC<ScheduleSettingsProps> = ({ periods, setPeriods
     };
 
     const getOrdinal = (n: number) => {
-        const s = ['th', 'st', 'nd', 'rd'];
+        const s = ["th", "st", "nd", "rd"];
         const v = n % 100;
         return n + (s[(v - 20) % 10] || s[v] || s[0]);
     };
@@ -46,7 +39,7 @@ const ScheduleSettings: React.FC<ScheduleSettingsProps> = ({ periods, setPeriods
             const startVal = h + m / 60;
 
             // Update Label based on type and sequence
-            let label = 'Break';
+            let label = "Break";
             if (!p.isBreak) {
                 slotCount++;
                 label = getOrdinal(slotCount);
@@ -68,14 +61,14 @@ const ScheduleSettings: React.FC<ScheduleSettingsProps> = ({ periods, setPeriods
 
     const addPeriod = () => {
         const lastPeriod = periods[periods.length - 1];
-        let newStart = '08:30';
-        let newEnd = '10:00';
+        let newStart = "08:30";
+        let newEnd = "10:00";
         let isBreak = false;
-
+        
         if (lastPeriod) {
             // Suggest next slot
             const lastEndMins = getMinutes(lastPeriod.endTime);
-
+            
             // If previous was a class, maybe suggest a break?
             if (!lastPeriod.isBreak) {
                 // Add 15 min break
@@ -92,12 +85,12 @@ const ScheduleSettings: React.FC<ScheduleSettingsProps> = ({ periods, setPeriods
 
         const newPeriod: PeriodDefinition = {
             id: Math.random().toString(36).substr(2, 9),
-            label: 'Temp', // Will be fixed by recalculatePeriods
+            label: "Temp", // Will be fixed by recalculatePeriods
             startTime: newStart,
             endTime: newEnd,
-            isBreak,
+            isBreak
         };
-
+        
         recalculatePeriods([...periods, newPeriod]);
     };
 
@@ -114,7 +107,7 @@ const ScheduleSettings: React.FC<ScheduleSettingsProps> = ({ periods, setPeriods
             }
             return p;
         });
-
+        
         // Only recalculate all (labels etc) if isBreak changes
         if (field === 'isBreak') {
             recalculatePeriods(updated);
@@ -132,227 +125,117 @@ const ScheduleSettings: React.FC<ScheduleSettingsProps> = ({ periods, setPeriods
         // Sort periods by start time first
         const sorted = [...periods].sort((a, b) => getMinutes(a.startTime) - getMinutes(b.startTime));
         const newPeriods: PeriodDefinition[] = [];
-
+        
         for (let i = 0; i < sorted.length; i++) {
             newPeriods.push(sorted[i]);
             if (i < sorted.length - 1) {
                 const currentEnd = getMinutes(sorted[i].endTime);
-                const nextStart = getMinutes(sorted[i + 1].startTime);
-
+                const nextStart = getMinutes(sorted[i+1].startTime);
+                
                 if (nextStart > currentEnd) {
                     // There is a gap, insert a break
                     newPeriods.push({
                         id: Math.random().toString(36).substr(2, 9),
-                        label: 'Break',
+                        label: "Break",
                         startTime: formatTime(currentEnd),
                         endTime: formatTime(nextStart),
                         isBreak: true,
-                        startVal: currentEnd / 60,
+                        startVal: currentEnd / 60
                     });
                 }
             }
         }
-
+        
         recalculatePeriods(newPeriods);
     };
 
     const to12h = (time24: string) => {
-        if (!time24) return '';
-        const [h, m] = time24.split(':').map(Number);
-        const period = h >= 12 ? 'PM' : 'AM';
+        if (!time24) return "";
+        const [h, m] = time24.split(":").map(Number);
+        const period = h >= 12 ? "PM" : "AM";
         const h12 = h % 12 || 12;
-        return `${h12}:${m.toString().padStart(2, '0')} ${period}`;
-    };
-
-    // Shared button styles
-    const addBtn: React.CSSProperties = {
-        flex: 1,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 6,
-        padding: 12,
-        background: CARD_BG,
-        border: `1.5px dashed ${INK}`,
-        borderRadius: 10,
-        fontFamily: "'Instrument Sans', sans-serif",
-        fontWeight: 600,
-        fontSize: '0.82rem',
-        color: INK,
-        cursor: 'pointer',
-        transition: 'all 0.15s',
+        return `${h12}:${m.toString().padStart(2, "0")} ${period}`;
     };
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            <p
-                style={{
-                    fontFamily: "'Instrument Sans', sans-serif",
-                    color: `rgba(26,23,48,0.55)`,
-                    fontSize: '0.85rem',
-                    marginTop: -10,
-                    marginBottom: 4,
-                }}
-            >
+        <div style={{display: 'flex', flexDirection: 'column', gap: '20px'}}>
+            <p style={{color: theme.textMuted, fontSize: '0.85rem', marginTop: '-10px', marginBottom: '4px'}}>
                 Customize your daily timeline. These slots define the columns in your schedule view.
             </p>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
                 {periods.map((period, _index) => {
                     const slotLabel = getPeriodLabelDisplay(period);
                     return (
-                        <div
-                            key={period.id}
-                            style={{
-                                display: 'grid',
-                                // Grid: Label(60px) | Spacer | Times(110px) | Type Toggle(80px) | Trash(30px)
-                                gridTemplateColumns: '60px 1fr 110px 80px 30px',
-                                gap: 8,
-                                alignItems: 'center',
-                                backgroundColor: period.isBreak ? `${HL_YELLOW}33` : CARD_BG,
-                                padding: '12px 10px',
-                                borderRadius: 10,
-                                border: period.isBreak
-                                    ? `1.5px dashed ${INK}`
-                                    : `1.5px solid ${INK}`,
-                                boxShadow: period.isBreak ? 'none' : `3px 4px 0 ${INK}`,
-                                transition: 'all 0.2s ease',
-                                position: 'relative',
-                            }}
-                        >
+                        <div key={period.id} style={{
+                            display: 'grid', 
+                            // Grid: Label(60px) | Spacer | Times(110px) | Type Toggle(80px) | Trash(30px)
+                            gridTemplateColumns: '60px 1fr 110px 80px 30px', 
+                            gap: '8px', 
+                            alignItems: 'center',
+                            backgroundColor: period.isBreak ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.03)',
+                            padding: '12px 10px',
+                            borderRadius: '16px',
+                            border: period.isBreak ? '1px dashed rgba(255,255,255,0.08)' : '1px solid rgba(255,255,255,0.05)',
+                            transition: 'all 0.2s ease',
+                            position: 'relative'
+                        }}>
                             {/* Left Column: Icon + Index */}
-                            <div
-                                style={{
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    justifyContent: 'center',
-                                    alignItems: 'center',
-                                    gap: 4,
-                                }}
-                            >
+                            <div style={{display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: '4px'}}>
                                 {period.isBreak ? (
-                                    <div style={{ opacity: 0.55 }}>
-                                        <Coffee size={18} color={INK} />
-                                    </div>
+                                    <div style={{opacity: 0.5}}><Coffee size={18} /></div>
                                 ) : (
                                     <>
-                                        <div
-                                            style={{
-                                                fontSize: '0.9rem',
-                                                fontWeight: 800,
-                                                color: INK,
-                                                lineHeight: 1,
-                                                fontFamily: "'Bricolage Grotesque', sans-serif",
-                                            }}
-                                        >
+                                        <div style={{fontSize: '0.9rem', fontWeight: 800, color: '#fff', lineHeight: 1}}>
                                             {slotLabel?.split(' ')[0]}
                                         </div>
-                                        <div
-                                            style={{
-                                                fontSize: '0.6rem',
-                                                color: `rgba(26,23,48,0.5)`,
-                                                fontWeight: 700,
-                                                textTransform: 'uppercase',
-                                                fontFamily: "'Instrument Sans', sans-serif",
-                                                letterSpacing: '0.3px',
-                                            }}
-                                        >
+                                        <div style={{fontSize: '0.65rem', color: theme.textMuted, fontWeight: 600, textTransform: 'uppercase'}}>
                                             {slotLabel?.split(' ')[1]}
                                         </div>
                                     </>
                                 )}
                             </div>
-
+                            
                             {/* Empty spacer */}
                             <div />
 
                             {/* Middle Column: Vertical Time Stack */}
-                            <div
-                                style={{
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    alignItems: 'center',
-                                    gap: 4,
-                                    backgroundColor: `rgba(26,23,48,0.06)`,
-                                    padding: 6,
-                                    borderRadius: 8,
-                                    border: `1px solid rgba(26,23,48,0.15)`,
-                                }}
-                            >
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                    <input
+                            <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', backgroundColor: 'rgba(0,0,0,0.2)', padding: '6px', borderRadius: '10px'}}>
+                                <div style={{display: 'flex', alignItems: 'center', gap: '4px'}}>
+                                    <input 
                                         type="time"
                                         value={period.startTime}
-                                        onChange={e => updatePeriod(period.id, 'startTime', e.target.value)}
-                                        style={{
-                                            background: 'transparent',
-                                            border: 'none',
-                                            color: INK,
-                                            fontSize: '0.78rem',
-                                            fontWeight: 700,
-                                            outline: 'none',
-                                            width: 'auto',
-                                            fontFamily: "'Space Mono', monospace",
-                                        }}
+                                        onChange={(e) => updatePeriod(period.id, 'startTime', e.target.value)}
+                                        style={{background: 'transparent', border: 'none', color: '#fff', fontSize: '0.8rem', fontWeight: 600, outline: 'none', width: 'auto', fontFamily: 'monospace'}}
                                     />
-                                    <Clock size={10} color={`rgba(26,23,48,0.4)`} />
+                                    <Clock size={10} color={theme.textMuted} />
                                 </div>
-                                <div
-                                    style={{
-                                        fontSize: '0.5rem',
-                                        color: `rgba(26,23,48,0.4)`,
-                                        fontWeight: 800,
-                                        letterSpacing: '1px',
-                                        fontFamily: "'Space Mono', monospace",
-                                    }}
-                                >
-                                    TO
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                    <input
+                                <div style={{fontSize: '0.55rem', color: theme.textMuted, fontWeight: 800, letterSpacing: '1px'}}>TO</div>
+                                <div style={{display: 'flex', alignItems: 'center', gap: '4px'}}>
+                                    <input 
                                         type="time"
                                         value={period.endTime}
-                                        onChange={e => updatePeriod(period.id, 'endTime', e.target.value)}
-                                        style={{
-                                            background: 'transparent',
-                                            border: 'none',
-                                            color: INK,
-                                            fontSize: '0.78rem',
-                                            fontWeight: 700,
-                                            outline: 'none',
-                                            width: 'auto',
-                                            fontFamily: "'Space Mono', monospace",
-                                        }}
+                                        onChange={(e) => updatePeriod(period.id, 'endTime', e.target.value)}
+                                        style={{background: 'transparent', border: 'none', color: '#fff', fontSize: '0.8rem', fontWeight: 600, outline: 'none', width: 'auto', fontFamily: 'monospace'}}
                                     />
-                                    <Clock size={10} color={`rgba(26,23,48,0.4)`} />
+                                    <Clock size={10} color={theme.textMuted} />
                                 </div>
                             </div>
 
                             {/* Right Column: Toggle Button Stack */}
-                            <div
-                                style={{
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    gap: 0,
-                                    borderRadius: 8,
-                                    overflow: 'hidden',
-                                    border: `1.5px solid ${INK}`,
-                                }}
-                            >
+                            <div style={{display: 'flex', flexDirection: 'column', gap: '0', borderRadius: '8px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)'}}>
                                 <button
                                     onClick={() => updatePeriod(period.id, 'isBreak', false)}
                                     style={{
-                                        padding: '5px 4px',
-                                        background: !period.isBreak ? INK : 'transparent',
-                                        color: !period.isBreak ? HL_YELLOW : `rgba(26,23,48,0.45)`,
-                                        fontSize: '0.6rem',
+                                        padding: '4px',
+                                        background: !period.isBreak ? theme.accent : 'transparent',
+                                        color: !period.isBreak ? '#fff' : theme.textMuted,
+                                        fontSize: '0.65rem',
                                         border: 'none',
                                         cursor: 'pointer',
                                         fontWeight: 700,
-                                        fontFamily: "'Instrument Sans', sans-serif",
                                         transition: 'all 0.2s',
-                                        borderBottom: `1px solid ${INK}`,
-                                        letterSpacing: '0.3px',
+                                        borderBottom: '1px solid rgba(255,255,255,0.05)'
                                     }}
                                 >
                                     SLOT
@@ -360,16 +243,14 @@ const ScheduleSettings: React.FC<ScheduleSettingsProps> = ({ periods, setPeriods
                                 <button
                                     onClick={() => updatePeriod(period.id, 'isBreak', true)}
                                     style={{
-                                        padding: '5px 4px',
-                                        background: period.isBreak ? `${HL_YELLOW}99` : 'transparent',
-                                        color: period.isBreak ? INK : `rgba(26,23,48,0.45)`,
-                                        fontSize: '0.6rem',
+                                        padding: '4px',
+                                        background: period.isBreak ? 'rgba(255,255,255,0.15)' : 'transparent',
+                                        color: period.isBreak ? '#fff' : theme.textMuted,
+                                        fontSize: '0.65rem',
                                         border: 'none',
                                         cursor: 'pointer',
                                         fontWeight: 700,
-                                        fontFamily: "'Instrument Sans', sans-serif",
-                                        transition: 'all 0.2s',
-                                        letterSpacing: '0.3px',
+                                        transition: 'all 0.2s'
                                     }}
                                 >
                                     BREAK
@@ -377,18 +258,17 @@ const ScheduleSettings: React.FC<ScheduleSettingsProps> = ({ periods, setPeriods
                             </div>
 
                             {/* Far Right: Delete */}
-                            <button
+                            <button 
                                 onClick={() => deletePeriod(period.id)}
                                 style={{
                                     background: 'transparent',
-                                    color: '#E56A5A',
+                                    color: theme.danger,
                                     border: 'none',
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                     cursor: 'pointer',
-                                    opacity: 0.75,
-                                    padding: 4,
+                                    opacity: 0.6
                                 }}
                             >
                                 <Trash2 size={16} />
@@ -397,17 +277,31 @@ const ScheduleSettings: React.FC<ScheduleSettingsProps> = ({ periods, setPeriods
                     );
                 })}
 
-                {/* Add / Auto-fill buttons */}
-                <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                    <button onClick={addPeriod} style={addBtn}>
+                <div style={{display: 'flex', gap: '8px', marginTop: '8px'}}>
+                    <button 
+                        onClick={addPeriod}
+                        style={{
+                            ...styles.secondaryButton,
+                            flex: 1,
+                            justifyContent: 'center',
+                            padding: '12px',
+                            borderStyle: 'dashed',
+                            fontSize: '0.8rem'
+                        }}
+                    >
                         <Plus size={16} /> Add New Slot
                     </button>
-                    <button
+                    <button 
                         onClick={autoFillGaps}
                         style={{
-                            ...addBtn,
-                            color: '#1a6e4c',
-                            borderColor: HL_GREEN,
+                            ...styles.secondaryButton,
+                            flex: 1,
+                            justifyContent: 'center',
+                            padding: '12px',
+                            borderStyle: 'dashed',
+                            fontSize: '0.8rem',
+                            color: theme.accent,
+                            borderColor: 'rgba(25, 184, 166, 0.3)'
                         }}
                     >
                         <Coffee size={16} /> Auto-Fill Gaps
@@ -415,84 +309,57 @@ const ScheduleSettings: React.FC<ScheduleSettingsProps> = ({ periods, setPeriods
                 </div>
             </div>
 
-            {/* ── Visual Preview ─────────────────────────────────────────────── */}
-            <div style={{ marginTop: 10 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                    <Eye size={16} color={`rgba(26,23,48,0.5)`} />
-                    <span
-                        style={{
-                            fontFamily: "'Bricolage Grotesque', sans-serif",
-                            fontSize: '0.9rem',
-                            color: `rgba(26,23,48,0.6)`,
-                            fontWeight: 700,
-                        }}
-                    >
-                        Preview
-                    </span>
+            {/* Visual Preview */}
+            <div style={{marginTop: '10px'}}>
+                <div style={{display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px'}}>
+                    <Eye size={16} color={theme.textMuted} />
+                    <span style={{fontSize: '0.9rem', color: theme.textMuted, fontWeight: 600}}>Preview</span>
                 </div>
-
-                <div
-                    style={{
-                        display: 'flex',
-                        width: '100%',
-                        overflowX: 'auto',
-                        padding: '10px 8px',
-                        gap: 6,
-                        backgroundColor: CARD_BG,
-                        borderRadius: 10,
-                        border: `1.5px solid ${INK}`,
-                        boxShadow: `3px 4px 0 ${INK}`,
-                        minHeight: 80,
-                        alignItems: 'stretch',
-                    }}
-                >
+                
+                <div style={{
+                    display: 'flex',
+                    width: '100%',
+                    overflowX: 'auto',
+                    padding: '10px 0',
+                    gap: '6px',
+                    backgroundColor: 'rgba(20,20,30,0.5)',
+                    borderRadius: '12px',
+                    border: theme.glassBorder,
+                    minHeight: '80px',
+                    alignItems: 'stretch'
+                }}>
                     {periods.map((p, _i) => (
-                        <div
-                            key={p.id}
-                            style={{
-                                flex: p.isBreak ? '0 0 40px' : '1',
-                                minWidth: p.isBreak ? 40 : 120,
-                                backgroundColor: p.isBreak ? `${HL_YELLOW}33` : `${HL_PINK}55`,
-                                border: p.isBreak ? `1.5px dashed ${INK}` : `1.5px solid ${INK}`,
-                                borderRadius: 8,
-                                padding: '8px 4px',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: 4,
-                                position: 'relative',
-                            }}
-                        >
+                        <div key={p.id} style={{
+                            flex: p.isBreak ? '0 0 40px' : '1',
+                            minWidth: p.isBreak ? '40px' : '120px',
+                            backgroundColor: p.isBreak ? 'transparent' : 'rgba(25, 184, 166, 0.1)',
+                            border: p.isBreak ? '1px dashed rgba(255,255,255,0.1)' : '1px solid rgba(25, 184, 166, 0.2)',
+                            borderRadius: '8px',
+                            padding: '8px 4px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '4px',
+                            position: 'relative'
+                        }}>
                             {p.isBreak ? (
-                                <Coffee size={12} color={`rgba(26,23,48,0.45)`} />
+                                <Coffee size={12} color={theme.textMuted} />
                             ) : (
-                                <span
-                                    style={{
-                                        fontSize: '0.7rem',
-                                        fontWeight: 800,
-                                        color: INK,
-                                        fontFamily: "'Bricolage Grotesque', sans-serif",
-                                    }}
-                                >
+                                <span style={{fontSize: '0.7rem', fontWeight: 700, color: '#fff'}}>
                                     {p.label}
                                 </span>
                             )}
-
-                            <div
-                                style={{
-                                    fontSize: '0.52rem',
-                                    color: `rgba(26,23,48,0.55)`,
-                                    marginTop: 4,
-                                    textAlign: 'center',
-                                    lineHeight: 1.3,
-                                    fontFamily: "'Space Mono', monospace",
-                                }}
-                            >
-                                {to12h(p.startTime)}
-                                <br />
-                                <span style={{ opacity: 0.5 }}>to</span>
-                                <br />
+                            
+                            <div style={{
+                                fontSize: '0.55rem', 
+                                color: 'rgba(255,255,255,0.6)', 
+                                marginTop: '4px', 
+                                textAlign: 'center',
+                                lineHeight: '1.2'
+                            }}>
+                                {to12h(p.startTime)}<br/>
+                                <span style={{opacity: 0.5}}>to</span><br/>
                                 {to12h(p.endTime)}
                             </div>
                         </div>

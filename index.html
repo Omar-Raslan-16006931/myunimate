@@ -7,103 +7,80 @@
     <meta name="theme-color" content="#0f0f16" />
     <title>UniMate</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎓</text></svg>">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            fontFamily: {
-              sans: ['SF Pro Display', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
-            },
-            colors: {
-              violet: { 950: '#1e0a45' },
-            },
-            animation: {
-              'pulse-slow': 'pulse 8s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-              'blob': 'blob 10s infinite',
-              'fade-in-up': 'fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) both',
-              'pop-in': 'popIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) both',
-              'scale-in': 'scaleIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) both',
-              'float': 'float 8s ease-in-out infinite',
-              'gradient-x': 'gradientX 15s ease infinite',
-            },
-            keyframes: {
-              blob: {
-                "0%": { transform: "translate(0px, 0px) scale(1)" },
-                "33%": { transform: "translate(20px, -30px) scale(1.05)" },
-                "66%": { transform: "translate(-15px, 15px) scale(0.95)" },
-                "100%": { transform: "translate(0px, 0px) scale(1)" },
-              },
-              fadeInUp: {
-                "0%": { opacity: "0", transform: "translateY(15px) scale(0.98)" },
-                "100%": { opacity: "1", transform: "translateY(0) scale(1)" },
-              },
-              popIn: {
-                "0%": { opacity: "0", transform: "scale(0.96) translateY(8px)" },
-                "100%": { opacity: "1", transform: "scale(1) translateY(0)" },
-              },
-              scaleIn: {
-                "0%": { opacity: "0", transform: "scale(0.96)" },
-                "100%": { opacity: "1", transform: "scale(1)" },
-              },
-              float: {
-                "0%, 100%": { transform: "translateY(0)" },
-                "50%": { transform: "translateY(-10px)" },
-              },
-              gradientX: {
-                "0%, 100%": { "background-position": "0% 50%" },
-                "50%": { "background-position": "100% 50%" },
-              }
-            },
-          },
-        },
-      };
-    </script>
     <style>
       :root {
-        --ink: #1A1730;
-        --paper: #C7B2DB;
-        --paper-light: #FAFAF6;
-        --hl-yellow: #F6DF63;
-        
-        --bg-gradient: none;
-        --card-bg: var(--paper-light);
-        --card-border: 1.5px solid var(--ink);
-        --glass-border: 1.5px solid var(--ink);
-        --text-primary: var(--ink);
-        --text-muted: rgba(26, 23, 48, 0.7);
-        --accent: var(--ink);
-        --nav-bg: var(--paper-light);
-        --nav-active-bg: rgba(246, 223, 99, 0.3);
-        --input-bg: rgba(26, 23, 48, 0.05);
-        --modal-bg: var(--paper-light);
-        --schedule-header-bg: var(--paper-light);
-        --schedule-grid-lines: rgba(26, 23, 48, 0.15);
+        /* Dark glass theme (teal accent) */
+        --accent: #19b8a6; --accent-text: #5fdccd; --on-accent: #04201c;
+        --bg:
+          radial-gradient(70% 38% at 8% 0%, rgba(37, 99, 235, 0.24), transparent 72%),
+          radial-gradient(60% 34% at 105% 32%, rgba(13, 148, 136, 0.20), transparent 70%),
+          radial-gradient(75% 40% at 20% 100%, rgba(219, 39, 119, 0.13), transparent 72%),
+          #0f0f16;
+        --surface: rgba(255,255,255,0.075); --surface-2: rgba(255,255,255,0.13); --line: rgba(255,255,255,0.15);
+        --text: #f5f6f8; --muted: rgba(238,240,246,0.64);
+        --nav: rgba(28,32,40,0.55); --nav-active: var(--accent); --nav-active-ink: var(--on-accent); --nav-ink: rgba(238,240,246,0.7);
+        --grid-head: #101016; --grid-bg: rgba(255,255,255,0.05);
+        --tile-1: #6aa5ff; --tile-2: #2fd0bd; --tile-3: #f777b3;
+        --chip-bg: rgba(255,255,255,0.1);
+        --glass-blur: blur(22px) saturate(170%);
+        --glass-shadow: inset 0 1px 0 rgba(255,255,255,0.24), 0 10px 28px rgba(0,0,0,0.28);
+        --hero-bg: linear-gradient(165deg, rgba(255,255,255,0.20), rgba(255,255,255,0.09));
+        --hero-ink: #ffffff;
+        --nav-shadow: inset 0 1px 0 rgba(255,255,255,0.26), 0 14px 34px rgba(0,0,0,0.45);
+
+        /* names the rest of the app already uses */
+        --bg-gradient: var(--bg);
+        --card-bg: var(--surface);
+        --card-border: 1px solid var(--line);
+        --glass-border: 1px solid var(--line);
+        --text-primary: var(--text);
+        --text-muted: var(--muted);
+        --nav-bg: var(--nav);
+        --nav-active-bg: rgba(25, 184, 166, 0.2);
+        --input-bg: rgba(255,255,255,0.05);
+        --modal-bg: #12141a;
+        --schedule-header-bg: var(--grid-head);
+        --schedule-grid-lines: var(--line);
       }
 
       body.light-mode {
-        /* Already light by default in this style */
+        /* Light Mode Overrides */
+        --accent: #0f9d8d; --accent-text: #0b7d70; --on-accent: #ffffff;
+        --bg: radial-gradient(circle at 50% -20%, #d9f3ef 0%, #f3f4f6 60%, #ffffff 100%);
+        --surface: rgba(255,255,255,0.72); --surface-2: rgba(15,23,42,0.06); --line: rgba(15,23,42,0.1);
+        --text: #0f172a; --muted: rgba(15,23,42,0.62);
+        --nav: rgba(255,255,255,0.75); --nav-ink: rgba(15,23,42,0.62);
+        --grid-head: #ffffff; --grid-bg: rgba(255,255,255,0.6);
+        --tile-1: #2563eb; --tile-2: #0d9488; --tile-3: #db2777;
+        --chip-bg: rgba(15,23,42,0.06);
+        --glass-shadow: inset 0 1px 0 rgba(255,255,255,0.7), 0 8px 22px rgba(15,23,42,0.08);
+        --hero-bg: linear-gradient(165deg, rgba(255,255,255,0.9), rgba(255,255,255,0.6));
+        --hero-ink: #0f172a;
+        --nav-shadow: 0 10px 28px rgba(15,23,42,0.14);
+        --nav-active-bg: rgba(15, 157, 141, 0.12);
+        --input-bg: rgba(0,0,0,0.05);
+        --modal-bg: #ffffff;
       }
 
       body {
-        background-color: var(--paper);
-        background-image: 
-          linear-gradient(rgba(26, 23, 48, 0.045) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(26, 23, 48, 0.045) 1px, transparent 1px);
-        background-size: 36px 36px;
+        background-color: #0f0f16;
+        background-image: var(--bg-gradient);
         color: var(--text-primary);
         overflow-x: hidden;
-        transition: background-color 0.5s ease, color 0.5s ease;
-        font-family: 'Instrument Sans', 'Inter', sans-serif;
+        transition: background-image 0.5s ease, color 0.5s ease;
       }
       
       .hide-scroll::-webkit-scrollbar { display: none; }
       .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
       
       .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+      /* no visible scrollbars on touch screens */
+      @media (pointer: coarse) { .custom-scrollbar::-webkit-scrollbar { display: none; } .custom-scrollbar { scrollbar-width: none; } }
+      .ev-chip { background: var(--chip-bg); border: 1px solid var(--line); }
+      .spin-ring { border-color: var(--line); border-top-color: var(--text); }
       .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-      .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(26, 23, 48, 0.2); border-radius: 10px; }
-      .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(26, 23, 48, 0.4); }
+      .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 10px; }
+      .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.4); }
 
       /* ============================================================
          Enter/Exit animation utilities (tailwindcss-animate shim)
@@ -171,8 +148,8 @@
         to { transform: rotate(360deg); }
       }
       @keyframes glow-pulse {
-        0%, 100% { box-shadow: 0 0 18px rgba(139, 92, 246, 0.25); }
-        50% { box-shadow: 0 0 34px rgba(139, 92, 246, 0.5); }
+        0%, 100% { box-shadow: 0 0 18px rgba(25, 184, 166, 0.25); }
+        50% { box-shadow: 0 0 34px rgba(25, 184, 166, 0.5); }
       }
       .animate-glow { animation: glow-pulse 3s ease-in-out infinite; }
 
@@ -197,7 +174,7 @@
       input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
       input[type="number"] { -moz-appearance: textfield; }
 
-      ::selection { background: rgba(139, 92, 246, 0.4); }
+      ::selection { background: rgba(25, 184, 166, 0.4); }
 
       @media (prefers-reduced-motion: reduce) {
         *, *::before, *::after {

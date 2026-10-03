@@ -6,6 +6,7 @@ import { GymNutritionLogger } from './gym/GymNutritionLogger';
 import { GymAnalysis } from './gym/GymAnalysis';
 import { GymSettingsComponent } from './gym/GymSettings';
 import { GymNavigation } from './gym/GymNavigation';
+import { styles } from '../theme';
 import { DEFAULT_EXERCISES } from '../constants';
 
 interface GymViewProps {
@@ -98,16 +99,7 @@ const GymView: React.FC<GymViewProps> = ({
   };
 
   return (
-    <div
-      className="custom-scrollbar"
-      style={{
-        flex: 1,
-        overflowY: 'auto',
-        overflowX: 'hidden',
-        padding: '0 16px',
-        paddingBottom: '120px',
-      }}
-    >
+    <div style={styles.scrollableContent} className="custom-scrollbar">
         <div key={currentView} className="animate-in fade-in slide-in-from-bottom-2 duration-300 max-w-3xl mx-auto w-full">
             {renderView()}
         </div>

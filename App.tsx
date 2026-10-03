@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AlertCircle, RefreshCw } from 'lucide-react';
 import { Toaster, toast } from 'react-hot-toast';
+import { remindersEnabled, syncReminders } from './services/notifications';
 import { supabase } from './lib/supabase';
 import { ViewState, ScheduleEvent, ScheduleProfile, EventColorMap, EventType, PeriodDefinition, Announcement, ThemeMode, FoodItem, WaterLog, WorkoutSession, WorkoutRoutine, ExerciseDefinition, GymSettings, ActiveGymState, CourseGrade, ToDoItem, MaterialFile, BodyLog } from './types';
 import { INITIAL_EVENTS, INITIAL_PROFILES, INITIAL_COLORS, INITIAL_PERIODS, DEFAULT_GYM_SETTINGS, DEFAULT_ROUTINES, INITIAL_FILES, generateId } from './constants';
@@ -930,12 +931,23 @@ export const App: React.FC = () => {
 
   const isAppReady = !loading || (!session && !loading); // If loading is done, ready. If not logged in and loading checked, ready.
 
+  // Class reminders: re-plan whenever the schedule changes or the app comes back to the front.
+  useEffect(() => {
+    const plan = () => {
+      if (remindersEnabled()) syncReminders(events.filter(e => e.scheduleId === activeProfileId));
+    };
+    plan();
+    const onVisible = () => { if (document.visibilityState === 'visible') plan(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [events, activeProfileId]);
+
   if (!isAppReady) return (
     <div style={{...styles.container, justifyContent: 'center', alignItems: 'center', background: 'var(--bg-gradient)'}} className="transition-opacity duration-500 ease-in-out">
       <div className="flex flex-col items-center gap-6 animate-pulse">
         <div className="relative">
-          <div className="w-20 h-20 border-4 border-violet-500/20 rounded-full animate-ping absolute inset-0"></div>
-          <div className="w-20 h-20 border-4 border-t-violet-500 border-r-transparent border-b-transparent border-l-transparent rounded-full animate-spin"></div>
+          <div className="w-20 h-20 border-4 border-teal-500/20 rounded-full animate-ping absolute inset-0"></div>
+          <div className="w-20 h-20 border-4 border-t-teal-500 border-r-transparent border-b-transparent border-l-transparent rounded-full animate-spin"></div>
           <div className="absolute inset-0 flex items-center justify-center">
             <span className="text-3xl">🎓</span>
           </div>
@@ -943,9 +955,9 @@ export const App: React.FC = () => {
         <div className="flex flex-col items-center gap-2">
           <h2 className="text-white font-bold text-xl tracking-wider">UNIMATE</h2>
           <div className="flex gap-1">
-            <div className="w-2 h-2 bg-violet-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-            <div className="w-2 h-2 bg-violet-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-            <div className="w-2 h-2 bg-violet-500 rounded-full animate-bounce"></div>
+            <div className="w-2 h-2 bg-teal-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+            <div className="w-2 h-2 bg-teal-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+            <div className="w-2 h-2 bg-teal-500 rounded-full animate-bounce"></div>
           </div>
         </div>
       </div>
@@ -1048,6 +1060,8 @@ export const App: React.FC = () => {
             }}
             periods={currentPeriods}
         />;
+      case 'ai':
+        return <AIChat onAddEvent={onAddEvent} periods={currentPeriods} />;
       case 'gym':
         return <GymView 
             onBack={() => setView('dashboard')}
@@ -1388,7 +1402,7 @@ export const App: React.FC = () => {
     <div style={styles.container} className={`${themeMode} app-shell`}>
       {((isSyncing) || (isSyncingPhase2 && view === 'materials')) && !loading && (
         <div className="fixed top-20 right-4 z-[2000] flex items-center gap-2 bg-slate-900/80 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-full shadow-2xl animate-in fade-in slide-in-from-top-2 duration-300">
-           <div className={`w-1.5 h-1.5 ${isSyncing ? 'bg-emerald-500' : 'bg-violet-500'} rounded-full animate-pulse`}></div>
+           <div className={`w-1.5 h-1.5 ${isSyncing ? 'bg-emerald-500' : 'bg-teal-500'} rounded-full animate-pulse`}></div>
            <span className="text-[9px] font-bold text-white/70 uppercase tracking-widest">
                {isSyncing ? 'Syncing Meta' : 'Background Sync'}
            </span>

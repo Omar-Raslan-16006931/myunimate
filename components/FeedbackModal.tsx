@@ -3,36 +3,6 @@ import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { X, Send, Loader2, MessageSquare, CheckCircle2, ChevronDown, Bug, Lightbulb, HelpCircle, AlertTriangle } from 'lucide-react';
 
-// ── Design tokens ─────────────────────────────────────────────────────────────
-const INK       = '#1A1730';
-const CARD_BG   = '#FAFAF6';
-const HL_YELLOW = '#F6DF63';
-const HL_GREEN  = '#8CE3B7';
-const HL_ORANGE = '#F4BE8A';
-
-const inputStyle: React.CSSProperties = {
-  background: 'rgba(26,23,48,0.06)',
-  border: `1.5px solid ${INK}`,
-  borderRadius: '8px',
-  padding: '12px 14px',
-  color: INK,
-  fontFamily: "'Instrument Sans', 'Inter', sans-serif",
-  fontSize: '0.9rem',
-  outline: 'none',
-  width: '100%',
-  boxSizing: 'border-box',
-};
-
-const labelStyle: React.CSSProperties = {
-  display: 'block',
-  fontSize: '0.68rem',
-  fontWeight: 700,
-  letterSpacing: '0.5px',
-  textTransform: 'uppercase',
-  color: `${INK}90`,
-  fontFamily: "'Instrument Sans', 'Inter', sans-serif",
-  marginBottom: '8px',
-};
 
 interface FeedbackModalProps {
   isOpen: boolean;
@@ -82,136 +52,88 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose, userId }
 
   const getCategoryIcon = (cat: string) => {
       switch(cat) {
-          case 'Bug': return <Bug size={15} color="#E56A5A" />;
-          case 'Feature Request': return <Lightbulb size={15} color="#F4BE8A" />;
-          default: return <HelpCircle size={15} color="#9ECFFF" />;
+          case 'Bug': return <Bug size={16} className="text-red-400" />;
+          case 'Feature Request': return <Lightbulb size={16} className="text-yellow-400" />;
+          default: return <HelpCircle size={16} className="text-blue-400" />;
       }
-  };
+  }
 
   return (
-    <div
-      style={{
-        position: 'fixed', inset: 0, zIndex: 2000,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: '16px',
-        background: 'rgba(26,23,48,0.6)',
-      }}
-      onClick={handleClose}
-    >
+    <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={handleClose}>
       <div 
-        style={{
-          background: CARD_BG,
-          border: `1.5px solid ${INK}`,
-          borderRadius: '14px',
-          boxShadow: `8px 10px 0 ${INK}`,
-          width: '100%',
-          maxWidth: '400px',
-          overflow: 'hidden',
-        }}
+        className="w-full max-w-md bg-[#0f172a] border border-white/10 rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '16px 20px',
-          borderBottom: `1.5px solid rgba(26,23,48,0.12)`,
-          background: `${HL_YELLOW}40`,
-        }}>
-          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
-            <div style={{padding: '7px', background: INK, borderRadius: '9px', display: 'flex', border: `1.5px solid ${INK}`}}>
-              <MessageSquare size={18} color="#fff" />
+        <div className="flex items-center justify-between px-6 py-4 border-b border-white/5 bg-[#12141a]">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-indigo-500/10 rounded-xl text-indigo-400">
+              <MessageSquare size={20} />
             </div>
-            <h3 style={{margin: 0, fontSize: '1.1rem', fontWeight: 800, color: INK, fontFamily: "'Bricolage Grotesque', 'Inter', sans-serif"}}>Send Feedback</h3>
+            <h3 className="text-lg font-bold text-white">Send Feedback</h3>
           </div>
           <button 
             onClick={handleClose} 
-            style={{padding: '6px', background: 'rgba(26,23,48,0.07)', border: `1.5px solid ${INK}`, borderRadius: '8px', cursor: 'pointer', display: 'flex', color: INK}}
+            className="p-2 text-white/40 hover:text-white hover:bg-white/5 rounded-full transition-colors"
           >
-            <X size={17} color={INK} />
+            <X size={20} />
           </button>
         </div>
 
-        <div style={{padding: '20px'}}>
+        <div className="p-6">
             {showSuccess ? (
-                <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '24px 0', textAlign: 'center'}}>
-                    <div style={{
-                      width: '64px', height: '64px',
-                      background: `${HL_GREEN}40`,
-                      border: `1.5px solid ${INK}`,
-                      borderRadius: '50%',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      marginBottom: '16px',
-                      boxShadow: `3px 3px 0 ${INK}`,
-                    }}>
-                        <CheckCircle2 size={30} color={INK} />
+                <div className="flex flex-col items-center py-8 text-center animate-in fade-in zoom-in duration-300">
+                    <div className="w-16 h-16 bg-green-500/10 rounded-full flex items-center justify-center mb-4 text-green-400 shadow-[0_0_20px_rgba(74,222,128,0.2)]">
+                        <CheckCircle2 size={32} />
                     </div>
-                    <h3 style={{margin: '0 0 8px 0', fontSize: '1.25rem', fontWeight: 800, color: INK, fontFamily: "'Bricolage Grotesque', 'Inter', sans-serif"}}>Feedback Sent!</h3>
-                    <p style={{margin: '0 0 24px 0', color: `${INK}70`, fontSize: '0.88rem', fontFamily: "'Instrument Sans', 'Inter', sans-serif", lineHeight: 1.5}}>
+                    <h3 className="text-xl font-bold text-white mb-2">Feedback Sent!</h3>
+                    <p className="text-white/60 text-sm mb-8 px-4">
                         Thanks for helping us improve. We'll review your report shortly.
                     </p>
                     <button 
                         onClick={handleClose}
-                        style={{
-                          width: '100%',
-                          padding: '13px',
-                          borderRadius: '10px',
-                          background: INK,
-                          border: `1.5px solid ${INK}`,
-                          color: '#fff',
-                          fontWeight: 700,
-                          fontSize: '0.95rem',
-                          cursor: 'pointer',
-                          boxShadow: `4px 4px 0 ${HL_GREEN}`,
-                          fontFamily: "'Bricolage Grotesque', 'Inter', sans-serif",
-                        }}
+                        className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-green-900/20 active:scale-[0.98]"
                     >
                         Done
                     </button>
                 </div>
             ) : (
-                <div style={{display: 'flex', flexDirection: 'column', gap: '18px'}}>
+                <div className="flex flex-col gap-5">
                     
                     {/* Category Selector */}
                     <div>
-                        <label style={labelStyle}>Category</label>
-                        <div style={{position: 'relative'}}>
-                            <div style={{position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', display: 'flex'}}>
+                        <label className="block text-xs font-bold text-white/60 uppercase tracking-wider mb-2">Category</label>
+                        <div className="relative">
+                            <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
                                 {getCategoryIcon(category)}
                             </div>
                             <select 
                                 value={category}
                                 onChange={(e) => setCategory(e.target.value as any)}
-                                style={{...inputStyle, paddingLeft: '36px', paddingRight: '36px', appearance: 'none', cursor: 'pointer'}}
+                                className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-10 pr-10 text-sm text-white appearance-none focus:outline-none focus:border-indigo-500/50 transition-colors cursor-pointer hover:bg-white/10"
                             >
                                 <option value="Bug">Bug Report</option>
                                 <option value="Feature Request">Feature Request</option>
                                 <option value="Other">Other</option>
                             </select>
-                            <ChevronDown style={{position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none'}} size={15} color={`${INK}60`} />
+                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" size={16} />
                         </div>
                     </div>
 
                     {/* Message Input */}
                     <div>
-                        <label style={labelStyle}>Message</label>
+                        <label className="block text-xs font-bold text-white/60 uppercase tracking-wider mb-2">Message</label>
                         <textarea
                             value={message}
                             onChange={(e) => setMessage(e.target.value)}
                             placeholder={category === 'Bug' ? "Describe what happened..." : "Tell us your idea..."}
-                            style={{...inputStyle, minHeight: '130px', resize: 'none', lineHeight: 1.6}}
+                            className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-sm text-white placeholder-white/20 focus:outline-none focus:border-indigo-500/50 transition-colors min-h-[140px] resize-none"
                         />
                     </div>
 
-                    {/* Warning notice */}
-                    <div style={{
-                      display: 'flex', alignItems: 'flex-start', gap: '8px',
-                      background: `${HL_ORANGE}40`,
-                      border: `1.5px solid ${HL_ORANGE}`,
-                      padding: '10px 12px',
-                      borderRadius: '10px',
-                    }}>
-                        <AlertTriangle size={13} color={INK} style={{flexShrink: 0, marginTop: '2px'}} />
-                        <p style={{margin: 0, fontSize: '0.72rem', color: `${INK}90`, lineHeight: 1.5, fontFamily: "'Instrument Sans', 'Inter', sans-serif", fontWeight: 500}}>
+                    <div className="flex items-start gap-2 bg-orange-500/10 border border-orange-500/20 p-3 rounded-xl">
+                        <AlertTriangle size={14} className="text-orange-400 shrink-0 mt-0.5" />
+                        <p className="text-[10px] text-orange-200/70 leading-relaxed font-medium">
                             Please avoid submitting duplicate or spam messages. Misuse of the feedback system will result in an account suspension.
                         </p>
                     </div>
@@ -220,41 +142,20 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose, userId }
                     <button 
                         onClick={handleSubmit}
                         disabled={isSubmitting || !message.trim()}
-                        style={{
-                          width: '100%',
-                          padding: '13px',
-                          borderRadius: '10px',
-                          fontWeight: 700,
-                          fontSize: '0.95rem',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '8px',
-                          cursor: (isSubmitting || !message.trim()) ? 'not-allowed' : 'pointer',
-                          fontFamily: "'Bricolage Grotesque', 'Inter', sans-serif",
-                          ...(isSubmitting || !message.trim()
-                            ? {
-                                background: 'rgba(26,23,48,0.06)',
-                                color: `${INK}40`,
-                                border: `1.5px solid rgba(26,23,48,0.2)`,
-                                boxShadow: 'none',
-                              }
-                            : {
-                                background: INK,
-                                color: '#fff',
-                                border: `1.5px solid ${INK}`,
-                                boxShadow: `4px 4px 0 ${HL_YELLOW}`,
-                              }),
-                        }}
+                        className={`
+                            w-full py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-lg
+                            ${(isSubmitting || !message.trim()) 
+                                ? 'bg-white/5 text-white/30 cursor-not-allowed' 
+                                : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-900/20 active:scale-[0.98]'}
+                        `}
                     >
-                        {isSubmitting ? <Loader2 size={17} style={{animation: 'spin 1s linear infinite'}} /> : <Send size={17} />}
+                        {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
                         <span>{isSubmitting ? 'Sending...' : 'Send Feedback'}</span>
                     </button>
                 </div>
             )}
         </div>
       </div>
-      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 };
