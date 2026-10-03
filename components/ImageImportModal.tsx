@@ -3,12 +3,6 @@ import { X, Upload, Loader2, Image as ImageIcon } from 'lucide-react';
 import { ExtractedScheduleItem } from '../types';
 import { parseScheduleImage } from '../services/geminiService';
 
-// ── Design tokens ─────────────────────────────────────────────────────────────
-const INK       = '#1A1730';
-const CARD_BG   = '#FAFAF6';
-const HL_YELLOW = '#F6DF63';
-const HL_RED    = '#E56A5A';
-
 interface ImageImportModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -57,151 +51,50 @@ const ImageImportModal: React.FC<ImageImportModalProps> = ({ isOpen, onClose, on
   };
 
   return (
-    <div
-      style={{
-        position: 'fixed', inset: 0, zIndex: 2000,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: '16px',
-        background: 'rgba(26,23,48,0.6)',
-      }}
-    >
-      {/* Backdrop */}
-      <div style={{position: 'absolute', inset: 0}} onClick={onClose} />
-
-      {/* Modal card */}
-      <div style={{
-        position: 'relative',
-        background: CARD_BG,
-        width: '100%',
-        maxWidth: '360px',
-        borderRadius: '14px',
-        border: `1.5px solid ${INK}`,
-        boxShadow: `8px 10px 0 ${INK}`,
-        padding: '24px',
-        textAlign: 'center',
-        maxHeight: '90vh',
-        overflowY: 'auto',
-        boxSizing: 'border-box',
-      }}>
+    <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={onClose} />
+      <div className="relative bg-[#06262a] w-full max-w-sm rounded-3xl border border-white/10 shadow-2xl p-6 text-center animate-scale-in overflow-y-auto max-h-[90vh] custom-scrollbar">
         
-        {/* Close button */}
-        <button
-          onClick={onClose}
-          style={{
-            position: 'absolute', top: '14px', right: '14px',
-            background: 'rgba(26,23,48,0.07)', border: `1.5px solid ${INK}`,
-            borderRadius: '8px', padding: '6px', cursor: 'pointer', display: 'flex',
-          }}
-        >
-          <X size={17} color={INK} />
+        <button onClick={onClose} className="absolute top-4 right-4 text-white/50 hover:text-white">
+          <X size={24} />
         </button>
 
-        {/* Upload icon */}
-        <div style={{
-          width: '60px', height: '60px',
-          background: `${HL_YELLOW}60`,
-          border: `1.5px solid ${INK}`,
-          borderRadius: '14px',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          margin: '0 auto 16px auto',
-          boxShadow: `3px 3px 0 ${INK}`,
-        }}>
-           <Upload size={28} color={INK} />
+        <div className="w-16 h-16 bg-teal-600/20 rounded-full flex items-center justify-center mx-auto mb-4 text-teal-400">
+           <Upload size={32} />
         </div>
 
-        <h2 style={{
-          margin: '0 0 8px 0', fontSize: '1.3rem', fontWeight: 800,
-          color: INK, fontFamily: "'Bricolage Grotesque', 'Inter', sans-serif",
-        }}>Import Schedule</h2>
-        <p style={{
-          margin: '0 0 20px 0', fontSize: '0.88rem', color: `${INK}80`,
-          fontFamily: "'Instrument Sans', 'Inter', sans-serif", lineHeight: 1.5,
-        }}>
-          Upload a screenshot of your timetable. Our AI will extract the classes automatically.
-        </p>
+        <h2 className="text-xl font-bold text-white mb-2">Import Schedule</h2>
+        <p className="text-sm text-white/60 mb-6">Upload a screenshot of your timetable. Our AI will extract the classes automatically.</p>
 
         {selectedImage ? (
-           <div style={{
-             marginBottom: '20px', position: 'relative',
-             borderRadius: '10px', overflow: 'hidden',
-             border: `1.5px solid ${INK}`, maxHeight: '180px',
-           }}>
-             <img src={selectedImage} alt="Preview" style={{width: '100%', height: '100%', objectFit: 'cover', display: 'block'}} />
-             <button
-               onClick={() => setSelectedImage(null)}
-               style={{
-                 position: 'absolute', top: '8px', right: '8px',
-                 background: CARD_BG, border: `1.5px solid ${INK}`,
-                 borderRadius: '6px', padding: '4px', cursor: 'pointer', display: 'flex',
-               }}
-             >
-               <X size={13} color={INK} />
-             </button>
+           <div className="mb-6 relative rounded-xl overflow-hidden border border-white/10 max-h-48 mx-auto">
+             <img src={selectedImage} alt="Preview" className="w-full h-full object-cover" />
+             <button onClick={() => setSelectedImage(null)} className="absolute top-2 right-2 bg-black/50 p-1 rounded-full text-white"><X size={14}/></button>
            </div>
         ) : (
-          <label style={{
-            display: 'block', width: '100%',
-            border: `2px dashed rgba(26,23,48,0.3)`,
-            borderRadius: '12px', padding: '32px 16px',
-            marginBottom: '20px', cursor: 'pointer',
-            background: 'rgba(26,23,48,0.03)',
-            boxSizing: 'border-box',
-            transition: 'background 0.15s',
-          }}>
-            <input type="file" accept="image/*" onChange={handleFileChange} style={{display: 'none'}} />
-            <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', color: `${INK}60`}}>
-              <ImageIcon size={24} color={`${INK}60`} />
-              <span style={{fontSize: '0.8rem', fontWeight: 600, fontFamily: "'Instrument Sans', 'Inter', sans-serif"}}>Tap to upload</span>
+          <label className="block w-full border-2 border-dashed border-white/10 rounded-xl p-8 mb-6 cursor-pointer hover:bg-white/5 transition-colors">
+            <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
+            <div className="flex flex-col items-center gap-2 text-white/40">
+              <ImageIcon size={24} />
+              <span className="text-xs">Tap to upload</span>
             </div>
           </label>
         )}
 
-        {error && (
-          <p style={{
-            color: HL_RED, fontSize: '0.8rem', marginBottom: '12px',
-            background: `${HL_RED}15`, padding: '8px 12px', borderRadius: '8px',
-            border: `1px solid ${HL_RED}50`, textAlign: 'left',
-            fontFamily: "'Instrument Sans', 'Inter', sans-serif",
-          }}>
-            {error}
-          </p>
-        )}
+        {error && <p className="text-red-400 text-xs mb-4">{error}</p>}
 
         <button 
           onClick={handleProcess}
           disabled={!selectedImage || isProcessing}
-          style={{
-            width: '100%',
-            padding: '13px',
-            borderRadius: '10px',
-            fontWeight: 700,
-            fontSize: '0.95rem',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-            fontFamily: "'Bricolage Grotesque', 'Inter', sans-serif",
-            cursor: (!selectedImage || isProcessing) ? 'not-allowed' : 'pointer',
-            ...( (!selectedImage || isProcessing)
-              ? {
-                  background: 'rgba(26,23,48,0.07)',
-                  color: `${INK}40`,
-                  border: `1.5px solid rgba(26,23,48,0.2)`,
-                  boxShadow: 'none',
-                }
-              : {
-                  background: INK,
-                  color: '#fff',
-                  border: `1.5px solid ${INK}`,
-                  boxShadow: `4px 4px 0 ${HL_YELLOW}`,
-                }),
-          }}
+          className="w-full bg-teal-600 disabled:bg-white/10 text-white font-bold py-3 rounded-xl hover:bg-teal-500 transition-colors flex justify-center items-center gap-2"
         >
           {isProcessing ? (
-             <><Loader2 size={17} style={{animation: 'spin 1s linear infinite'}} /> Processing...</>
+             <><Loader2 size={18} className="animate-spin" /> Processing...</>
           ) : (
              'Analyze & Import'
           )}
         </button>
       </div>
-      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 };

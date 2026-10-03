@@ -30,7 +30,7 @@ export function AnimatedHero() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
           >
-            <span className="text-xs md:text-sm font-semibold text-violet-400 px-4 py-2 bg-violet-500/10 border border-violet-500/20 rounded-full">
+            <span className="text-xs md:text-sm font-semibold text-teal-400 px-4 py-2 bg-teal-500/10 border border-teal-500/20 rounded-full">
               ✨ The Student OS
             </span>
           </motion.div>
@@ -43,7 +43,7 @@ export function AnimatedHero() {
                 {titles.map((title, index) => (
                   <motion.span
                     key={index}
-                    className="absolute font-black bg-clip-text text-transparent bg-gradient-to-r from-violet-400 via-indigo-400 to-violet-400"
+                    className="absolute font-black bg-clip-text text-transparent bg-gradient-to-r from-teal-400 via-indigo-400 to-teal-400"
                     initial={{ opacity: 0, y: 100 }}
                     transition={{ type: "spring", stiffness: 50 }}
                     animate={
@@ -82,7 +82,7 @@ export function AnimatedHero() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5, duration: 0.8 }}
           >
-            <button className="group relative px-8 py-3 md:px-10 md:py-4 text-base md:text-lg font-bold rounded-lg overflow-hidden bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white shadow-lg shadow-violet-600/50 hover:shadow-violet-600/80 transition-all duration-300 hover:scale-105 active:scale-95">
+            <button className="group relative px-8 py-3 md:px-10 md:py-4 text-base md:text-lg font-bold rounded-lg overflow-hidden bg-gradient-to-r from-teal-600 to-indigo-600 hover:from-teal-500 hover:to-indigo-500 text-white shadow-lg shadow-teal-600/50 hover:shadow-teal-600/80 transition-all duration-300 hover:scale-105 active:scale-95">
               Get Started Free
               <ArrowRight className="w-5 h-5 ml-2 inline-block group-hover:translate-x-1 transition-transform" />
             </button>
@@ -96,7 +96,7 @@ export function AnimatedHero() {
       {/* Animated gradient background */}
       <div className="absolute inset-0 -z-10 overflow-hidden">
         <motion.div
-          className="absolute top-1/4 left-1/4 w-96 h-96 bg-violet-600/20 rounded-full blur-3xl"
+          className="absolute top-1/4 left-1/4 w-96 h-96 bg-teal-600/20 rounded-full blur-3xl"
           animate={{
             x: [0, 100, 0],
             y: [0, 50, 0],

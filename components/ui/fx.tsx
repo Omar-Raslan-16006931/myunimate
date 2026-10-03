@@ -166,7 +166,7 @@ export const GradientText = ({ children, className = '' }: { children: React.Rea
     className={`bg-clip-text text-transparent ${className}`}
     style={{
       backgroundImage:
-        'linear-gradient(110deg, #a78bfa, #f0abfc, #818cf8, #a78bfa)',
+        'linear-gradient(110deg, #5fdccd, #f0abfc, #818cf8, #5fdccd)',
       backgroundSize: '200% auto',
       animation: 'fx-gradient 5s linear infinite',
     }}
@@ -198,7 +198,7 @@ export const TiltCard = ({
   const gy = useTransform(ys, [-0.5, 0.5], [0, 100]);
   const glowBg = useTransform(
     [gx, gy] as [MotionValue<number>, MotionValue<number>],
-    ([a, b]: number[]) => `radial-gradient(circle at ${a}% ${b}%, rgba(167,139,250,0.22), transparent 60%)`
+    ([a, b]: number[]) => `radial-gradient(circle at ${a}% ${b}%, rgba(95, 220, 205,0.22), transparent 60%)`
   );
 
   const onMove = useCallback(
@@ -276,7 +276,7 @@ export const Magnetic = ({
 };
 
 // --- Cursor spotlight (follows mouse over a container) ----------------------
-export const Spotlight = ({ className = '', color = 'rgba(139,92,246,0.12)' }: { className?: string; color?: string }) => {
+export const Spotlight = ({ className = '', color = 'rgba(25, 184, 166,0.12)' }: { className?: string; color?: string }) => {
   const x = useMotionValue(-400);
   const y = useMotionValue(-400);
   const xs = useSpring(x, { stiffness: 120, damping: 25 });
@@ -301,10 +301,10 @@ export const Spotlight = ({ className = '', color = 'rgba(139,92,246,0.12)' }: {
 // --- Aurora animated background --------------------------------------------
 export const Aurora = ({ className = '' }: { className?: string }) => (
   <div className={`pointer-events-none absolute inset-0 overflow-hidden ${className}`}>
-    <div className="absolute inset-0 bg-[linear-gradient(rgba(139,92,246,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(139,92,246,0.04)_1px,transparent_1px)] bg-[size:64px_64px] [mask-image:radial-gradient(ellipse_at_center,black,transparent_75%)]" />
+    <div className="absolute inset-0 bg-[linear-gradient(rgba(25, 184, 166,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(25, 184, 166,0.04)_1px,transparent_1px)] bg-[size:64px_64px] [mask-image:radial-gradient(ellipse_at_center,black,transparent_75%)]" />
     {[
-      { c: '-top-40 -left-32 w-[560px] h-[560px]', col: 'rgba(139,92,246,0.25)', a: { x: [0, 90, 0], y: [0, 60, 0], scale: [1, 1.15, 1] }, d: 19 },
-      { c: 'top-1/4 -right-32 w-[480px] h-[480px]', col: 'rgba(217,70,239,0.16)', a: { x: [0, -80, 0], y: [0, -50, 0], scale: [1, 1.1, 1] }, d: 23 },
+      { c: '-top-40 -left-32 w-[560px] h-[560px]', col: 'rgba(25, 184, 166,0.25)', a: { x: [0, 90, 0], y: [0, 60, 0], scale: [1, 1.15, 1] }, d: 19 },
+      { c: 'top-1/4 -right-32 w-[480px] h-[480px]', col: 'rgba(45, 212, 191,0.16)', a: { x: [0, -80, 0], y: [0, -50, 0], scale: [1, 1.1, 1] }, d: 23 },
       { c: '-bottom-40 left-1/4 w-[520px] h-[520px]', col: 'rgba(79,70,229,0.22)', a: { x: [0, 60, 0], y: [0, 45, 0], scale: [1, 1.18, 1] }, d: 21 },
       { c: 'top-1/2 left-1/3 w-[340px] h-[340px]', col: 'rgba(56,189,248,0.12)', a: { x: [0, -40, 0], y: [0, -70, 0], scale: [1, 1.2, 1] }, d: 17 },
     ].map((o, i) => (
@@ -340,7 +340,7 @@ export const Marquee = ({
       {[...items, ...items].map((it, i) => (
         <span key={i} className="text-slate-400 text-sm font-medium flex items-center gap-3">
           {it}
-          <span className="text-violet-500/40">✦</span>
+          <span className="text-teal-500/40">✦</span>
         </span>
       ))}
     </motion.div>
@@ -353,7 +353,7 @@ export const ScrollProgress = () => {
   const scaleX = useSpring(scrollYProgress, { stiffness: 120, damping: 30 });
   return (
     <motion.div
-      className="fixed top-0 left-0 right-0 h-[3px] z-[60] origin-left bg-gradient-to-r from-violet-500 via-fuchsia-500 to-indigo-500"
+      className="fixed top-0 left-0 right-0 h-[3px] z-[60] origin-left bg-gradient-to-r from-teal-500 via-cyan-500 to-indigo-500"
       style={{ scaleX }}
     />
   );

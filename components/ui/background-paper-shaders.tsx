@@ -136,14 +136,14 @@ export function BackgroundPaperShaders({ className = '' }: { className?: string 
           position={[0.9, -0.35, -0.6]}
           color1="#1e1b4b"
           color2="#f59e0b"
-          color3="#a855f7"
+          color3="#22c7b4"
           scale={[1.8, 1.4, 1]}
         />
         <EnergyRing radius={1.3} position={[-1.2, -0.8, -0.3]} color="#fb7185" />
-        <EnergyRing radius={1.7} position={[1.0, 0.7, -0.4]} color="#a855f7" />
+        <EnergyRing radius={1.7} position={[1.0, 0.7, -0.4]} color="#22c7b4" />
       </Canvas>
       <div className="absolute inset-0 bg-gradient-to-b from-[#09060f]/10 via-[#09060f]/25 to-[#0a0a0f]" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(168,85,247,0.18),transparent_40%),radial-gradient(circle_at_20%_75%,rgba(249,115,22,0.16),transparent_35%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(34, 199, 180,0.18),transparent_40%),radial-gradient(circle_at_20%_75%,rgba(249,115,22,0.16),transparent_35%)]" />
     </div>
   );
 }
