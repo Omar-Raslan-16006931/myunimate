@@ -148,7 +148,7 @@ export const parseNtlmType2 = (b64: string): NtlmChallenge => {
       targetInfo = m.slice(tiOff, tiOff + tiLen);
       // look for the server timestamp (AV pair id 7)
       let p = 0;
-      const tv = new DataView(targetInfo.buffer);
+      const tv = new DataView(targetInfo.buffer, targetInfo.byteOffset, targetInfo.byteLength);
       while (p + 4 <= targetInfo.length) {
         const id = tv.getUint16(p, true);
         const l = tv.getUint16(p + 2, true);
@@ -176,9 +176,15 @@ export const ntlmV2Responses = (
   time: Uint8Array = ch.timestamp ?? fileTimeNow(),
 ): NtlmV2Parts => {
   const v2hash = hmacMd5(md4(utf16le(password)), utf16le(user.toUpperCase() + domain));
+  // AvPairs in ch.targetInfo already terminates with MsvAvEOL (4 zero bytes).
+  // If targetInfo was empty, provide a 4-byte MsvAvEOL.
+  const avPairs = ch.targetInfo.length >= 4 ? ch.targetInfo : new Uint8Array(4);
   const blob = concat(
-    new Uint8Array([1, 1, 0, 0, 0, 0, 0, 0]), time, clientNonce,
-    new Uint8Array(4), ch.targetInfo, new Uint8Array(4),
+    new Uint8Array([1, 1, 0, 0, 0, 0, 0, 0]), // RespType (1), HiRespType (1), Reserved1 (2), Reserved2 (4)
+    time,                                     // TimeStamp (8)
+    clientNonce,                              // ChallengeFromClient (8)
+    new Uint8Array(4),                        // Reserved3 (4)
+    avPairs,                                  // AvPairs (variable, ending with AvEOL)
   );
   const ntProof = hmacMd5(v2hash, concat(ch.challenge, blob));
   const lmResponse = ch.timestamp
