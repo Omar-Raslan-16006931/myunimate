@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Dumbbell, Calculator, Sparkles, Megaphone, X,
-  CheckSquare, Plus, Brain, Save, Check, ChevronRight, Bell, BellOff
+  CheckSquare, Plus, Brain, Save, Check, ChevronRight, Bell, BellOff, GraduationCap, UserCheck
 } from 'lucide-react';
 import { ScheduleEvent, EventColorMap, PeriodDefinition, Announcement } from '../types';
 import { getLocalISOString } from '../constants';
 import { styles } from '../theme';
 import { toast } from 'react-hot-toast';
 import { remindersEnabled, enableReminders, disableReminders, syncReminders, reminderSupport } from '../services/notifications';
+import { getPortalSummary, PortalSummary } from '../services/portal';
 
 interface DashboardProps {
   events: ScheduleEvent[];
@@ -29,6 +30,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ events, onNavigate, onEven
   const [syncStatus, setSyncStatus] = useState<'idle' | 'loading' | 'success'>('idle');
   const [greeting, setGreeting] = useState('Good Morning');
   const [remindersOn, setRemindersOn] = useState(() => remindersEnabled());
+  const [portal, setPortal] = useState<PortalSummary | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    getPortalSummary().then(p => { if (alive) setPortal(p); });
+    return () => { alive = false; };
+  }, []);
 
   const toggleReminders = async () => {
     if (remindersOn) {
@@ -423,6 +431,28 @@ export const Dashboard: React.FC<DashboardProps> = ({ events, onNavigate, onEven
             <Shortcut onClick={() => onNavigate('todo')} icon={<CheckSquare size={20} />} label="To-Do" tint="var(--tile-3)" />
             <Shortcut onClick={onAddEventClick} icon={<Plus size={20} />} label="Add" />
             <Shortcut onClick={onSmartImportClick} icon={<Brain size={20} />} label="Import" />
+          </motion.div>
+
+          {/* Uni portal */}
+          <motion.div variants={fadeUp} className="grid grid-cols-2 gap-2">
+            <button onClick={() => onNavigate('portal_grades')} className="flex items-center gap-2.5 rounded-[18px] px-3 py-2.5 text-left" style={cardStyle}>
+              <GraduationCap size={20} className="shrink-0" style={{ color: 'var(--accent)' }} />
+              <span className="min-w-0">
+                <span className="block text-[0.86rem] font-bold leading-tight" style={{ color: 'var(--text-primary)' }}>Portal grades</span>
+                <span className="block text-[0.7rem] truncate" style={{ color: portal?.newGrades ? 'var(--accent-text)' : 'var(--text-muted)' }}>
+                  {!portal ? ' ' : !portal.connected ? 'Not connected' : portal.newGrades ? `${portal.newGrades} new` : 'No new grades'}
+                </span>
+              </span>
+            </button>
+            <button onClick={() => onNavigate('attendance')} className="flex items-center gap-2.5 rounded-[18px] px-3 py-2.5 text-left" style={cardStyle}>
+              <UserCheck size={20} className="shrink-0" style={{ color: 'var(--accent)' }} />
+              <span className="min-w-0">
+                <span className="block text-[0.86rem] font-bold leading-tight" style={{ color: 'var(--text-primary)' }}>Attendance</span>
+                <span className="block text-[0.7rem] truncate" style={{ color: 'var(--text-muted)' }}>
+                  {!portal ? ' ' : !portal.connected ? 'Not connected' : portal.absences ? `${portal.absences} absence${portal.absences === 1 ? '' : 's'}` : 'No absences'}
+                </span>
+              </span>
+            </button>
           </motion.div>
 
           {/* Upcoming tests (only shown when there are any) */}
