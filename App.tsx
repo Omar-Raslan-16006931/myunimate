@@ -399,9 +399,23 @@ export const App: React.FC = () => {
         });
     }
 
+    // Auto-update portal data every 30 minutes in the background
+    const portalSyncInterval = setInterval(async () => {
+      if (!session?.user?.id) return;
+      try {
+        const res = await syncPortal();
+        if (res.ok && res.examSeats) {
+          syncExamSeatsToSchedule(res.examSeats, events);
+        }
+      } catch (e) {
+        console.error("Auto portal sync error:", e);
+      }
+    }, 30 * 60 * 1000);
+
     return () => {
         subscription.unsubscribe();
         channels.forEach(ch => supabase.removeChannel(ch));
+        clearInterval(portalSyncInterval);
     };
   }, [session?.user?.id]);
 

@@ -231,10 +231,6 @@ Deno.serve(async (req: Request) => {
   }
 
   if (body.action === "sync") {
-    const { data: account } = await supabase.from("portal_accounts").select("last_sync_at").eq("user_id", userId).maybeSingle();
-    if (account?.last_sync_at && Date.now() - new Date(account.last_sync_at).getTime() < 60_000) {
-      return json({ ok: false, code: "TOO_SOON", message: "Just synced. Try again in a minute." }, 429);
-    }
     return json(await syncUser(userId));
   }
 
