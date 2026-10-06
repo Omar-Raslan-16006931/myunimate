@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../lib/supabase';
-import { Plus, Trash2, Palette, Layers, Loader2, LogOut, ChevronDown, AlertTriangle, User, Check, X, Shield, Search, Ban, Send, ArrowLeft, MessageSquare, ChevronRight, Heart, Columns } from 'lucide-react';
+import { Plus, Trash2, Palette, Layers, Loader2, LogOut, ChevronDown, AlertTriangle, User, Check, X, Shield, Search, Ban, Send, ArrowLeft, MessageSquare, ChevronRight, Heart, Columns, KeyRound } from 'lucide-react';
 import { ScheduleProfile, EventColorMap, EventType, ScheduleEvent, PeriodDefinition, ThemeMode, AppFeedback, FeedbackReply, ViewState } from '../types';
 import { theme, styles } from '../theme';
 import ScheduleSettings from './ScheduleSettings';
+import PortalSettings from './PortalSettings';
 import FeedbackModal from './FeedbackModal';
 import AdminInbox from './AdminInbox';
 
@@ -278,6 +279,7 @@ const Settings: React.FC<SettingsProps> = ({
     const [isScheduleSettingsExpanded, setIsScheduleSettingsExpanded] = useState(false);
     const [isProfilesExpanded, setIsProfilesExpanded] = useState(false);
     const [isColorsExpanded, setIsColorsExpanded] = useState(false);
+    const [isPortalExpanded, setIsPortalExpanded] = useState(false);
     const [isAccountExpanded, setIsAccountExpanded] = useState(false);
     const [isUserMgmtExpanded, setIsUserMgmtExpanded] = useState(false);
     const [isFeedbackInboxExpanded, setIsFeedbackInboxExpanded] = useState(false);
@@ -486,6 +488,11 @@ const Settings: React.FC<SettingsProps> = ({
                     <div className="border-b border-white/[0.05] last:border-0">
                         <SectionHeader icon={Columns} color="#ec4899" title="Timeline Grid" isExpanded={isScheduleSettingsExpanded} onToggle={() => setIsScheduleSettingsExpanded(!isScheduleSettingsExpanded)} />
                         {isScheduleSettingsExpanded && <div className="px-5 pb-6 pt-2 animate-in slide-in-from-top-2 duration-300"><ScheduleSettings periods={periods} setPeriods={setPeriods} /></div>}
+                    </div>
+
+                    <div className="border-b border-white/[0.05] last:border-0">
+                        <SectionHeader icon={KeyRound} color="#19b8a6" title="Uni Portal" isExpanded={isPortalExpanded} onToggle={() => setIsPortalExpanded(!isPortalExpanded)} />
+                        {isPortalExpanded && <div className="px-5 pb-6 pt-2 animate-in slide-in-from-top-2 duration-300"><PortalSettings /></div>}
                     </div>
 
                     <div className="border-b border-white/[0.05] last:border-0">
