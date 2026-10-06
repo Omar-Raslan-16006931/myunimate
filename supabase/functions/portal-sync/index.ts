@@ -71,13 +71,15 @@ const save = async (userId: string, data: PortalData, firstSync: boolean): Promi
   // grades: anything not seen before, or whose grade changed, is flagged as new
   const { data: existing, error: readErr } = await supabase
     .from("portal_grades").select("id, kind, course_key, category, element, grade_text").eq("user_id", userId);
-  if (readErr) throw new Error("DB_READ_FAILED");
-  const byKey = new Map((existing ?? []).map((r) => [`${r.kind}|${r.course_key}|${r.category || ''}|${r.element}`, r]));
+  if (readErr) throw new Error(`DB_READ_FAILED: ${readErr.message}`);
+  // Database table has unique (user_id, kind, course_key, element)
+  const byKey = new Map((existing ?? []).map((r) => [`${r.kind}|${r.course_key}|${r.element}`, r]));
 
   let newCount = 0;
   const seen = new Set<string>();
   for (const g of data.grades) {
-    const key = `${g.kind}|${g.courseKey}|${g.category || ''}|${g.element}`;
+    // Dedup against unique constraint key
+    const key = `${g.kind}|${g.courseKey}|${g.element}`;
     if (seen.has(key)) continue;
     seen.add(key);
     const row = {
@@ -88,11 +90,17 @@ const save = async (userId: string, data: PortalData, firstSync: boolean): Promi
     const old = byKey.get(key);
     if (!old) {
       const { error } = await supabase.from("portal_grades").insert({ ...row, is_new: !firstSync, first_seen_at: now });
-      if (error) throw new Error("DB_WRITE_FAILED");
+      if (error) {
+        console.error("portal_grades insert error:", error);
+        throw new Error(`DB_WRITE_FAILED (portal_grades insert: ${error.message || JSON.stringify(error)})`);
+      }
       if (!firstSync) newCount++;
     } else if (old.grade_text !== g.gradeText) {
       const { error } = await supabase.from("portal_grades").update({ ...row, is_new: true }).eq("id", old.id);
-      if (error) throw new Error("DB_WRITE_FAILED");
+      if (error) {
+        console.error("portal_grades update error:", error);
+        throw new Error(`DB_WRITE_FAILED (portal_grades update: ${error.message || JSON.stringify(error)})`);
+      }
       newCount++;
     }
   }
@@ -105,17 +113,26 @@ const save = async (userId: string, data: PortalData, firstSync: boolean): Promi
       updated_at: now,
     }));
     const { error } = await supabase.from("portal_attendance").upsert(rows, { onConflict: "user_id,course_key,row_number" });
-    if (error) throw new Error("DB_WRITE_FAILED");
+    if (error) {
+      console.error("portal_attendance upsert error:", error);
+      throw new Error(`DB_WRITE_FAILED (portal_attendance: ${error.message || JSON.stringify(error)})`);
+    }
   }
 
   // warning levels: the portal list is the whole truth, so replace it
   const { error: delErr } = await supabase.from("portal_absence_levels").delete().eq("user_id", userId);
-  if (delErr) throw new Error("DB_WRITE_FAILED");
+  if (delErr) {
+    console.error("portal_absence_levels delete error:", delErr);
+    throw new Error(`DB_WRITE_FAILED (portal_absence_levels delete: ${delErr.message || JSON.stringify(delErr)})`);
+  }
   if (data.absenceLevels.length) {
     const { error } = await supabase.from("portal_absence_levels").insert(
       data.absenceLevels.map((l) => ({ user_id: userId, code: l.code, name: l.name, level: l.level, title: l.title })),
     );
-    if (error) throw new Error("DB_WRITE_FAILED");
+    if (error) {
+      console.error("portal_absence_levels insert error:", error);
+      throw new Error(`DB_WRITE_FAILED (portal_absence_levels insert: ${error.message || JSON.stringify(error)})`);
+    }
   }
 
   // exam seats: replace with current active exam seats from portal
