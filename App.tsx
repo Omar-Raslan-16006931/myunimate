@@ -3,6 +3,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { AlertCircle, RefreshCw } from 'lucide-react';
 import { Toaster, toast } from 'react-hot-toast';
 import { remindersEnabled, syncReminders } from './services/notifications';
+import { PortalGrades, PortalAttendance } from './components/PortalScreens';
+import { getPortalSummary, syncPortal } from './services/portal';
 import { supabase } from './lib/supabase';
 import { ViewState, ScheduleEvent, ScheduleProfile, EventColorMap, EventType, PeriodDefinition, Announcement, ThemeMode, FoodItem, WaterLog, WorkoutSession, WorkoutRoutine, ExerciseDefinition, GymSettings, ActiveGymState, CourseGrade, ToDoItem, MaterialFile, BodyLog } from './types';
 import { INITIAL_EVENTS, INITIAL_PROFILES, INITIAL_COLORS, INITIAL_PERIODS, DEFAULT_GYM_SETTINGS, DEFAULT_ROUTINES, INITIAL_FILES, generateId } from './constants';
@@ -931,6 +933,26 @@ export const App: React.FC = () => {
 
   const isAppReady = !loading || (!session && !loading); // If loading is done, ready. If not logged in and loading checked, ready.
 
+  // Uni portal: when the app opens, refresh if the last check is old, and say so if new grades arrived.
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    let cancelled = false;
+    (async () => {
+      let summary = await getPortalSummary();
+      if (!summary.connected || cancelled) return;
+      const age = summary.lastSyncAt ? Date.now() - new Date(summary.lastSyncAt).getTime() : Infinity;
+      if (age > 20 * 60 * 1000) {
+        await syncPortal();
+        if (cancelled) return;
+        summary = await getPortalSummary();
+      }
+      if (!cancelled && summary.newGrades > 0) {
+        toast.success(`${summary.newGrades} new grade${summary.newGrades === 1 ? '' : 's'} on the portal`);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [session?.user?.id]);
+
   // Class reminders: re-plan whenever the schedule changes or the app comes back to the front.
   useEffect(() => {
     const plan = () => {
@@ -1324,6 +1346,10 @@ export const App: React.FC = () => {
             onBack={() => setView('settings')}
         />;
       
+      case 'portal_grades':
+        return <PortalGrades onBack={() => setView('dashboard')} onOpenSettings={() => setView('settings')} />;
+      case 'attendance':
+        return <PortalAttendance onBack={() => setView('dashboard')} onOpenSettings={() => setView('settings')} />;
       case 'settings':
         return <Settings 
             profiles={profiles}
