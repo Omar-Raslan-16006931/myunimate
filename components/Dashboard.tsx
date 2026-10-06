@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Dumbbell, Calculator, Sparkles, Megaphone, X,
-  CheckSquare, Plus, Brain, Save, Check, ChevronRight, Bell, BellOff, GraduationCap, UserCheck
+  CheckSquare, Plus, Brain, Save, Check, ChevronRight, Bell, BellOff, GraduationCap, UserCheck, Armchair
 } from 'lucide-react';
 import { ScheduleEvent, EventColorMap, PeriodDefinition, Announcement } from '../types';
 import { getLocalISOString } from '../constants';
@@ -434,7 +434,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ events, onNavigate, onEven
           </motion.div>
 
           {/* Uni portal */}
-          <motion.div variants={fadeUp} className="grid grid-cols-2 gap-2">
+          <motion.div variants={fadeUp} className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             <button onClick={() => onNavigate('portal_grades')} className="flex items-center gap-2.5 rounded-[18px] px-3 py-2.5 text-left" style={cardStyle}>
               <GraduationCap size={20} className="shrink-0" style={{ color: 'var(--accent)' }} />
               <span className="min-w-0">
@@ -450,6 +450,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ events, onNavigate, onEven
                 <span className="block text-[0.86rem] font-bold leading-tight" style={{ color: 'var(--text-primary)' }}>Attendance</span>
                 <span className="block text-[0.7rem] truncate" style={{ color: 'var(--text-muted)' }}>
                   {!portal ? ' ' : !portal.connected ? 'Not connected' : portal.absences ? `${portal.absences} absence${portal.absences === 1 ? '' : 's'}` : 'No absences'}
+                </span>
+              </span>
+            </button>
+            <button onClick={() => onNavigate('exam_seats')} className="flex items-center gap-2.5 rounded-[18px] px-3 py-2.5 text-left" style={cardStyle}>
+              <Armchair size={20} className="shrink-0" style={{ color: 'var(--accent)' }} />
+              <span className="min-w-0">
+                <span className="block text-[0.86rem] font-bold leading-tight" style={{ color: 'var(--text-primary)' }}>Exam seats</span>
+                <span className="block text-[0.7rem] truncate" style={{ color: 'var(--text-muted)' }}>
+                  {!portal ? ' ' : !portal.connected ? 'Not connected' : portal.examSeats ? `${portal.examSeats} scheduled` : 'View seats'}
                 </span>
               </span>
             </button>

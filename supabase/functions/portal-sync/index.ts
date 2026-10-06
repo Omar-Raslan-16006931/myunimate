@@ -43,9 +43,11 @@ const describe = (e: unknown): { code: string; message: string } => {
   const raw = e instanceof Error ? e.message : String(e);
   const code = raw.match(/^[A-Z][A-Z0-9_]+/)?.[0] ?? "PORTAL_UNREACHABLE";
   const http = code.match(/^PORTAL_HTTP_(\d+)/);
+  const detail = raw.replace(/^[A-Z][A-Z0-9_]+:?\s*/, "").trim();
+  const base = MESSAGES[code] ?? (http ? `The portal answered with error ${http[1]}.` : "Could not reach the portal.");
   return {
     code,
-    message: MESSAGES[code] ?? (http ? `The portal answered with error ${http[1]}.` : "Could not reach the portal."),
+    message: detail && detail !== code ? `${base} (${detail})` : base,
   };
 };
 
@@ -59,6 +61,8 @@ interface SyncResult {
   newGrades?: number;
   grades?: number;
   attendance?: number;
+  examSeatsCount?: number;
+  examSeats?: any[];
 }
 
 const save = async (userId: string, data: PortalData, firstSync: boolean): Promise<number> => {
@@ -66,15 +70,15 @@ const save = async (userId: string, data: PortalData, firstSync: boolean): Promi
 
   // grades: anything not seen before, or whose grade changed, is flagged as new
   const { data: existing, error: readErr } = await supabase
-    .from("portal_grades").select("id, kind, course_key, element, grade_text").eq("user_id", userId);
+    .from("portal_grades").select("id, kind, course_key, category, element, grade_text").eq("user_id", userId);
   if (readErr) throw new Error("DB_READ_FAILED");
-  const byKey = new Map((existing ?? []).map((r) => [`${r.kind}|${r.course_key}|${r.element}`, r]));
+  const byKey = new Map((existing ?? []).map((r) => [`${r.kind}|${r.course_key}|${r.category || ''}|${r.element}`, r]));
 
   let newCount = 0;
   const seen = new Set<string>();
   for (const g of data.grades) {
-    const key = `${g.kind}|${g.courseKey}|${g.element}`;
-    if (seen.has(key)) continue; // the portal listed the same element twice
+    const key = `${g.kind}|${g.courseKey}|${g.category || ''}|${g.element}`;
+    if (seen.has(key)) continue;
     seen.add(key);
     const row = {
       user_id: userId, kind: g.kind, course_key: g.courseKey, course_name: g.courseName,
@@ -113,6 +117,32 @@ const save = async (userId: string, data: PortalData, firstSync: boolean): Promi
     );
     if (error) throw new Error("DB_WRITE_FAILED");
   }
+
+  // exam seats: replace with current active exam seats from portal
+  if (data.examSeats.length) {
+    try {
+      await supabase.from("portal_exam_seats").delete().eq("user_id", userId);
+      await supabase.from("portal_exam_seats").insert(
+        data.examSeats.map((s) => ({
+          user_id: userId,
+          course_key: s.courseKey,
+          course_name: s.courseName,
+          exam_day: s.examDay,
+          exam_date: s.examDate,
+          start_time: s.startTime,
+          end_time: s.endTime,
+          duration_minutes: s.durationMinutes,
+          hall: s.hall,
+          seat: s.seat,
+          exam_type: s.examType,
+          updated_at: now,
+        }))
+      );
+    } catch {
+      // table might not exist yet if migration hasn't run; graceful fallback
+    }
+  }
+
   return newCount;
 };
 
@@ -131,7 +161,14 @@ const syncUser = async (userId: string): Promise<SyncResult> => {
     await supabase.from("portal_accounts").update({
       last_sync_at: now, last_ok_at: now, last_status: "ok", last_error: null,
     }).eq("user_id", userId);
-    return { ok: true, newGrades, grades: data.grades.length, attendance: data.attendance.length };
+    return {
+      ok: true,
+      newGrades,
+      grades: data.grades.length,
+      attendance: data.attendance.length,
+      examSeatsCount: data.examSeats.length,
+      examSeats: data.examSeats,
+    };
   } catch (e) {
     const { code, message } = describe(e);
     console.error("portal sync failed:", code);

@@ -151,7 +151,7 @@ export interface CourseGrade {
   categories: GradeCategory[];
 }
 
-export type ViewState = "dashboard" | "schedule" | "courses" | "materials" | "ai" | "settings" | "grades" | "gym" | "subscription" | "todo" | "referral" | "study_groups" | "portal_grades" | "attendance";
+export type ViewState = "dashboard" | "schedule" | "courses" | "materials" | "ai" | "settings" | "grades" | "gym" | "subscription" | "todo" | "referral" | "study_groups" | "portal_grades" | "attendance" | "exam_seats";
 
 // --- STUDY GROUP TYPES ---
 

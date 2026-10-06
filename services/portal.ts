@@ -44,6 +44,20 @@ export interface PortalAbsenceLevel {
   title: string;
 }
 
+export interface PortalExamSeat {
+  id?: number;
+  course_key: string;
+  course_name: string;
+  exam_day: string;
+  exam_date: string | null;  // YYYY-MM-DD
+  start_time: string;        // HH:MM 24h
+  end_time: string;          // HH:MM 24h
+  duration_minutes: number;
+  hall: string;
+  seat: string;
+  exam_type: string;
+}
+
 export interface PortalSyncResult {
   ok: boolean;
   code?: string;
@@ -51,6 +65,8 @@ export interface PortalSyncResult {
   newGrades?: number;
   grades?: number;
   attendance?: number;
+  examSeatsCount?: number;
+  examSeats?: any[];
 }
 
 const call = async (body: Record<string, unknown>): Promise<PortalSyncResult> => {
@@ -117,10 +133,20 @@ export const getPortalAbsenceLevels = async (): Promise<PortalAbsenceLevel[]> =>
   return error || !data ? [] : (data as PortalAbsenceLevel[]);
 };
 
+export const getPortalExamSeats = async (): Promise<PortalExamSeat[]> => {
+  const { data, error } = await supabase
+    .from('portal_exam_seats')
+    .select('id, course_key, course_name, exam_day, exam_date, start_time, end_time, duration_minutes, hall, seat, exam_type')
+    .order('exam_date', { ascending: true })
+    .order('start_time', { ascending: true });
+  return error || !data ? [] : (data as PortalExamSeat[]);
+};
+
 export interface PortalSummary {
   connected: boolean;
   newGrades: number;
   absences: number;
+  examSeats: number;
   lastSyncAt: string | null;
   lastStatus: PortalAccount['last_status'];
 }
@@ -129,15 +155,17 @@ export const isAbsent = (status: string) => /absent/i.test(status);
 
 export const getPortalSummary = async (): Promise<PortalSummary> => {
   const account = await getPortalAccount();
-  if (!account) return { connected: false, newGrades: 0, absences: 0, lastSyncAt: null, lastStatus: null };
-  const [grades, attendance] = await Promise.all([
+  if (!account) return { connected: false, newGrades: 0, absences: 0, examSeats: 0, lastSyncAt: null, lastStatus: null };
+  const [grades, attendance, examSeats] = await Promise.all([
     supabase.from('portal_grades').select('id', { count: 'exact', head: true }).eq('is_new', true),
     supabase.from('portal_attendance').select('id', { count: 'exact', head: true }).ilike('status', '%absent%'),
+    supabase.from('portal_exam_seats').select('id', { count: 'exact', head: true }),
   ]);
   return {
     connected: true,
     newGrades: grades.count ?? 0,
     absences: attendance.count ?? 0,
+    examSeats: examSeats.count ?? 0,
     lastSyncAt: account.last_sync_at,
     lastStatus: account.last_status,
   };
