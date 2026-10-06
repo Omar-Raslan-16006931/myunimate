@@ -40,14 +40,14 @@ const MESSAGES: Record<string, string> = {
 };
 
 const describe = (e: unknown): { code: string; message: string } => {
-  const raw = e instanceof Error ? e.message : String(e);
+  const raw = e instanceof Error ? (e.stack || e.message) : String(e);
   const code = raw.match(/^[A-Z][A-Z0-9_]+/)?.[0] ?? "PORTAL_UNREACHABLE";
   const http = code.match(/^PORTAL_HTTP_(\d+)/);
   const detail = raw.replace(/^[A-Z][A-Z0-9_]+:?\s*/, "").trim();
-  const base = MESSAGES[code] ?? (http ? `The portal answered with error ${http[1]}.` : "Could not reach the portal.");
+  const base = MESSAGES[code] ?? (http ? `The portal answered with error ${http[1]}.` : `Could not reach the portal (${raw.slice(0, 150)}).`);
   return {
     code,
-    message: detail && detail !== code ? `${base} (${detail})` : base,
+    message: detail && detail !== code && base !== detail ? `${base} (${detail})` : base,
   };
 };
 
