@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, RefreshCw, Loader2, ChevronDown, KeyRound } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Loader2, ChevronDown, KeyRound, Calendar, MapPin, Armchair, Clock } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { styles } from '../theme';
 import {
-  getPortalAccount, getPortalGrades, getPortalAttendance, getPortalAbsenceLevels, markPortalGradesSeen,
+  getPortalAccount, getPortalGrades, getPortalAttendance, getPortalAbsenceLevels, getPortalExamSeats, markPortalGradesSeen,
   syncPortal, timeAgo, isAbsent,
-  PortalAccount, PortalGrade, PortalAttendanceRow, PortalAbsenceLevel,
+  PortalAccount, PortalGrade, PortalAttendanceRow, PortalAbsenceLevel, PortalExamSeat,
 } from '../services/portal';
 
 const card: React.CSSProperties = {
@@ -108,6 +108,7 @@ export const PortalGrades: React.FC<ScreenProps> = ({ onBack, onOpenSettings }) 
   const [account, setAccount] = useState<PortalAccount | null>(null);
   const [grades, setGrades] = useState<PortalGrade[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedCourseKey, setSelectedCourseKey] = useState<string>('');
 
   const reload = async () => {
     const [a, g] = await Promise.all([getPortalAccount(), getPortalGrades()]);
@@ -130,6 +131,32 @@ export const PortalGrades: React.FC<ScreenProps> = ({ onBack, onOpenSettings }) 
     return [...map.values()].sort((a, b) => Number(b.items.some(i => i.is_new) || !!b.midterm?.is_new) - Number(a.items.some(i => i.is_new) || !!a.midterm?.is_new) || a.key.localeCompare(b.key));
   }, [grades]);
 
+  useEffect(() => {
+    if (courses.length > 0 && (!selectedCourseKey || !courses.some(c => c.key === selectedCourseKey))) {
+      setSelectedCourseKey(courses[0].key);
+    }
+  }, [courses, selectedCourseKey]);
+
+  const activeCourse = useMemo(() => {
+    return courses.find(c => c.key === selectedCourseKey) || courses[0] || null;
+  }, [courses, selectedCourseKey]);
+
+  const courseSections = useMemo(() => {
+    if (!activeCourse) return [];
+    const map = new Map<string, PortalGrade[]>();
+    for (const item of activeCourse.items) {
+      const cat = item.category?.trim() || 'Assignments & Quizzes';
+      if (!map.has(cat)) map.set(cat, []);
+      map.get(cat)!.push(item);
+    }
+    return [...map.entries()].map(([category, items]) => {
+      const scored = items.filter(i => i.score !== null && i.total);
+      const catGot = scored.reduce((n, i) => n + (i.score as number), 0);
+      const catTotal = scored.reduce((n, i) => n + (i.total as number), 0);
+      return { category, items, catGot, catTotal, hasScored: catTotal > 0 };
+    });
+  }, [activeCourse]);
+
   return (
     <Shell
       title="Portal grades" account={account} loading={loading} syncing={syncing} onSync={sync}
@@ -137,33 +164,142 @@ export const PortalGrades: React.FC<ScreenProps> = ({ onBack, onOpenSettings }) 
       empty={courses.length === 0} emptyText="No grades are on the portal yet. New ones appear here as soon as they are released."
     >
       <div className="flex flex-col gap-3">
-        {courses.map(c => {
-          const scored = c.items.filter(i => i.score !== null && i.total);
+        {/* Course selector matching portal */}
+        {courses.length > 1 && (
+          <div className="rounded-[18px] p-3" style={card}>
+            <div className="text-[0.72rem] font-bold uppercase tracking-[0.08em] mb-1.5" style={muted}>
+              Course
+            </div>
+            <div className="relative">
+              <select
+                value={selectedCourseKey}
+                onChange={e => setSelectedCourseKey(e.target.value)}
+                className="w-full appearance-none rounded-[14px] px-3.5 py-2.5 pr-9 text-[0.88rem] font-bold outline-none cursor-pointer"
+                style={{
+                  background: 'var(--surface-2)',
+                  border: '1px solid var(--line)',
+                  color: 'var(--text-primary)',
+                }}
+              >
+                {courses.map(c => (
+                  <option key={c.key} value={c.key} className="bg-[#16181f] text-white">
+                    {c.key} - {c.name}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown size={17} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2" style={muted} />
+            </div>
+
+            {/* Quick-switch course pills */}
+            <div className="flex gap-1.5 overflow-x-auto pt-2.5 pb-0.5 no-scrollbar custom-scrollbar">
+              {courses.map(c => {
+                const active = c.key === selectedCourseKey;
+                return (
+                  <button
+                    key={c.key}
+                    onClick={() => setSelectedCourseKey(c.key)}
+                    className="shrink-0 rounded-full px-3 py-1 text-[0.74rem] font-bold transition-all border-0 cursor-pointer"
+                    style={active
+                      ? { background: 'var(--accent)', color: 'var(--on-accent)', boxShadow: '0 2px 8px rgba(25,184,166,0.35)' }
+                      : { background: 'var(--surface-2)', color: 'var(--text-muted)' }}
+                  >
+                    {c.key}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Selected course card with structured sections */}
+        {activeCourse && (() => {
+          const scored = activeCourse.items.filter(i => i.score !== null && i.total);
           const got = scored.reduce((n, i) => n + (i.score as number), 0);
           const outOf = scored.reduce((n, i) => n + (i.total as number), 0);
+
           return (
-            <section key={c.key} className="rounded-[18px] px-3.5 pt-3 pb-1" style={card}>
+            <section className="rounded-[18px] p-4 flex flex-col gap-3" style={card}>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="text-[0.72rem] font-bold uppercase tracking-[0.08em]" style={muted}>{c.key}</div>
-                  <h2 className="m-0 text-[1rem] font-extrabold leading-tight" style={strong}>{c.name}</h2>
+                  <div className="text-[0.74rem] font-bold uppercase tracking-[0.08em]" style={{ color: 'var(--accent)' }}>
+                    {activeCourse.key}
+                  </div>
+                  <h2 className="m-0 text-[1.08rem] font-extrabold leading-tight" style={strong}>
+                    {activeCourse.name}
+                  </h2>
                 </div>
                 {outOf > 0 && (
                   <div className="text-right shrink-0" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                    <div className="text-[1rem] font-extrabold" style={{ color: 'var(--accent-text)' }}>{Math.round((got / outOf) * 100)}%</div>
-                    <div className="text-[0.7rem]" style={muted}>{+got.toFixed(2)} / {+outOf.toFixed(2)} pts</div>
+                    <div className="text-[1.1rem] font-extrabold" style={{ color: 'var(--accent-text)' }}>
+                      {Math.round((got / outOf) * 100)}%
+                    </div>
+                    <div className="text-[0.72rem]" style={muted}>
+                      {+got.toFixed(2)} / {+outOf.toFixed(2)} pts
+                    </div>
                   </div>
                 )}
               </div>
 
-              <div className="mt-2">
-                {c.midterm && <GradeRow g={c.midterm} label="Midterm" first />}
-                {c.items.map((g, i) => <GradeRow key={g.id} g={g} label={g.element || g.category} first={i === 0 && !c.midterm} />)}
-                {!c.midterm && c.items.length === 0 && <div className="py-2.5 text-[0.82rem]" style={muted}>Nothing released yet.</div>}
+              {/* Categorized Sections (e.g. RPW Assignments, RPW Quiz 1, RPW Quiz 2) */}
+              {courseSections.map(sec => (
+                <div
+                  key={sec.category}
+                  className="rounded-[14px] p-3"
+                  style={{ background: 'var(--surface-2)', border: '1px solid var(--line)' }}
+                >
+                  <div className="flex items-center justify-between gap-2 mb-2 pb-1.5" style={{ borderBottom: '1px solid var(--line)' }}>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="w-1.5 h-3.5 rounded-full shrink-0" style={{ background: 'var(--accent)' }} />
+                      <span className="text-[0.8rem] font-extrabold tracking-wide uppercase truncate" style={strong}>
+                        {sec.category}
+                      </span>
+                    </div>
+                    {sec.hasScored && (
+                      <span className="text-[0.72rem] font-bold shrink-0" style={muted}>
+                        {+sec.catGot.toFixed(2)} / {+sec.catTotal.toFixed(2)} pts
+                      </span>
+                    )}
+                  </div>
+                  <div>
+                    {sec.items.map((g, i) => {
+                      const cleanLabel = g.element.replace(new RegExp(`^${g.category}\\s*[-:]\\s*`, 'i'), '').trim() || g.element;
+                      return <GradeRow key={g.id} g={g} label={cleanLabel} first={i === 0} />;
+                    })}
+                  </div>
+                </div>
+              ))}
+
+              {/* Mid-Term Results Section */}
+              <div
+                className="rounded-[14px] p-3"
+                style={{ background: 'var(--surface-2)', border: '1px solid var(--line)' }}
+              >
+                <div className="flex items-center justify-between gap-2 mb-2 pb-1.5" style={{ borderBottom: '1px solid var(--line)' }}>
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="w-1.5 h-3.5 rounded-full shrink-0" style={{ background: 'var(--accent)' }} />
+                    <span className="text-[0.8rem] font-extrabold tracking-wide uppercase truncate" style={strong}>
+                      Mid-Term Results
+                    </span>
+                  </div>
+                </div>
+                {activeCourse.midterm ? (
+                  <GradeRow g={activeCourse.midterm} label="Midterm" first />
+                ) : (
+                  <div className="py-1 text-[0.8rem] font-medium" style={muted}>
+                    No midterm results are announced yet.
+                  </div>
+                )}
               </div>
+
+              {courseSections.length === 0 && !activeCourse.midterm && (
+                <div className="py-4 text-center text-[0.82rem]" style={muted}>
+                  No grades released for this course yet.
+                </div>
+              )}
             </section>
           );
-        })}
+        })()}
+
         <p className="px-1 text-[0.72rem] leading-snug" style={muted}>
           The percentage is points earned out of points released so far. It ignores how much each item counts toward the final grade.
         </p>
@@ -296,8 +432,8 @@ export const PortalAttendance: React.FC<ScreenProps> = ({ onBack, onOpenSettings
                       <span
                         className="shrink-0 rounded-full px-2.5 py-0.5 text-[0.7rem] font-extrabold"
                         style={isAbsent(r.status)
-                          ? { background: 'rgba(251,191,36,0.16)', color: '#fbbf24' }
-                          : { background: 'var(--surface-2)', color: 'var(--text-primary)' }}
+                          ? { background: 'rgba(251,191,36,0.14)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.5)' }
+                          : { background: 'rgba(25,184,166,0.12)', color: 'var(--accent)', border: '1px solid var(--accent)' }}
                       >
                         {r.status || '–'}
                       </span>
@@ -310,6 +446,132 @@ export const PortalAttendance: React.FC<ScreenProps> = ({ onBack, onOpenSettings
         })}
         <p className="px-1 text-[0.72rem] leading-snug" style={muted}>
           Warning levels come from the portal. It can take about an hour to update after a teacher changes your attendance.
+        </p>
+      </div>
+    </Shell>
+  );
+};
+
+export const PortalExamSeats: React.FC<ScreenProps & { onSyncCompleted?: (seats: PortalExamSeat[]) => void }> = ({ onBack, onOpenSettings, onSyncCompleted }) => {
+  const [account, setAccount] = useState<PortalAccount | null>(null);
+  const [seats, setSeats] = useState<PortalExamSeat[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
+
+  const load = async () => {
+    const [acc, seatRows] = await Promise.all([getPortalAccount(), getPortalExamSeats()]);
+    setAccount(acc);
+    setSeats(seatRows);
+    setLoading(false);
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const handleSync = async () => {
+    setSyncing(true);
+    const res = await syncPortal();
+    if (!res.ok) {
+      toast.error(res.message || 'Sync failed.');
+    } else {
+      toast.success(res.examSeatsCount ? `Synced! Found ${res.examSeatsCount} exam seat(s).` : 'Synced! No new exam seats.');
+      if (res.examSeats && onSyncCompleted) {
+        onSyncCompleted(res.examSeats);
+      }
+    }
+    await load();
+    setSyncing(false);
+  };
+
+  const fmtTime12 = (t: string) => {
+    if (!t) return '';
+    const [hStr, mStr] = t.split(':');
+    let h = parseInt(hStr, 10);
+    const m = mStr || '00';
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12 || 12;
+    return `${h}:${m} ${ampm}`;
+  };
+
+  return (
+    <Shell
+      title="Exam seats"
+      account={account}
+      loading={loading}
+      syncing={syncing}
+      onSync={handleSync}
+      onBack={onBack}
+      onOpenSettings={onOpenSettings}
+      empty={!seats.length}
+      emptyText="No exam seats posted yet. When exams are announced on the portal, they will appear here and sync to your schedule automatically."
+    >
+      <div className="flex flex-col gap-3">
+        {seats.map((s, idx) => (
+          <section key={s.id ?? `${s.course_key}-${s.exam_date}-${idx}`} className="rounded-[18px] p-4" style={card}>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-[0.72rem] font-bold uppercase tracking-[0.08em] px-2 py-0.5 rounded-full" style={{ background: 'rgba(25,184,166,0.12)', color: 'var(--accent)', border: '1px solid var(--accent)' }}>
+                    {s.course_key}
+                  </span>
+                  {s.exam_type && (
+                    <span className="text-[0.68rem] font-semibold px-2 py-0.5 rounded-full" style={{ background: 'var(--surface-muted, rgba(255,255,255,0.06))', ...muted }}>
+                      {s.exam_type}
+                    </span>
+                  )}
+                </div>
+                <h3 className="text-[1.05rem] font-extrabold mt-1.5 leading-tight" style={strong}>
+                  {s.course_name}
+                </h3>
+              </div>
+            </div>
+
+            <div className="mt-3.5 pt-3 grid grid-cols-2 sm:grid-cols-3 gap-2.5" style={{ borderTop: '1px solid var(--line)' }}>
+              <div className="flex items-center gap-2">
+                <Calendar size={15} style={{ color: 'var(--accent)' }} />
+                <div className="min-w-0">
+                  <div className="text-[0.66rem] uppercase tracking-wider font-bold" style={muted}>Date & Day</div>
+                  <div className="text-[0.82rem] font-bold truncate" style={strong}>
+                    {s.exam_date ? new Date(s.exam_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : s.exam_day}
+                    {s.exam_day && s.exam_date ? ` (${s.exam_day.slice(0, 3)})` : ''}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Clock size={15} style={{ color: 'var(--accent)' }} />
+                <div className="min-w-0">
+                  <div className="text-[0.66rem] uppercase tracking-wider font-bold" style={muted}>Time</div>
+                  <div className="text-[0.82rem] font-bold truncate" style={strong}>
+                    {fmtTime12(s.start_time)} – {fmtTime12(s.end_time)}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <MapPin size={15} style={{ color: 'var(--accent)' }} />
+                <div className="min-w-0">
+                  <div className="text-[0.66rem] uppercase tracking-wider font-bold" style={muted}>Hall</div>
+                  <div className="text-[0.82rem] font-bold truncate" style={strong}>
+                    {s.hall || 'TBA'}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 col-span-2 sm:col-span-1">
+                <Armchair size={15} style={{ color: 'var(--accent)' }} />
+                <div className="min-w-0">
+                  <div className="text-[0.66rem] uppercase tracking-wider font-bold" style={muted}>Seat</div>
+                  <div className="text-[0.82rem] font-extrabold truncate" style={{ color: 'var(--accent)' }}>
+                    {s.seat || 'TBA'}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        ))}
+
+        <p className="px-1 text-[0.72rem] leading-snug" style={muted}>
+          Exam seats sync straight from the GIU student portal. Newly detected exam seats are automatically scheduled into your calendar.
         </p>
       </div>
     </Shell>

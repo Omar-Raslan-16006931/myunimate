@@ -3,8 +3,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { AlertCircle, RefreshCw } from 'lucide-react';
 import { Toaster, toast } from 'react-hot-toast';
 import { remindersEnabled, syncReminders } from './services/notifications';
-import { PortalGrades, PortalAttendance } from './components/PortalScreens';
-import { getPortalSummary, syncPortal } from './services/portal';
+import { PortalGrades, PortalAttendance, PortalExamSeats } from './components/PortalScreens';
+import { getPortalSummary, getPortalExamSeats, syncPortal, PortalExamSeat } from './services/portal';
 import { supabase } from './lib/supabase';
 import { ViewState, ScheduleEvent, ScheduleProfile, EventColorMap, EventType, PeriodDefinition, Announcement, ThemeMode, FoodItem, WaterLog, WorkoutSession, WorkoutRoutine, ExerciseDefinition, GymSettings, ActiveGymState, CourseGrade, ToDoItem, MaterialFile, BodyLog } from './types';
 import { INITIAL_EVENTS, INITIAL_PROFILES, INITIAL_COLORS, INITIAL_PERIODS, DEFAULT_GYM_SETTINGS, DEFAULT_ROUTINES, INITIAL_FILES, generateId } from './constants';
@@ -504,10 +504,16 @@ export const App: React.FC = () => {
           }
 
           // PHASE 2: Background Loading of File Contents
-          // We do this after Phase 1 is officially "done" (setIsSyncing(false))
           setTimeout(() => {
               backgroundLoadFileContents(userId, finalFiles);
           }, 1000);
+
+          // Check portal exam seats and auto-populate schedule events if not present
+          getPortalExamSeats().then(examSeats => {
+            if (examSeats && examSeats.length > 0) {
+              syncExamSeatsToSchedule(examSeats, finalEvents);
+            }
+          }).catch(e => console.error("Error auto-syncing exam seats:", e));
 
       } catch (err) {
           console.error("Error fetching user data:", err);
@@ -574,6 +580,91 @@ export const App: React.FC = () => {
         console.error("Error loading file content:", err);
         // toast.error("Failed to load file content."); // Suppress to avoid double toast if background fails
         return '';
+    }
+  };
+
+  const syncExamSeatsToSchedule = async (incomingSeats: PortalExamSeat[], currentEvents: ScheduleEvent[]) => {
+    if (!session?.user?.id || !incomingSeats?.length) return;
+    const scheduleId = activeProfileId || profiles[0]?.id;
+    if (!scheduleId) return;
+
+    let addedCount = 0;
+    const newEventsToAdd: ScheduleEvent[] = [];
+
+    for (const seat of incomingSeats) {
+      if (!seat.exam_date) continue;
+      // Check if an event already exists for this exam (same date, matching code or title, and type exam)
+      const keyNorm = (seat.course_key || '').replace(/\s+/g, '').toLowerCase();
+      const nameNorm = (seat.course_name || '').toLowerCase();
+      const exists = currentEvents.some(e => {
+        if (e.date !== seat.exam_date) return false;
+        if (e.type !== 'exam') return false;
+        const eCodeNorm = (e.code || '').replace(/\s+/g, '').toLowerCase();
+        const eTitleNorm = (e.title || '').toLowerCase();
+        return (keyNorm && eCodeNorm && eCodeNorm === keyNorm) ||
+               (keyNorm && eTitleNorm.includes(keyNorm)) ||
+               (eTitleNorm.includes(nameNorm) || nameNorm.includes(eTitleNorm));
+      });
+
+      if (exists) continue;
+
+      const eventId = generateId();
+      const location = [seat.hall ? `Hall ${seat.hall}` : '', seat.seat ? `Seat ${seat.seat}` : ''].filter(Boolean).join(' · ');
+      const descParts = [
+        seat.exam_type ? `Type: ${seat.exam_type}` : '',
+        seat.hall ? `Hall: ${seat.hall}` : '',
+        seat.seat ? `Seat: ${seat.seat}` : ''
+      ].filter(Boolean);
+
+      const [y, m, d] = seat.exam_date.split('-').map(Number);
+      const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+      const dayOfWeek = seat.exam_day || days[new Date(y, m - 1, d).getDay()];
+
+      const newExamEvent: ScheduleEvent = {
+        id: eventId,
+        scheduleId,
+        title: `${seat.course_name} Exam`,
+        code: seat.course_key,
+        type: 'exam',
+        isRecurring: false,
+        dayOfWeek,
+        date: seat.exam_date,
+        startTime: seat.start_time || '09:00',
+        durationMinutes: seat.duration_minutes || 60,
+        location: location || 'TBA',
+        description: descParts.join(' | ') || 'Exam from Student Portal',
+      };
+
+      const insertPayload = {
+        id: newExamEvent.id,
+        user_id: session.user.id,
+        schedule_id: newExamEvent.scheduleId,
+        title: newExamEvent.title,
+        type: newExamEvent.type,
+        start_time: newExamEvent.startTime,
+        duration_minutes: newExamEvent.durationMinutes,
+        is_recurring: false,
+        day_of_week: newExamEvent.dayOfWeek,
+        date: newExamEvent.date,
+        location: newExamEvent.location,
+        description: newExamEvent.description,
+        code: newExamEvent.code,
+      };
+
+      const { error } = await supabase.from('events').insert(insertPayload);
+      if (!error) {
+        newEventsToAdd.push(newExamEvent);
+        addedCount++;
+      }
+    }
+
+    if (newEventsToAdd.length > 0) {
+      setEvents(prev => [...prev, ...newEventsToAdd]);
+      toast.success(
+        addedCount === 1
+          ? `Added 1 exam to your schedule!`
+          : `Added ${addedCount} exams to your schedule!`
+      );
     }
   };
 
@@ -1350,6 +1441,14 @@ export const App: React.FC = () => {
         return <PortalGrades onBack={() => setView('dashboard')} onOpenSettings={() => setView('settings')} />;
       case 'attendance':
         return <PortalAttendance onBack={() => setView('dashboard')} onOpenSettings={() => setView('settings')} />;
+      case 'exam_seats':
+        return (
+          <PortalExamSeats
+            onBack={() => setView('dashboard')}
+            onOpenSettings={() => setView('settings')}
+            onSyncCompleted={(seats) => syncExamSeatsToSchedule(seats, events)}
+          />
+        );
       case 'settings':
         return <Settings 
             profiles={profiles}
@@ -1525,17 +1624,20 @@ export const App: React.FC = () => {
       )}
       <Toaster 
         position="top-center" 
+        containerStyle={{
+          top: 'max(64px, calc(env(safe-area-inset-top, 0px) + 20px))',
+        }}
         toastOptions={{ 
             style: { 
-                background: 'rgba(30, 41, 59, 0.7)',
-                backdropFilter: 'blur(12px)',
+                background: 'rgba(30, 41, 59, 0.85)',
+                backdropFilter: 'blur(16px)',
                 color: '#fff', 
-                border: '1px solid rgba(255,255,255,0.08)',
+                border: '1px solid rgba(255,255,255,0.12)',
                 borderRadius: '9999px',
-                padding: '8px 16px',
+                padding: '10px 20px',
                 fontSize: '13px',
                 fontWeight: '600',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+                boxShadow: '0 12px 36px rgba(0,0,0,0.4)',
                 maxWidth: 'fit-content'
             },
             success: {

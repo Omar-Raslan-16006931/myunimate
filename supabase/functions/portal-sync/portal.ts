@@ -26,6 +26,14 @@ export const utf16le = (s: string): Uint8Array => {
   return out;
 };
 
+export const decodeUtf16le = (b: Uint8Array): string => {
+  let s = "";
+  for (let i = 0; i < b.length - 1; i += 2) {
+    s += String.fromCharCode(b[i] | (b[i + 1] << 8));
+  }
+  return s;
+};
+
 const b64encode = (b: Uint8Array): string => {
   let s = "";
   for (const x of b) s += String.fromCharCode(x);
@@ -95,7 +103,7 @@ export const md4 = (msg: Uint8Array): Uint8Array => {
 // ───────────────────────── NTLM messages ─────────────────────────
 
 const NTLM_SIG = enc.encode("NTLMSSP\0");
-const NTLM_FLAGS = 0xa2088207; // unicode, request target, NTLM, always sign, extended security, 128-bit, 56-bit
+const NTLM_FLAGS = 0xa0088207; // unicode, request target, NTLM, always sign, extended security, 128-bit, 56-bit
 
 export const ntlmType1 = (): string => {
   const m = new Uint8Array(32);
@@ -111,6 +119,7 @@ export const ntlmType1 = (): string => {
 
 export interface NtlmChallenge {
   challenge: Uint8Array;
+  targetName: string;
   targetInfo: Uint8Array;
   timestamp: Uint8Array | null;
 }
@@ -120,6 +129,14 @@ export const parseNtlmType2 = (b64: string): NtlmChallenge => {
   const v = new DataView(m.buffer, m.byteOffset, m.byteLength);
   if (dec.decode(m.subarray(0, 7)) !== "NTLMSSP" || v.getUint32(8, true) !== 2) {
     throw new Error("PORTAL_BAD_CHALLENGE");
+  }
+  let targetName = "";
+  if (m.length >= 20) {
+    const tnLen = v.getUint16(12, true);
+    const tnOff = v.getUint32(16, true);
+    if (tnLen > 0 && tnOff + tnLen <= m.length) {
+      targetName = decodeUtf16le(m.slice(tnOff, tnOff + tnLen));
+    }
   }
   const challenge = m.slice(24, 32);
   let targetInfo: Uint8Array = new Uint8Array(0);
@@ -141,7 +158,7 @@ export const parseNtlmType2 = (b64: string): NtlmChallenge => {
       }
     }
   }
-  return { challenge, targetInfo, timestamp };
+  return { challenge, targetName, targetInfo, timestamp };
 };
 
 const fileTimeNow = (): Uint8Array => {
@@ -402,6 +419,7 @@ export class PortalHttp {
     let user = this.auth.username, domain = "";
     if (user.includes("\\")) [domain, user] = user.split("\\", 2);
     else if (user.includes("@")) { /* user@domain form is sent as-is with no domain */ }
+    else domain = challenge.targetName || "GIUAS";
     return await this.send(method, path, body, `${scheme} ${ntlmType3(user, domain, this.auth.password, challenge)}`);
   }
 }
@@ -434,9 +452,21 @@ export const hiddenFields = (html: string): Record<string, string> => {
 
 export interface SelectOption { value: string; label: string }
 
+export const findSelect = (html: string, pattern: RegExp): { name: string; id: string } | null => {
+  for (const m of html.matchAll(/<select\b([^>]*)>/gi)) {
+    const name = attr(m[1], "name") ?? "";
+    const id = attr(m[1], "id") ?? "";
+    if (pattern.test(name) || pattern.test(id)) return { name: name || id, id };
+  }
+  return null;
+};
+
 export const selectOptions = (html: string, selectName: string): SelectOption[] => {
   for (const m of html.matchAll(/<select\b([^>]*)>([\s\S]*?)<\/select>/gi)) {
-    if (attr(m[1], "name") !== selectName) continue;
+    const name = attr(m[1], "name") ?? "";
+    const id = attr(m[1], "id") ?? "";
+    const match = name === selectName || id === selectName || name.endsWith("$" + selectName) || id.endsWith("_" + selectName);
+    if (!match) continue;
     return [...m[2].matchAll(/<option\b([^>]*)>([\s\S]*?)(?:<\/option>|(?=<option\b)|$)/gi)]
       .map(o => ({ value: attr(o[1], "value") ?? "", label: text(o[2]) }));
   }
@@ -508,8 +538,10 @@ export const parseScore = (s: string): { score: number | null; total: number | n
 
 export const GRADE_SELECT = "ctl00$ContentPlaceHolder1$smCrsLst";
 
-export const parseGradeCourses = (html: string): SelectOption[] =>
-  selectOptions(html, GRADE_SELECT).filter(o => o.value !== "");
+export const parseGradeCourses = (html: string): SelectOption[] => {
+  const found = findSelect(html, /smCrsLst/i) ?? findSelect(html, /course/i);
+  return selectOptions(html, found ? found.name : GRADE_SELECT).filter(o => o.value !== "" && o.value !== "0");
+};
 
 export const parseMidterms = (html: string): GradeItem[] => {
   const t = findTable(tables(html), { idEndsWith: "midDg", headerHas: ["course", "percentage"] });
@@ -531,12 +563,50 @@ export const parseGradeItems = (html: string, course: SelectOption): GradeItem[]
   const col = (name: string) => head.findIndex(h => h.includes(name));
   const cCat = col("quiz/assignment"), cEl = col("elementname"), cGrade = col("grade"), cProf = col("prof");
   const { key, name } = splitGradeCourse(course.label);
-  return t.rows.slice(1).filter(r => r.length > cGrade && (r[cCat] || r[cEl])).map(r => ({
-    courseKey: key, courseName: name, kind: "item" as const,
-    category: r[cCat] ?? "", element: (cEl >= 0 && r[cEl]) || r[cCat] || "",
-    gradeText: r[cGrade] ?? "", ...parseScore(r[cGrade] ?? ""),
-    lecturer: cProf >= 0 ? (r[cProf] ?? "") : "",
-  }));
+
+  const items: GradeItem[] = [];
+  let lastCategory = "";
+
+  for (const r of t.rows.slice(1)) {
+    let cat = "";
+    let el = "";
+    let grade = "";
+    let prof = "";
+
+    if (r.length >= head.length) {
+      cat = (cCat >= 0 && r[cCat]) ? r[cCat].trim() : "";
+      el = (cEl >= 0 && r[cEl]) ? r[cEl].trim() : "";
+      grade = (cGrade >= 0 && r[cGrade]) ? r[cGrade].trim() : "";
+      prof = (cProf >= 0 && r[cProf]) ? r[cProf].trim() : "";
+    } else if (r.length === head.length - 1) {
+      el = r[0] ? r[0].trim() : "";
+      grade = r[1] ? r[1].trim() : "";
+      prof = r[2] ? r[2].trim() : "";
+    } else {
+      continue;
+    }
+
+    if (cat) lastCategory = cat;
+    const finalCategory = cat || lastCategory || "Assignments";
+    if (!el && !grade) continue;
+
+    const finalElement = (/^question|^q\d/i.test(el) && finalCategory && !el.toLowerCase().includes(finalCategory.toLowerCase()))
+      ? `${finalCategory} - ${el}`
+      : (el || finalCategory);
+
+    items.push({
+      courseKey: key,
+      courseName: name,
+      kind: "item" as const,
+      category: finalCategory,
+      element: finalElement,
+      gradeText: grade,
+      ...parseScore(grade),
+      lecturer: prof,
+    });
+  }
+
+  return items;
 };
 
 // ───────────────────────── attendance ─────────────────────────
@@ -562,8 +632,10 @@ export const splitAttendanceCourse = (label: string): { key: string; name: strin
   return { key: label.trim(), name: label.trim() };
 };
 
-export const parseAttendanceCourses = (html: string): SelectOption[] =>
-  selectOptions(html, ATTENDANCE_SELECT).filter(o => o.value !== "0" && o.value !== "");
+export const parseAttendanceCourses = (html: string): SelectOption[] => {
+  const found = findSelect(html, /DDL_Courses/i) ?? findSelect(html, /course/i);
+  return selectOptions(html, found ? found.name : ATTENDANCE_SELECT).filter(o => o.value !== "0" && o.value !== "");
+};
 
 export const parseAbsenceLevels = (html: string): AbsenceLevel[] => {
   const t = findTable(tables(html), { idEndsWith: "DG_AbsenceReport", headerHas: ["absencelevel"] });
@@ -593,16 +665,123 @@ export const parseAttendanceRows = (html: string, course: SelectOption): Attenda
   });
 };
 
+// ───────────────────────── exam seats ─────────────────────────
+
+export interface ExamSeat {
+  courseName: string;
+  courseKey: string;
+  examDay: string;
+  examDate: string | null;  // YYYY-MM-DD
+  startTime: string;        // HH:MM 24h
+  endTime: string;          // HH:MM 24h
+  durationMinutes: number;
+  hall: string;
+  seat: string;
+  examType: string;
+}
+
+const MONTHS_MAP: Record<string, string> = {
+  january: "01", february: "02", march: "03", april: "04", may: "05", june: "06",
+  july: "07", august: "08", september: "09", october: "10", november: "11", december: "12"
+};
+
+export const parseExamDate = (raw: string): string | null => {
+  const m = raw.match(/(\d{1,2})\s*[-/]\s*([A-Za-z]+|\d{1,2})\s*[-/]\s*(\d{4})/);
+  if (!m) return null;
+  const day = m[1].padStart(2, "0");
+  const monthStr = m[2].toLowerCase();
+  const month = MONTHS_MAP[monthStr] || monthStr.padStart(2, "0");
+  const year = m[3];
+  return `${year}-${month}-${day}`;
+};
+
+export const parseTime24 = (raw: string): string => {
+  const m = raw.match(/(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)?/i);
+  if (!m) return "09:00";
+  let h = parseInt(m[1], 10);
+  const min = m[2];
+  const ampm = m[3]?.toUpperCase();
+  if (ampm === "PM" && h < 12) h += 12;
+  if (ampm === "AM" && h === 12) h = 0;
+  return `${String(h).padStart(2, "0")}:${min}`;
+};
+
+export const calcDurationMinutes = (start: string, end: string): number => {
+  const [sh, sm] = start.split(":").map(Number);
+  const [eh, em] = end.split(":").map(Number);
+  const diff = (eh * 60 + em) - (sh * 60 + sm);
+  return diff > 0 ? diff : 60;
+};
+
+export const splitExamCourse = (raw: string): { key: string; name: string } => {
+  // e.g. "GIU-Cairo.General - RPW401 Research Paper Writing (A2) - Winter 2026"
+  const parts = raw.split(" - ").map(p => p.trim());
+  let target = parts.length >= 2 ? parts[1] : raw;
+  const codeMatch = target.match(/\b([A-Z]{2,4}\s*\d{3,4}[A-Z]?)\b/i);
+  const key = codeMatch ? codeMatch[1].replace(/\s+/g, "") : target;
+  return { key, name: target };
+};
+
+export const parseExamSeats = (html: string): ExamSeat[] => {
+  const t = findTable(tables(html), { headerHas: ["coursename", "examday"] }) ||
+            findTable(tables(html), { headerHas: ["date", "hall", "seat"] });
+  if (!t) return [];
+
+  const head = t.rows[0].map(c => c.toLowerCase().replace(/\s+/g, ""));
+  const cCourse = head.findIndex(h => h.includes("course"));
+  const cDay = head.findIndex(h => h.includes("day"));
+  const cDate = head.findIndex(h => h.includes("date"));
+  const cStart = head.findIndex(h => h.includes("start"));
+  const cEnd = head.findIndex(h => h.includes("end"));
+  const cHall = head.findIndex(h => h.includes("hall"));
+  const cSeat = head.findIndex(h => h.includes("seat"));
+  const cType = head.findIndex(h => h.includes("type"));
+
+  const seats: ExamSeat[] = [];
+  for (const r of t.rows.slice(1)) {
+    if (!r.length) continue;
+    const rawCourse = (cCourse >= 0 ? r[cCourse] : r[0]) || "";
+    if (!rawCourse) continue;
+    const rawDate = (cDate >= 0 ? r[cDate] : r[2]) || "";
+    const rawStart = (cStart >= 0 ? r[cStart] : r[3]) || "";
+    const rawEnd = (cEnd >= 0 ? r[cEnd] : r[4]) || "";
+
+    const { key, name } = splitExamCourse(rawCourse);
+    const examDate = parseExamDate(rawDate);
+    const startTime = parseTime24(rawStart);
+    const endTime = parseTime24(rawEnd);
+    const durationMinutes = calcDurationMinutes(startTime, endTime);
+
+    seats.push({
+      courseName: name,
+      courseKey: key,
+      examDay: (cDay >= 0 ? r[cDay] : r[1]) || "",
+      examDate,
+      startTime,
+      endTime,
+      durationMinutes,
+      hall: (cHall >= 0 ? r[cHall] : r[5]) || "",
+      seat: (cSeat >= 0 ? r[cSeat] : r[6]) || "",
+      examType: (cType >= 0 ? r[cType] : r[7]) || "",
+    });
+  }
+  return seats;
+};
+
 // ───────────────────────── the whole sync ─────────────────────────
 
 export const PORTAL_HOST = "portal.giu-uni.de";
+export const HOME_PATH = "/GIUb/EXTStudent/Home.aspx";
 export const GRADES_PATH = "/GIUb/EXTStudent/CheckGrade_m.aspx";
+export const GRADES_DESKTOP_PATH = "/GIUb/EXTStudent/CheckGrade.aspx";
 export const ATTENDANCE_PATH = "/GIUb/EXTStudent/ClassAttendance_ViewStudentAttendance_b.aspx";
+export const EXAM_SEATS_PATH = "/GIUb/EXTStudent/ViewExamSeat_m.aspx";
 
 export interface PortalData {
   grades: GradeItem[];
   attendance: AttendanceRow[];
   absenceLevels: AbsenceLevel[];
+  examSeats: ExamSeat[];
   gradeCourses: number;
   attendanceCourses: number;
   warnings: string[];
@@ -617,30 +796,69 @@ export const fetchPortal = async (auth: PortalAuth, connector: Connector, host =
   const http = new PortalHttp(host, connector, auth, port);
   const warnings: string[] = [];
   try {
-    // grades
-    let res = await http.request("GET", GRADES_PATH);
+    // 1. Visit Home.aspx first to establish ASP.NET session and student context
+    try {
+      await http.request("GET", HOME_PATH);
+    } catch {
+      // ignore, continue to grades
+    }
+
+    // 2. Fetch grades: try mobile first, fallback to desktop
+    let gradesPath = GRADES_PATH;
+    let res = await http.request("GET", gradesPath);
     mustBeOk(res, "GRADES");
     let page = res.body;
-    const gradeCourses = parseGradeCourses(page);
-    if (!gradeCourses.length && !/smCrsLst/.test(page)) throw new Error("PORTAL_PAGE_CHANGED_GRADES");
+
+    let gradeSelect = findSelect(page, /smCrsLst/i) ?? findSelect(page, /course/i);
+    let gradeCourses = gradeSelect ? selectOptions(page, gradeSelect.name).filter(o => o.value !== "" && o.value !== "0") : [];
+
+    if (!gradeCourses.length && !gradeSelect && !/smCrsLst|midDg/i.test(page)) {
+      try {
+        const deskRes = await http.request("GET", GRADES_DESKTOP_PATH);
+        if (deskRes.status === 200 && (parseGradeCourses(deskRes.body).length || findSelect(deskRes.body, /smCrsLst|course/i))) {
+          res = deskRes;
+          page = deskRes.body;
+          gradesPath = GRADES_DESKTOP_PATH;
+          gradeSelect = findSelect(page, /smCrsLst/i) ?? findSelect(page, /course/i);
+          gradeCourses = gradeSelect ? selectOptions(page, gradeSelect.name).filter(o => o.value !== "" && o.value !== "0") : [];
+        }
+      } catch {
+        // keep mobile page
+      }
+    }
+
+    const pageTitle = page.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]?.trim() ?? "";
+    const isGradesLike = /smCrsLst|midDg|grade|marks/i.test(page) || /grade/i.test(pageTitle);
+    if (!gradeCourses.length && !isGradesLike && !gradeSelect) {
+      throw new Error(`PORTAL_PAGE_CHANGED_GRADES: "${pageTitle || 'unknown'}"`);
+    }
+
     const grades: GradeItem[] = [...parseMidterms(page)];
+    const gradeTarget = gradeSelect?.name ?? GRADE_SELECT;
     for (const course of gradeCourses) {
-      res = await http.request("POST", GRADES_PATH, postbackBody(page, GRADE_SELECT, course.value));
+      res = await http.request("POST", gradesPath, postbackBody(page, gradeTarget, course.value));
       if (res.status !== 200) { warnings.push(`grades:${course.label}:${res.status}`); continue; }
       page = res.body;
       grades.push(...parseGradeItems(page, course));
     }
 
-    // attendance
+    // 3. Attendance
     res = await http.request("GET", ATTENDANCE_PATH);
     mustBeOk(res, "ATTENDANCE");
     page = res.body;
-    const attendanceCourses = parseAttendanceCourses(page);
-    if (!attendanceCourses.length && !/DDL_Courses/.test(page)) throw new Error("PORTAL_PAGE_CHANGED_ATTENDANCE");
+
+    const attSelect = findSelect(page, /DDL_Courses/i) ?? findSelect(page, /course/i);
+    const attendanceCourses = attSelect ? selectOptions(page, attSelect.name).filter(o => o.value !== "0" && o.value !== "") : parseAttendanceCourses(page);
+    const attTitle = page.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]?.trim() ?? "";
+    if (!attendanceCourses.length && !/DDL_Courses|attendance/i.test(page) && !attSelect) {
+      throw new Error(`PORTAL_PAGE_CHANGED_ATTENDANCE: "${attTitle || 'unknown'}"`);
+    }
+
     let absenceLevels = parseAbsenceLevels(page);
     const attendance: AttendanceRow[] = [];
+    const attTarget = attSelect?.name ?? ATTENDANCE_SELECT;
     for (const course of attendanceCourses) {
-      res = await http.request("POST", ATTENDANCE_PATH, postbackBody(page, ATTENDANCE_SELECT, course.value));
+      res = await http.request("POST", ATTENDANCE_PATH, postbackBody(page, attTarget, course.value));
       if (res.status !== 200) { warnings.push(`attendance:${course.label}:${res.status}`); continue; }
       page = res.body;
       attendance.push(...parseAttendanceRows(page, course));
@@ -648,7 +866,20 @@ export const fetchPortal = async (auth: PortalAuth, connector: Connector, host =
       if (levels.length) absenceLevels = levels;
     }
 
-    return { grades, attendance, absenceLevels, gradeCourses: gradeCourses.length, attendanceCourses: attendanceCourses.length, warnings };
+    // 4. Exam seats
+    let examSeats: ExamSeat[] = [];
+    try {
+      const examRes = await http.request("GET", EXAM_SEATS_PATH);
+      if (examRes.status === 200) {
+        examSeats = parseExamSeats(examRes.body);
+      } else {
+        warnings.push(`examSeats:${examRes.status}`);
+      }
+    } catch (e) {
+      warnings.push(`examSeats:${e instanceof Error ? e.message : String(e)}`);
+    }
+
+    return { grades, attendance, absenceLevels, examSeats, gradeCourses: gradeCourses.length, attendanceCourses: attendanceCourses.length, warnings };
   } finally {
     http.close();
   }
