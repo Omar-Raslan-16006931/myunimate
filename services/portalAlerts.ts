@@ -180,7 +180,7 @@ let lastRun = 0;
  */
 export const checkPortalChanges = async (
   userId: string,
-  opts: { force?: boolean } = {},
+  opts: { force?: boolean; silent?: boolean } = {},
 ): Promise<{ alerts: PortalAlert[]; shown: boolean }> => {
   const none = { alerts: [], shown: false };
   if (!userId || running) return none;
@@ -193,7 +193,8 @@ export const checkPortalChanges = async (
     ]);
     const { next, alerts } = findPortalChanges(readSnapshot(userId), { grades, attendance, seats });
     writeSnapshot(userId, next);
-    if (!alerts.length) return none;
+    // silent: the server already pushed these through ntfy, so only remember them
+    if (!alerts.length || opts.silent) return none;
     const shown = await deliver(compact(alerts));
     return { alerts, shown };
   } catch (err) {

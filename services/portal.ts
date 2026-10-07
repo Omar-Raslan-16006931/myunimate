@@ -67,6 +67,7 @@ export interface PortalSyncResult {
   attendance?: number;
   examSeatsCount?: number;
   examSeats?: any[];
+  topic?: string | null;
 }
 
 const call = async (body: Record<string, unknown>): Promise<PortalSyncResult> => {
@@ -93,6 +94,17 @@ export const savePortalLogin = (username: string, password: string) =>
   call({ action: 'save_credentials', username, password });
 
 export const syncPortal = () => call({ action: 'sync' });
+
+/** Turns phone alerts (through the ntfy app) on or off. Turning on makes a new private topic. */
+export const setPortalAlerts = (enabled: boolean) => call({ action: 'set_notify', enabled });
+
+export const testPortalAlert = () => call({ action: 'test_notify' });
+
+/** The private ntfy topic, or null when phone alerts are off (or not set up on the server yet). */
+export const getPortalAlertTopic = async (): Promise<string | null> => {
+  const { data, error } = await supabase.from('portal_accounts').select('notify_topic').maybeSingle();
+  return error || !data ? null : ((data as { notify_topic: string | null }).notify_topic ?? null);
+};
 
 export const removePortalLogin = () => call({ action: 'remove' });
 

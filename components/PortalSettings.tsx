@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Loader2, RefreshCw, Trash2, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Loader2, RefreshCw, Trash2, CheckCircle2, AlertTriangle, Bell, Copy } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { getPortalAccount, savePortalLogin, syncPortal, removePortalLogin, timeAgo, PortalAccount } from '../services/portal';
+import { getPortalAccount, savePortalLogin, syncPortal, removePortalLogin, setPortalAlerts, testPortalAlert, getPortalAlertTopic, timeAgo, PortalAccount } from '../services/portal';
 
 /** Settings block for the uni portal login. Separate from the app login. */
 const PortalSettings: React.FC = () => {
@@ -9,12 +9,14 @@ const PortalSettings: React.FC = () => {
   const [loaded, setLoaded] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [busy, setBusy] = useState<'save' | 'sync' | 'remove' | null>(null);
+  const [busy, setBusy] = useState<'save' | 'sync' | 'remove' | 'alerts' | 'test' | null>(null);
+  const [topic, setTopic] = useState<string | null>(null);
 
   const load = async () => {
     const a = await getPortalAccount();
     setAccount(a);
     if (a) setUsername(a.username);
+    setTopic(a ? await getPortalAlertTopic() : null);
     setLoaded(true);
   };
   useEffect(() => { load(); }, []);
@@ -52,6 +54,31 @@ const PortalSettings: React.FC = () => {
       setPassword('');
       toast('Portal login removed');
     } else toast.error(res.message || 'Could not remove the portal login.');
+  };
+
+  const toggleAlerts = async () => {
+    setBusy('alerts');
+    const res = await setPortalAlerts(!topic);
+    setBusy(null);
+    if (res.ok) setTopic(res.topic ?? null);
+    else toast.error(res.message || 'Could not change phone alerts.');
+  };
+
+  const testAlert = async () => {
+    setBusy('test');
+    const res = await testPortalAlert();
+    setBusy(null);
+    if (res.ok) toast.success('Test sent. Check your phone.');
+    else toast.error(res.message || 'Could not send the test.');
+  };
+
+  const copyTopic = async () => {
+    try {
+      await navigator.clipboard.writeText(topic ?? '');
+      toast.success('Copied');
+    } catch {
+      toast.error('Could not copy. Select the text and copy it by hand.');
+    }
   };
 
   const input = 'w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-sm text-white placeholder-white/30 focus:outline-none focus:border-teal-500/50';
@@ -135,6 +162,47 @@ const PortalSettings: React.FC = () => {
           </>
         )}
       </div>
+      {account && (
+        <div className="space-y-2.5 rounded-xl border border-white/5 bg-black/30 p-3">
+          <div className="flex items-center gap-3">
+            <Bell size={16} className="shrink-0 text-teal-400" />
+            <div className="min-w-0 flex-1">
+              <div className="text-sm font-bold text-white">Phone alerts</div>
+              <div className="text-xs text-white/50">New grades, attendance and exam seats, even when the app is closed</div>
+            </div>
+            <button
+              onClick={toggleAlerts}
+              disabled={busy !== null}
+              className={`rounded-lg px-3 py-2 text-xs font-bold disabled:opacity-40 ${topic ? 'border border-white/10 bg-white/5 text-white' : 'bg-teal-600 text-white'}`}
+            >
+              {busy === 'alerts' ? <Loader2 size={14} className="animate-spin" /> : topic ? 'Turn off' : 'Turn on'}
+            </button>
+          </div>
+          {topic && (
+            <>
+              <p className="text-xs leading-relaxed text-white/50">
+                Install the free <span className="font-bold text-white/80">ntfy</span> app, tap +, and paste this topic. Keep it private: anyone who has it can read your alerts.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={copyTopic}
+                  className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-white/5 bg-black/40 px-3 py-2.5 text-left text-xs text-white"
+                >
+                  <span className="min-w-0 flex-1 select-all truncate font-mono">{topic}</span>
+                  <Copy size={13} className="shrink-0 text-white/40" />
+                </button>
+                <button
+                  onClick={testAlert}
+                  disabled={busy !== null}
+                  className="flex items-center justify-center rounded-lg border border-white/10 bg-white/5 px-3 text-xs font-bold text-white disabled:opacity-40"
+                >
+                  {busy === 'test' ? <Loader2 size={14} className="animate-spin" /> : 'Send test'}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
       {busy === 'save' && <p className="text-xs text-white/50">Signing into the portal and reading every course. This can take up to a minute.</p>}
     </div>
   );
