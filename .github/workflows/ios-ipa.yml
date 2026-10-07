@@ -48,6 +48,20 @@ jobs:
           npx cap add ios
           npx cap sync ios
 
+      - name: Use the UniMate app icon
+        run: |
+          ICONSET=ios/App/App/Assets.xcassets/AppIcon.appiconset
+          rm -f "$ICONSET"/*.png
+          cp resources/icon.png "$ICONSET/AppIcon-512@2x.png"
+          cat > "$ICONSET/Contents.json" <<'JSON'
+          {
+            "images": [
+              { "filename": "AppIcon-512@2x.png", "idiom": "universal", "platform": "ios", "size": "1024x1024" }
+            ],
+            "info": { "author": "xcode", "version": 1 }
+          }
+          JSON
+
       - name: Build the app without signing
         working-directory: ios/App
         run: |
