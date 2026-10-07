@@ -5,6 +5,7 @@ import { Toaster, toast } from 'react-hot-toast';
 import { remindersEnabled, syncReminders } from './services/notifications';
 import { PortalGrades, PortalAttendance, PortalExamSeats } from './components/PortalScreens';
 import { getPortalSummary, getPortalExamSeats, syncPortal, PortalExamSeat } from './services/portal';
+import { checkPortalChanges } from './services/portalAlerts';
 import { supabase } from './lib/supabase';
 import { ViewState, ScheduleEvent, ScheduleProfile, EventColorMap, EventType, PeriodDefinition, Announcement, ThemeMode, FoodItem, WaterLog, WorkoutSession, WorkoutRoutine, ExerciseDefinition, GymSettings, ActiveGymState, CourseGrade, ToDoItem, MaterialFile, BodyLog } from './types';
 import { INITIAL_EVENTS, INITIAL_PROFILES, INITIAL_COLORS, INITIAL_PERIODS, DEFAULT_GYM_SETTINGS, DEFAULT_ROUTINES, INITIAL_FILES, generateId } from './constants';
@@ -407,6 +408,7 @@ export const App: React.FC = () => {
         if (res.ok && res.examSeats) {
           syncExamSeatsToSchedule(res.examSeats, events);
         }
+        if (res.ok) alertPortalChanges(session.user.id, true);
       } catch (e) {
         console.error("Auto portal sync error:", e);
       }
@@ -595,6 +597,14 @@ export const App: React.FC = () => {
         // toast.error("Failed to load file content."); // Suppress to avoid double toast if background fails
         return '';
     }
+  };
+
+  // Phone notification for new grades, attendance and exam seats.
+  // If the phone will not show notifications, say it inside the app instead.
+  const alertPortalChanges = async (userId: string, force = false) => {
+    const { alerts, shown } = await checkPortalChanges(userId, { force });
+    if (!alerts.length || shown) return;
+    toast(alerts.length === 1 ? `${alerts[0].title}: ${alerts[0].body}` : `${alerts.length} portal updates`, { icon: '🔔' });
   };
 
   const syncExamSeatsToSchedule = async (incomingSeats: PortalExamSeat[], currentEvents: ScheduleEvent[]) => {
@@ -1041,6 +1051,7 @@ export const App: React.FC = () => {
   // Uni portal: when the app opens, refresh if the last check is old, and say so if new grades arrived.
   useEffect(() => {
     if (!session?.user?.id) return;
+    const userId = session.user.id;
     let cancelled = false;
     (async () => {
       let summary = await getPortalSummary();
@@ -1054,8 +1065,12 @@ export const App: React.FC = () => {
       if (!cancelled && summary.newGrades > 0) {
         toast.success(`${summary.newGrades} new grade${summary.newGrades === 1 ? '' : 's'} on the portal`);
       }
+      if (!cancelled) alertPortalChanges(userId, true);
     })();
-    return () => { cancelled = true; };
+    // the server checks the portal on its own, so look again whenever the app comes back to the front
+    const onVisible = () => { if (document.visibilityState === 'visible') alertPortalChanges(userId); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => { cancelled = true; document.removeEventListener('visibilitychange', onVisible); };
   }, [session?.user?.id]);
 
   // Class reminders: re-plan whenever the schedule changes or the app comes back to the front.
