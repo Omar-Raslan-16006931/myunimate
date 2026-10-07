@@ -77,7 +77,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ events, onNavigate, onEven
       else if (hours >= 12) setGreeting('Good Afternoon');
       else setGreeting('Good Morning');
       setCurrentTime(now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }));
-      setCurrentDate(now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }));
+      setCurrentDate(now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }));
     };
     tick();
     const timer = setInterval(tick, 60000);
@@ -200,19 +200,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ events, onNavigate, onEven
     return nextEvent && e.id === nextEvent.id ? 'next' : 'later';
   };
 
-  // Week strip (Sat → Fri, same order as the Schedule screen)
-  const weekStart = new Date(now);
-  weekStart.setHours(0, 0, 0, 0);
-  weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 1) % 7));
-  const week = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(weekStart);
-    d.setDate(d.getDate() + i);
-    const name = d.toLocaleDateString('en-US', { weekday: 'long' });
-    const iso = getLocalISOString(d);
-    const count = events.filter(e => (e.isRecurring ? e.dayOfWeek === name : e.date === iso)).length;
-    return { key: iso, short: name.slice(0, 3), num: d.getDate(), count, isToday: iso === todayStr };
-  });
-
   const sectionTitle = 'm-0 text-[0.72rem] font-bold uppercase tracking-[0.08em]';
   const glassFx: React.CSSProperties = { backdropFilter: 'var(--glass-blur)', WebkitBackdropFilter: 'var(--glass-blur)', boxShadow: 'var(--glass-shadow)' };
   const cardStyle: React.CSSProperties = { background: 'var(--surface)', border: '1px solid var(--line)', ...glassFx };
@@ -309,10 +296,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ events, onNavigate, onEven
             <span className="truncate" style={{ color: 'var(--text-muted)' }}>
               {greeting}, <span style={{ color: 'var(--text-primary)' }} className="font-bold">{username || 'Student'}</span>
             </span>
-            <span className="shrink-0" style={{ color: 'var(--accent-text)' }}>{currentDate}</span>
           </div>
           <div className="mt-1 flex items-center justify-between gap-3">
-            <span className="font-extrabold leading-none whitespace-nowrap" style={{ fontSize: '1.9rem', letterSpacing: '-0.03em', color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{currentTime}</span>
+            <div className="flex min-w-0 items-baseline gap-2">
+              <span className="font-extrabold leading-none whitespace-nowrap" style={{ fontSize: '1.9rem', letterSpacing: '-0.03em', color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{currentTime}</span>
+              <span className="truncate text-[0.8rem] font-bold" style={{ color: 'var(--accent-text)' }}>{currentDate}</span>
+            </div>
           <div className="flex items-center gap-2 shrink-0">
             {onSync && (
               <motion.button
@@ -363,25 +352,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ events, onNavigate, onEven
 
         <div className="flex flex-col gap-3">
           {renderHero()}
-
-          {/* Week strip */}
-          <motion.div variants={fadeUp} className="grid grid-cols-7 rounded-[18px] py-2 px-1" style={cardStyle}>
-            {week.map(d => (
-              <button
-                key={d.key}
-                onClick={() => onNavigate('schedule')}
-                className="flex flex-col items-center gap-1 bg-transparent border-0 p-0"
-              >
-                <span className="text-[0.62rem] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>{d.short}</span>
-                <span
-                  className="flex items-center justify-center w-8 h-8 rounded-full text-[0.92rem] font-extrabold"
-                  style={d.isToday ? { background: 'var(--accent)', color: 'var(--on-accent)' } : { color: d.count ? 'var(--text-primary)' : 'var(--text-muted)' }}
-                >
-                  {d.num}
-                </span>
-              </button>
-            ))}
-          </motion.div>
 
           {/* Today's classes */}
           <motion.div variants={fadeUp}>
