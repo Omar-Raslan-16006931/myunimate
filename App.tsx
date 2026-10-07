@@ -4,7 +4,7 @@ import { AlertCircle, RefreshCw } from 'lucide-react';
 import { Toaster, toast } from 'react-hot-toast';
 import { remindersEnabled, syncReminders } from './services/notifications';
 import { PortalGrades, PortalAttendance, PortalExamSeats } from './components/PortalScreens';
-import { getPortalSummary, getPortalExamSeats, syncPortal, PortalExamSeat } from './services/portal';
+import { getPortalSummary, getPortalExamSeats, getPortalAlertTopic, syncPortal, PortalExamSeat } from './services/portal';
 import { checkPortalChanges } from './services/portalAlerts';
 import { supabase } from './lib/supabase';
 import { ViewState, ScheduleEvent, ScheduleProfile, EventColorMap, EventType, PeriodDefinition, Announcement, ThemeMode, FoodItem, WaterLog, WorkoutSession, WorkoutRoutine, ExerciseDefinition, GymSettings, ActiveGymState, CourseGrade, ToDoItem, MaterialFile, BodyLog } from './types';
@@ -602,7 +602,9 @@ export const App: React.FC = () => {
   // Phone notification for new grades, attendance and exam seats.
   // If the phone will not show notifications, say it inside the app instead.
   const alertPortalChanges = async (userId: string, force = false) => {
-    const { alerts, shown } = await checkPortalChanges(userId, { force });
+    // with ntfy on, the server sends the alert itself; do not show it twice
+    const silent = !!(await getPortalAlertTopic());
+    const { alerts, shown } = await checkPortalChanges(userId, { force, silent });
     if (!alerts.length || shown) return;
     toast(alerts.length === 1 ? `${alerts[0].title}: ${alerts[0].body}` : `${alerts.length} portal updates`, { icon: '🔔' });
   };
