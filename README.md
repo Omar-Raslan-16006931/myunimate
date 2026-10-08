@@ -1,8 +1,21 @@
-# UniMate
+<div align="center">
+
+<img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=2,12&height=200&section=header&text=UniMate&fontSize=56&fontColor=ffffff&fontAlignY=36&desc=All-in-one%20university%20app%3A%20schedule%2C%20grades%2C%20AI%20assistant%20and%20portal%20sync&descSize=16&descAlignY=58&animation=fadeIn" width="100%" alt="UniMate"/>
+
+<img src="https://img.shields.io/github/last-commit/Omar-Raslan-16006931/myunimate?style=for-the-badge&color=6366f1" alt="Last commit"/>
+<img src="https://img.shields.io/github/languages/top/Omar-Raslan-16006931/myunimate?style=for-the-badge&color=0ea5e9" alt="Top language"/>
+
+<br/><br/>
+
+<img src="https://skillicons.dev/icons?i=react,ts,vite,tailwind,supabase,githubactions,apple&theme=dark" alt="Tech stack"/>
+
+</div>
+
+---
 
 An all-in-one app for university students: schedule, courses, grades, to-dos, study materials, an AI assistant and a gym tracker. It also syncs with the GIU student portal.
 
-## Features
+## ✨ Features
 
 - **Schedule:** weekly timetable with custom periods and event types, calendar sync, and smart import from an image or PDF
 - **Student portal sync:** a Supabase Edge Function logs into the university portal (NTLM auth) every 10 minutes and pulls grades, attendance and exam seats
@@ -14,11 +27,11 @@ An all-in-one app for university students: schedule, courses, grades, to-dos, st
 - **Gym tracker:** workouts, nutrition logging, body logs and progress analysis
 - **iOS app** via Capacitor, built as an IPA by GitHub Actions; also installable as a PWA
 
-## Tech stack
+## 🛠️ Tech stack
 
 React, TypeScript, Vite, Tailwind, Framer Motion, Supabase (Postgres, Auth, Edge Functions, cron), Google Gemini, Capacitor (iOS), GitHub Actions
 
-## Getting started
+## 🚀 Getting started
 
 ```bash
 npm install
@@ -27,3 +40,13 @@ npm run dev
 ```
 
 Edge Functions live in `supabase/functions/` (`portal-sync`, `ai-handler`). Deploy them with the Supabase CLI and set their secrets there; no API key is shipped to the browser.
+
+---
+
+<div align="center">
+
+**Made with ❤️ by [Omar Raslan](https://github.com/Omar-Raslan-16006931)**
+
+<img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=2,12&height=100&section=footer" width="100%"/>
+
+</div>
