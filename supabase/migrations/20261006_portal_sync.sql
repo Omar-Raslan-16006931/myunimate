@@ -172,7 +172,7 @@ begin
   end if;
 end $$;
 
-select cron.unschedule(jobid) from cron.job where jobname in ('portal-sync-hourly', 'portal-sync-10min');
+select cron.unschedule(jobid) from cron.job where jobname in ('portal-sync-hourly', 'portal-sync-30min', 'portal-sync-10min');
 
 select cron.schedule(
   'portal-sync-10min',
