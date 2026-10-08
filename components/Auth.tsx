@@ -5,6 +5,7 @@ import { styles } from '../theme';
 import { Loader2, Mail, Lock, Sparkles, User, GraduationCap, Calendar, Building, Users, LogIn, Check, AlertCircle, X, Ticket } from 'lucide-react';
 import { validateEmail, validatePassword, validateUsername, validateReferralCode } from '../utils/validation';
 import { logError, logAuthEvent } from '../utils/logger';
+import { SIGNUPS_ENABLED } from '../lib/featureFlags';
 
 interface AuthProps {
   onEnterTestMode?: () => void;
@@ -121,6 +122,9 @@ function Auth({ onEnterTestMode }: AuthProps) {
     try {
       if (mode === 'signup') {
         // --- SIGN UP FLOW ---
+        if (!SIGNUPS_ENABLED) {
+          throw new Error("New sign-ups are paused right now. Please check back soon.");
+        }
         // Username validation
         const usernameCheck = validateUsername(username);
         if (!usernameCheck.valid) {
@@ -272,6 +276,7 @@ function Auth({ onEnterTestMode }: AuthProps) {
   };
 
   const toggleMode = () => {
+    if (!SIGNUPS_ENABLED) return;
     setMode(mode === 'signin' ? 'signup' : 'signin');
     clearForm();
   };
@@ -590,6 +595,7 @@ function Auth({ onEnterTestMode }: AuthProps) {
             </form>
 
             <div className="mt-6 text-center animate-fade-in-up" style={{animationDelay: '0.7s'}}>
+                {SIGNUPS_ENABLED ? (
                 <p className="text-white/40 text-sm">
                     {mode === 'signin' ? "New here?" : "Already have an account?"}
                     <button 
@@ -599,6 +605,9 @@ function Auth({ onEnterTestMode }: AuthProps) {
                         {mode === 'signin' ? 'Create Account' : 'Sign In'}
                     </button>
                 </p>
+                ) : (
+                <p className="text-white/40 text-sm">New sign-ups are paused for now.</p>
+                )}
             </div>
             
              {onEnterTestMode && (
