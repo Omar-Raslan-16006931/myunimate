@@ -10,7 +10,7 @@ import { getPortalGrades, getPortalAttendance, getPortalExamSeats } from './port
  * portal data saved on the server. Nothing leaves the phone.
  *
  * Limit: iOS pauses a sideloaded app when it is closed, so the check runs when
- * the app is opened or brought back to the front, and every 30 minutes while
+ * the app is opened or brought back to the front, and every 10 minutes while
  * it stays open.
  */
 

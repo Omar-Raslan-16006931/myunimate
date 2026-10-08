@@ -400,7 +400,7 @@ export const App: React.FC = () => {
         });
     }
 
-    // Auto-update portal data every 30 minutes in the background
+    // Auto-update portal data every 10 minutes while the app is open
     const portalSyncInterval = setInterval(async () => {
       if (!session?.user?.id) return;
       try {
@@ -412,7 +412,7 @@ export const App: React.FC = () => {
       } catch (e) {
         console.error("Auto portal sync error:", e);
       }
-    }, 30 * 60 * 1000);
+    }, 10 * 60 * 1000);
 
     return () => {
         subscription.unsubscribe();
@@ -1059,7 +1059,7 @@ export const App: React.FC = () => {
       let summary = await getPortalSummary();
       if (!summary.connected || cancelled) return;
       const age = summary.lastSyncAt ? Date.now() - new Date(summary.lastSyncAt).getTime() : Infinity;
-      if (age > 20 * 60 * 1000) {
+      if (age > 8 * 60 * 1000) {
         await syncPortal();
         if (cancelled) return;
         summary = await getPortalSummary();

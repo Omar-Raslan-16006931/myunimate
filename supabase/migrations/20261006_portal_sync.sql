@@ -172,11 +172,11 @@ begin
   end if;
 end $$;
 
-select cron.unschedule(jobid) from cron.job where jobname in ('portal-sync-hourly', 'portal-sync-30min');
+select cron.unschedule(jobid) from cron.job where jobname in ('portal-sync-hourly', 'portal-sync-10min');
 
 select cron.schedule(
-  'portal-sync-30min',
-  '*/30 * * * *',
+  'portal-sync-10min',
+  '*/10 * * * *',
   $cron$
   select net.http_post(
     url     := 'https://YOUR-PROJECT-REF.supabase.co/functions/v1/portal-sync',
