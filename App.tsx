@@ -15,6 +15,7 @@ import { logError, logInfo, logWarn } from './utils/logger';
 
 import Auth from './components/Auth';
 import LandingPage from './components/LandingPage';
+import { Capacitor } from '@capacitor/core';
 import CompleteProfile from './components/CompleteProfile';
 import Navigation from './components/Navigation';
 import { Dashboard } from './components/Dashboard';
@@ -1110,6 +1111,8 @@ export const App: React.FC = () => {
 
   if (!session) {
     if (showAuth) return <Auth />;
+    // the iPhone app goes straight to sign-in; the website shows the landing page first
+    if (Capacitor.isNativePlatform()) return <Auth />;
     return <LandingPage onGetStarted={() => setShowAuth(true)} />;
   }
 

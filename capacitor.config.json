@@ -15,5 +15,9 @@
         "list"
       ]
     }
+  },
+  "server": {
+    "url": "https://omar-unimate.vercel.app",
+    "errorPath": "offline.html"
   }
 }
