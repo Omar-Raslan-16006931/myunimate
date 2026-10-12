@@ -97,6 +97,11 @@ const sendAlerts = async (topic: string, alerts: Alert[]): Promise<number> => {
   return sent;
 };
 
+// Alerts off keeps the topic as "off:<topic>", so turning them back on gives the
+// same topic and the phone's ntfy subscription keeps working.
+const OFF = "off:";
+const activeTopic = (t: string | null | undefined) => (t && !t.startsWith(OFF) ? t : null);
+
 const newTopic = () => {
   const bytes = crypto.getRandomValues(new Uint8Array(12));
   return "unimate-" + Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
@@ -262,7 +267,8 @@ const syncUser = async (userId: string): Promise<SyncResult> => {
 
     const data = await withTimeout(fetchPortal({ username: account.username, password }, connector), 110_000);
     const { newCount: newGrades, alerts } = await save(userId, data, !account.last_ok_at);
-    const notified = account.notify_topic && alerts.length ? await sendAlerts(account.notify_topic, alerts) : 0;
+    const topicNow = activeTopic(account.notify_topic);
+    const notified = topicNow && alerts.length ? await sendAlerts(topicNow, alerts) : 0;
     const now = new Date().toISOString();
     await supabase.from("portal_accounts").update({
       last_sync_at: now, last_ok_at: now, last_status: "ok", last_error: null,
@@ -325,9 +331,13 @@ Deno.serve(async (req: Request) => {
   }
 
   if (body.action === "set_notify") {
-    const topic = body.enabled ? newTopic() : null;
+    const { data: current } = await supabase.from("portal_accounts").select("notify_topic").eq("user_id", userId).maybeSingle();
+    const saved: string | null = current?.notify_topic ?? null;
+    const base = saved ? (saved.startsWith(OFF) ? saved.slice(OFF.length) : saved) : null;
+    const stored = body.enabled ? (base ?? newTopic()) : (base ? OFF + base : null);
+    const topic = activeTopic(stored);
     const { data: row, error } = await supabase
-      .from("portal_accounts").update({ notify_topic: topic }).eq("user_id", userId).select("user_id");
+      .from("portal_accounts").update({ notify_topic: stored }).eq("user_id", userId).select("user_id");
     if (error) return json({ ok: false, message: "Run the phone alerts SQL in Supabase first." }, 500);
     if (!row?.length) return json({ ok: false, message: "Save your portal login first." }, 400);
     return json({ ok: true, topic });
@@ -335,8 +345,9 @@ Deno.serve(async (req: Request) => {
 
   if (body.action === "test_notify") {
     const { data: account } = await supabase.from("portal_accounts").select("notify_topic").eq("user_id", userId).maybeSingle();
-    if (!account?.notify_topic) return json({ ok: false, message: "Turn on phone alerts first." }, 400);
-    const sent = await sendAlerts(account.notify_topic, [{
+    const testTopic = activeTopic(account?.notify_topic);
+    if (!testTopic) return json({ ok: false, message: "Turn on phone alerts first." }, 400);
+    const sent = await sendAlerts(testTopic, [{
       title: "UniMate", body: "Alerts are working. You will get one for new grades, attendance and exam seats.", tag: "tada",
     }]);
     return sent ? json({ ok: true }) : json({ ok: false, message: "Could not reach ntfy. Try again." }, 502);

@@ -109,7 +109,9 @@ export const testPortalAlert = () => call({ action: 'test_notify' });
 /** The private ntfy topic, or null when phone alerts are off (or not set up on the server yet). */
 export const getPortalAlertTopic = async (): Promise<string | null> => {
   const { data, error } = await supabase.from('portal_accounts').select('notify_topic').maybeSingle();
-  return error || !data ? null : ((data as { notify_topic: string | null }).notify_topic ?? null);
+  const t = error || !data ? null : ((data as { notify_topic: string | null }).notify_topic ?? null);
+  // "off:<topic>" means alerts are paused (the topic is kept for when they are turned back on)
+  return t && !t.startsWith('off:') ? t : null;
 };
 
 export const removePortalLogin = async () => {
