@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Sparkles, Loader2, Wand2, ChevronDown } from 'lucide-react';
+import { Loader2, ChevronDown } from 'lucide-react';
 import { ScheduleEvent, EventColorMap, EventType, PeriodDefinition, CourseGrade } from '../types';
-import { parseNaturalLanguageEvent } from '../services/geminiService';
 import { getLocalISOString } from '../constants';
 import Sheet, { riseItem, riseParent } from './Sheet';
 
@@ -67,8 +66,6 @@ const Switch: React.FC<{ on: boolean; onChange: (v: boolean) => void; label: str
 
 const AddEventModal: React.FC<AddEventModalProps> = ({ isOpen, onClose, onSave, eventColors, initialData, periods, courses = [] }) => {
   const [formData, setFormData] = useState<Partial<ScheduleEvent>>({ ...DEFAULTS, date: getLocalISOString() });
-  const [magicPrompt, setMagicPrompt] = useState('');
-  const [isMagicLoading, setIsMagicLoading] = useState(false);
   const [timeMode, setTimeMode] = useState<'time' | 'slot'>('slot');
   const [showCoursePicker, setShowCoursePicker] = useState(false);
   const [addToGrades, setAddToGrades] = useState(false);
@@ -87,29 +84,12 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ isOpen, onClose, onSave, 
     setTimeMode(onSlot || !initialData ? 'slot' : 'time');
     setAddToGrades(false);
     setShowCoursePicker(false);
-    setMagicPrompt('');
     setSaveError(null);
   }, [initialData, isOpen]);
 
   const set = (patch: Partial<ScheduleEvent>) => setFormData(prev => ({ ...prev, ...patch }));
   const isEdit = !!formData.id;
   const canSave = !!formData.title?.trim() && !isSaving;
-
-  const handleMagicAutofill = async () => {
-    if (!magicPrompt.trim()) return;
-    setIsMagicLoading(true);
-    try {
-      const result = await parseNaturalLanguageEvent(magicPrompt, periods);
-      if (result) {
-        set(result);
-        setTimeMode(result.startTime && slots.some(p => p.startTime === result.startTime) ? 'slot' : 'time');
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsMagicLoading(false);
-    }
-  };
 
   const pickSlot = (p: PeriodDefinition) => set({ startTime: p.startTime, durationMinutes: minsOf(p.endTime) - minsOf(p.startTime) });
 
@@ -167,32 +147,6 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ isOpen, onClose, onSave, 
         initial="hidden"
         animate="show"
       >
-        {/* quick fill from a sentence (new classes only) */}
-        {!isEdit && (
-          <motion.div variants={riseItem} className="mb-1 flex items-center gap-2 rounded-2xl py-1.5 pl-3.5 pr-1.5"
-            style={{ background: 'color-mix(in srgb, var(--hero-progress) 9%, transparent)', border: '1px solid color-mix(in srgb, var(--hero-progress) 30%, transparent)' }}>
-            <Sparkles size={16} className="shrink-0" style={{ color: 'var(--hero-progress)' }} />
-            <input
-              className={inputBase}
-              style={{ color: 'var(--text-primary)' }}
-              placeholder="Type it: Math quiz Monday 10am"
-              value={magicPrompt}
-              onChange={e => setMagicPrompt(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleMagicAutofill()}
-            />
-            <motion.button
-              whileTap={{ scale: 0.9 }}
-              onClick={handleMagicAutofill}
-              disabled={isMagicLoading || !magicPrompt.trim()}
-              aria-label="Fill in from text"
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border-0 disabled:opacity-40"
-              style={{ background: 'var(--cta-bg)', color: 'var(--cta-ink)' }}
-            >
-              {isMagicLoading ? <Loader2 size={17} className="animate-spin" /> : <Wand2 size={17} />}
-            </motion.button>
-          </motion.div>
-        )}
-
         {/* name */}
         <motion.div variants={riseItem}>
           <div className={`${sectionLabel} flex items-center justify-between`} style={{ color: 'var(--text-muted)' }}>
