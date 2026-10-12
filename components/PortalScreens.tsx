@@ -5,7 +5,7 @@ import { styles } from '../theme';
 import {
   getPortalAccount, getPortalGrades, getPortalAttendance, getPortalAbsenceLevels, getPortalExamSeats, markPortalGradesSeen,
   syncPortal, timeAgo, isAbsent, readPortalCache, writePortalCache, PortalSyncResult,
-  PortalAccount, PortalGrade, PortalAttendanceRow, PortalAbsenceLevel, PortalExamSeat,
+  PortalAccount, PortalGrade, PortalAttendanceRow, PortalExamSeat,
 } from '../services/portal';
 
 const card: React.CSSProperties = {
