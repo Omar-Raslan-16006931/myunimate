@@ -93,7 +93,13 @@ const call = async (body: Record<string, unknown>): Promise<PortalSyncResult> =>
 export const savePortalLogin = (username: string, password: string) =>
   call({ action: 'save_credentials', username, password });
 
-export const syncPortal = () => call({ action: 'sync' });
+// One portal check at a time: if one is already running (from Home, a portal screen
+// or the timer), everyone waits for that same result instead of starting another.
+let syncInFlight: Promise<PortalSyncResult> | null = null;
+export const syncPortal = (): Promise<PortalSyncResult> => {
+  if (!syncInFlight) syncInFlight = call({ action: 'sync' }).finally(() => { syncInFlight = null; });
+  return syncInFlight;
+};
 
 /** Turns phone alerts (through the ntfy app) on or off. Turning on makes a new private topic. */
 export const setPortalAlerts = (enabled: boolean) => call({ action: 'set_notify', enabled });
@@ -106,23 +112,50 @@ export const getPortalAlertTopic = async (): Promise<string | null> => {
   return error || !data ? null : ((data as { notify_topic: string | null }).notify_topic ?? null);
 };
 
-export const removePortalLogin = () => call({ action: 'remove' });
+export const removePortalLogin = async () => {
+  const res = await call({ action: 'remove' });
+  if (res.ok) clearPortalCache();
+  return res;
+};
 
-export const getPortalAccount = async (): Promise<PortalAccount | null> => {
+// ── Saved copy on the phone, so portal screens open instantly ──
+const CACHE_PREFIX = 'portal_cache_v1_';
+
+export const readPortalCache = <T,>(name: string): T | null => {
+  try {
+    const raw = localStorage.getItem(CACHE_PREFIX + name);
+    return raw ? (JSON.parse(raw) as T) : null;
+  } catch {
+    return null;
+  }
+};
+
+export const writePortalCache = (name: string, value: unknown) => {
+  try { localStorage.setItem(CACHE_PREFIX + name, JSON.stringify(value)); } catch { /* storage full: just no cache */ }
+};
+
+export const clearPortalCache = () => {
+  try {
+    Object.keys(localStorage).filter(k => k.startsWith(CACHE_PREFIX)).forEach(k => localStorage.removeItem(k));
+  } catch { /* ignore */ }
+};
+
+export const getPortalAccount = async (strict = false): Promise<PortalAccount | null> => {
   const { data, error } = await supabase
     .from('portal_accounts')
     .select('username, last_sync_at, last_ok_at, last_status, last_error')
     .maybeSingle();
-  if (error) return null;
+  if (error) { if (strict) throw error; return null; }
   return data as PortalAccount | null;
 };
 
-export const getPortalGrades = async (): Promise<PortalGrade[]> => {
+export const getPortalGrades = async (strict = false): Promise<PortalGrade[]> => {
   const { data, error } = await supabase
     .from('portal_grades')
     .select('id, kind, course_key, course_name, category, element, grade_text, score, total, lecturer, is_new, first_seen_at')
     .order('course_key')
     .order('first_seen_at');
+  if (error && strict) throw error;
   return error || !data ? [] : (data as PortalGrade[]);
 };
 
@@ -131,26 +164,29 @@ export const markPortalGradesSeen = async (ids: number[]): Promise<void> => {
   await supabase.from('portal_grades').update({ is_new: false }).in('id', ids);
 };
 
-export const getPortalAttendance = async (): Promise<PortalAttendanceRow[]> => {
+export const getPortalAttendance = async (strict = false): Promise<PortalAttendanceRow[]> => {
   const { data, error } = await supabase
     .from('portal_attendance')
     .select('id, course_key, course_name, row_number, status, session_desc, session_date, session_type')
     .order('course_key')
     .order('row_number');
+  if (error && strict) throw error;
   return error || !data ? [] : (data as PortalAttendanceRow[]);
 };
 
-export const getPortalAbsenceLevels = async (): Promise<PortalAbsenceLevel[]> => {
+export const getPortalAbsenceLevels = async (strict = false): Promise<PortalAbsenceLevel[]> => {
   const { data, error } = await supabase.from('portal_absence_levels').select('code, name, level, title');
+  if (error && strict) throw error;
   return error || !data ? [] : (data as PortalAbsenceLevel[]);
 };
 
-export const getPortalExamSeats = async (): Promise<PortalExamSeat[]> => {
+export const getPortalExamSeats = async (strict = false): Promise<PortalExamSeat[]> => {
   const { data, error } = await supabase
     .from('portal_exam_seats')
     .select('id, course_key, course_name, exam_day, exam_date, start_time, end_time, duration_minutes, hall, seat, exam_type')
     .order('exam_date', { ascending: true })
     .order('start_time', { ascending: true });
+  if (error && strict) throw error;
   return error || !data ? [] : (data as PortalExamSeat[]);
 };
 

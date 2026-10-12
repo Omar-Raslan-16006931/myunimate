@@ -1,23 +1,35 @@
 import React, { useEffect, useState } from 'react';
 import { Loader2, RefreshCw, Trash2, CheckCircle2, AlertTriangle, Bell, Copy } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { getPortalAccount, savePortalLogin, syncPortal, removePortalLogin, setPortalAlerts, testPortalAlert, getPortalAlertTopic, timeAgo, PortalAccount } from '../services/portal';
+import { getPortalAccount, savePortalLogin, syncPortal, removePortalLogin, setPortalAlerts, testPortalAlert, getPortalAlertTopic, timeAgo, readPortalCache, writePortalCache, PortalAccount } from '../services/portal';
 
 /** Settings block for the uni portal login. Separate from the app login. */
 const PortalSettings: React.FC = () => {
-  const [account, setAccount] = useState<PortalAccount | null>(null);
-  const [loaded, setLoaded] = useState(false);
-  const [username, setUsername] = useState('');
+  // show the saved copy right away, then refresh it from the server
+  const cached = readPortalCache<{ account: PortalAccount | null; topic: string | null }>('settings');
+  const [account, setAccount] = useState<PortalAccount | null>(cached?.account ?? null);
+  const [loaded, setLoaded] = useState(!!cached);
+  const [refreshing, setRefreshing] = useState(true);
+  const [username, setUsername] = useState(cached?.account?.username ?? '');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState<'save' | 'sync' | 'remove' | 'alerts' | 'test' | null>(null);
-  const [topic, setTopic] = useState<string | null>(null);
+  const [topic, setTopic] = useState<string | null>(cached?.topic ?? null);
 
   const load = async () => {
-    const a = await getPortalAccount();
-    setAccount(a);
-    if (a) setUsername(a.username);
-    setTopic(a ? await getPortalAlertTopic() : null);
-    setLoaded(true);
+    setRefreshing(true);
+    try {
+      const a = await getPortalAccount(true);
+      const t = a ? await getPortalAlertTopic() : null;
+      setAccount(a);
+      if (a) setUsername(a.username);
+      setTopic(t);
+      writePortalCache('settings', { account: a, topic: t });
+    } catch {
+      /* offline: keep the saved copy */
+    } finally {
+      setLoaded(true);
+      setRefreshing(false);
+    }
   };
   useEffect(() => { load(); }, []);
 
@@ -87,8 +99,19 @@ const PortalSettings: React.FC = () => {
     <div className="space-y-3">
       <p className="text-xs text-white/50 leading-relaxed">
         Your GIU portal login, used only to read your grades and attendance. It is not your UniMate login.
-        The password is stored encrypted on the server so it can check for new grades every hour.
+        The password is stored encrypted on the server so it can check for updates every 10 minutes.
       </p>
+
+      {refreshing && loaded && (
+        <div className="flex items-center gap-1.5 text-[11px] font-semibold text-teal-400">
+          <Loader2 size={12} className="animate-spin" /> Checking for updates…
+        </div>
+      )}
+      {!loaded && (
+        <div className="flex items-center gap-2 rounded-xl border border-white/5 bg-black/30 px-3 py-2.5 text-xs text-white/50">
+          <Loader2 size={14} className="animate-spin" /> Loading your portal login…
+        </div>
+      )}
 
       {loaded && account && (
         <div className="flex items-start gap-2 rounded-xl border border-white/5 bg-black/30 px-3 py-2.5 text-xs">

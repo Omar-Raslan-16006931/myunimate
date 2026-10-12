@@ -4,7 +4,7 @@ import { AlertCircle, RefreshCw } from 'lucide-react';
 import { Toaster, toast } from 'react-hot-toast';
 import { remindersEnabled, syncReminders } from './services/notifications';
 import { PortalGrades, PortalAttendance, PortalExamSeats } from './components/PortalScreens';
-import { getPortalSummary, getPortalExamSeats, getPortalAlertTopic, syncPortal, PortalExamSeat } from './services/portal';
+import { getPortalSummary, getPortalExamSeats, getPortalAlertTopic, syncPortal, clearPortalCache, PortalExamSeat } from './services/portal';
 import { checkPortalChanges } from './services/portalAlerts';
 import { supabase } from './lib/supabase';
 import { ViewState, ScheduleEvent, ScheduleProfile, EventColorMap, EventType, PeriodDefinition, Announcement, ThemeMode, FoodItem, WaterLog, WorkoutSession, WorkoutRoutine, ExerciseDefinition, GymSettings, ActiveGymState, CourseGrade, ToDoItem, MaterialFile, BodyLog } from './types';
@@ -1120,7 +1120,7 @@ export const App: React.FC = () => {
             await handleUpdateProfile(data);
             setShowOnboarding(true);
         }} 
-        onSignOut={() => supabase.auth.signOut()}
+        onSignOut={() => { clearPortalCache(); return supabase.auth.signOut(); }}
     />;
   }
 
@@ -1533,7 +1533,7 @@ export const App: React.FC = () => {
                 setProfiles(INITIAL_PROFILES);
                 // etc...
             }}
-            onSignOut={() => supabase.auth.signOut()}
+            onSignOut={() => { clearPortalCache(); return supabase.auth.signOut(); }}
             periods={currentPeriods}
             setPeriods={handleUpdateProfilePeriods}
             accountInfo={profile}
@@ -1613,6 +1613,7 @@ export const App: React.FC = () => {
           setIsAddModalOpen(true);
         }}
         eventColors={eventColors}
+        periods={currentPeriods}
       />
 
       <ImageImportModal 
