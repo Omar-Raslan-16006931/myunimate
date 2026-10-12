@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Dumbbell, Calculator, Sparkles, Megaphone, X,
-  CheckSquare, Plus, Brain, Save, Check, ChevronRight, Bell, BellOff, GraduationCap, UserCheck, Armchair
+  CheckSquare, Plus, Brain, Save, Check, ChevronRight, Bell, BellOff, GraduationCap, UserCheck, Armchair, MapPin
 } from 'lucide-react';
 import { ScheduleEvent, EventColorMap, PeriodDefinition, Announcement } from '../types';
 import { getLocalISOString } from '../constants';
@@ -246,8 +246,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ events, onNavigate, onEven
         <h2 className="mt-2 mb-0 font-extrabold" style={{ fontSize: '1.45rem', lineHeight: 1.12, letterSpacing: '-0.02em', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
           {event.title}
         </h2>
-        <div className="mt-2 text-[0.82rem] font-bold" style={{ color: 'var(--hero-sub)' }}>
-          {[slotName, `${to12h(event.startTime)} – ${to12h(getEndTime(event.startTime, event.durationMinutes))}`, event.location].filter(Boolean).join('  ·  ')}
+        <div className="mt-2.5 flex items-center justify-between gap-2">
+          <span className="min-w-0 truncate text-[0.82rem] font-bold" style={{ color: 'var(--hero-sub)' }}>
+            {[slotName, `${to12h(event.startTime)} – ${to12h(getEndTime(event.startTime, event.durationMinutes))}`].filter(Boolean).join('  ·  ')}
+          </span>
+          {event.location && (
+            <span
+              className="flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[0.85rem] font-extrabold"
+              style={{ background: 'color-mix(in srgb, var(--hero-ink) 14%, transparent)', border: '1px solid color-mix(in srgb, var(--hero-ink) 22%, transparent)' }}
+            >
+              <MapPin size={13} strokeWidth={2.6} style={{ color: 'var(--hero-progress)' }} />
+              {event.location}
+            </span>
+          )}
         </div>
         {isHappeningNow && (
           <div className="mt-3 h-1.5 rounded-full overflow-hidden" style={{ background: 'color-mix(in srgb, var(--hero-progress) 18%, transparent)' }}>
