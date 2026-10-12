@@ -232,21 +232,26 @@ export const Dashboard: React.FC<DashboardProps> = ({ events, onNavigate, onEven
         style={{ background: 'var(--hero-bg)', color: 'var(--hero-ink, var(--on-accent))', border: '1px solid var(--line)', ...glassFx }}
       >
         <div className="flex items-center justify-between text-[0.72rem] font-extrabold uppercase tracking-[0.08em]">
-          <span className="flex items-center gap-1.5">
-            {isHappeningNow && <span className="inline-block h-2 w-2 rounded-full" style={{ background: 'currentColor' }} />}
+          <span className="flex items-center gap-1.5" style={{ color: isHappeningNow ? 'var(--hero-live)' : 'var(--hero-sub)' }}>
+            {isHappeningNow && (
+              <span className="relative inline-flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full rounded-full opacity-60 animate-ping" style={{ background: 'var(--hero-live)' }} />
+                <span className="relative inline-flex h-2 w-2 rounded-full" style={{ background: 'var(--hero-live)' }} />
+              </span>
+            )}
             {isHappeningNow ? 'Happening now' : 'Up next'}
           </span>
-          <span>{timing}</span>
+          <span style={{ color: 'var(--hero-progress)' }}>{timing}</span>
         </div>
         <h2 className="mt-2 mb-0 font-extrabold" style={{ fontSize: '1.45rem', lineHeight: 1.12, letterSpacing: '-0.02em', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
           {event.title}
         </h2>
-        <div className="mt-2 text-[0.82rem] font-bold" style={{ opacity: 0.85 }}>
+        <div className="mt-2 text-[0.82rem] font-bold" style={{ color: 'var(--hero-sub)' }}>
           {[slotName, `${to12h(event.startTime)} – ${to12h(getEndTime(event.startTime, event.durationMinutes))}`, event.location].filter(Boolean).join('  ·  ')}
         </div>
         {isHappeningNow && (
-          <div className="mt-3 h-1.5 rounded-full overflow-hidden" style={{ background: 'color-mix(in srgb, currentColor 22%, transparent)' }}>
-            <div className="h-full rounded-full" style={{ width: `${progress * 100}%`, background: 'currentColor' }} />
+          <div className="mt-3 h-1.5 rounded-full overflow-hidden" style={{ background: 'color-mix(in srgb, var(--hero-progress) 18%, transparent)' }}>
+            <div className="h-full rounded-full" style={{ width: `${progress * 100}%`, background: 'var(--hero-progress)', boxShadow: '0 0 10px color-mix(in srgb, var(--hero-progress) 55%, transparent)' }} />
           </div>
         )}
       </motion.div>
