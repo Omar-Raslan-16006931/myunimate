@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Dumbbell, Calculator, Sparkles, Megaphone, X,
-  CheckSquare, Plus, Brain, Save, Check, ChevronRight, Bell, BellOff, GraduationCap, UserCheck, Armchair, MapPin
+  CheckSquare, Plus, Brain, Save, Check, ChevronRight, Bell, BellOff, GraduationCap, UserCheck, Armchair
 } from 'lucide-react';
 import { ScheduleEvent, EventColorMap, PeriodDefinition, Announcement } from '../types';
 import { getLocalISOString } from '../constants';
@@ -252,10 +252,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ events, onNavigate, onEven
           </span>
           {event.location && (
             <span
-              className="flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[0.85rem] font-extrabold"
+              className="shrink-0 rounded-full px-2.5 py-1 text-[0.85rem] font-extrabold"
               style={{ background: 'color-mix(in srgb, var(--hero-ink) 14%, transparent)', border: '1px solid color-mix(in srgb, var(--hero-ink) 22%, transparent)' }}
             >
-              <MapPin size={13} strokeWidth={2.6} style={{ color: 'var(--hero-progress)' }} />
               {event.location}
             </span>
           )}
