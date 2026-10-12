@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, ChevronRight, MapPin, Plus, Brain, ChevronDown, X, RotateCcw, Trash2, Download, MoreHorizontal } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Brain, ChevronDown, X, RotateCcw, Trash2, Download, MoreHorizontal } from 'lucide-react';
 import { ScheduleEvent, EventColorMap, ScheduleProfile, PeriodDefinition } from '../types';
 import { getLocalISOString } from '../constants';
 import { theme, styles } from '../theme';
@@ -234,12 +234,11 @@ const Schedule: React.FC<ScheduleProps> = ({
     });
   };
 
-  // Helper to render a single event card
-  const renderEventCard = (ev: ScheduleEvent, isSmall: boolean = false) => {
+  // Helper to render a single event card. `more` > 0 shows a "+N" badge for extra classes in the same slot.
+  const renderEventCard = (ev: ScheduleEvent, more: number = 0, onMore?: () => void) => {
        const bg = eventColors[ev.type] || '#64748b';
        const txtColor = getContrastColor(bg);
        const isDragging = draggedEventId === ev.id;
-       const small = isSmall ? '0.62rem' : '0.68rem';
 
        return (
        <div
@@ -255,38 +254,62 @@ const Schedule: React.FC<ScheduleProps> = ({
            height: '100%',
            width: '100%',
            boxSizing: 'border-box',
-           padding: isSmall ? '5px' : '6px 7px',
-           borderRadius: '10px',
+           padding: '7px 8px',
+           borderRadius: '12px',
            display: 'flex',
            flexDirection: 'column',
-           gap: '1px',
+           gap: '4px',
            overflow: 'hidden',
+           position: 'relative',
            opacity: isDragging ? 0.4 : 1,
            cursor: 'pointer',
          }}
        >
          <div style={{
-             fontWeight: 700,
-             fontSize: isSmall ? '0.66rem' : '0.72rem',
-             lineHeight: 1.18,
+             fontWeight: 750,
+             fontSize: '0.74rem',
+             lineHeight: 1.2,
              display: '-webkit-box',
              WebkitLineClamp: 2,
              WebkitBoxOrient: 'vertical',
              overflow: 'hidden',
-             overflowWrap: 'break-word',
+             overflowWrap: 'anywhere',
+             paddingRight: more > 0 ? '20px' : 0,
          }}>
             {ev.title}
          </div>
-         {ev.code && (
-             <div style={{fontSize: small, fontWeight: 600, opacity: 0.8, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>
-                 {ev.code}
-             </div>
-         )}
          {ev.location && (
-             <div style={{fontSize: small, fontWeight: 600, display: 'flex', alignItems: 'center', gap: '3px', marginTop: 'auto', minWidth: 0}}>
-                 <MapPin size={10} style={{flexShrink: 0}} />
-                 <span style={{whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{ev.location}</span>
-             </div>
+             <span style={{
+                 marginTop: 'auto',
+                 alignSelf: 'flex-start',
+                 maxWidth: '100%',
+                 fontSize: '0.68rem',
+                 fontWeight: 800,
+                 padding: '2px 7px',
+                 borderRadius: '999px',
+                 background: 'rgba(0,0,0,0.18)',
+                 whiteSpace: 'nowrap',
+                 overflow: 'hidden',
+                 textOverflow: 'ellipsis',
+                 boxSizing: 'border-box',
+             }}>
+                 {ev.location}
+             </span>
+         )}
+         {more > 0 && (
+             <button
+                 onClick={(e) => { e.stopPropagation(); onMore?.(); }}
+                 aria-label={`${more} more in this slot`}
+                 style={{
+                     position: 'absolute', top: 5, right: 5,
+                     minWidth: 22, height: 22, padding: '0 5px',
+                     borderRadius: 999, border: 'none',
+                     background: 'rgba(0,0,0,0.28)', color: txtColor,
+                     fontSize: '0.64rem', fontWeight: 900, cursor: 'pointer',
+                 }}
+             >
+                 +{more}
+             </button>
          )}
        </div>
      );
@@ -296,7 +319,7 @@ const Schedule: React.FC<ScheduleProps> = ({
   const weekEnd = addDays(currentWeekStart, 6);
 
   // Reduced size grid calculation: 54px header, 13px breaks
-  const DAY_COL = 50, PERIOD_COL = 100, BREAK_COL = 10;
+  const DAY_COL = 50, PERIOD_COL = 104, BREAK_COL = 4;
   const gridTemplateColumns = `${DAY_COL}px ${periods.map(p => p.isBreak ? `${BREAK_COL}px` : `${PERIOD_COL}px`).join(' ')}`;
 
   return (
@@ -434,7 +457,7 @@ const Schedule: React.FC<ScheduleProps> = ({
                      <span style={styles.dateBadge}>{formatDate(rowDate)}</span>
                    </div>
                    {periods.map((p, pIdx) => {
-                      if (p.isBreak) return <div key={`${dayName}-${p.id}`} style={{...styles.scheduleBreakCell, ...rowStyle}}></div>;
+                      if (p.isBreak) return <div key={`${dayName}-${p.id}`} style={{...styles.scheduleBreakCell, borderLeft: 'none', borderRight: 'none', ...rowStyle}}></div>;
                       
                       const cellEvents = events.filter(e => {
                          if (e.scheduleId !== activeProfileId) return false;
@@ -455,44 +478,11 @@ const Schedule: React.FC<ScheduleProps> = ({
                       return (
                         <div 
                             key={`${dayName}-${p.id}`} 
-                            style={{...styles.scheduleContentCell, ...rowStyle, ...cellHighlightStyle, transition: 'all 0.2s'}}
+                            style={{...styles.scheduleContentCell, padding: '5px', ...rowStyle, ...cellHighlightStyle, transition: 'all 0.2s'}}
                             onDragOver={(e) => handleDragOver(e, dayName, pIdx)}
                             onDrop={(e) => handleDrop(e, dayName, rowDateStr, pIdx)}
                         >
-                           {cellEvents.length > 0 && (
-                               cellEvents.length === 1 ? (
-                                   renderEventCard(cellEvents[0])
-                               ) : (
-                                   <div style={{display: 'flex', gap: '3px', width: '100%', height: '100%'}}>
-                                       <div style={{flex: 1, minWidth: 0}}>
-                                           {renderEventCard(cellEvents[0], true)}
-                                       </div>
-                                       <div 
-                                           onClick={(e) => { e.stopPropagation(); setExpandedSlot(cellEvents); }}
-                                           style={{
-                                               width: '24px', 
-                                               borderRadius: '7px', 
-                                               backgroundColor: 'rgba(255,255,255,0.1)', 
-                                               border: '1px solid rgba(255,255,255,0.1)', 
-                                               display: 'flex', 
-                                               alignItems: 'center', 
-                                               justifyContent: 'center', 
-                                               cursor: 'pointer', 
-                                               color: '#fff', 
-                                               fontWeight: 800, 
-                                               fontSize: '0.65rem',
-                                               flexShrink: 0,
-                                               transition: 'background 0.2s',
-                                               boxShadow: '0 4px 10px rgba(0,0,0,0.2)'
-                                           }}
-                                           onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.2)'}
-                                           onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'}
-                                       >
-                                           +{cellEvents.length - 1}
-                                       </div>
-                                   </div>
-                               )
-                           )}
+                           {cellEvents.length > 0 && renderEventCard(cellEvents[0], cellEvents.length - 1, () => setExpandedSlot(cellEvents))}
                         </div>
                       );
                    })}
