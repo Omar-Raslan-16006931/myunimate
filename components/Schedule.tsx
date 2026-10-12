@@ -296,7 +296,7 @@ const Schedule: React.FC<ScheduleProps> = ({
   const weekEnd = addDays(currentWeekStart, 6);
 
   // Reduced size grid calculation: 54px header, 13px breaks
-  const DAY_COL = 50, PERIOD_COL = 100, BREAK_COL = 10;
+  const DAY_COL = 50, PERIOD_COL = 112, BREAK_COL = 10;
   const gridTemplateColumns = `${DAY_COL}px ${periods.map(p => p.isBreak ? `${BREAK_COL}px` : `${PERIOD_COL}px`).join(' ')}`;
 
   return (
@@ -455,7 +455,7 @@ const Schedule: React.FC<ScheduleProps> = ({
                       return (
                         <div 
                             key={`${dayName}-${p.id}`} 
-                            style={{...styles.scheduleContentCell, ...rowStyle, ...cellHighlightStyle, transition: 'all 0.2s'}}
+                            style={{...styles.scheduleContentCell, minHeight: '82px', ...rowStyle, ...cellHighlightStyle, transition: 'all 0.2s'}}
                             onDragOver={(e) => handleDragOver(e, dayName, pIdx)}
                             onDrop={(e) => handleDrop(e, dayName, rowDateStr, pIdx)}
                         >

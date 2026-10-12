@@ -239,7 +239,7 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({ event, onClose, o
                     whileTap={{ scale: 0.97 }}
                     onClick={() => onEdit(e)}
                     className="flex h-[52px] flex-1 items-center justify-center gap-2 rounded-2xl border-0 text-[1rem] font-extrabold"
-                    style={{ background: 'var(--cta-bg)', color: 'var(--cta-ink)', boxShadow: '0 8px 24px color-mix(in srgb, var(--cta-bg) 30%, transparent)' }}
+                    style={{ background: 'var(--cta-bg)', color: 'var(--cta-ink)' }}
                   >
                     <Pencil size={17} strokeWidth={2.5} /> Edit class
                   </motion.button>
