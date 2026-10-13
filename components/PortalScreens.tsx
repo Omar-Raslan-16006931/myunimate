@@ -253,7 +253,7 @@ export const PortalGrades: React.FC<ScreenProps> = ({ onBack, onOpenSettings }) 
                     onClick={() => setSelectedCourseKey(c.key)}
                     className="shrink-0 rounded-full px-3 py-1 text-[0.74rem] font-bold transition-all border-0 cursor-pointer"
                     style={active
-                      ? { background: 'var(--accent)', color: 'var(--on-accent)', boxShadow: '0 2px 8px rgba(25,184,166,0.35)' }
+                      ? { background: 'var(--accent)', color: 'var(--on-accent)' }
                       : { background: 'var(--surface-2)', color: 'var(--text-muted)' }}
                   >
                     {c.key}
