@@ -94,6 +94,7 @@ const sendAlerts = async (topic: string, alerts: Alert[]): Promise<number> => {
       console.error("ntfy request failed");
     }
   }
+  console.log(`alerts: ${alerts.length} found, ${sent}/${list.length} sent`);
   return sent;
 };
 
@@ -120,7 +121,7 @@ const save = async (userId: string, data: PortalData, firstSync: boolean): Promi
 
   // grades: anything not seen before, or whose grade changed, is flagged as new
   const { data: existing, error: readErr } = await supabase
-    .from("portal_grades").select("id, kind, course_key, category, element, grade_text").eq("user_id", userId);
+    .from("portal_grades").select("id, kind, course_key, category, element, grade_text, score").eq("user_id", userId);
   if (readErr) throw new Error(`DB_READ_FAILED: ${readErr.message}`);
   // Database table has unique (user_id, kind, course_key, element)
   const byKey = new Map((existing ?? []).map((r) => [`${r.kind}|${r.course_key}|${r.element}`, r]));
@@ -138,25 +139,33 @@ const save = async (userId: string, data: PortalData, firstSync: boolean): Promi
       score: g.score, total: g.total, lecturer: g.lecturer, updated_at: now,
     };
     const old = byKey.get(key);
-    const what = `${g.courseName}: ${g.element} ${g.gradeText}`.trim();
+    const what = `${g.courseName} · ${g.element}: ${g.gradeText}`.trim();
+    // The portal often adds an empty slot first ("/ 14") and fills the mark in later.
+    // An empty slot is saved quietly; the alert goes out when the real mark appears.
+    const hasMark = g.score !== null;
     if (!old) {
-      const { error } = await supabase.from("portal_grades").insert({ ...row, is_new: !firstSync, first_seen_at: now });
+      const { error } = await supabase.from("portal_grades").insert({ ...row, is_new: !firstSync && hasMark, first_seen_at: now });
       if (error) {
         console.error("portal_grades insert error:", error);
         throw new Error(`DB_WRITE_FAILED (portal_grades insert: ${error.message || JSON.stringify(error)})`);
       }
-      if (!firstSync) {
+      if (!firstSync && hasMark) {
         newCount++;
         alerts.push({ title: g.kind === "midterm" ? "New midterm grade" : "New grade", body: what, tag: "memo" });
       }
     } else if (old.grade_text !== g.gradeText) {
-      const { error } = await supabase.from("portal_grades").update({ ...row, is_new: true }).eq("id", old.id);
+      const { error } = await supabase.from("portal_grades").update({ ...row, is_new: hasMark }).eq("id", old.id);
       if (error) {
         console.error("portal_grades update error:", error);
         throw new Error(`DB_WRITE_FAILED (portal_grades update: ${error.message || JSON.stringify(error)})`);
       }
-      newCount++;
-      alerts.push({ title: "Grade updated", body: what, tag: "memo" });
+      if (hasMark) {
+        newCount++;
+        const hadMark = old.score !== null && old.score !== undefined;
+        alerts.push(hadMark
+          ? { title: "Grade updated", body: `${what} (was ${old.grade_text})`, tag: "memo" }
+          : { title: g.kind === "midterm" ? "New midterm grade" : "New grade", body: what, tag: "memo" });
+      }
     }
   }
 
