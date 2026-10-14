@@ -2,8 +2,8 @@
 import React, { useState, memo, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { styles } from '../theme';
-import { Loader2, Mail, Lock, User, GraduationCap, Calendar, Building, Users, LogIn, Check, AlertCircle, X, Ticket } from 'lucide-react';
-import { validateEmail, validatePassword, validateUsername, validateReferralCode } from '../utils/validation';
+import { Loader2, Mail, Lock, User, GraduationCap, Calendar, Building, Users, Check, AlertCircle, X } from 'lucide-react';
+import { validateEmail, validatePassword, validateUsername } from '../utils/validation';
 import { logError, logAuthEvent } from '../utils/logger';
 import { SIGNUPS_ENABLED } from '../lib/featureFlags';
 import OnboardSteps from './OnboardSteps';
@@ -28,11 +28,6 @@ function Auth({ onEnterTestMode }: AuthProps) {
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
   const [isCheckingUsername, setIsCheckingUsername] = useState(false);
 
-  // Referral
-  const [referralCode, setReferralCode] = useState('');
-  const [isCheckingReferral, setIsCheckingReferral] = useState(false);
-  const [isReferralValid, setIsReferralValid] = useState<boolean | null>(null);
-
   const [gender, setGender] = useState('');
   const [major, setMajor] = useState('');
   const [year, setYear] = useState('');
@@ -44,8 +39,6 @@ function Auth({ onEnterTestMode }: AuthProps) {
       setConfirmPassword('');
       setUsername('');
       setUsernameAvailable(null);
-      setReferralCode('');
-      setIsReferralValid(null);
       setGender('');
       setMajor('');
       setYear('');
@@ -61,18 +54,9 @@ function Auth({ onEnterTestMode }: AuthProps) {
       const timer = setTimeout(async () => {
         setIsCheckingUsername(true);
         try {
-          // Check if username exists (case insensitive)
-          const { data } = await supabase
-            .from('profiles')
-            .select('username')
-            .ilike('username', username.trim())
-            .maybeSingle();
-          
-          if (data) {
-             setUsernameAvailable(false);
-          } else {
-             setUsernameAvailable(true);
-          }
+          // asks the server; other people's profiles are never readable from the app
+          const { data, error } = await supabase.rpc('username_available', { p_username: username.trim() });
+          setUsernameAvailable(error ? null : !!data);
         } catch (err) {
            console.error("Error checking username:", err);
         } finally {
@@ -86,33 +70,6 @@ function Auth({ onEnterTestMode }: AuthProps) {
         setIsCheckingUsername(false);
     }
   }, [username, mode]);
-
-  // Real-time referral check
-  useEffect(() => {
-      if (mode === 'signup' && referralCode.length > 3) {
-          const timer = setTimeout(async () => {
-              setIsCheckingReferral(true);
-              try {
-                  const { data } = await supabase
-                    .from('referral_codes')
-                    .select('id')
-                    .eq('code', referralCode.trim())
-                    .eq('is_active', true)
-                    .maybeSingle();
-                  
-                  setIsReferralValid(!!data);
-              } catch (e) {
-                  console.error(e);
-              } finally {
-                  setIsCheckingReferral(false);
-              }
-          }, 600);
-          return () => clearTimeout(timer);
-      } else if (referralCode.length === 0) {
-          setIsReferralValid(null);
-          setIsCheckingReferral(false);
-      }
-  }, [referralCode, mode]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -152,32 +109,6 @@ function Auth({ onEnterTestMode }: AuthProps) {
           throw new Error("Passwords do not match.");
         }
 
-        // --- REFERRAL CODE CHECK ---
-        let verifiedReferralCode = null;
-        let referralCodeId = null;
-
-        if (referralCode.trim()) {
-          // Validate referral code format first
-          const codeCheck = validateReferralCode(referralCode);
-          if (!codeCheck.valid) {
-            throw new Error(codeCheck.error || "Invalid referral code format");
-          }
-
-          // Re-validate strictly on submit
-          const { data, error } = await supabase
-            .from('referral_codes')
-            .select('*')
-            .eq('code', referralCode.trim().toUpperCase())
-            .eq('is_active', true)
-            .single();
-
-          if (error || !data) {
-            throw new Error("Invalid or inactive referral code.");
-          }
-          verifiedReferralCode = data.code;
-          referralCodeId = data.id;
-        }
-
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email: identifier.toLowerCase().trim(),
           password,
@@ -191,49 +122,11 @@ function Auth({ onEnterTestMode }: AuthProps) {
               major,
               year,
               college,
-              subscription_tier: 0,
-              referred_by: verifiedReferralCode,
             },
           },
         });
 
         if (signUpError) throw signUpError;
-
-        // --- INCREMENT REFERRAL USAGE (AFTER SIGNUP) ---
-        if (referralCodeId) {
-          try {
-            const { error: rpcError } = await supabase.rpc('increment_referral_usage', { row_id: referralCodeId });
-            if (rpcError && signUpData.session) {
-              const { data: latestCode } = await supabase
-                .from('referral_codes')
-                .select('usage_count')
-                .eq('id', referralCodeId)
-                .single();
-
-              if (latestCode) {
-                await supabase
-                  .from('referral_codes')
-                  .update({ usage_count: (latestCode.usage_count || 0) + 1 })
-                  .eq('id', referralCodeId);
-              }
-            }
-          } catch (updateError) {
-            logError("signup_referral", updateError);
-          }
-        }
-
-        // --- EXPLICIT UPDATE FOR REFERRED_BY ---
-        if (signUpData.user && verifiedReferralCode) {
-          setTimeout(async () => {
-            try {
-              await supabase.from('profiles')
-                .update({ referred_by: verifiedReferralCode })
-                .eq('id', signUpData.user!.id);
-            } catch (err) {
-              logError("profile_update", err);
-            }
-          }, 1000);
-        }
 
         logAuthEvent('signup', signUpData.user?.id, true);
         setMessage('Check your email for the confirmation link!');
@@ -241,21 +134,9 @@ function Auth({ onEnterTestMode }: AuthProps) {
         // --- SIGN IN FLOW ---
         let emailToUse = identifier.trim().toLowerCase();
 
-        // Check if input is NOT an email (assuming it is a username)
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(emailToUse)) {
-          // Attempt to resolve username to email via Profile lookup
-          const { data, error: lookupError } = await supabase
-            .from('profiles')
-            .select('email')
-            .eq('username', emailToUse)
-            .maybeSingle();
-
-          if (lookupError || !data || !data.email) {
-            throw new Error("Username not found. Please try your email address.");
-          }
-
-          emailToUse = data.email;
+        // sign in with email only: looking up someone's email from a username would expose it
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailToUse)) {
+          throw new Error("Use the email you signed up with.");
         }
 
         const { data: signInData, error } = await supabase.auth.signInWithPassword({
@@ -272,7 +153,6 @@ function Auth({ onEnterTestMode }: AuthProps) {
       logAuthEvent(mode === 'signup' ? 'signup' : 'signin', undefined, false);
     } finally {
       setLoading(false);
-      setIsCheckingReferral(false);
     }
   };
 
@@ -360,21 +240,21 @@ function Auth({ onEnterTestMode }: AuthProps) {
                 {/* 2. Static Fields (Email & Password) */}
                 <div className="animate-fade-in-up" style={{animationDelay: '0.3s'}}>
                     <label className={`block text-xs font-bold text-slate-400 mb-1.5 ml-1 uppercase tracking-wide ${mode === 'signin' ? 'sr-only' : ''}`}>
-                        {mode === 'signin' ? 'Email or Username' : 'Email Address'} <span className="text-red-500">*</span>
+                        Email Address <span className="text-red-500">*</span>
                     </label>
                     <div className="relative group">
-                        {mode === 'signin' ? (
-                            <LogIn className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 group-focus-within:text-teal-400 transition-colors" size={18} />
-                        ) : (
-                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 group-focus-within:text-teal-400 transition-colors" size={18} />
-                        )}
+                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 group-focus-within:text-teal-400 transition-colors" size={18} />
                         <input
-                            type="text"
+                            type="email"
+                            inputMode="email"
+                            autoComplete="email"
+                            autoCapitalize="none"
+                            autoCorrect="off"
                             required
                             value={identifier}
                             onChange={(e) => setIdentifier(e.target.value)}
                             className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-white placeholder-white/35 focus:outline-none focus:border-teal-500/50 transition-all focus:bg-white/10"
-                            placeholder={mode === 'signin' ? "Username or email" : "user@example.com"}
+                            placeholder={mode === 'signin' ? "Email" : "you@example.com"}
                         />
                     </div>
                 </div>
@@ -388,14 +268,15 @@ function Auth({ onEnterTestMode }: AuthProps) {
                         <input
                             type="password"
                             required
+                            autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-white placeholder-white/35 focus:outline-none focus:border-teal-500/50 transition-all focus:bg-white/10"
                             placeholder="Password"
                         />
                     </div>
-                    {mode === 'signup' && password.length > 0 && password.length < 6 && (
-                        <p className="text-[10px] text-red-500 font-bold ml-1 mt-1">Must be at least 6 characters</p>
+                    {mode === 'signup' && password.length > 0 && !(password.length >= 8 && /[A-Z]/.test(password) && /[0-9]/.test(password)) && (
+                        <p className="text-[10px] text-red-500 font-bold ml-1 mt-1">8+ characters with a capital letter and a number</p>
                     )}
                 </div>
 
@@ -427,47 +308,6 @@ function Auth({ onEnterTestMode }: AuthProps) {
                             </div>
                             {confirmPassword && confirmPassword !== password && (
                                 <p className="text-[10px] text-red-500 font-bold ml-1 mt-1">Passwords do not match</p>
-                            )}
-                         </div>
-                    </div>
-                </div>
-
-                {/* Referral Code - Only in Signup */}
-                <div 
-                    className={`grid transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-                        mode === 'signup' 
-                            ? 'grid-rows-[1fr] opacity-100 mb-0' 
-                            : 'grid-rows-[0fr] opacity-0 mb-0 !mt-0'
-                    }`}
-                >
-                     <div className="overflow-hidden min-h-0">
-                         <div className="pt-4"> 
-                            <label className="block text-xs font-bold text-slate-400 mb-1.5 ml-1 uppercase tracking-wide">
-                                Referral Code
-                            </label>
-                            <div className="relative group">
-                                <Ticket className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 group-focus-within:text-teal-400 transition-colors" size={18} />
-                                <input
-                                    type="text"
-                                    value={referralCode}
-                                    onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
-                                    className={`w-full bg-white/5 border rounded-xl py-3.5 pl-11 pr-10 text-white placeholder-white/20 focus:outline-none transition-all focus:bg-white/10 font-mono tracking-wider
-                                        ${(isReferralValid === false && !isCheckingReferral) ? 'border-red-500/50 focus:border-red-500' : 'border-white/10 focus:border-teal-500/50'}
-                                    `}
-                                    placeholder="OPTIONAL"
-                                />
-                                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                                    {isCheckingReferral ? (
-                                        <Loader2 size={16} className="animate-spin text-white/40" />
-                                    ) : isReferralValid === true ? (
-                                        <Check className="text-emerald-500 animate-in zoom-in" size={16} />
-                                    ) : isReferralValid === false ? (
-                                        <X className="text-red-500 animate-in zoom-in" size={16} />
-                                    ) : null}
-                                </div>
-                            </div>
-                            {isReferralValid === false && !isCheckingReferral && (
-                                <p className="text-[10px] text-red-500 font-bold ml-1 mt-1">Invalid referral code</p>
                             )}
                          </div>
                     </div>

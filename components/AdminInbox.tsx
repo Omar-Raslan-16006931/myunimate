@@ -14,6 +14,7 @@ const AdminInbox: React.FC = () => {
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [isAuthorized, setIsAuthorized] = useState(false);
+  const [search, setSearch] = useState('');
   const replyEndRef = useRef<HTMLDivElement>(null);
 
   // Check if user is admin before showing admin panel
@@ -54,7 +55,15 @@ const AdminInbox: React.FC = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setFeedbackItems(data || []);
+      const items = (data || []) as AppFeedback[];
+      // show who sent each ticket
+      const ids = [...new Set(items.map(i => i.user_id).filter(Boolean))];
+      if (ids.length) {
+        const { data: people } = await supabase.from('profiles').select('id, username').in('id', ids);
+        const names = new Map<string, string>((people || []).map((p: any) => [p.id, p.username]));
+        items.forEach(i => { i.username = names.get(i.user_id) || i.username; });
+      }
+      setFeedbackItems(items);
     } catch (err) {
       console.error("Error fetching feedback:", err);
     } finally {
@@ -63,9 +72,13 @@ const AdminInbox: React.FC = () => {
   };
 
   useEffect(() => {
-    if (isAuthorized) {
-      fetchFeedback();
-    }
+    if (!isAuthorized) return;
+    fetchFeedback();
+    // new tickets and status changes show up without refreshing
+    const ch = supabase.channel(`admin_inbox_${Math.random().toString(36).slice(2, 10)}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'app_feedback' }, () => fetchFeedback())
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
   }, [isAuthorized]);
 
   // Fetch replies when message selected
@@ -81,19 +94,20 @@ const AdminInbox: React.FC = () => {
           };
           fetchReplies();
 
-          const channel = supabase.channel('admin_feedback_chat')
+          const channel = supabase.channel(`admin_chat_${selectedMessage.id}_${Math.random().toString(36).slice(2, 8)}`)
             .on(
               'postgres_changes',
               { event: 'INSERT', schema: 'public', table: 'feedback_replies', filter: `feedback_id=eq.${selectedMessage.id}` },
               (payload: any) => {
-                setReplies(prev => [...prev, payload.new as FeedbackReply]);
+                const r = payload.new as FeedbackReply;
+                setReplies(prev => prev.some(x => x.id === r.id) ? prev : [...prev, r]);
               }
             )
             .subscribe();
 
           return () => { supabase.removeChannel(channel); };
       }
-  }, [selectedMessage]);
+  }, [selectedMessage?.id]);
 
   useEffect(() => {
       if (selectedMessage) {
@@ -147,19 +161,17 @@ const AdminInbox: React.FC = () => {
 
           // NOTE: is_admin status is now determined server-side via RLS policies
           // The client MUST NOT set is_admin flag - backend verifies admin status
-          const { error } = await supabase.from('feedback_replies').insert({
+          // the database marks the reply as support and the ticket as read
+          const { data: row, error } = await supabase.from('feedback_replies').insert({
                 feedback_id: selectedMessage.id,
                 sender_id: session.user.id,
-                message: replyText.trim()
-                // is_admin flag is set by database trigger or backend function
-            });
+                message: replyText.trim().slice(0, 2000)
+            }).select('*').single();
 
           if (error) throw error;
-
-          // Mark parent as read when replying
-          if (selectedMessage.status === 'unread') {
-             markAsRead(selectedMessage.id, 'unread');
-          }
+          if (row) setReplies(prev => prev.some(x => x.id === row.id) ? prev : [...prev, row as FeedbackReply]);
+          setFeedbackItems(prev => prev.map(i => i.id === selectedMessage.id ? { ...i, status: 'read' } : i));
+          setSelectedMessage(prev => prev ? { ...prev, status: 'read' } : prev);
 
           setReplyText('');
       } catch (err: any) {
@@ -169,9 +181,11 @@ const AdminInbox: React.FC = () => {
       }
   };
 
+  const q = search.trim().toLowerCase();
   const filteredItems = feedbackItems.filter(item => {
-      if (filter === 'unread') return item.status === 'unread';
-      return true;
+      if (filter === 'unread' && item.status !== 'unread') return false;
+      if (!q) return true;
+      return item.message.toLowerCase().includes(q) || (item.username || '').toLowerCase().includes(q) || item.id.startsWith(q.replace('#', ''));
   });
 
   const isEmpty = feedbackItems.length === 0 && !loading;
@@ -186,7 +200,7 @@ const AdminInbox: React.FC = () => {
       {/* --- Top Bar --- */}
       <div className="flex items-center justify-between px-4 py-3 bg-[#12141a]/80 backdrop-blur-md border-b border-white/5 z-20 shrink-0">
         <div className="flex items-center gap-3">
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${filter === 'unread' ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'bg-white/5 text-white/50'}`}>
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${filter === 'unread' ? 'bg-teal-500 text-white shadow-lg shadow-teal-500/20' : 'bg-white/5 text-white/50'}`}>
                 {filter === 'unread' ? <AlertTriangle size={14} /> : <Inbox size={14} />}
             </div>
             <div>
@@ -207,7 +221,7 @@ const AdminInbox: React.FC = () => {
             </button>
             <button 
                 onClick={() => setFilter('unread')}
-                className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${filter === 'unread' ? 'bg-white/10 text-indigo-400' : 'text-white/40 hover:text-white'}`}
+                className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${filter === 'unread' ? 'bg-white/10 text-teal-400' : 'text-white/40 hover:text-white'}`}
             >
                 Unread
             </button>
@@ -227,9 +241,11 @@ const AdminInbox: React.FC = () => {
             {/* Search */}
             <div className="p-3 shrink-0">
                 <div className="relative group">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-indigo-400 transition-colors" size={12} />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-teal-400 transition-colors" size={12} />
                     <input 
                         type="text" 
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
                         placeholder="Search tickets..." 
                         className="w-full bg-white/5 border border-transparent focus:border-white/10 rounded-xl py-2 pl-8 pr-3 text-xs text-white focus:outline-none focus:bg-white/10 transition-all placeholder:text-white/20"
                     />
@@ -240,7 +256,7 @@ const AdminInbox: React.FC = () => {
             <div className="flex-1 overflow-y-auto px-2 pb-2 space-y-1 custom-scrollbar">
                 {loading && feedbackItems.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-40 gap-3">
-                        <Loader2 className="animate-spin text-indigo-500" size={24} />
+                        <Loader2 className="animate-spin text-teal-500" size={24} />
                         <span className="text-xs text-white/30">Syncing...</span>
                     </div>
                 ) : filteredItems.length === 0 ? (
@@ -262,13 +278,13 @@ const AdminInbox: React.FC = () => {
                                 className={`
                                     w-full text-left relative p-3 rounded-xl transition-all duration-200 group border
                                     ${isSelected 
-                                        ? 'bg-indigo-500/10 border-indigo-500/50 shadow-inner' 
+                                        ? 'bg-teal-500/10 border-teal-500/50 shadow-inner' 
                                         : 'bg-transparent border-transparent hover:bg-white/5 hover:border-white/5'}
                                 `}
                             >
                                 <div className="flex justify-between items-start mb-1">
                                     <div className="flex items-center gap-2">
-                                        {isUnread && <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full shadow-[0_0_8px_rgba(99,102,241,0.8)]" />}
+                                        {isUnread && <div className="w-1.5 h-1.5 bg-teal-500 rounded-full shadow-[0_0_8px_rgba(99,102,241,0.8)]" />}
                                         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border uppercase tracking-wider ${
                                             item.category === 'Bug' ? 'text-red-400 border-red-500/20 bg-red-500/5' : 
                                             item.category === 'Feature Request' ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5' : 
@@ -323,7 +339,7 @@ const AdminInbox: React.FC = () => {
                                     <h1 className="text-sm font-bold text-white leading-tight">
                                         {selectedMessage.username || 'Unknown User'}
                                     </h1>
-                                    {selectedMessage.status === 'unread' && <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full" />}
+                                    {selectedMessage.status === 'unread' && <div className="w-1.5 h-1.5 bg-teal-500 rounded-full" />}
                                 </div>
                                 <div className="flex items-center gap-1 group cursor-pointer" onClick={() => navigator.clipboard.writeText(selectedMessage.user_id)}>
                                     <span className="text-[10px] text-white/30 font-mono tracking-wide">
@@ -375,7 +391,7 @@ const AdminInbox: React.FC = () => {
                             <div key={reply.id} className={`flex gap-3 animate-in slide-in-from-bottom-2 ${reply.is_admin ? 'flex-row-reverse' : ''}`}>
                                 <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 border ${
                                     reply.is_admin 
-                                        ? 'bg-indigo-600 border-indigo-500 text-white' 
+                                        ? 'bg-teal-600 border-teal-500 text-white' 
                                         : 'bg-white/5 border-white/5 text-white/40'
                                 }`}>
                                     {reply.is_admin ? <Send size={12} /> : <User size={14} />}
@@ -383,7 +399,7 @@ const AdminInbox: React.FC = () => {
                                 <div className={`flex flex-col max-w-[85%] ${reply.is_admin ? 'items-end' : 'items-start'}`}>
                                     <div className={`px-4 py-3 rounded-2xl text-xs leading-relaxed ${
                                         reply.is_admin 
-                                            ? 'bg-indigo-600 text-white rounded-tr-none shadow-lg shadow-indigo-900/20' 
+                                            ? 'bg-teal-600 text-white rounded-tr-none shadow-lg shadow-teal-900/20' 
                                             : 'bg-[#1e293b] border border-white/5 text-white/90 rounded-tl-none'
                                     }`}>
                                         {reply.message}
@@ -408,7 +424,7 @@ const AdminInbox: React.FC = () => {
                                 </div>
                             </div>
                         ) : (
-                            <div className="flex items-end gap-2 bg-white/5 p-1.5 rounded-2xl border border-white/5 focus-within:border-indigo-500/50 transition-all">
+                            <div className="flex items-end gap-2 bg-white/5 p-1.5 rounded-2xl border border-white/5 focus-within:border-teal-500/50 transition-all">
                                 <textarea
                                     value={replyText}
                                     onChange={(e) => setReplyText(e.target.value)}
@@ -423,7 +439,7 @@ const AdminInbox: React.FC = () => {
                                     className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all flex-shrink-0 ${
                                         (!replyText.trim() || isSendingReply)
                                             ? 'bg-white/5 text-white/20'
-                                            : 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-500/20 active:scale-95'
+                                            : 'bg-teal-600 text-white hover:bg-teal-500 shadow-lg shadow-teal-500/20 active:scale-95'
                                     }`}
                                 >
                                     {isSendingReply ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} className={replyText.trim() ? 'ml-0.5' : ''} />}
@@ -435,7 +451,7 @@ const AdminInbox: React.FC = () => {
             ) : (
                 <div className="flex-1 flex flex-col items-center justify-center text-white/10 p-8 text-center space-y-4">
                     <div className="relative">
-                        <div className="absolute inset-0 bg-indigo-500/20 blur-xl rounded-full"></div>
+                        <div className="absolute inset-0 bg-teal-500/20 blur-xl rounded-full"></div>
                         <Inbox size={48} className="relative opacity-50" />
                     </div>
                     <div>

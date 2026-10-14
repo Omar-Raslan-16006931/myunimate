@@ -798,62 +798,14 @@ export const App: React.FC = () => {
       }
   };
 
-  const handleUpgrade = async (price: number) => {
-      if (!session?.user?.id || !profile) return;
-      
-      try {
-          // Upgrade User
-          const { error: upgradeError } = await supabase.from('profiles').update({ subscription_tier: 1 }).eq('id', session.user.id);
-          if (upgradeError) throw upgradeError;
-
-          setProfile({...profile, subscription_tier: 1});
-
-          // Process Referral Reward
-          if (profile.referred_by) {
-              const { data: referralData } = await supabase
-                  .from('referral_codes')
-                  .select('user_id')
-                  .eq('code', profile.referred_by)
-                  .single();
-
-              if (referralData && referralData.user_id) {
-                  const referrerId = referralData.user_id;
-                  const commission = price * 0.20; 
-
-                  const { data: referrerProfile } = await supabase
-                      .from('profiles')
-                      .select('wallet_balance')
-                      .eq('id', referrerId)
-                      .single();
-                  
-                  if (referrerProfile) {
-                      const newBalance = (referrerProfile.wallet_balance || 0) + commission;
-                      await supabase.from('profiles').update({ wallet_balance: newBalance }).eq('id', referrerId);
-                      await supabase.from('wallet_ledger').insert({
-                          user_id: referrerId,
-                          amount: commission,
-                          balance_after: newBalance,
-                          transaction_type: 'referral_bonus',
-                          status: 'completed',
-                          description: `Commission from ${profile.username}`,
-                          related_user_id: session.user.id
-                      });
-                  }
-              }
-          }
-          
-          if (!showOnboarding) console.log("Upgrade Successful! Welcome to Pro.");
-      } catch (err) {
-          console.error("Upgrade failed", err);
-          console.error("Upgrade failed. Please try again.");
-      }
+  // Plans can only be changed by the server (after a real payment), never from the app.
+  // Until payments are live, upgrading just tells the person and changes nothing.
+  const handleUpgrade = async (_price: number) => {
+      toast('Payments aren’t live yet. Everything is free for now.', { icon: '💳' });
   };
 
   const handleDowngrade = async () => {
-      if (!session?.user?.id) return;
-      await supabase.from('profiles').update({ subscription_tier: 0 }).eq('id', session.user.id);
-      setProfile({...profile, subscription_tier: 0});
-      console.log("Plan cancelled.");
+      toast('You’re on the free plan.', { icon: '✅' });
   };
 
   const onAddEvent = async (eventData: Partial<ScheduleEvent>) => {
@@ -1169,6 +1121,27 @@ export const App: React.FC = () => {
     // the iPhone app goes straight to sign-in; the website shows the landing page first
     if (Capacitor.isNativePlatform()) return <Auth />;
     return <LandingPage onGetStarted={() => setShowAuth(true)} />;
+  }
+
+  // suspended accounts can't use the app until the suspension ends
+  if (profile?.is_banned && (!profile.banned_until || new Date(profile.banned_until) > new Date())) {
+    return (
+      <div style={{ ...styles.container, justifyContent: 'center', alignItems: 'center' }} className={themeMode}>
+        <div className="w-full max-w-[360px] px-6 text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-500/10 text-3xl">⛔</div>
+          <h1 className="mt-5 text-[24px] font-extrabold text-white">Account suspended</h1>
+          <p className="mt-2 text-[15px] text-white/55">
+            {profile.banned_until
+              ? `You can use UniMate again on ${new Date(profile.banned_until).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })}.`
+              : 'This account can no longer use UniMate.'}
+          </p>
+          <button onClick={() => { clearPortalCache(); supabase.auth.signOut(); }}
+            className="mt-7 w-full rounded-2xl border-0 py-3.5 text-[16px] font-extrabold" style={{ background: 'var(--cta-bg)', color: 'var(--cta-ink)' }}>
+            Sign out
+          </button>
+        </div>
+      </div>
+    );
   }
 
   if (profile && !profile.username) {

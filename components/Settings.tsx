@@ -1,197 +1,28 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { createPortal } from 'react-dom';
+import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import { Plus, Trash2, Palette, Layers, Loader2, LogOut, ChevronDown, AlertTriangle, User, Check, X, Shield, Search, Ban, Send, ArrowLeft, MessageSquare, ChevronRight, Heart, Columns, KeyRound } from 'lucide-react';
-import { ScheduleProfile, EventColorMap, EventType, ScheduleEvent, PeriodDefinition, ThemeMode, AppFeedback, FeedbackReply, ViewState } from '../types';
+import { Plus, Trash2, Palette, Layers, Loader2, LogOut, ChevronDown, AlertTriangle, User, Check, Shield, Search, Ban, MessageSquare, ChevronRight, Heart, Columns, KeyRound, LifeBuoy } from 'lucide-react';
+import { ScheduleProfile, EventColorMap, EventType, ScheduleEvent, PeriodDefinition, ThemeMode, ViewState } from '../types';
 import { theme, styles } from '../theme';
 import ScheduleSettings from './ScheduleSettings';
 import PortalSettings from './PortalSettings';
-import FeedbackModal from './FeedbackModal';
+import Support from './Support';
+import { listTickets, readSeen, hasNewReply } from '../services/support';
 import AdminInbox from './AdminInbox';
 
 // --- SUPPORTING COMPONENTS ---
 
-const SupportHistoryModal = ({ isOpen, onClose, userId }: { isOpen: boolean, onClose: () => void, userId?: string }) => {
-    const [tickets, setTickets] = useState<AppFeedback[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [activeTicket, setActiveTicket] = useState<AppFeedback | null>(null);
-    const [replies, setReplies] = useState<FeedbackReply[]>([]);
-    const [replyText, setReplyText] = useState('');
-    const [sendingReply, setSendingReply] = useState(false);
-    const replyEndRef = useRef<HTMLDivElement>(null);
-
+/** How many tickets have a support reply you haven't opened yet. */
+const useSupportBadge = (userId: string | undefined, refreshKey: unknown) => {
+    const [count, setCount] = useState(0);
     useEffect(() => {
-        if (isOpen && userId) {
-            setLoading(true);
-            const fetchTickets = async () => {
-                const { data } = await supabase.from('app_feedback')
-                    .select('*')
-                    .eq('user_id', userId)
-                    .order('created_at', { ascending: false });
-                setTickets(data || []);
-                setLoading(false);
-            };
-            fetchTickets();
-
-            const channel = supabase.channel(`user_feedback_list_${userId}`)
-                .on(
-                    'postgres_changes',
-                    { event: '*', schema: 'public', table: 'app_feedback', filter: `user_id=eq.${userId}` },
-                    (payload: any) => {
-                        if (payload.eventType === 'INSERT') {
-                            setTickets(prev => [payload.new as AppFeedback, ...prev]);
-                        } else if (payload.eventType === 'UPDATE') {
-                            setTickets(prev => prev.map(t => t.id === payload.new.id ? { ...t, ...payload.new } : t));
-                            setActiveTicket(prev => prev?.id === payload.new.id ? { ...prev, ...payload.new } : prev);
-                        } else if (payload.eventType === 'DELETE') {
-                            setTickets(prev => prev.filter(t => t.id !== payload.old.id));
-                            setActiveTicket(prev => prev?.id === payload.old.id ? null : prev);
-                        }
-                    }
-                )
-                .subscribe();
-
-            return () => { supabase.removeChannel(channel); };
-        }
-    }, [isOpen, userId]);
-
-    useEffect(() => {
-        if (activeTicket) {
-            setReplies([]);
-            supabase.from('feedback_replies')
-                .select('*')
-                .eq('feedback_id', activeTicket.id)
-                .order('created_at', { ascending: true })
-                .then(({ data }: any) => {
-                    if (data) setReplies(data);
-                });
-
-            const channelId = `user_chat_${activeTicket.id}`;
-            const channel = supabase.channel(channelId)
-                .on(
-                    'postgres_changes',
-                    { event: 'INSERT', schema: 'public', table: 'feedback_replies', filter: `feedback_id=eq.${activeTicket.id}` },
-                    (payload: any) => {
-                        setReplies(prev => [...prev, payload.new as FeedbackReply]);
-                    }
-                )
-                .subscribe();
-
-            return () => { supabase.removeChannel(channel); };
-        }
-    }, [activeTicket?.id]);
-
-    useEffect(() => {
-        if (activeTicket) {
-            setTimeout(() => {
-                replyEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-            }, 100);
-        }
-    }, [replies, activeTicket]);
-
-    const handleSendReply = async () => {
-        if (!replyText.trim() || !activeTicket || !userId) return;
-        setSendingReply(true);
-        try {
-            const { error: replyError } = await supabase.from('feedback_replies').insert({
-                feedback_id: activeTicket.id,
-                sender_id: userId,
-                message: replyText.trim(),
-                is_admin: false
-            });
-            if (replyError) throw replyError;
-            await supabase.from('app_feedback').update({ status: 'unread' }).eq('id', activeTicket.id);
-            setReplyText('');
-        } catch (error) {
-            console.error(error);
-        } finally {
-            setSendingReply(false);
-        }
-    };
-
-    if (!isOpen) return null;
-
-    return createPortal(
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200" onClick={onClose}>
-            <div
-                className="w-full max-w-md h-[85vh] bg-[#0f172a] rounded-[32px] border border-white/10 shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-300"
-                onClick={e => e.stopPropagation()}
-            >
-                <div className="flex items-center justify-between px-5 py-4 border-b border-white/5 bg-[#12141a] shrink-0">
-                    <div className="flex items-center gap-3">
-                        {activeTicket ? (
-                            <button onClick={() => setActiveTicket(null)} className="p-1.5 -ml-2 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition">
-                                <ArrowLeft size={20} />
-                            </button>
-                        ) : (
-                            <div className="p-2 bg-indigo-500/10 rounded-xl text-indigo-400">
-                                <MessageSquare size={20} />
-                            </div>
-                        )}
-                        <h3 className="text-lg font-bold text-white leading-none">
-                            {activeTicket ? 'Support Chat' : 'Support Inbox'}
-                        </h3>
-                    </div>
-                    <button onClick={onClose} className="p-2 text-white/40 hover:text-white hover:bg-white/5 rounded-full transition-colors">
-                        <X size={20} />
-                    </button>
-                </div>
-
-                <div className="flex-1 overflow-hidden relative bg-[#0f172a]">
-                    {!activeTicket ? (
-                        <div className="absolute inset-0 overflow-y-auto p-4 space-y-3 custom-scrollbar">
-                            {loading ? (
-                                <div className="flex justify-center py-10"><Loader2 className="animate-spin text-indigo-500" /></div>
-                            ) : tickets.length === 0 ? (
-                                <div className="text-center text-white/30 py-12 text-sm italic">No support tickets found.</div>
-                            ) : (
-                                tickets.map(t => (
-                                    <div key={t.id} onClick={() => setActiveTicket(t)} className="group bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/10 rounded-2xl p-4 cursor-pointer transition-all active:scale-[0.98]">
-                                        <div className="flex justify-between items-start mb-2">
-                                            <div className="flex items-center gap-2">
-                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${t.category === 'Bug' ? 'text-red-400 bg-red-400/10' : t.category === 'Feature Request' ? 'text-green-400 bg-green-400/10' : 'text-blue-400 bg-blue-400/10'}`}>{t.category}</span>
-                                                <span className="text-[10px] text-white/30">{new Date(t.created_at).toLocaleDateString()}</span>
-                                            </div>
-                                            <ChevronRight size={16} className="text-white/20 group-hover:text-white/60 transition-colors" />
-                                        </div>
-                                        <p className="text-sm text-white/90 font-medium line-clamp-2 leading-relaxed">{t.message}</p>
-                                    </div>
-                                ))
-                            )}
-                        </div>
-                    ) : (
-                        <div className="flex flex-col h-full">
-                            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-[#0f172a] to-[#12141a] custom-scrollbar">
-                                <div className="flex flex-col items-end animate-in slide-in-from-bottom-2">
-                                    <div className="bg-indigo-600 text-white px-4 py-3 rounded-2xl rounded-tr-none max-w-[85%] text-sm shadow-md leading-relaxed">{activeTicket.message}</div>
-                                    <span className="text-[10px] text-white/20 mt-1 mr-1">{new Date(activeTicket.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                </div>
-                                {replies.map(reply => {
-                                    const isMe = !reply.is_admin;
-                                    return (
-                                        <div key={reply.id} className={`flex flex-col animate-in slide-in-from-bottom-2 ${isMe ? 'items-end' : 'items-start'}`}>
-                                            <div className={`px-4 py-3 rounded-2xl max-w-[85%] text-sm shadow-md leading-relaxed ${isMe ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-white/10 text-white/90 rounded-tl-none border border-white/5'}`}>{reply.message}</div>
-                                            <span className={`text-[10px] text-white/20 mt-1 ${isMe ? 'mr-1' : 'ml-1'}`}>{isMe ? 'You' : 'Support'} • {new Date(reply.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                        </div>
-                                    );
-                                })}
-                                <div ref={replyEndRef} />
-                            </div>
-                            <div className="p-3 bg-[#12141a] border-t border-white/5 shrink-0">
-                                <div className="flex gap-2 items-end bg-white/5 rounded-3xl p-1 border border-white/10 focus-within:border-indigo-500/50 transition-colors">
-                                    <textarea value={replyText} onChange={e => setReplyText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendReply(); } }} placeholder="Type a message..." className="flex-1 bg-transparent border-none text-white text-sm px-4 py-3 focus:outline-none resize-none max-h-[100px] min-h-[44px] placeholder-white/30" rows={1} />
-                                    <button onClick={handleSendReply} disabled={!replyText.trim() || sendingReply} className={`w-10 h-10 rounded-full flex items-center justify-center transition-all shrink-0 ${(!replyText.trim() || sendingReply) ? 'bg-white/5 text-white/20' : 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-900/20'}`}>
-                                        {sendingReply ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} className={replyText.trim() ? 'ml-0.5' : ''} />}
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </div>
-        </div>,
-        document.body
-    );
+        if (!userId) return;
+        let alive = true;
+        listTickets(userId)
+            .then(list => { if (alive) { const seen = readSeen(userId); setCount(list.filter(t => hasNewReply(t, seen)).length); } })
+            .catch(() => { /* offline: keep the last number */ });
+        return () => { alive = false; };
+    }, [userId, refreshKey]);
+    return count;
 };
 
 const BanModal = ({ isOpen, onClose, onConfirm, username }: { isOpen: boolean, onClose: () => void, onConfirm: (duration: string | null) => void, username: string }) => {
@@ -293,8 +124,8 @@ const Settings: React.FC<SettingsProps> = ({
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [isLoadingUsers, setIsLoadingUsers] = useState(false);
     const [banModalUser, setBanModalUser] = useState<{ id: string, username: string } | null>(null);
-    const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
-    const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+    const [support, setSupport] = useState<null | 'list' | 'new'>(null);
+    const supportBadge = useSupportBadge(accountInfo?.id, support);
 
     const handleCreateProfile = () => { if (newProfileName.trim()) { onAddProfile(newProfileName); setNewProfileName(''); } };
     const startEditingAccount = (e: React.MouseEvent) => { e.stopPropagation(); setEditForm({ ...accountInfo }); setIsEditingAccount(true); setIsAccountExpanded(true); setUsernameAvailable(null); };
@@ -347,8 +178,8 @@ const Settings: React.FC<SettingsProps> = ({
         setIsCheckingUsername(true);
         const timer = setTimeout(async () => {
             try {
-                const { data } = await supabase.from('profiles').select('username').ilike('username', editForm.username.trim()).neq('id', accountInfo?.id || '').maybeSingle();
-                setUsernameAvailable(!data);
+                const { data, error } = await supabase.rpc('username_available', { p_username: editForm.username.trim() });
+                setUsernameAvailable(error ? null : !!data);
             } catch (err) { console.error(err); } finally { setIsCheckingUsername(false); }
         }, 500);
         return () => clearTimeout(timer);
@@ -521,25 +352,28 @@ const Settings: React.FC<SettingsProps> = ({
                     </div>
 
                     <div className="p-4 px-5 space-y-2">
-                        <button onClick={() => setIsHistoryModalOpen(true)} className="w-full flex items-center justify-between p-4 bg-white/5 rounded-[20px] hover:bg-white/10 transition-all group border border-white/[0.03]">
+                        <button onClick={() => setSupport('list')} className="w-full flex items-center justify-between p-4 bg-white/5 rounded-[20px] hover:bg-white/10 transition-all group border border-white/[0.03]">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center group-hover:scale-110 transition-transform"><MessageSquare size={20} /></div>
+                                <div className="w-10 h-10 rounded-2xl bg-teal-500/10 text-teal-300 flex items-center justify-center group-hover:scale-110 transition-transform"><LifeBuoy size={20} /></div>
                                 <div className="text-left">
-                                    <p className="text-[15px] font-bold text-white leading-tight">Support Tickets</p>
-                                    <p className="text-[11px] text-white/30 font-medium">History & Communications</p>
+                                    <p className="text-[15px] font-bold text-white leading-tight">Support</p>
+                                    <p className="text-[11px] text-white/40 font-medium">{supportBadge > 0 ? `${supportBadge} new ${supportBadge === 1 ? 'reply' : 'replies'}` : 'Your tickets and replies'}</p>
                                 </div>
                             </div>
-                            <ChevronRight size={18} className="text-white/10" />
+                            <div className="flex items-center gap-2">
+                                {supportBadge > 0 && <span className="min-w-[22px] h-[22px] px-1.5 rounded-full text-[12px] font-extrabold flex items-center justify-center" style={{ background: 'var(--cta-bg)', color: 'var(--cta-ink)' }}>{supportBadge}</span>}
+                                <ChevronRight size={18} className="text-white/20" />
+                            </div>
                         </button>
-                        <button onClick={() => setIsFeedbackModalOpen(true)} className="w-full flex items-center justify-between p-4 bg-white/5 rounded-[20px] hover:bg-white/10 transition-all group border border-white/[0.03]">
+                        <button onClick={() => setSupport('new')} className="w-full flex items-center justify-between p-4 bg-white/5 rounded-[20px] hover:bg-white/10 transition-all group border border-white/[0.03]">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-2xl bg-white/5 text-white/60 flex items-center justify-center group-hover:scale-110 transition-transform"><Plus size={20} /></div>
+                                <div className="w-10 h-10 rounded-2xl bg-white/5 text-white/70 flex items-center justify-center group-hover:scale-110 transition-transform"><Plus size={20} /></div>
                                 <div className="text-left">
-                                    <p className="text-[15px] font-bold text-white leading-tight">New Ticket</p>
-                                    <p className="text-[11px] text-white/30 font-medium">Feature Request or Bug Report</p>
+                                    <p className="text-[15px] font-bold text-white leading-tight">New ticket</p>
+                                    <p className="text-[11px] text-white/40 font-medium">Report a bug, share an idea or ask</p>
                                 </div>
                             </div>
-                            <ChevronRight size={18} className="text-white/10" />
+                            <ChevronRight size={18} className="text-white/20" />
                         </button>
                     </div>
 
@@ -631,8 +465,7 @@ const Settings: React.FC<SettingsProps> = ({
                 </div>
             )}
 
-            <FeedbackModal isOpen={isFeedbackModalOpen} onClose={() => setIsFeedbackModalOpen(false)} userId={accountInfo?.id} />
-            <SupportHistoryModal isOpen={isHistoryModalOpen} onClose={() => setIsHistoryModalOpen(false)} userId={accountInfo?.id} />
+            <Support open={support !== null} startNew={support === 'new'} onClose={() => setSupport(null)} userId={accountInfo?.id} />
             <BanModal isOpen={!!banModalUser} username={banModalUser?.username || ''} onClose={() => setBanModalUser(null)} onConfirm={handleBanConfirm} />
         </div>
     );
