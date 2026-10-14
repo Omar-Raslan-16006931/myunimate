@@ -32,6 +32,7 @@ import EventDetailsModal from './components/EventDetailsModal';
 import ImageImportModal from './components/ImageImportModal';
 import SmartImportModal from './components/SmartImportModal';
 import PasskeyPrompt from './components/PasskeyPrompt';
+import WhatsNew, { markWhatsNewSeen } from './components/WhatsNew';
 import SubscriptionPage from './components/SubscriptionPage';
 import UniversalGradeCalculator from './components/UniversalGradeCalculator';
 import PaymentPage from './components/PaymentPage';
@@ -450,9 +451,12 @@ export const App: React.FC = () => {
     return () => { cancelled = true; };
   }, [session?.user?.id]);
 
+  const [whatsNewOpen, setWhatsNewOpen] = useState(false);
+
   const finishSetup = () => {
     const uid = session?.user?.id;
     if (uid) { try { localStorage.setItem(`unimate_setup_done_${uid}`, '1'); } catch { /* ignore */ } }
+    markWhatsNewSeen(); // a brand-new user has nothing to catch up on
     setShowSetup(false);
   };
 
@@ -1706,7 +1710,8 @@ export const App: React.FC = () => {
           }}
         />
       )}
-      <PasskeyPrompt userId={session?.user?.id} ready={!loading && !isSmartImportModalOpen} />
+      <WhatsNew ready={!loading && !isSmartImportModalOpen} onOpenChange={setWhatsNewOpen} />
+      <PasskeyPrompt userId={session?.user?.id} ready={!loading && !isSmartImportModalOpen && !whatsNewOpen} />
       <Toaster 
         position="top-center" 
         containerStyle={{
