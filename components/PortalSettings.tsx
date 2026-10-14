@@ -472,7 +472,7 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
   // ── full screen (onboarding) ──
   const finish = () => onFinish?.();
   return (
-    <div className="fixed inset-0 z-[3000] flex flex-col bg-[#0f0f16] text-white" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
+    <div className="fixed inset-0 z-[3000] flex flex-col bg-[#0f0f16] text-white" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 16px)', paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px)' }}>
       <div className="flex shrink-0 items-center justify-between px-5 pt-4">
         <span className="text-xs font-bold uppercase tracking-wider text-white/30">{flow === 'done' ? 'All done' : `Step ${BAR[flow] + 1} of 6`}</span>
         {flow !== 'done' && <button onClick={finish} className="border-0 bg-transparent p-1 text-sm font-semibold text-white/40">Skip all</button>}

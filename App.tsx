@@ -1197,7 +1197,7 @@ export const App: React.FC = () => {
   // --- Onboarding Flow ---
   if (showPayment) {
       return (
-          <div style={styles.container} className={themeMode}>
+          <div style={{ ...styles.container, paddingTop: 'calc(env(safe-area-inset-top) + 16px)', paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px)' }} className={themeMode}>
               <PaymentPage 
                   price={selectedPlanPrice} 
                   onSuccess={async () => {
@@ -1213,7 +1213,7 @@ export const App: React.FC = () => {
 
   if (showOnboarding) {
       return (
-          <div style={styles.container} className={themeMode}>
+          <div style={{ ...styles.container, paddingTop: 'calc(env(safe-area-inset-top) + 16px)', paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px)' }} className={themeMode}>
               <SubscriptionPage 
                   subscriptionTier={0} 
                   nextRenewalDate={new Date().toISOString()} 

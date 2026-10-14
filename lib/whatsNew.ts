@@ -16,11 +16,11 @@ export interface WhatsNewItem {
 export const WHATS_NEW_ALWAYS = false;
 
 export const WHATS_NEW: { id: string; title: string; items: WhatsNewItem[] } = {
-  id: '2026-10-14',
+  id: '2026-10-15',
   title: "What's new",
   items: [
+    { icon: 'sparkle', title: 'Smoother setup', text: 'A tick after every step, roomier screens, and the profile form is now two short steps.' },
+    { icon: 'sparkle', title: 'New look', text: 'New default event colors, white text on your schedule, and soft fade-ins between pages.' },
     { icon: 'passkey', title: 'Sign in with Face ID', text: 'Add a passkey in Settings > Account and skip the password.' },
-    { icon: 'alarm', title: 'Class reminders on your phone', text: 'Get a ping 15 minutes before each class. Turn it on in Uni Portal.' },
-    { icon: 'portal', title: 'Cleaner Uni Portal card', text: 'Check now, phone alerts and reminders, all in one box.' },
   ],
 };
