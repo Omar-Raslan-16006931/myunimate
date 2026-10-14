@@ -134,15 +134,20 @@ function Auth({ onEnterTestMode }: AuthProps) {
         // --- SIGN IN FLOW ---
         let emailToUse = identifier.trim().toLowerCase();
 
-        // sign in with email only: looking up someone's email from a username would expose it
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailToUse)) {
-          throw new Error("Use the email you signed up with.");
+        let signInData: { user: { id: string } | null };
+        let error: any = null;
+        if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailToUse)) {
+          const res = await supabase.auth.signInWithPassword({ email: emailToUse, password });
+          signInData = { user: res.data.user }; error = res.error;
+        } else {
+          // username: the server finds the email, so it is never shown here
+          const { data, error: fnError } = await supabase.functions.invoke('username-login', { body: { username: emailToUse, password } });
+          let reply: any = data;
+          if (fnError) { try { reply = await (fnError as any).context.json(); } catch { reply = null; } }
+          if (!reply?.ok) throw new Error(reply?.message || 'Could not sign in. Check your connection and try again.');
+          const set = await supabase.auth.setSession({ access_token: reply.access_token, refresh_token: reply.refresh_token });
+          signInData = { user: set.data.user }; error = set.error;
         }
-
-        const { data: signInData, error } = await supabase.auth.signInWithPassword({
-          email: emailToUse,
-          password,
-        });
 
         if (error) throw error;
         logAuthEvent('signin', signInData.user?.id, true);
@@ -240,21 +245,21 @@ function Auth({ onEnterTestMode }: AuthProps) {
                 {/* 2. Static Fields (Email & Password) */}
                 <div className="animate-fade-in-up" style={{animationDelay: '0.3s'}}>
                     <label className={`block text-xs font-bold text-slate-400 mb-1.5 ml-1 uppercase tracking-wide ${mode === 'signin' ? 'sr-only' : ''}`}>
-                        Email Address <span className="text-red-500">*</span>
+                        {mode === 'signin' ? 'Email or Username' : 'Email Address'} <span className="text-red-500">*</span>
                     </label>
                     <div className="relative group">
                         <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 group-focus-within:text-teal-400 transition-colors" size={18} />
                         <input
-                            type="email"
-                            inputMode="email"
-                            autoComplete="email"
+                            type="text"
+                            inputMode={mode === 'signin' ? 'text' : 'email'}
+                            autoComplete={mode === 'signin' ? 'username' : 'email'}
                             autoCapitalize="none"
                             autoCorrect="off"
                             required
                             value={identifier}
                             onChange={(e) => setIdentifier(e.target.value)}
                             className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-white placeholder-white/35 focus:outline-none focus:border-teal-500/50 transition-all focus:bg-white/10"
-                            placeholder={mode === 'signin' ? "Email" : "you@example.com"}
+                            placeholder={mode === 'signin' ? "Email or username" : "you@example.com"}
                         />
                     </div>
                 </div>
