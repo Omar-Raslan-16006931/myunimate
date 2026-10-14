@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Fingerprint, Loader2, Plus, Trash2 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { toast } from 'react-hot-toast';
-import { addPasskey, listPasskeys, removePasskey, passkeysSupported, Passkey } from '../services/passkeys';
+import { addPasskey, listPasskeys, removePasskey, passkeysSupported, passkeysUnsupportedReason, Passkey } from '../services/passkeys';
 
 const when = (iso: string) => new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
 
@@ -16,7 +16,7 @@ const PasskeySettings: React.FC = () => {
   useEffect(() => { load(); }, []);
 
   if (!passkeysSupported()) {
-    return <p className="px-1 text-[13px] text-white/50">This browser doesn't support passkeys.</p>;
+    return <p className="px-1 text-[13px] text-white/50">{passkeysUnsupportedReason()}</p>;
   }
 
   const add = async () => {

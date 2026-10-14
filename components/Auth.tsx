@@ -22,6 +22,7 @@ function Auth({ onEnterTestMode }: AuthProps) {
   // set after sign-up: shows the animated "check your email" step
   const [verifyEmail, setVerifyEmail] = useState<string | null>(null);
   const [passkeyBusy, setPasskeyBusy] = useState(false);
+  const [passkeyCode, setPasskeyCode] = useState<string | null>(null); // app only: shown while the Safari sheet is open
 
   // Auth Identifier (Email or Username for login, Email for signup)
   const [identifier, setIdentifier] = useState('');
@@ -185,8 +186,10 @@ function Auth({ onEnterTestMode }: AuthProps) {
   const passkeyLogin = async () => {
     setError(null);
     setPasskeyBusy(true);
-    const res = await signInWithPasskey();
+    setPasskeyCode(null);
+    const res = await signInWithPasskey(setPasskeyCode);
     setPasskeyBusy(false);
+    setPasskeyCode(null);
     if (!res.ok && !res.cancelled) setError(res.message);
   };
 
@@ -457,6 +460,9 @@ function Auth({ onEnterTestMode }: AuthProps) {
                             className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 py-3.5 text-[0.95rem] font-bold text-white transition-transform active:scale-[0.98] disabled:opacity-60">
                             {passkeyBusy ? <Loader2 className="animate-spin" size={18} /> : <><Fingerprint size={20} className="text-teal-400" /> Sign in with a passkey</>}
                         </button>
+                        {passkeyBusy && passkeyCode && (
+                            <p className="text-center text-xs text-white/50">Safari should show the code <span className="font-extrabold text-white">{passkeyCode}</span>. If it doesn't, close it.</p>
+                        )}
                     </>
                 )}
             </form>

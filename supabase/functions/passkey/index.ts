@@ -6,6 +6,12 @@
 //   login_options     (anyone)     -> options for signing in (no username needed)
 //   login_verify      (anyone)     -> checks the sign-in and returns a session
 //
+// Handoff (the sideloaded iPhone app opens Safari for the Face ID step):
+//   handoff_start     (anyone for login, signed in for register) -> { id, claim, code }
+//   handoff_info      (anyone, needs the id)  -> { kind, code } shown on the Safari page
+//   handoff_claim     (the app, needs id + claim) -> the session once Safari finished
+//   register_options / register_verify / login_verify also accept { handoffId }
+//
 // Deploy with "Verify JWT" turned OFF (sign-in happens before there is a session):
 //   supabase functions deploy passkey --no-verify-jwt
 //
@@ -49,6 +55,21 @@ const b64u = {
   },
 };
 
+const sha256 = async (text: string) =>
+  b64u.enc(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text))));
+const randomSecret = () => b64u.enc(crypto.getRandomValues(new Uint8Array(32)));
+const randomCode = () => String(100 + (crypto.getRandomValues(new Uint32Array(1))[0] % 900)); // 100-999
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** A live handoff row, or null (wrong id, wrong kind, expired). */
+const liveHandoff = async (id: unknown, kind: "login" | "register") => {
+  if (typeof id !== "string" || !UUID.test(id)) return null;
+  const { data } = await admin.from("passkey_handoffs")
+    .select("id, kind, user_id, claim_hash, code, access_token, refresh_token")
+    .eq("id", id).eq("kind", kind).gt("expires_at", new Date().toISOString()).maybeSingle();
+  return data as { id: string; kind: string; user_id: string | null; claim_hash: string | null; code: string; access_token: string | null; refresh_token: string | null } | null;
+};
+
 // slow down abuse: per IP, in memory
 const hits = new Map<string, number[]>();
 const tooMany = (key: string, limit: number, windowMs = 600_000) => {
@@ -79,6 +100,17 @@ const userFromRequest = async (req: Request) => {
   return error || !data.user ? null : data.user;
 };
 
+/** The signed-in user, or (from Safari) the user a one-time "add passkey" link was made for. */
+const userForRegister = async (req: Request, handoffId: unknown) => {
+  const user = await userFromRequest(req);
+  if (user) return user;
+  if (handoffId === undefined || handoffId === null) return null;
+  const h = await liveHandoff(handoffId, "register");
+  if (!h?.user_id) return null;
+  const { data } = await admin.auth.admin.getUserById(h.user_id);
+  return data?.user ?? null;
+};
+
 const deviceName = (ua: string) => {
   if (/iPhone/i.test(ua)) return "iPhone";
   if (/iPad/i.test(ua)) return "iPad";
@@ -95,12 +127,14 @@ Deno.serve(async (req) => {
   let body: any;
   try { body = await req.json(); } catch { return fail("Bad request."); }
   const ip = (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim() || "unknown";
-  if (tooMany("ip:" + ip, 40)) return fail("Too many tries. Wait a few minutes.", 429);
+  if (body.action === "handoff_claim") {
+    if (tooMany("claim:" + ip, 400)) return fail("Too many tries. Wait a few minutes.", 429); // the app asks every ~1.5 s
+  } else if (tooMany("ip:" + ip, 40)) return fail("Too many tries. Wait a few minutes.", 429);
 
   try {
     // ───────────── create a passkey ─────────────
     if (body.action === "register_options") {
-      const user = await userFromRequest(req);
+      const user = await userForRegister(req, body.handoffId);
       if (!user) return fail("Please sign in again.", 401);
 
       const { data: existing } = await admin.from("passkeys").select("credential_id, transports").eq("user_id", user.id);
@@ -119,7 +153,7 @@ Deno.serve(async (req) => {
     }
 
     if (body.action === "register_verify") {
-      const user = await userFromRequest(req);
+      const user = await userForRegister(req, body.handoffId);
       if (!user) return fail("Please sign in again.", 401);
       const saved = await takeChallenge(String(body.challengeId ?? ""), "register");
       if (!saved || saved.user_id !== user.id) return fail("That took too long. Try again.");
@@ -146,6 +180,7 @@ Deno.serve(async (req) => {
         device_name: deviceName(req.headers.get("user-agent") ?? ""),
       });
       if (error) return fail(/duplicate|unique/i.test(error.message) ? "This passkey is already saved." : "Could not save the passkey.", 500);
+      if (body.handoffId) await admin.from("passkey_handoffs").delete().eq("id", String(body.handoffId)); // one use only
       return json({ ok: true });
     }
 
@@ -158,6 +193,8 @@ Deno.serve(async (req) => {
 
     if (body.action === "login_verify") {
       if (tooMany("login:" + ip, 12)) return fail("Too many tries. Wait a few minutes.", 429);
+      const handoff = body.handoffId === undefined || body.handoffId === null ? null : await liveHandoff(body.handoffId, "login");
+      if (body.handoffId !== undefined && body.handoffId !== null && (!handoff || handoff.access_token)) return fail("This link expired. Start again in the app.");
       const saved = await takeChallenge(String(body.challengeId ?? ""), "login");
       if (!saved) return fail("That took too long. Try again.");
 
@@ -196,7 +233,47 @@ Deno.serve(async (req) => {
       const anon = createClient(URL_, anonKey, { auth: { persistSession: false, autoRefreshToken: false } });
       const { data: s, error: vErr } = await anon.auth.verifyOtp({ type: "magiclink", token_hash: tokenHash });
       if (vErr || !s.session) return fail("Could not sign you in.", 500);
+      if (handoff) {
+        // Safari never sees the session: it waits here until the app picks it up (once)
+        const { error: hErr } = await admin.from("passkey_handoffs").update({ access_token: s.session.access_token, refresh_token: s.session.refresh_token, user_id: pk.user_id }).eq("id", handoff.id);
+        if (hErr) return fail("Could not sign you in.", 500);
+        return json({ ok: true, handoff: true });
+      }
       return json({ ok: true, access_token: s.session.access_token, refresh_token: s.session.refresh_token });
+    }
+
+    // ───────────── handoff (app <-> Safari sheet) ─────────────
+    if (body.action === "handoff_start") {
+      const kind = body.kind === "register" ? "register" : "login";
+      let userId: string | null = null;
+      if (kind === "register") {
+        const user = await userFromRequest(req);
+        if (!user) return fail("Please sign in again.", 401);
+        userId = user.id;
+      }
+      if (tooMany("handoff:" + ip, 20)) return fail("Too many tries. Wait a few minutes.", 429);
+      const claim = randomSecret();
+      const code = randomCode();
+      const { data, error } = await admin.from("passkey_handoffs").insert({
+        kind, user_id: userId, claim_hash: kind === "login" ? await sha256(claim) : null, code,
+      }).select("id").single();
+      if (error || !data) return fail("Couldn't start. Try again.", 500);
+      return json({ ok: true, id: data.id, claim, code });
+    }
+
+    if (body.action === "handoff_info") {
+      const kind = body.kind === "register" ? "register" : "login";
+      const h = await liveHandoff(body.id, kind);
+      if (!h || h.access_token) return fail("This link expired. Start again in the app.", 404);
+      return json({ ok: true, kind: h.kind, code: h.code });
+    }
+
+    if (body.action === "handoff_claim") {
+      const h = await liveHandoff(body.id, "login");
+      if (!h || !h.claim_hash || typeof body.claim !== "string" || (await sha256(body.claim)) !== h.claim_hash) return fail("This sign-in expired. Try again.", 404);
+      if (!h.access_token || !h.refresh_token) return json({ ok: true, pending: true });
+      await admin.from("passkey_handoffs").delete().eq("id", h.id); // the session can be picked up only once
+      return json({ ok: true, access_token: h.access_token, refresh_token: h.refresh_token });
     }
 
     return fail("Unknown action.");
