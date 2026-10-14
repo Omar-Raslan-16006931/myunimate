@@ -119,6 +119,8 @@ function Auth({ onEnterTestMode }: AuthProps) {
           email: identifier.toLowerCase().trim(),
           password,
           options: {
+            // the link opens a small "email confirmed" page; the app itself carries on without it
+            emailRedirectTo: `${window.location.origin}/?confirmed=1`,
             data: {
               username: username.trim(),
               full_name: username.trim(),
@@ -202,7 +204,7 @@ function Auth({ onEnterTestMode }: AuthProps) {
   if (verifyEmail) {
     return (
       <div style={{...styles.container, overflowY: 'auto', background: '#0f0f16', backgroundImage: 'none'}}>
-        <VerifyEmail email={verifyEmail} onBack={() => { setVerifyEmail(null); setMode('signin'); clearForm(); }} />
+        <VerifyEmail email={verifyEmail} password={password} onBack={() => { setVerifyEmail(null); setMode('signin'); clearForm(); }} />
       </div>
     );
   }

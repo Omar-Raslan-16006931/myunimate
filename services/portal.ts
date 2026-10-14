@@ -157,6 +157,24 @@ export const writePortalCache = (name: string, value: unknown) => {
   try { localStorage.setItem(CACHE_PREFIX + name, JSON.stringify(value)); } catch { /* storage full: just no cache */ }
 };
 
+const USER_KEY = 'portal_user_v1';
+
+/**
+ * Portal data saved on this phone (login name, setup progress, reminder choice) belongs to one account.
+ * When a different account signs in on the same phone, start clean so nothing of the last person shows up.
+ */
+export const bindPortalUser = (uid: string | undefined | null) => {
+  if (!uid) return;
+  try {
+    const prev = localStorage.getItem(USER_KEY);
+    if (prev && prev !== uid) {
+      clearPortalCache();
+      ['ntfy_class_reminders', 'ntfy_class_reminders_sent_v1', 'class_reminders_enabled'].forEach(k => localStorage.removeItem(k));
+    }
+    if (prev !== uid) localStorage.setItem(USER_KEY, uid);
+  } catch { /* ignore */ }
+};
+
 export const clearPortalCache = () => {
   try {
     Object.keys(localStorage).filter(k => k.startsWith(CACHE_PREFIX)).forEach(k => localStorage.removeItem(k));

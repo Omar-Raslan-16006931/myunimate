@@ -7,7 +7,7 @@ import OnboardSteps from './OnboardSteps';
 const COOLDOWN = 60;
 
 /** Step 2 of setup: "check your email". Animated envelope, resend with a timer. */
-const VerifyEmail: React.FC<{ email: string; onBack: () => void }> = ({ email, onBack }) => {
+const VerifyEmail: React.FC<{ email: string; password?: string; onBack: () => void }> = ({ email, password, onBack }) => {
   const [left, setLeft] = useState(COOLDOWN);
   const [sending, setSending] = useState(false);
   const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null);
@@ -17,6 +17,26 @@ const VerifyEmail: React.FC<{ email: string; onBack: () => void }> = ({ email, o
     const t = setTimeout(() => setLeft(l => l - 1), 1000);
     return () => clearTimeout(t);
   }, [left]);
+
+  // Carry on by itself: once the link is tapped (even in another browser), signing in with the
+  // details just typed works, and the app moves on. The password only lives in memory here.
+  useEffect(() => {
+    if (!password) return;
+    let alive = true;
+    let busy = false;
+    const look = async () => {
+      if (busy || !alive || document.visibilityState === 'hidden') return;
+      busy = true;
+      try { await supabase.auth.signInWithPassword({ email, password }); } // success starts the session: the app moves on
+      catch { /* not confirmed yet, or offline: keep waiting */ }
+      busy = false;
+    };
+    const onVisible = () => { if (document.visibilityState === 'visible') look(); };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
+    const t = setInterval(look, 15000);
+    return () => { alive = false; clearInterval(t); document.removeEventListener('visibilitychange', onVisible); window.removeEventListener('focus', onVisible); };
+  }, [email, password]);
 
   const resend = async () => {
     setSending(true);
@@ -37,41 +57,43 @@ const VerifyEmail: React.FC<{ email: string; onBack: () => void }> = ({ email, o
         <div className="px-2 pb-14"><OnboardSteps current={1} /></div>
 
         <div className="flex flex-col items-center text-center">
-          {/* envelope: floats in, flap opens, a letter slides up, the check pops */}
+          {/* envelope: floats in, the flap opens, a letter slides up, the check pops */}
           <motion.div
-            initial={{ scale: 0.6, opacity: 0, y: 24 }}
+            initial={{ scale: 0.7, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
-            transition={{ type: 'spring', damping: 16, stiffness: 180 }}
-            className="relative h-[120px] w-[150px]"
+            transition={{ type: 'spring', damping: 18, stiffness: 190 }}
+            className="relative"
+            style={{ width: 170, height: 150 }}
           >
-            <motion.div className="absolute inset-0" animate={{ y: [0, -6, 0] }} transition={{ repeat: Infinity, duration: 3.2, ease: 'easeInOut', delay: 1.2 }}>
-              <div className="absolute inset-x-0 bottom-0 h-[92px] rounded-2xl border border-white/10" style={{ background: 'linear-gradient(160deg,#1c2a2c,#101a1c)' }} />
-              <motion.div
-                className="absolute left-4 right-4 rounded-lg bg-white/90"
-                style={{ bottom: 18, height: 70 }}
-                initial={{ y: 0 }}
-                animate={{ y: -34 }}
-                transition={{ delay: 0.7, type: 'spring', damping: 14, stiffness: 120 }}
-              >
-                <div className="mx-3 mt-3 h-[5px] w-10 rounded-full bg-teal-500/70" />
-                <div className="mx-3 mt-2 h-[4px] w-16 rounded-full bg-black/10" />
-                <div className="mx-3 mt-1.5 h-[4px] w-12 rounded-full bg-black/10" />
-              </motion.div>
-              <div className="absolute inset-x-0 bottom-0 h-[92px] overflow-hidden rounded-2xl" style={{ clipPath: 'polygon(0 100%, 50% 38%, 100% 100%)', background: 'linear-gradient(180deg,#24383a,#152124)' }} />
-              <motion.div
-                className="absolute inset-x-0 origin-top"
-                style={{ top: 28, height: 52, clipPath: 'polygon(0 0, 100% 0, 50% 100%)', background: 'linear-gradient(180deg,#2f4a4c,#1c2d2f)', transformStyle: 'preserve-3d' }}
-                initial={{ rotateX: 0 }}
-                animate={{ rotateX: 180 }}
-                transition={{ delay: 0.45, duration: 0.5, ease: 'easeOut' }}
-              />
+            <motion.div className="absolute inset-0" animate={{ y: [0, -5, 0] }} transition={{ repeat: Infinity, duration: 3.4, ease: 'easeInOut', delay: 1.6 }}>
+              <svg width="170" height="150" viewBox="-10 -14 170 150" fill="none" style={{ overflow: 'visible' }}>
+                {/* back of the envelope */}
+                <rect x="0" y="40" width="150" height="84" rx="14" fill="#16262a" stroke="rgba(255,255,255,0.09)" />
+                {/* the open flap sits behind the letter */}
+                <motion.path d="M4 40 L75 -6 L146 40 Z" fill="#244247" stroke="#244247" strokeWidth="6" strokeLinejoin="round"
+                  style={{ originX: 0.5, originY: 1 }}
+                  initial={{ scaleY: 0, opacity: 0 }} animate={{ scaleY: 1, opacity: 1 }} transition={{ delay: 0.62, duration: 0.28, ease: 'easeOut' }} />
+                {/* the letter */}
+                <motion.g initial={{ y: 0, opacity: 0 }} animate={{ y: -38, opacity: 1 }} transition={{ y: { delay: 0.85, type: 'spring', damping: 15, stiffness: 120 }, opacity: { delay: 0.7, duration: 0.01 } }}>
+                  <rect x="18" y="48" width="114" height="64" rx="8" fill="#f1f3f4" />
+                  <rect x="32" y="60" width="44" height="6" rx="3" fill="#19b8a6" />
+                  <rect x="32" y="74" width="78" height="5" rx="2.5" fill="#0f1417" fillOpacity="0.12" />
+                  <rect x="32" y="85" width="62" height="5" rx="2.5" fill="#0f1417" fillOpacity="0.12" />
+                </motion.g>
+                {/* front pocket */}
+                <path d="M0 54 L75 96 L150 54 V110 a14 14 0 0 1 -14 14 H14 a14 14 0 0 1 -14 -14 Z" fill="#1d3338" stroke="rgba(255,255,255,0.07)" />
+                {/* the closed flap, folds away first */}
+                <motion.path d="M4 40 L75 90 L146 40 Z" fill="#2a4a50" stroke="#2a4a50" strokeWidth="6" strokeLinejoin="round"
+                  style={{ originX: 0.5, originY: 0 }}
+                  initial={{ scaleY: 1, opacity: 1 }} animate={{ scaleY: 0, opacity: 0 }} transition={{ delay: 0.4, duration: 0.24, ease: 'easeIn' }} />
+              </svg>
             </motion.div>
             <motion.div
-              className="absolute -right-1 -top-1 flex h-9 w-9 items-center justify-center rounded-full"
-              style={{ background: '#19b8a6', color: '#fff', boxShadow: '0 6px 18px rgba(25,184,166,0.45)' }}
+              className="absolute right-0 top-0 flex h-9 w-9 items-center justify-center rounded-full"
+              style={{ background: '#19b8a6', color: '#fff' }}
               initial={{ scale: 0, rotate: -40 }}
               animate={{ scale: 1, rotate: 0 }}
-              transition={{ delay: 1.1, type: 'spring', damping: 10, stiffness: 260 }}
+              transition={{ delay: 1.35, type: 'spring', damping: 10, stiffness: 260 }}
             >
               <Check size={20} strokeWidth={3.2} />
             </motion.div>
@@ -87,8 +109,14 @@ const VerifyEmail: React.FC<{ email: string; onBack: () => void }> = ({ email, o
           </motion.p>
           <motion.p className="mt-3 text-[0.82rem] text-white/40"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }}>
-            Tap the link, then come back here and sign in.
+            Tap the link, then come back here. We'll sign you in.
           </motion.p>
+
+          {password && (
+            <motion.div className="mt-5 flex items-center gap-2 text-[0.8rem] font-semibold text-white/45" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.9 }}>
+              <Loader2 size={14} className="animate-spin" /> Waiting for you to tap the link
+            </motion.div>
+          )}
 
           <motion.div className="mt-8 w-full" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.7 }}>
             <button onClick={resend} disabled={left > 0 || sending}

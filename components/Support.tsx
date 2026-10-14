@@ -7,7 +7,7 @@ import { supabase } from '../lib/supabase';
 import { AppFeedback, FeedbackReply } from '../types';
 import {
   MAX_MESSAGE, MIN_TICKET, TicketKind, TicketSummary, createTicket, friendlyError, getReplies,
-  hasNewReply, listTickets, markSeen, readSeen, sendReply, summarize, ticketCode, ticketTitle,
+  hasNewReply, listTickets, markSeen, readSeen, sendReply, setSupportOpen, summarize, ticketCode, ticketTitle,
 } from '../services/support';
 
 // ── look ──
@@ -149,6 +149,9 @@ const Support: React.FC<{
       setTickets(prev => prev ?? []);
     }
   }, [userId]);
+
+  // tell the app support is on screen (so no banner pops up on top of it)
+  useEffect(() => { setSupportOpen(open); return () => setSupportOpen(false); }, [open]);
 
   // reset to the right screen every time the sheet opens
   useEffect(() => {
@@ -398,7 +401,7 @@ const Thread: React.FC<{ userId: string; ticket: AppFeedback; justOpened: boolea
   const [loadError, setLoadError] = useState<string | null>(null);
   const [pending, setPending] = useState<Pending[]>([]);
   const [text, setText] = useState('');
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const firstScroll = useRef(true);
 
   const addReply = (r: FeedbackReply) =>
@@ -436,7 +439,9 @@ const Thread: React.FC<{ userId: string; ticket: AppFeedback; justOpened: boolea
 
   useEffect(() => {
     if (replies === null) return;
-    bottomRef.current?.scrollIntoView({ behavior: firstScroll.current ? 'auto' : 'smooth', block: 'end' });
+    // scroll only the conversation itself (scrollIntoView would also drag the page behind the sheet)
+    const el = scrollRef.current;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: firstScroll.current ? 'auto' : 'smooth' });
     firstScroll.current = false;
   }, [replies, pending]);
 
@@ -495,7 +500,7 @@ const Thread: React.FC<{ userId: string; ticket: AppFeedback; justOpened: boolea
         }
       />
 
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-3" style={{ borderTop: '1px solid var(--line)' }}>
+      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-3" style={{ borderTop: '1px solid var(--line)' }}>
         <div className="flex flex-col items-center px-6 pb-2 pt-5 text-center">
           <KindIcon category={ticket.category} size={44} />
           <div className="mt-2 text-[13px] font-semibold" style={muted}>
@@ -549,10 +554,9 @@ const Thread: React.FC<{ userId: string; ticket: AppFeedback; justOpened: boolea
             )}
           </div>
         )}
-        <div ref={bottomRef} />
       </div>
 
-      <div className="shrink-0 px-3 pb-4 pt-2" style={{ borderTop: '1px solid var(--line)' }}>
+      <div className="shrink-0 px-3 pb-1.5 pt-2" style={{ borderTop: '1px solid var(--line)' }}>
         <div className="flex items-end gap-2 rounded-[24px] p-1" style={field}>
           <GrowingInput value={text} onChange={setText} onSubmit={send} placeholder="Message" />
           <button onClick={send} disabled={!text.trim()} aria-label="Send"

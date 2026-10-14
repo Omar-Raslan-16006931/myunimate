@@ -56,6 +56,7 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
   const [found, setFound] = useState<PortalClass[] | null>(null); // classes read from the portal, waiting to be added
   const [sentTest, setSentTest] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [showManage, setShowManage] = useState(false);
   const [classRem, setClassRem] = useState(() => ntfyRemindersEnabled());
   const [confirmDisc, setConfirmDisc] = useState(false);
@@ -139,7 +140,8 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
   const copyTopic = async () => {
     try {
       await navigator.clipboard.writeText(topic ?? '');
-      toast.success('Copied');
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2200);
     } catch {
       toast.error('Could not copy. Select the text and copy it by hand.');
     }
@@ -196,7 +198,7 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
       <div className="mb-2 font-bold text-white">Not receiving alerts?</div>
       <ol className="list-decimal space-y-1.5 pl-4">
         <li>Turn your <b className="text-white">VPN off</b>. It can block ntfy.</li>
-        <li>In ntfy, make sure you are subscribed to <b className="text-white">your code</b>. <button onClick={copyTopic} className="border-0 bg-transparent p-0 font-bold text-teal-400">Copy it again</button></li>
+        <li>In ntfy, make sure you are subscribed to <b className="text-white">your code</b>. <button onClick={copyTopic} className="border-0 bg-transparent p-0 font-bold text-teal-400">{copied ? 'Copied ✓' : 'Copy it again'}</button></li>
         <li>iPhone Settings → Notifications → ntfy → turn <b className="text-white">Allow Notifications</b> on, with Lock Screen and Banners ticked.</li>
         <li>Also on: Settings → General → <b className="text-white">Background App Refresh</b> for ntfy. Turn off Low Power Mode and any Focus that mutes it.</li>
         <li>In ntfy: Settings → <b className="text-white">Default server</b> must be <b className="text-white">ntfy.sh</b>.</li>
@@ -227,7 +229,7 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
       sub: 'Your portal login, not UniMate',
       fields: (
         <div className="space-y-2.5">
-          <input className={input} value={username} onChange={e => { setUsername(e.target.value); setLoginError(null); }} placeholder="Username"
+          <input className={input} value={username} onChange={e => { setUsername(e.target.value); setLoginError(null); }} placeholder="Username" name="portal-username" data-lpignore="true" data-form-type="other"
             autoCapitalize="none" autoCorrect="off" spellCheck={false} autoComplete="off" />
           <input className={input} type="password" value={password} onChange={e => { setPassword(e.target.value); setLoginError(null); }} placeholder="Password" autoComplete="new-password"
             onKeyDown={e => { if (e.key === 'Enter' && password && username.trim() && busy === null) save(); }} />
@@ -286,7 +288,7 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
             <div className="flex items-center gap-3">
               <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-teal-500 text-[11px] font-extrabold text-black">2</span>
               <span className="min-w-0 flex-1 text-sm font-semibold text-white">In ntfy tap + and paste this</span>
-              <button onClick={copyTopic} className="flex shrink-0 items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1.5 text-xs font-bold text-white"><Copy size={12} /> Copy</button>
+              <button onClick={copyTopic} className={`flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${copied ? 'bg-teal-500/25 text-teal-200' : 'bg-white/10 text-white'}`}>{copied ? <><Check size={12} strokeWidth={3} /> Copied</> : <><Copy size={12} /> Copy</>}</button>
             </div>
             <div className="mt-2.5 truncate rounded-lg bg-black/40 px-3 py-2.5 font-mono text-xs text-white/60 select-all">{topic}</div>
           </div>

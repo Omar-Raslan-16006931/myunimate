@@ -22,7 +22,7 @@ const AdminInbox: React.FC = () => {
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [search, setSearch] = useState('');
-  const replyEndRef = useRef<HTMLDivElement>(null);
+  const threadScrollRef = useRef<HTMLDivElement>(null);
 
   // Check if user is admin before showing admin panel
   useEffect(() => {
@@ -117,13 +117,16 @@ const AdminInbox: React.FC = () => {
       }
   }, [selectedMessage?.id]);
 
+  // scroll only the conversation, and only when a ticket opens or a message arrives
+  // (scrollIntoView also dragged the whole page down, and ran on every button tap)
   useEffect(() => {
-      if (selectedMessage) {
-          setTimeout(() => {
-              replyEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-          }, 100);
-      }
-  }, [replies, selectedMessage]);
+      if (!selectedMessage) return;
+      const t = setTimeout(() => {
+          const el = threadScrollRef.current;
+          if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+      }, 100);
+      return () => clearTimeout(t);
+  }, [replies.length, selectedMessage?.id]);
 
   const markAsRead = async (id: string, currentStatus?: string) => {
     const newStatus = currentStatus === 'read' ? 'unread' : 'read';
@@ -305,7 +308,7 @@ const AdminInbox: React.FC = () => {
               </div>
             )}
 
-            <div className="flex-1 space-y-3 overflow-y-auto overscroll-contain p-3.5">
+            <div ref={threadScrollRef} className="flex-1 space-y-3 overflow-y-auto overscroll-contain p-3.5">
               <div className="flex">
                 <div className="max-w-[88%]">
                   <div className="rounded-2xl rounded-tl-md border border-white/5 bg-white/[0.06] px-3.5 py-2.5 text-[13px] leading-relaxed text-white/90 whitespace-pre-wrap">{selectedMessage.message}</div>
@@ -320,7 +323,6 @@ const AdminInbox: React.FC = () => {
                   </div>
                 </div>
               ))}
-              <div ref={replyEndRef} />
             </div>
 
             <div className="shrink-0 border-t border-white/5 p-2.5">

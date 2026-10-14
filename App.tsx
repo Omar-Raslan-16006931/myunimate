@@ -6,7 +6,7 @@ import { remindersEnabled, syncReminders } from './services/notifications';
 import { ntfyRemindersEnabled, syncNtfyReminders, NTFY_REMINDERS_EVENT } from './services/ntfyReminders';
 import { PortalGrades, PortalAttendance, PortalExamSeats } from './components/PortalScreens';
 import PortalSettings from './components/PortalSettings';
-import { getPortalAccount, getPortalSummary, getPortalExamSeats, getPortalAlertTopic, syncPortal, clearPortalCache, courseCodeOf, PortalExamSeat, PortalClass } from './services/portal';
+import { getPortalAccount, getPortalSummary, getPortalExamSeats, getPortalAlertTopic, syncPortal, clearPortalCache, bindPortalUser, courseCodeOf, PortalExamSeat, PortalClass } from './services/portal';
 import { checkPortalChanges } from './services/portalAlerts';
 import { supabase } from './lib/supabase';
 import { ViewState, ScheduleEvent, ScheduleProfile, EventColorMap, EventType, PeriodDefinition, Announcement, ThemeMode, FoodItem, WaterLog, WorkoutSession, WorkoutRoutine, ExerciseDefinition, GymSettings, ActiveGymState, CourseGrade, ToDoItem, MaterialFile, BodyLog } from './types';
@@ -33,6 +33,7 @@ import ImageImportModal from './components/ImageImportModal';
 import SmartImportModal from './components/SmartImportModal';
 import PasskeyPrompt from './components/PasskeyPrompt';
 import WhatsNew, { markWhatsNewSeen } from './components/WhatsNew';
+import ReplyNotifier from './components/ReplyNotifier';
 import SubscriptionPage from './components/SubscriptionPage';
 import UniversalGradeCalculator from './components/UniversalGradeCalculator';
 import PaymentPage from './components/PaymentPage';
@@ -322,6 +323,7 @@ export const App: React.FC = () => {
             console.error("Session error:", sessionError);
         }
         
+        bindPortalUser(session?.user?.id);
         setSession(session);
         
         if (session) {
@@ -357,6 +359,7 @@ export const App: React.FC = () => {
     initialize();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event: string, currentSession: any) => {
+      bindPortalUser(currentSession?.user?.id);
       setSession(currentSession);
       if ((_event === 'SIGNED_IN' || _event === 'INITIAL_SESSION') && currentSession && !isInitializingRef.current) {
           fetchProfile(currentSession.user.id);
@@ -452,6 +455,7 @@ export const App: React.FC = () => {
   }, [session?.user?.id]);
 
   const [whatsNewOpen, setWhatsNewOpen] = useState(false);
+  const [openSupportKey, setOpenSupportKey] = useState(0); // bumped when a support banner is tapped
 
   const finishSetup = () => {
     const uid = session?.user?.id;
@@ -1537,6 +1541,8 @@ export const App: React.FC = () => {
         );
       case 'settings':
         return <Settings 
+            openSupportKey={openSupportKey}
+            onSupportOpened={() => setOpenSupportKey(0)}
             profiles={profiles}
             activeProfileId={activeProfileId}
             eventColors={eventColors}
@@ -1710,6 +1716,7 @@ export const App: React.FC = () => {
           }}
         />
       )}
+      <ReplyNotifier userId={session?.user?.id} onOpen={() => { setView('settings'); setOpenSupportKey(k => k + 1); }} />
       <WhatsNew ready={!loading && !isSmartImportModalOpen} onOpenChange={setWhatsNewOpen} />
       <PasskeyPrompt userId={session?.user?.id} ready={!loading && !isSmartImportModalOpen && !whatsNewOpen} />
       <Toaster 

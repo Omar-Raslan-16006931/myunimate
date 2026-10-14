@@ -127,3 +127,8 @@ export const markSeen = (userId: string, ticketId: string, at = new Date().toISO
 
 export const hasNewReply = (t: TicketSummary, seen: Record<string, string>) =>
   t.lastFromSupport && (seen[t.id] || '') < t.lastAt;
+
+// Is the Support sheet on screen right now? (so a reply doesn't also pop up a banner)
+let supportOnScreen = false;
+export const setSupportOpen = (open: boolean) => { supportOnScreen = open; };
+export const isSupportOpen = () => supportOnScreen;

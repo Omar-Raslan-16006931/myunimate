@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import { App } from './App';
 import PasskeyHandoff, { passkeyHandoffFromUrl } from './components/PasskeyHandoff';
+import EmailConfirmed, { emailConfirmedFromUrl } from './components/EmailConfirmed';
 // @ts-ignore
 import { registerSW } from 'virtual:pwa-register';
 
@@ -16,10 +17,11 @@ if (!rootElement) {
 
 // the app's in-app Safari sheet opens this same site with ?pk=...&h=... for the Face ID step
 const handoff = passkeyHandoffFromUrl();
+const confirmed = !handoff && emailConfirmedFromUrl();
 
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    {handoff ? <PasskeyHandoff kind={handoff.kind} id={handoff.id} /> : <App />}
+    {handoff ? <PasskeyHandoff kind={handoff.kind} id={handoff.id} /> : confirmed ? <EmailConfirmed /> : <App />}
   </React.StrictMode>
 );

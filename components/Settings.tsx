@@ -31,6 +31,8 @@ const useSupportBadge = (userId: string | undefined, refreshKey: unknown) => {
 // --- MAIN SETTINGS COMPONENT ---
 
 interface SettingsProps {
+    openSupportKey?: number;
+    onSupportOpened?: () => void;
     profiles: ScheduleProfile[];
     activeProfileId: string;
     eventColors: EventColorMap;
@@ -84,7 +86,7 @@ const GroupCard = ({ children, className = "" }: any) => {
 };
 
 const Settings: React.FC<SettingsProps> = ({
-    profiles, activeProfileId, eventColors, onAddProfile, onSwitchProfile, onDeleteProfile, onUpdateColor, onResetApp, onSignOut, periods, setPeriods, accountInfo, onUpdateAccount, 
+    profiles, activeProfileId, eventColors, onAddProfile, onSwitchProfile, onDeleteProfile, onUpdateColor, onResetApp, onSignOut, periods, setPeriods, accountInfo, onUpdateAccount, openSupportKey, onSupportOpened,
 }) => {
     const [newProfileName, setNewProfileName] = useState('');
     const [isScheduleSettingsExpanded, setIsScheduleSettingsExpanded] = useState(false);
@@ -102,6 +104,8 @@ const Settings: React.FC<SettingsProps> = ({
     const [isCheckingUsername, setIsCheckingUsername] = useState(false);
     const [support, setSupport] = useState<null | 'list' | 'new'>(null);
     const supportBadge = useSupportBadge(accountInfo?.id, support);
+    // a tap on the "Support replied" banner opens the ticket list
+    useEffect(() => { if (openSupportKey) { setSupport('list'); onSupportOpened?.(); } }, [openSupportKey]);
     const [showSignOut, setShowSignOut] = useState(false);
     const [signingOut, setSigningOut] = useState(false);
     const confirmSignOut = async () => {
@@ -371,25 +375,25 @@ const Settings: React.FC<SettingsProps> = ({
                 </div>
             </div>
 
-            {showResetConfirm && (
-                <div style={styles.modalOverlay}>
-                    <div style={{ ...styles.modalContent, maxWidth: '320px', padding: '0', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
-                        <div style={{ padding: '32px 24px', textAlign: 'center' }}>
-                            <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-5 text-red-500">
-                                <AlertTriangle size={32} />
-                            </div>
-                            <h3 className="text-xl font-black text-white mb-2">Factory Reset?</h3>
-                            <p className="text-sm text-white/40 leading-relaxed font-medium">
-                                This will permanently wipe <b>all</b> your courses, logs, and settings. This cannot be undone.
-                            </p>
-                        </div>
-                        <div className="flex border-t border-white/5">
-                            <button onClick={() => setShowResetConfirm(false)} className="flex-1 py-5 text-sm font-bold text-white/40 hover:bg-white/5 transition-colors border-r border-white/5">Cancel</button>
-                            <button onClick={() => { setShowResetConfirm(false); onResetApp(); }} className="flex-1 py-5 text-sm font-black text-red-500 hover:bg-red-500/10 transition-colors uppercase tracking-widest">Wipe Data</button>
-                        </div>
+            <Sheet open={showResetConfirm} onClose={() => setShowResetConfirm(false)}>
+                <div className="px-5 pb-6 pt-1 text-center">
+                    <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full" style={{ background: 'var(--surface-2)', color: 'var(--danger)' }}>
+                        <AlertTriangle size={26} />
                     </div>
+                    <div className="text-[20px] font-extrabold">Factory reset?</div>
+                    <p className="mt-1 text-[14px]" style={{ color: 'var(--text-muted)' }}>
+                        This permanently wipes <b>all</b> your courses, logs and settings. It can't be undone.
+                    </p>
+                    <button onClick={() => { setShowResetConfirm(false); onResetApp(); }}
+                        className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl border-0 py-3.5 text-[16px] font-extrabold text-white" style={{ background: 'var(--danger)' }}>
+                        Wipe my data
+                    </button>
+                    <button onClick={() => setShowResetConfirm(false)}
+                        className="mt-2 w-full rounded-2xl border-0 py-3.5 text-[16px] font-bold" style={{ background: 'var(--surface-2)', color: 'var(--text-primary)' }}>
+                        Cancel
+                    </button>
                 </div>
-            )}
+            </Sheet>
 
             <Support open={support !== null} startNew={support === 'new'} onClose={() => setSupport(null)} userId={accountInfo?.id} />
             <Sheet open={showSignOut} onClose={() => { if (!signingOut) setShowSignOut(false); }}>
