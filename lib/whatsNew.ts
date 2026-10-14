@@ -19,7 +19,7 @@ export const WHATS_NEW: { id: string; title: string; items: WhatsNewItem[] } = {
   id: '2026-10-15',
   title: "What's new",
   items: [
-    { icon: 'sparkle', title: 'Smoother setup', text: 'A tick after every step, roomier screens, and the profile form is now two short steps.' },
+    { icon: 'sparkle', title: 'Smoother setup', text: 'Sign-up is one question per screen, with a tick after every step and roomier layouts.' },
     { icon: 'sparkle', title: 'New look', text: 'New default event colors, white text on your schedule, and soft fade-ins between pages.' },
     { icon: 'passkey', title: 'Sign in with Face ID', text: 'Add a passkey in Settings > Account and skip the password.' },
   ],

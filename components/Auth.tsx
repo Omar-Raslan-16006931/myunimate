@@ -2,7 +2,8 @@
 import React, { useState, memo, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { styles } from '../theme';
-import { Loader2, Mail, Lock, User, GraduationCap, Calendar, Building, Users, Check, AlertCircle, X, Fingerprint } from 'lucide-react';
+import { Loader2, Mail, Lock, User, GraduationCap, Calendar, Building, Users, Check, AlertCircle, X, Fingerprint, ArrowRight, ArrowLeft } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { validateEmail, validatePassword, validateUsername } from '../utils/validation';
 import { logError, logAuthEvent } from '../utils/logger';
 import { SIGNUPS_ENABLED } from '../lib/featureFlags';
@@ -34,6 +35,7 @@ function Auth({ onEnterTestMode }: AuthProps) {
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
   const [isCheckingUsername, setIsCheckingUsername] = useState(false);
 
+  const [signupStep, setSignupStep] = useState(1); // 1 username, 2 email, 3 password, 4 optional details
   const [gender, setGender] = useState('');
   const [major, setMajor] = useState('');
   const [year, setYear] = useState('');
@@ -49,6 +51,7 @@ function Auth({ onEnterTestMode }: AuthProps) {
       setMajor('');
       setYear('');
       setCollege('');
+      setSignupStep(1);
       setError(null);
       setMessage(null);
   };
@@ -205,6 +208,174 @@ function Auth({ onEnterTestMode }: AuthProps) {
     return (
       <div style={{...styles.container, overflowY: 'auto', background: '#0f0f16', backgroundImage: 'none'}}>
         <VerifyEmail email={verifyEmail} password={password} onBack={() => { setVerifyEmail(null); setMode('signin'); clearForm(); }} />
+      </div>
+    );
+  }
+
+  // ── sign-up: one question per screen ──
+  if ((mode as string) === 'signup') {
+    const SU_TOTAL = 4;
+    const bigField = 'w-full rounded-xl border border-white/10 bg-white/5 py-4 pl-12 pr-4 text-base text-white placeholder-white/30 transition-all focus:border-teal-500/50 focus:bg-white/10 focus:outline-none';
+    const lbl = 'mb-1.5 ml-1 block text-[11px] font-extrabold uppercase tracking-wider text-white/40';
+    const iconCls = 'absolute left-4 top-1/2 -translate-y-1/2 text-white/40 group-focus-within:text-teal-400 transition-colors';
+    const pwOk = password.length >= 8 && /[A-Z]/.test(password) && /[0-9]/.test(password);
+
+    const next = () => {
+      setError(null);
+      if (signupStep === 1) {
+        const c = validateUsername(username);
+        if (!c.valid) return setError(c.error || 'Invalid username');
+        if (isCheckingUsername) return setError('Checking the username, one second…');
+        if (usernameAvailable === false) return setError('That username is taken. Pick another.');
+      } else if (signupStep === 2) {
+        const c = validateEmail(identifier);
+        if (!c.valid) return setError(c.error || 'Invalid email address');
+      } else if (signupStep === 3) {
+        const c = validatePassword(password);
+        if (!c.valid) return setError(c.error || 'Password does not meet requirements');
+        if (password !== confirmPassword) return setError('Passwords do not match.');
+      }
+      setSignupStep(n => n + 1);
+    };
+    const back = () => { setError(null); if (signupStep === 1) toggleMode(); else setSignupStep(n => n - 1); };
+    const onSubmit = (e: React.FormEvent) => { e.preventDefault(); if (signupStep < SU_TOTAL) next(); else handleAuth(e); };
+
+    const head = (icon: React.ReactNode, title: string, sub: string) => (
+      <>
+        <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-teal-500/15 text-teal-400">{icon}</div>
+        <h1 className="mt-6 text-[28px] font-extrabold tracking-tight text-white">{title}</h1>
+        <p className="mt-1.5 text-[15px] text-white/50">{sub}</p>
+      </>
+    );
+    const errBox = error && <p className="mt-3 text-center text-[13px] font-semibold text-red-400">{error}</p>;
+
+    return (
+      <div className="fixed inset-0 z-[3000] flex flex-col bg-[#0f0f16] text-white"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top) + 16px)', paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px)' }}>
+        <div className="flex shrink-0 items-center justify-between px-5 pt-2">
+          <button type="button" onClick={back} disabled={loading} className="flex items-center gap-1.5 border-0 bg-transparent p-1 text-sm font-semibold text-white/50">
+            <ArrowLeft size={16} /> {signupStep === 1 ? 'Sign in' : 'Back'}
+          </button>
+          <span className="text-xs font-bold uppercase tracking-wider text-white/30">Account · {signupStep} of {SU_TOTAL}</span>
+        </div>
+        <div className="mx-auto mt-4 flex w-full max-w-[420px] shrink-0 gap-2 px-5">
+          {Array.from({ length: SU_TOTAL }, (_, i) => i + 1).map(n => (
+            <div key={n} className="h-1 flex-1 overflow-hidden rounded-full bg-white/10">
+              <div className="h-full bg-teal-500 transition-all duration-500" style={{ width: signupStep >= n ? '100%' : '0%' }} />
+            </div>
+          ))}
+        </div>
+
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.form key={signupStep} onSubmit={onSubmit} noValidate
+            initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }} transition={{ duration: 0.2 }}
+            className="mx-auto flex w-full max-w-[420px] flex-1 flex-col overflow-y-auto px-5 py-4">
+            <div className="flex flex-1 flex-col items-center justify-center text-center">
+              {signupStep === 1 && (<>
+                {head(<User size={30} />, 'Pick a username', 'This is the name you will see in UniMate')}
+                <div className="mt-7 w-full text-left">
+                  <label className={lbl}>Username</label>
+                  <div className="group relative">
+                    <User className={iconCls} size={18} />
+                    <input className={`${bigField} pr-11 ${usernameAvailable === false && !isCheckingUsername ? '!border-red-500/50' : ''}`} value={username} autoFocus maxLength={30}
+                      onChange={e => { setUsername(e.target.value); setError(null); }} placeholder="Min 4 characters" autoCapitalize="none" autoCorrect="off" />
+                    {username.length >= 4 && (
+                      <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2">
+                        {isCheckingUsername ? <Loader2 className="animate-spin text-white/40" size={16} />
+                          : usernameAvailable === true ? <Check className="text-emerald-500" size={16} />
+                          : usernameAvailable === false ? <X className="text-red-500" size={16} /> : null}
+                      </div>
+                    )}
+                  </div>
+                  {username.length > 0 && username.length < 4 && <p className="ml-1 mt-1.5 text-[12px] font-bold text-red-400">Must be at least 4 characters</p>}
+                  {usernameAvailable === false && !isCheckingUsername && <p className="ml-1 mt-1.5 flex items-center gap-1 text-[12px] font-bold text-red-400"><AlertCircle size={12} /> Username already taken</p>}
+                  {errBox}
+                </div>
+              </>)}
+
+              {signupStep === 2 && (<>
+                {head(<Mail size={30} />, 'Your email', 'We will send a link to confirm it')}
+                <div className="mt-7 w-full text-left">
+                  <label className={lbl}>Email address</label>
+                  <div className="group relative">
+                    <Mail className={iconCls} size={18} />
+                    <input className={bigField} type="text" inputMode="email" autoComplete="email" autoCapitalize="none" autoCorrect="off" autoFocus
+                      value={identifier} onChange={e => { setIdentifier(e.target.value); setError(null); }} placeholder="you@example.com" />
+                  </div>
+                  {errBox}
+                </div>
+              </>)}
+
+              {signupStep === 3 && (<>
+                {head(<Lock size={30} />, 'Make a password', '8+ characters, a capital letter and a number')}
+                <div className="mt-7 w-full space-y-3 text-left">
+                  <div>
+                    <label className={lbl}>Password</label>
+                    <div className="group relative">
+                      <Lock className={iconCls} size={18} />
+                      <input className={bigField} type="password" autoComplete="new-password" autoFocus value={password}
+                        onChange={e => { setPassword(e.target.value); setError(null); }} placeholder="Password" />
+                    </div>
+                    {password.length > 0 && !pwOk && <p className="ml-1 mt-1.5 text-[12px] font-bold text-red-400">8+ characters with a capital letter and a number</p>}
+                  </div>
+                  <div>
+                    <label className={lbl}>Confirm password</label>
+                    <div className="group relative">
+                      <Lock className={iconCls} size={18} />
+                      <input className={`${bigField} ${confirmPassword && confirmPassword !== password ? '!border-red-500/50' : ''}`} type="password" autoComplete="new-password" value={confirmPassword}
+                        onChange={e => { setConfirmPassword(e.target.value); setError(null); }} placeholder="Type it again" />
+                    </div>
+                    {confirmPassword && confirmPassword !== password && <p className="ml-1 mt-1.5 text-[12px] font-bold text-red-400">Passwords do not match</p>}
+                  </div>
+                  {errBox}
+                </div>
+              </>)}
+
+              {signupStep === 4 && (<>
+                {head(<GraduationCap size={30} />, 'About you', 'All optional. You can skip it')}
+                <div className="mt-7 w-full space-y-3 text-left">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={lbl}>Gender</label>
+                      <select className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-4 text-base text-white focus:border-teal-500/50 focus:outline-none" value={gender} onChange={e => setGender(e.target.value)}>
+                        <option value="" className="bg-slate-900">Select</option>
+                        <option value="male" className="bg-slate-900">Male</option>
+                        <option value="female" className="bg-slate-900">Female</option>
+                        <option value="other" className="bg-slate-900">Other</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className={lbl}>Year</label>
+                      <select className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-4 text-base text-white focus:border-teal-500/50 focus:outline-none" value={year} onChange={e => setYear(e.target.value)}>
+                        <option value="" className="bg-slate-900">Select</option>
+                        {['1', '2', '3', '4'].map(y => <option key={y} value={y} className="bg-slate-900">Year {y}</option>)}
+                        <option value="5" className="bg-slate-900">Year 5+</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label className={lbl}>Major</label>
+                    <div className="group relative"><GraduationCap className={iconCls} size={18} />
+                      <input className={bigField} value={major} onChange={e => setMajor(e.target.value)} placeholder="e.g. Software Engineering" /></div>
+                  </div>
+                  <div>
+                    <label className={lbl}>College</label>
+                    <div className="group relative"><Building className={iconCls} size={18} />
+                      <input className={bigField} value={college} onChange={e => setCollege(e.target.value)} placeholder="University name" /></div>
+                  </div>
+                  {errBox}
+                </div>
+              </>)}
+            </div>
+
+            <div className="shrink-0 pt-4">
+              <button type="submit" disabled={loading}
+                className="flex w-full items-center justify-center gap-2 rounded-2xl border-0 bg-teal-600 py-4 text-base font-bold text-white disabled:opacity-60">
+                {loading ? <Loader2 className="animate-spin" size={18} /> : signupStep < SU_TOTAL ? <>Next <ArrowRight size={16} /></> : <>Create account <ArrowRight size={16} /></>}
+              </button>
+            </div>
+          </motion.form>
+        </AnimatePresence>
       </div>
     );
   }
