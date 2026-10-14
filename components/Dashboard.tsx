@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Dumbbell, Calculator, Sparkles, Megaphone, X,
+  Dumbbell, Calculator, Megaphone, X,
   CheckSquare, Plus, Brain, Save, Check, ChevronRight, Bell, BellOff, GraduationCap, UserCheck, Armchair
 } from 'lucide-react';
 import { ScheduleEvent, EventColorMap, PeriodDefinition, Announcement } from '../types';
@@ -313,9 +313,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ events, onNavigate, onEven
             </span>
           </div>
           <div className="mt-1 flex items-center justify-between gap-3">
-            <div className="flex min-w-0 items-baseline gap-2">
+            <div className="flex min-w-0 flex-wrap items-baseline gap-x-2">
               <span className="font-extrabold leading-none whitespace-nowrap" style={{ fontSize: '1.9rem', letterSpacing: '-0.03em', color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{currentTime}</span>
-              <span className="truncate text-[0.8rem] font-bold" style={{ color: 'var(--accent-text)' }}>{currentDate}</span>
+              <span className="whitespace-nowrap text-[0.8rem] font-bold" style={{ color: 'var(--accent-text)' }}>{currentDate}</span>
             </div>
           <div className="flex items-center gap-2 shrink-0">
             {onSync && (
@@ -351,15 +351,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ events, onNavigate, onEven
               style={{ ...cardStyle, color: remindersOn ? 'var(--accent)' : 'var(--text-muted)' }}
             >
               {remindersOn ? <Bell size={17} /> : <BellOff size={17} />}
-            </motion.button>
-            <motion.button
-              whileTap={{ scale: 0.92 }}
-              onClick={() => onNavigate('ai')}
-              aria-label="AI Assistant"
-              className={headerBtn}
-              style={{ background: 'var(--surface-2)', color: 'var(--accent)', border: '1px solid var(--line)', ...glassFx }}
-            >
-              <Sparkles size={17} />
             </motion.button>
           </div>
           </div>
