@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { GymSettings, ActivityLevel, FitnessGoal } from '../../types';
-import { Save, Calculator, Droplets, Flame, User, Clock, TrendingDown, TrendingUp, Scale, Sparkles, Check } from 'lucide-react';
+import { Save, Calculator, Droplets, Flame, User, Clock, TrendingDown, TrendingUp, Scale, Check } from 'lucide-react';
 
 interface SettingsProps {
   settings: GymSettings;
@@ -199,7 +199,7 @@ export const GymSettingsComponent: React.FC<SettingsProps> = ({ settings, update
               ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
               : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-900/30'
           }`}>
-          {justCalculated ? <><Check size={14} /> Targets Applied</> : <><Sparkles size={14} /> Apply These Targets</>}
+          {justCalculated ? <><Check size={14} /> Targets Applied</> : 'Apply These Targets'}
         </button>
       </div>
 

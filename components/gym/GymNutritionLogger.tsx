@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { FoodItem, GymSettings, WaterLog } from '../../types';
 import { analyzeFoodImage, analyzeFoodText } from '../../services/geminiService';
-import { Camera, Send, Loader2, Image as ImageIcon, Droplets, X, Check, PenTool, AlertCircle, Pencil, Trash2, UtensilsCrossed, Apple, Sparkles } from 'lucide-react';
+import { Camera, Send, Loader2, Image as ImageIcon, Droplets, X, Check, PenTool, AlertCircle, Pencil, Trash2, UtensilsCrossed, Apple } from 'lucide-react';
 
 interface NutritionLoggerProps {
   logs: FoodItem[];
@@ -326,7 +326,6 @@ export const GymNutritionLogger: React.FC<NutritionLoggerProps> = ({ logs, water
       <div className="bg-white/[0.03] backdrop-blur-md p-4 rounded-3xl border border-white/5">
         <form onSubmit={handleTextSubmit} className="space-y-3">
           <div className="flex items-center gap-2 mb-1">
-            <Sparkles size={13} className="text-teal-400" />
             <span className="text-white/60 text-[10px] uppercase tracking-wide font-bold">AI Food Logging</span>
           </div>
           <div className="relative">

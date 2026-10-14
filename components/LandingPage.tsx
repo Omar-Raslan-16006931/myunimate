@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import {
-  Calendar, GraduationCap, Bell, Sparkles, BookOpen, CheckSquare, Dumbbell,
+  Calendar, GraduationCap, Bell, MessageCircle, BookOpen, CheckSquare, Dumbbell,
   Smartphone, ArrowRight, Check, Home, ListTodo, User, ChevronRight, ShieldCheck,
   RefreshCw, Lock,
 } from 'lucide-react';
@@ -167,7 +167,7 @@ const Hero = ({ onGetStarted }: { onGetStarted: () => void }) => (
   <section className="mx-auto grid max-w-5xl items-center gap-14 px-5 pb-20 pt-12 md:grid-cols-[1.1fr_1fr] md:pt-20">
     <motion.div initial="hidden" animate="show" variants={stagger}>
       <motion.div variants={fadeUp} className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[0.74rem] font-bold" style={{ ...card, color: 'var(--accent-text)' }}>
-        <Sparkles size={13} /> Built for GIU students
+        Built for GIU students
       </motion.div>
       <motion.h1 variants={fadeUp} className="mb-0 mt-5 font-extrabold" style={{ fontSize: 'clamp(2.4rem, 6vw, 3.9rem)', lineHeight: 1.02, letterSpacing: '-0.035em', color: 'var(--text-primary)' }}>
         Your whole semester.<br />
@@ -205,7 +205,7 @@ const FEATURES = [
   { icon: GraduationCap, title: 'Grades & calculator', body: 'Track every course and see exactly what you need on the final with the grade calculator.' },
   { icon: RefreshCw, title: 'Portal sync', body: 'Grades, attendance and exam seats pulled from the student portal every 10 minutes.' },
   { icon: Bell, title: 'Instant alerts', body: 'A push notification the moment something new lands, even when the app is closed.' },
-  { icon: Sparkles, title: 'AI assistant', body: 'Ask about your week, your deadlines or your courses. It knows your schedule.' },
+  { icon: MessageCircle, title: 'AI assistant', body: 'Ask about your week, your deadlines or your courses. It knows your schedule.' },
   { icon: BookOpen, title: 'Materials', body: 'Keep lecture slides and PDFs per course and read them right inside the app.' },
   { icon: CheckSquare, title: 'To-dos & reminders', body: 'Assignments and tasks with reminders, so nothing slips past a deadline.' },
   { icon: Dumbbell, title: 'Gym tracker', body: 'Log workouts, meals and body stats, and see your progress over the semester.' },

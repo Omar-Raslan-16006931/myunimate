@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { AppFeedback, FeedbackReply } from '../types';
-import { Check, Loader2, RefreshCw, Trash2, Send, Search, ChevronLeft, Sparkles, Copy, Ban, ShieldCheck, X } from 'lucide-react';
+import { Check, Loader2, RefreshCw, Trash2, Send, Search, ChevronLeft, Copy, Ban, ShieldCheck, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import BanSheet from './BanSheet';
@@ -253,7 +253,7 @@ const AdminInbox: React.FC = () => {
                 <div className="flex h-40 items-center justify-center text-teal-400"><Loader2 className="animate-spin" /></div>
               ) : !filteredItems.length ? (
                 <div className="flex h-full flex-col items-center justify-center pb-8 text-white/30">
-                  <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-white/5"><Sparkles size={22} /></div>
+                  <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-white/5"><Check size={22} /></div>
                   <span className="text-sm font-semibold">{feedbackItems.length ? 'Nothing matches' : 'All caught up'}</span>
                 </div>
               ) : filteredItems.map(item => {

@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { ArrowLeft, Check, Sparkles, Zap, Shield, Crown, Loader2, XCircle, ChevronRight, Star } from 'lucide-react';
+import { ArrowLeft, Check, Zap, Shield, Crown, Loader2, XCircle, ChevronRight, Star } from 'lucide-react';
 import { styles } from '../theme';
 
 
@@ -141,7 +141,7 @@ const SubscriptionPage: React.FC<SubscriptionPageProps> = ({
                                     disabled={loading}
                                     className="w-full py-4 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 text-black font-bold text-sm hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2"
                                 >
-                                    {loading ? <Loader2 className="animate-spin" /> : <Sparkles size={16} />}
+                                    {loading ? <Loader2 className="animate-spin" /> : null}
                                     Reactivate Pro
                                 </button>
                             ) : (
@@ -269,7 +269,7 @@ const SubscriptionPage: React.FC<SubscriptionPageProps> = ({
                             </div>
                             <div className="mt-2 pt-2 border-t border-white/5 text-center">
                                 <span className="text-xs font-bold text-emerald-400 flex items-center justify-center gap-1">
-                                    <Sparkles size={12} /> You save $22.88 per year
+                                    You save $22.88 per year
                                 </span>
                             </div>
                         </div>
@@ -287,7 +287,7 @@ const SubscriptionPage: React.FC<SubscriptionPageProps> = ({
                             <span className="text-sm text-white/80">Everything in Free</span>
                         </div>
                         <div className="flex items-center gap-3">
-                            <div className="p-1 rounded-full bg-indigo-500/20 text-indigo-400"><Sparkles size={12} /></div>
+                            <div className="p-1 rounded-full bg-indigo-500/20 text-indigo-400"><Check size={12} /></div>
                             <span className="text-sm text-white/80">Gemini AI Tutor</span>
                         </div>
                         <div className="flex items-center gap-3">

@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { User, GraduationCap, Calendar, Building, Users, Sparkles, Loader2, LogOut, ArrowRight } from 'lucide-react';
+import { User, GraduationCap, Calendar, Building, Users, Loader2, LogOut, ArrowRight } from 'lucide-react';
 import { styles } from '../theme';
 
 interface CompleteProfileProps {
@@ -53,7 +53,7 @@ const CompleteProfile: React.FC<CompleteProfileProps> = ({ onComplete, loading, 
         <div className="p-3 flex flex-col gap-3">
           <div className="text-center relative">
             <div className="mx-auto w-8 h-8 bg-gradient-to-br from-indigo-500 to-teal-600 rounded-xl flex items-center justify-center mb-2 shadow-lg shadow-teal-500/20 animate-pulse-slow">
-              <Sparkles size={16} className="text-white" />
+              <User size={16} className="text-white" />
             </div>
             <h1 className="text-base font-bold text-white mb-0.5">Almost There!</h1>
             <p className="text-white/60 text-[10px]">Finish setting up your profile.</p>

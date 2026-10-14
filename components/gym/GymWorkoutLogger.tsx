@@ -4,7 +4,7 @@ import {
   Dumbbell, Play, ArrowLeft, Search, X,
   Timer, Flame, Repeat,
   Minimize2, Pencil, AlertTriangle, Book, LayoutGrid, ChevronDown,
-  Calculator, Sparkles, ListPlus, CalendarRange, Layers
+  Calculator, ListPlus, CalendarRange, Layers
 } from 'lucide-react';
 import { WorkoutSession, WorkoutExercise, MuscleGroup, WorkoutRoutine, ExerciseDefinition, GymSettings, ExerciseSet, ActiveGymState, Equipment, PresetPlan } from '../../types';
 import { generateId, PRESET_PLANS } from '../../constants';
@@ -363,7 +363,7 @@ const ExercisePickerModal: React.FC<ExercisePickerProps> = ({ exercises, onSelec
                     <h2 className="text-base font-bold text-white flex-1">{title}</h2>
                     <button onClick={() => setCreating(!creating)}
                         className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-bold transition border ${creating ? 'bg-teal-500/20 border-teal-500/50 text-teal-300' : 'bg-white/5 border-white/10 text-white/60 hover:text-white'}`}>
-                        <Sparkles size={12} /> CUSTOM
+                        CUSTOM
                     </button>
                 </div>
 
@@ -1392,7 +1392,7 @@ export const GymWorkoutLogger: React.FC<WorkoutLoggerProps> = ({
           {/* PRESET PLANS */}
           <div className="mb-8">
               <div className="flex justify-between items-center mb-3 px-1">
-                  <h3 className="text-xs font-bold text-white/40 uppercase tracking-widest flex items-center gap-1.5"><Sparkles size={11} className="text-amber-400" /> Preset Plans</h3>
+                  <h3 className="text-xs font-bold text-white/40 uppercase tracking-widest flex items-center gap-1.5">Preset Plans</h3>
                   <span className="text-[9px] text-white/25 font-bold">Tap to preview</span>
               </div>
               <div className="flex gap-3 overflow-x-auto hide-scroll pb-2 -mx-1 px-1 snap-x">
