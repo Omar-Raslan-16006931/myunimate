@@ -66,6 +66,17 @@ const reminderId = (eventId: string, dateISO: string): number => {
   return Math.abs(hash) || 1;
 };
 
+/** "CSEN 301 - Computer Networks" -> "Computer Networks". Keeps the title as is when nothing else is left. */
+export const courseNameOf = (title: string): string => {
+  const t = (title || '').trim();
+  const cleaned = t
+    .replace(/\b[A-Za-z]{2,6}[\s-]?\d{3,4}[A-Za-z]?\b/g, ' ')
+    .replace(/[(\[]\s*[)\]]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .replace(/^[\s\-–—:·,|/]+|[\s\-–—:·,|/]+$/g, '');
+  return cleaned || t;
+};
+
 /** Every class start in the next week, turned into a reminder 15 minutes before. */
 export const buildReminders = (events: ScheduleEvent[], now: Date = new Date()): Reminder[] => {
   const reminders: Reminder[] = [];
@@ -87,11 +98,11 @@ export const buildReminders = (events: ScheduleEvent[], now: Date = new Date()):
       const at = new Date(start.getTime() - LEAD_MINUTES * 60000);
       if (at.getTime() <= now.getTime()) continue;
 
-      const details = [to12h(e.startTime), e.location, e.code].filter(Boolean).join(' · ');
+      const details = [to12h(e.startTime), e.location].filter(Boolean).join(' · ');
       reminders.push({
         id: reminderId(e.id, dayISO),
         at,
-        title: `Next in ${LEAD_MINUTES} min: ${e.title}`,
+        title: `Next in ${LEAD_MINUTES} min: ${courseNameOf(e.title)}`,
         body: details,
       });
     }

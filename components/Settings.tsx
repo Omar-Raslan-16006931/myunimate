@@ -219,6 +219,16 @@ const Settings: React.FC<SettingsProps> = ({
                             )}
                         </div>
                     )}
+
+                    <div className="border-b border-white/[0.05] last:border-0">
+                        <SectionHeader icon={KeyRound} color="#19b8a6" title="Uni Portal" isExpanded={isPortalExpanded} onToggle={() => setIsPortalExpanded(!isPortalExpanded)} />
+                        {isPortalExpanded && <div className="px-5 pb-6 pt-2 animate-in slide-in-from-top-2 duration-300"><PortalSettings /></div>}
+                    </div>
+
+                    <div className="border-b border-white/[0.05] last:border-0">
+                        <SectionHeader icon={Fingerprint} color="#19b8a6" title="Passkeys" isExpanded={isPasskeysExpanded} onToggle={() => setIsPasskeysExpanded(!isPasskeysExpanded)} />
+                        {isPasskeysExpanded && <div className="px-5 pb-6 pt-2 animate-in slide-in-from-top-2 duration-300"><PasskeySettings /></div>}
+                    </div>
                 </GroupCard>
 
                 {/* --- ACADEMIC ENGINE GROUP --- */}
@@ -263,10 +273,6 @@ const Settings: React.FC<SettingsProps> = ({
                         {isScheduleSettingsExpanded && <div className="px-5 pb-6 pt-2 animate-in slide-in-from-top-2 duration-300"><ScheduleSettings periods={periods} setPeriods={setPeriods} /></div>}
                     </div>
 
-                    <div className="border-b border-white/[0.05] last:border-0">
-                        <SectionHeader icon={KeyRound} color="#19b8a6" title="Uni Portal" isExpanded={isPortalExpanded} onToggle={() => setIsPortalExpanded(!isPortalExpanded)} />
-                        {isPortalExpanded && <div className="px-5 pb-6 pt-2 animate-in slide-in-from-top-2 duration-300"><PortalSettings /></div>}
-                    </div>
 
                     <div className="border-b border-white/[0.05] last:border-0">
                         <SectionHeader icon={Palette} color="#f59e0b" title="Theme Colors" isExpanded={isColorsExpanded} onToggle={() => setIsColorsExpanded(!isColorsExpanded)} />
@@ -293,10 +299,6 @@ const Settings: React.FC<SettingsProps> = ({
                         </div>
                     </div>
 
-                    <div className="border-b border-white/[0.05]">
-                        <SectionHeader icon={Fingerprint} color="#19b8a6" title="Passkeys" isExpanded={isPasskeysExpanded} onToggle={() => setIsPasskeysExpanded(!isPasskeysExpanded)} />
-                        {isPasskeysExpanded && <div className="px-5 pb-6 pt-2 animate-in slide-in-from-top-2 duration-300"><PasskeySettings /></div>}
-                    </div>
 
                     <div className="p-4 px-5 space-y-2">
                         <button onClick={() => setSupport('list')} className="w-full flex items-center justify-between p-4 bg-white/5 rounded-[20px] hover:bg-white/10 transition-all group border border-white/[0.03]">

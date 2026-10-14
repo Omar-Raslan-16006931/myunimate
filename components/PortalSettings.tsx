@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Loader2, RefreshCw, Check, Copy, GraduationCap, CircleUser, Bell, Smartphone, Send, PartyPopper, CalendarDays, ChevronDown, ChevronRight, MoreHorizontal, Pencil, Unplug } from 'lucide-react';
+import { Loader2, RefreshCw, Check, Copy, GraduationCap, CircleUser, AlarmClock, Bell, Smartphone, Send, PartyPopper, CalendarDays, ChevronDown, ChevronRight, MoreHorizontal, Pencil, Unplug } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import OnboardSteps from './OnboardSteps';
 import Sheet from './Sheet';
+import { ntfyRemindersEnabled, setNtfyReminders } from '../services/ntfyReminders';
 import { getPortalAccount, savePortalLogin, syncPortal, removePortalLogin, setPortalAlerts, testPortalAlert, getPortalAlertTopic, getPortalSchedule, timeAgo, readPortalCache, writePortalCache, PortalAccount, PortalClass } from '../services/portal';
 
 const NTFY_APP = 'https://apps.apple.com/app/ntfy/id1625396347';
@@ -56,6 +57,7 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
   const [sentTest, setSentTest] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [showManage, setShowManage] = useState(false);
+  const [classRem, setClassRem] = useState(() => ntfyRemindersEnabled());
   const [confirmDisc, setConfirmDisc] = useState(false);
   const [saved, setSaved] = useState(false);       // the login was accepted just now
   const [celebrate, setCelebrate] = useState(false); // shows the "Connected" moment before the next step
@@ -355,6 +357,22 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
                   : <motion.span className="absolute left-[3px] top-[3px] h-6 w-6 rounded-full bg-white" style={{ boxShadow: '0 2px 6px rgba(0,0,0,0.25)' }} animate={{ x: topic ? 20 : 0 }} transition={{ type: 'spring', stiffness: 520, damping: 32 }} />}
               </button>
             </div>
+
+            {topic && (
+              <div className="flex items-center gap-3 border-t border-white/[0.06] px-3.5 py-3">
+                {tile('bg-violet-500/20 text-violet-300', <AlarmClock size={18} />)}
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-bold text-white">Class reminders</div>
+                  <div className="truncate text-xs text-white/50">15 min before each class</div>
+                </div>
+                <button type="button" role="switch" aria-checked={classRem} aria-label="Class reminders" 
+                  onClick={() => { const next = !classRem; setClassRem(next); setNtfyReminders(next); toast.success(next ? 'Class reminders on' : 'Class reminders off'); }}
+                  className="relative h-[30px] w-[50px] shrink-0 rounded-full border-0 p-0 transition-colors duration-200"
+                  style={{ background: classRem ? '#14b8a6' : 'rgba(255,255,255,0.14)' }}>
+                  <motion.span className="absolute left-[3px] top-[3px] h-6 w-6 rounded-full bg-white" style={{ boxShadow: '0 2px 6px rgba(0,0,0,0.25)' }} animate={{ x: classRem ? 20 : 0 }} transition={{ type: 'spring', stiffness: 520, damping: 32 }} />
+                </button>
+              </div>
+            )}
 
             {topic && (
               <button onClick={testAlert} disabled={busy !== null}

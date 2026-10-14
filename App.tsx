@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { AlertCircle, RefreshCw } from 'lucide-react';
 import { Toaster, toast } from 'react-hot-toast';
 import { remindersEnabled, syncReminders } from './services/notifications';
+import { ntfyRemindersEnabled, syncNtfyReminders, NTFY_REMINDERS_EVENT } from './services/ntfyReminders';
 import { PortalGrades, PortalAttendance, PortalExamSeats } from './components/PortalScreens';
 import PortalSettings from './components/PortalSettings';
 import { getPortalAccount, getPortalSummary, getPortalExamSeats, getPortalAlertTopic, syncPortal, clearPortalCache, courseCodeOf, PortalExamSeat, PortalClass } from './services/portal';
@@ -1087,12 +1088,20 @@ export const App: React.FC = () => {
   // Class reminders: re-plan whenever the schedule changes or the app comes back to the front.
   useEffect(() => {
     const plan = () => {
-      if (remindersEnabled()) syncReminders(events.filter(e => e.scheduleId === activeProfileId));
+      const mine = events.filter(e => e.scheduleId === activeProfileId);
+      if (ntfyRemindersEnabled()) {
+        // ntfy sends the reminder, so clear the on-phone ones to avoid two alerts
+        syncReminders([]);
+        syncNtfyReminders(mine);
+      } else if (remindersEnabled()) {
+        syncReminders(mine);
+      }
     };
     plan();
     const onVisible = () => { if (document.visibilityState === 'visible') plan(); };
     document.addEventListener('visibilitychange', onVisible);
-    return () => document.removeEventListener('visibilitychange', onVisible);
+    window.addEventListener(NTFY_REMINDERS_EVENT, plan);
+    return () => { document.removeEventListener('visibilitychange', onVisible); window.removeEventListener(NTFY_REMINDERS_EVENT, plan); };
   }, [events, activeProfileId]);
 
   if (!isAppReady) return (
