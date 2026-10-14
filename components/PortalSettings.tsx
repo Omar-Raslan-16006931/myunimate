@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Loader2, RefreshCw, AlertTriangle, Check, Copy, GraduationCap, Bell, Smartphone, Send, PartyPopper, CalendarDays, ChevronDown } from 'lucide-react';
+import { Loader2, RefreshCw, Check, Copy, GraduationCap, CircleUser, Bell, Smartphone, Send, PartyPopper, CalendarDays, ChevronDown, ChevronRight, MoreHorizontal, Pencil, Unplug } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import OnboardSteps from './OnboardSteps';
+import Sheet from './Sheet';
 import { getPortalAccount, savePortalLogin, syncPortal, removePortalLogin, setPortalAlerts, testPortalAlert, getPortalAlertTopic, getPortalSchedule, timeAgo, readPortalCache, writePortalCache, PortalAccount, PortalClass } from '../services/portal';
 
 const NTFY_APP = 'https://apps.apple.com/app/ntfy/id1625396347';
@@ -54,6 +55,8 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
   const [found, setFound] = useState<PortalClass[] | null>(null); // classes read from the portal, waiting to be added
   const [sentTest, setSentTest] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [showManage, setShowManage] = useState(false);
+  const [confirmDisc, setConfirmDisc] = useState(false);
   const [saved, setSaved] = useState(false);       // the login was accepted just now
   const [celebrate, setCelebrate] = useState(false); // shows the "Connected" moment before the next step
   const setGuide = (patch: GuideFlags) => setGuideState(g => { const n = { ...g, ...patch }; writeGuide(n); return n; });
@@ -314,41 +317,99 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
     if (celebrate) return <div className="rounded-2xl border border-white/5 bg-black/30 p-4">{connectedView}</div>;
     if (flow === 'done') {
       const err = account!.last_status === 'error';
+      const switching = busy === 'alerts';
+      const tile = (bg: string, icon: React.ReactNode) => <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px] ${bg}`}>{icon}</div>;
       return (
-        <div className="rounded-2xl border border-white/5 bg-black/30 p-4">
-          <div className="flex items-center gap-3">
-            <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${err ? 'bg-amber-500/15 text-amber-400' : 'bg-teal-500/15 text-teal-400'}`}>
-              {err ? <AlertTriangle size={17} /> : <Check size={17} strokeWidth={3} />}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-bold text-white">{account!.username}</div>
-              <div className="truncate text-xs text-white/50">
-                {err ? "Couldn't check the portal. Tap refresh." : `Checked ${timeAgo(account!.last_sync_at)} · Alerts ${topic ? 'on' : 'off'}`}
+        <div>
+          {/* one box: portal, alerts, test */}
+          <div className="overflow-hidden rounded-[22px] border border-white/[0.06] bg-white/5">
+            <div className="p-3.5">
+              <div className="flex items-center gap-3">
+                <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] ${err ? 'bg-amber-500/20 text-amber-300' : 'bg-teal-500/20 text-teal-300'}`}><CircleUser size={22} /></div>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-[16px] font-bold text-white">{account!.username}</div>
+                  <div className="mt-0.5 flex items-center gap-1.5 text-[12.5px]">
+                    <span className={`h-2 w-2 shrink-0 rounded-full ${err ? 'bg-amber-400' : 'bg-emerald-400'}`} />
+                    <span className={`truncate ${err ? 'text-amber-300' : 'text-emerald-300/90'}`}>{err ? "Couldn't reach the portal last time" : `Connected · checked ${timeAgo(account!.last_sync_at)}`}</span>
+                  </div>
+                </div>
+                <button onClick={() => setShowManage(true)} aria-label="More" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-0 bg-white/[0.07] text-white/80"><MoreHorizontal size={20} /></button>
               </div>
+              <button onClick={sync} disabled={busy !== null}
+                className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-xl border-0 bg-teal-500 text-[14px] font-bold text-[#03201c] disabled:opacity-60">
+                {busy === 'sync' || refreshing ? <><Loader2 size={16} className="animate-spin" /> Checking…</> : <><RefreshCw size={15} /> Check now</>}
+              </button>
             </div>
-            <button onClick={sync} disabled={busy !== null} aria-label="Check now"
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/5 text-white disabled:opacity-40">
-              {busy === 'sync' || refreshing ? spin : <RefreshCw size={15} />}
-            </button>
+
+            <div className="flex items-center gap-3 border-t border-white/[0.06] px-3.5 py-3">
+              {tile('bg-amber-500/20 text-amber-300', <Bell size={18} />)}
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-bold text-white">Phone alerts</div>
+                <div className="truncate text-xs text-white/50">Grades, absences, exam seats</div>
+              </div>
+              <button type="button" role="switch" aria-checked={!!topic} aria-label="Phone alerts" onClick={toggleAlerts} disabled={busy !== null}
+                className="relative h-[30px] w-[50px] shrink-0 rounded-full border-0 p-0 transition-colors duration-200 disabled:opacity-60"
+                style={{ background: topic ? '#14b8a6' : 'rgba(255,255,255,0.14)' }}>
+                {switching
+                  ? <span className="absolute inset-0 flex items-center justify-center text-white"><Loader2 size={14} className="animate-spin" /></span>
+                  : <motion.span className="absolute left-[3px] top-[3px] h-6 w-6 rounded-full bg-white" style={{ boxShadow: '0 2px 6px rgba(0,0,0,0.25)' }} animate={{ x: topic ? 20 : 0 }} transition={{ type: 'spring', stiffness: 520, damping: 32 }} />}
+              </button>
+            </div>
+
+            {topic && (
+              <button onClick={testAlert} disabled={busy !== null}
+                className="flex w-full items-center gap-3 border-0 border-t border-white/[0.06] bg-transparent px-3.5 py-3 text-left disabled:opacity-60">
+                {tile('bg-sky-500/20 text-sky-300', busy === 'test' ? <Loader2 size={17} className="animate-spin" /> : <Send size={17} />)}
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-bold text-white">Send a test</div>
+                  <div className="truncate text-xs text-white/50">Make sure it reaches your phone</div>
+                </div>
+                <ChevronRight size={18} className="shrink-0 text-white/25" />
+              </button>
+            )}
           </div>
           {topic && (
-            <div className="mt-3 border-t border-white/5 pt-2">
-              <button onClick={() => setShowHelp(v => !v)} className="flex w-full items-center justify-center gap-1 py-2 text-xs font-semibold text-white/50">
+            <div className="mt-1.5">
+              <button onClick={() => setShowHelp(v => !v)} className="flex w-full items-center justify-center gap-1 border-0 bg-transparent py-2.5 text-xs font-semibold text-white/45">
                 Not receiving alerts? <ChevronDown size={13} className={`transition-transform ${showHelp ? 'rotate-180' : ''}`} />
               </button>
-              {showHelp && <div className="mt-2">{helpList}</div>}
+              {showHelp && <div className="mt-1">{helpList}</div>}
             </div>
           )}
-          <div className="mt-4 grid grid-cols-2 gap-2.5 border-t border-white/5 pt-4 text-[13px] font-bold">
-            {topic
-              ? <button onClick={testAlert} disabled={busy !== null} className="flex h-11 items-center justify-center rounded-xl bg-white/5 text-white disabled:opacity-40">{busy === 'test' ? 'Sending…' : 'Send test'}</button>
-              : <button onClick={toggleAlerts} disabled={busy !== null} className="flex h-11 items-center justify-center rounded-xl bg-teal-500/15 text-teal-300 disabled:opacity-40">{busy === 'alerts' ? 'Turning on…' : 'Turn on alerts'}</button>}
-            {topic
-              ? <button onClick={toggleAlerts} disabled={busy !== null} className="flex h-11 items-center justify-center rounded-xl bg-white/5 text-white disabled:opacity-40">{busy === 'alerts' ? 'Turning off…' : 'Alerts off'}</button>
-              : <span />}
-            <button onClick={() => setEditing(true)} className={`flex h-11 items-center justify-center rounded-xl bg-white/5 ${err ? 'text-amber-400' : 'text-white'}`}>Change login</button>
-            <button onClick={remove} disabled={busy !== null} className="flex h-11 items-center justify-center rounded-xl bg-red-500/10 text-red-400 disabled:opacity-40">{busy === 'remove' ? 'Removing…' : 'Disconnect'}</button>
-          </div>
+
+          {/* rare actions live in a sheet */}
+          <Sheet open={showManage} onClose={() => { if (busy === null) { setShowManage(false); setConfirmDisc(false); } }}>
+            <div className="px-5 pb-6 pt-1">
+              <div className="mb-4 text-center">
+                <div className="text-[19px] font-extrabold">Uni Portal</div>
+                <div className="text-[13px]" style={{ color: 'var(--text-muted)' }}>{account!.username}</div>
+              </div>
+              {!confirmDisc ? (
+                <div className="space-y-2.5">
+                  <button onClick={() => { setShowManage(false); setEditing(true); }}
+                    className="flex w-full items-center gap-3 rounded-2xl border-0 p-3.5 text-left" style={{ background: 'var(--sheet-field)', color: 'var(--text-primary)' }}>
+                    <span className="flex h-10 w-10 items-center justify-center rounded-[14px]" style={{ background: 'var(--surface-2)' }}><Pencil size={17} /></span>
+                    <span className="flex-1"><span className="block text-[15px] font-bold">Change login</span><span className="block text-xs" style={{ color: 'var(--text-muted)' }}>New portal username or password</span></span>
+                  </button>
+                  <button onClick={() => setConfirmDisc(true)}
+                    className="flex w-full items-center gap-3 rounded-2xl border-0 p-3.5 text-left" style={{ background: 'var(--sheet-field)', color: 'var(--danger)' }}>
+                    <span className="flex h-10 w-10 items-center justify-center rounded-[14px]" style={{ background: 'rgba(255,90,95,0.14)' }}><Unplug size={17} /></span>
+                    <span className="flex-1"><span className="block text-[15px] font-bold">Disconnect</span><span className="block text-xs" style={{ color: 'var(--text-muted)' }}>Removes your login and stops alerts</span></span>
+                  </button>
+                </div>
+              ) : (
+                <div className="text-center">
+                  <p className="mb-4 text-[14px]" style={{ color: 'var(--text-muted)' }}>Disconnect your portal? Your grades stay, but alerts stop until you connect again.</p>
+                  <button onClick={async () => { await remove(); setShowManage(false); setConfirmDisc(false); }} disabled={busy !== null}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl border-0 py-3.5 text-[16px] font-extrabold text-white disabled:opacity-60" style={{ background: 'var(--danger)' }}>
+                    {busy === 'remove' ? <Loader2 size={18} className="animate-spin" /> : 'Disconnect'}
+                  </button>
+                  <button onClick={() => setConfirmDisc(false)} disabled={busy !== null}
+                    className="mt-2 w-full rounded-2xl border-0 py-3.5 text-[16px] font-bold" style={{ background: 'var(--surface-2)', color: 'var(--text-primary)' }}>Cancel</button>
+                </div>
+              )}
+            </div>
+          </Sheet>
         </div>
       );
     }
