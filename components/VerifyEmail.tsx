@@ -109,7 +109,7 @@ const VerifyEmail: React.FC<{ email: string; password?: string; onBack: () => vo
           </motion.p>
           <motion.p className="mt-3 text-[0.82rem] text-white/40"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }}>
-            Tap the link within 30 minutes, then come back here. We'll sign you in. Unconfirmed sign-ups are removed after that.
+            Tap the link within 30 minutes, then come back here. We'll sign you in. Unconfirmed sign-ups are removed after that.<br /><span className="mt-1.5 inline-block font-semibold text-white/60">Can't see it? Check your spam or junk folder.</span>
           </motion.p>
 
           {password && (
