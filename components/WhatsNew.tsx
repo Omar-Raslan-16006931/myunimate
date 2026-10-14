@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Fingerprint, AlarmClock, CircleUser, Star } from 'lucide-react';
 import Sheet from './Sheet';
-import { WHATS_NEW, WhatsNewItem } from '../lib/whatsNew';
+import { WHATS_NEW, WHATS_NEW_ALWAYS, WhatsNewItem } from '../lib/whatsNew';
 
 const SEEN_KEY = 'whats_new_seen_v1';
 
@@ -26,7 +26,7 @@ const WhatsNew: React.FC<{ ready: boolean; onOpenChange?: (open: boolean) => voi
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    if (!ready || seenId() === WHATS_NEW.id) return;
+    if (!ready || (!WHATS_NEW_ALWAYS && seenId() === WHATS_NEW.id)) return;
     const t = setTimeout(() => setOpen(true), 700);
     return () => clearTimeout(t);
   }, [ready]);

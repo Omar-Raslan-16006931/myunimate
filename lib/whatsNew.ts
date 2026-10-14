@@ -12,6 +12,9 @@ export interface WhatsNewItem {
   text: string;
 }
 
+/** false: shows once per version (the id below). true: shows on every app open. */
+export const WHATS_NEW_ALWAYS = false;
+
 export const WHATS_NEW: { id: string; title: string; items: WhatsNewItem[] } = {
   id: '2026-10-14',
   title: "What's new",
