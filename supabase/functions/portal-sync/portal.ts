@@ -776,6 +776,104 @@ export const parseExamSeats = (html: string): ExamSeat[] => {
 
 // ───────────────────────── the whole sync ─────────────────────────
 
+// ───────────────────────── weekly schedule ─────────────────────────
+
+export const SCHEDULE_PATH = "/GIUb/EXTStudent/GroupSchedule_m.aspx";
+/** Evening periods (sixth and seventh) are not imported. */
+export const SCHEDULE_MAX_PERIOD = 5;
+const DEFAULT_PERIOD_TIMES: [string, string][] = [
+  ["08:30", "10:00"], ["10:15", "11:45"], ["12:00", "13:30"], ["13:45", "15:15"], ["15:45", "17:15"],
+];
+
+export interface ScheduleClass {
+  day: string;
+  period_number: number;
+  time_start: string;
+  time_end: string;
+  course_name: string;
+  room: string;
+  group: string;
+  type: "lecture" | "lab" | "tutorial" | "other";
+}
+
+const classType = (word: string): ScheduleClass["type"] => {
+  const w = word.toLowerCase();
+  if (w.startsWith("lec")) return "lecture";
+  if (w.startsWith("lab") || w.startsWith("pra")) return "lab";
+  if (w.startsWith("tut")) return "tutorial";
+  return "other";
+};
+
+const pad2 = (t: string) => t.replace(/^(\d):/, "0$1:");
+
+/**
+ * Reads the "Student Schedule" grid: one row per day, one cell per period.
+ * Free cells are empty. Only the first SCHEDULE_MAX_PERIOD periods are returned.
+ */
+export const parseSchedule = (html: string): ScheduleClass[] => {
+  const start = html.search(/<table[^>]*id="Table1"/i);
+  const grid = start >= 0 ? html.slice(start) : html;
+
+  // period times come from the header row ("8:30-10:00"), in order
+  const firstDay = grid.search(/<tr[^>]*id="ContentPlaceHolder1_(?:rw|altR)\d+"/i);
+  const header = firstDay > 0 ? grid.slice(0, firstDay) : "";
+  const times = [...header.matchAll(/(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/g)].map(m => [pad2(m[1]), pad2(m[2])] as [string, string]);
+  const periodTimes = times.length >= SCHEDULE_MAX_PERIOD ? times : DEFAULT_PERIOD_TIMES;
+
+  const out: ScheduleClass[] = [];
+  const rows = grid.split(/(?=<tr[^>]*id="ContentPlaceHolder1_(?:rw|altR)\d+")/i).filter(r => /ContentPlaceHolder1_(?:rw|altR)\d+"/i.test(r.slice(0, 80)));
+  for (const row of rows) {
+    const day = text(row.match(/<strong>([\s\S]*?)<\/strong>/i)?.[1] ?? "");
+    if (!day) continue; // blank closing row
+    // the n-th TableNN is the n-th period of that day
+    const cells = tables(row).filter(t => /^Table\d+$/i.test(t.id ?? ""));
+    cells.slice(0, SCHEDULE_MAX_PERIOD).forEach((cell, i) => {
+      for (const r of cell.rows) {
+        if (!r[0]) continue;
+        const kind = r[2] ?? "";
+        const parts = kind.split(" ").filter(Boolean);
+        const last = parts.length > 1 ? parts[parts.length - 1] : "";
+        out.push({
+          day,
+          period_number: i + 1,
+          time_start: periodTimes[i][0],
+          time_end: periodTimes[i][1],
+          course_name: r[0],
+          room: r[1] ?? "",
+          group: last ? parts.slice(0, -1).join(" ") : kind,
+          type: classType(last),
+        });
+      }
+    });
+  }
+  return out;
+};
+
+export const fetchSchedule = async (auth: PortalAuth, connector: Connector, host = "portal.giu-uni.de", port = 443): Promise<ScheduleClass[]> => {
+  const http = new PortalHttp(host, connector, auth, port);
+  try {
+    try { await http.request("GET", "/GIUb/EXTStudent/Home.aspx"); } catch { /* the schedule request signs in too */ }
+    const res = await http.request("GET", SCHEDULE_PATH);
+    if (res.status === 401 || res.status === 403) throw new Error("PORTAL_LOGIN_FAILED");
+    if (res.status !== 200) throw new Error(`PORTAL_HTTP_${res.status}_SCHEDULE`);
+    if (!/Table1|Student Schedule/i.test(res.body)) throw new Error("PORTAL_PAGE_CHANGED_SCHEDULE");
+    return parseSchedule(res.body);
+  } finally {
+    http.close();
+  }
+};
+
+/** Signs in once and nothing else. Throws PORTAL_LOGIN_FAILED when the username or password is wrong. */
+export const checkLogin = async (auth: PortalAuth, connector: Connector, host = "portal.giu-uni.de", port = 443): Promise<void> => {
+  const http = new PortalHttp(host, connector, auth, port);
+  try {
+    const res = await http.request("GET", "/GIUb/EXTStudent/Home.aspx");
+    if (res.status === 401 || res.status === 403) throw new Error("PORTAL_LOGIN_FAILED");
+  } finally {
+    http.close();
+  }
+};
+
 export const PORTAL_HOST = "portal.giu-uni.de";
 export const HOME_PATH = "/GIUb/EXTStudent/Home.aspx";
 export const GRADES_PATH = "/GIUb/EXTStudent/CheckGrade_m.aspx";

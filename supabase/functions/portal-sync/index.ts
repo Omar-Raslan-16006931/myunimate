@@ -5,7 +5,7 @@
 // (a signed-in app user, or the hourly timer with its secret).
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { type Connector, fetchPortal, type PortalData } from "./portal.ts";
+import { checkLogin, type Connector, fetchPortal, fetchSchedule, type PortalData } from "./portal.ts";
 
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL") ?? "",
@@ -28,7 +28,8 @@ const connector: Connector = async (hostname, port) => {
 };
 
 const MESSAGES: Record<string, string> = {
-  PORTAL_LOGIN_FAILED: "The portal rejected this username or password.",
+  PORTAL_LOGIN_FAILED: "Wrong username or password. Check it and try again.",
+  PORTAL_PAGE_CHANGED_SCHEDULE: "The schedule page looks different from what the app expects.",
   PORTAL_UNSUPPORTED_LOGIN: "The portal asked for a kind of login this app does not support.",
   PORTAL_CONNECTION_CLOSED: "The portal closed the connection. Try again in a minute.",
   PORTAL_BAD_CHALLENGE: "The portal sent an unexpected login reply.",
@@ -103,9 +104,63 @@ const sendAlerts = async (topic: string, alerts: Alert[]): Promise<number> => {
 const OFF = "off:";
 const activeTopic = (t: string | null | undefined) => (t && !t.startsWith(OFF) ? t : null);
 
+// Long random topic: "unimate_" + 40 letters/digits (about 238 bits). Nobody can guess it,
+// and the database refuses duplicates.
+const TOPIC_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 const newTopic = () => {
-  const bytes = crypto.getRandomValues(new Uint8Array(12));
-  return "unimate-" + Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+  let out = "";
+  while (out.length < 40) {
+    for (const b of crypto.getRandomValues(new Uint8Array(64))) {
+      if (b < 248 && out.length < 40) out += TOPIC_CHARS[b % 62]; // 248 = 4*62, keeps every char equally likely
+    }
+  }
+  return "unimate_" + out;
+};
+
+// ── Portal password encryption ──
+// The key lives only in the Edge Function secret PORTAL_KEY, never in the database,
+// so the database (dashboard, SQL editor, backups) only ever holds scrambled text.
+// Without the secret set, the function keeps using Supabase Vault like before.
+const b64 = (u: Uint8Array) => btoa(String.fromCharCode(...u));
+const unb64 = (s: string) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+let keyPromise: Promise<CryptoKey | null> | null = null;
+const portalKey = (): Promise<CryptoKey | null> => {
+  if (!keyPromise) {
+    const raw = Deno.env.get("PORTAL_KEY") ?? "";
+    keyPromise = (async () => {
+      if (!raw) return null;
+      const bytes = unb64(raw.trim());
+      if (bytes.length !== 32) { console.error("PORTAL_KEY must be 32 bytes (base64)"); return null; }
+      return await crypto.subtle.importKey("raw", bytes, "AES-GCM", false, ["encrypt", "decrypt"]);
+    })();
+  }
+  return keyPromise;
+};
+const enc = new TextEncoder(), dec = new TextDecoder();
+const encryptPassword = async (key: CryptoKey, userId: string, password: string) => {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv, additionalData: enc.encode(userId) }, key, enc.encode(password)));
+  return `v1:${b64(iv)}:${b64(ct)}`;
+};
+const decryptPassword = async (key: CryptoKey, userId: string, stored: string) => {
+  const [v, iv, ct] = stored.split(":");
+  if (v !== "v1" || !iv || !ct) throw new Error("NO_CREDENTIALS");
+  const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: unb64(iv), additionalData: enc.encode(userId) }, key, unb64(ct));
+  return dec.decode(pt);
+};
+
+/** The portal password for one account, moving old Vault passwords to the new encryption on the way. */
+const getPassword = async (userId: string, account: { password_enc?: string | null }): Promise<string> => {
+  const key = await portalKey();
+  if (key && account.password_enc) return await decryptPassword(key, userId, account.password_enc);
+  const { data: password, error } = await supabase.rpc("portal_get_password", { p_user: userId });
+  if (error || !password) throw new Error("NO_CREDENTIALS");
+  if (key) {
+    const password_enc = await encryptPassword(key, userId, password);
+    const { error: upErr } = await supabase.from("portal_accounts").update({ password_enc }).eq("user_id", userId);
+    if (!upErr) await supabase.rpc("portal_clear_vault", { p_user: userId });
+  }
+  return password;
 };
 
 const to12h = (t: string) => {
@@ -271,8 +326,7 @@ const syncUser = async (userId: string): Promise<SyncResult> => {
   if (!account) return { ok: false, code: "NO_CREDENTIALS", message: MESSAGES.NO_CREDENTIALS };
 
   try {
-    const { data: password, error: pwErr } = await supabase.rpc("portal_get_password", { p_user: userId });
-    if (pwErr || !password) throw new Error("NO_CREDENTIALS");
+    const password = await getPassword(userId, account);
 
     const data = await withTimeout(fetchPortal({ username: account.username, password }, connector), 110_000);
     const { newCount: newGrades, alerts } = await save(userId, data, !account.last_ok_at);
@@ -313,8 +367,13 @@ Deno.serve(async (req: Request) => {
     const { data: valid } = await supabase.rpc("portal_cron_secret_ok", { p_secret: req.headers.get("x-cron-secret") ?? "" });
     if (!valid) return json({ ok: false, message: "Unauthorized" }, 401);
     const { data: accounts } = await supabase.from("portal_accounts").select("user_id");
+    // check up to 5 accounts at the same time
+    const queue = [...(accounts ?? [])];
     const results: SyncResult[] = [];
-    for (const a of accounts ?? []) results.push(await syncUser(a.user_id));
+    const worker = async () => {
+      for (let a = queue.shift(); a; a = queue.shift()) results.push(await syncUser(a.user_id));
+    };
+    await Promise.all(Array.from({ length: Math.min(5, queue.length) }, worker));
     return json({ ok: true, synced: results.length, failed: results.filter((r) => !r.ok).length });
   }
 
@@ -330,13 +389,44 @@ Deno.serve(async (req: Request) => {
     if (!username || !password || username.length > 120 || password.length > 200) {
       return json({ ok: false, message: "Enter your portal username and password." }, 400);
     }
-    const { error } = await supabase.rpc("portal_store_password", { p_user: userId, p_username: username, p_password: password });
-    if (error) return json({ ok: false, message: "Could not save the portal login." }, 500);
+    // check the login with the portal first: a wrong password is never saved
+    try {
+      await withTimeout(checkLogin({ username, password }, connector), 40_000);
+    } catch (e) {
+      const { code, message } = describe(e);
+      return json({ ok: false, code, message: code === "PORTAL_LOGIN_FAILED" ? message : `Could not check the login. ${message}` });
+    }
+    const key = await portalKey();
+    if (key) {
+      const password_enc = await encryptPassword(key, userId, password);
+      const { error } = await supabase.from("portal_accounts").upsert(
+        { user_id: userId, username, password_enc, last_status: null, last_error: null, updated_at: new Date().toISOString() },
+        { onConflict: "user_id" },
+      );
+      if (error) return json({ ok: false, message: "Could not save the portal login." }, 500);
+      await supabase.rpc("portal_clear_vault", { p_user: userId }); // drop any older Vault copy
+    } else {
+      const { error } = await supabase.rpc("portal_store_password", { p_user: userId, p_username: username, p_password: password });
+      if (error) return json({ ok: false, message: "Could not save the portal login." }, 500);
+    }
     return json(await syncUser(userId));
   }
 
   if (body.action === "sync") {
     return json(await syncUser(userId));
+  }
+
+  if (body.action === "get_schedule") {
+    const { data: account } = await supabase.from("portal_accounts").select("*").eq("user_id", userId).maybeSingle();
+    if (!account) return json({ ok: false, code: "NO_CREDENTIALS", message: MESSAGES.NO_CREDENTIALS });
+    try {
+      const password = await getPassword(userId, account);
+      const classes = await withTimeout(fetchSchedule({ username: account.username, password }, connector), 60_000);
+      return json({ ok: true, classes });
+    } catch (e) {
+      const { code, message } = describe(e);
+      return json({ ok: false, code, message });
+    }
   }
 
   if (body.action === "set_notify") {
@@ -345,8 +435,13 @@ Deno.serve(async (req: Request) => {
     const base = saved ? (saved.startsWith(OFF) ? saved.slice(OFF.length) : saved) : null;
     const stored = body.enabled ? (base ?? newTopic()) : (base ? OFF + base : null);
     const topic = activeTopic(stored);
-    const { data: row, error } = await supabase
+    let { data: row, error } = await supabase
       .from("portal_accounts").update({ notify_topic: stored }).eq("user_id", userId).select("user_id");
+    if (error?.code === "23505" && body.enabled && !base) { // astronomically unlikely duplicate: pick another
+      const again = newTopic();
+      ({ data: row, error } = await supabase.from("portal_accounts").update({ notify_topic: again }).eq("user_id", userId).select("user_id"));
+      if (!error) return json({ ok: true, topic: again });
+    }
     if (error) return json({ ok: false, message: "Run the phone alerts SQL in Supabase first." }, 500);
     if (!row?.length) return json({ ok: false, message: "Save your portal login first." }, 400);
     return json({ ok: true, topic });

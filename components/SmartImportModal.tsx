@@ -1,8 +1,9 @@
-
 import React, { useState } from 'react';
-import { X, Brain, Sparkles, Copy, Check, Info, AlertCircle, Calendar, Clock, MapPin, Loader2 } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Loader2, Copy, Check, X, ClipboardPaste, ChevronLeft, Download } from 'lucide-react';
 import { ExtractedScheduleItem, ScheduleEvent, EventType, ScheduleProfile } from '../types';
-import { theme, styles } from '../theme';
+import Sheet from './Sheet';
+import { getPortalSchedule } from '../services/portal';
 
 interface SmartImportModalProps {
   onClose: () => void;
@@ -11,17 +12,7 @@ interface SmartImportModalProps {
   activeProfileId: string;
 }
 
-const SmartImportModal: React.FC<SmartImportModalProps> = ({ onClose, onImport, profiles, activeProfileId }) => {
-  const [importType, setImportType] = useState<'weekly' | 'exam'>('weekly');
-  const [jsonInput, setJsonInput] = useState('');
-  const [parsedItems, setParsedItems] = useState<ExtractedScheduleItem[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [importMode, setImportMode] = useState<'full' | 'slots-only'>('full');
-  const [copied, setCopied] = useState(false);
-  const [selectedProfileId, setSelectedProfileId] = useState(activeProfileId);
-  const [addToCourses, setAddToCourses] = useState(true);
-
-  const weeklyPrompt = `I am sending you an image of my university schedule. Please extract all the courses and their details into a valid JSON array. Each object in the array should follow this structure:
+const WEEKLY_PROMPT = `I am sending you an image of my university schedule. Please extract all the courses and their details into a valid JSON array. Each object in the array should follow this structure:
 [
   {
     "day": "Monday",
@@ -37,7 +28,7 @@ const SmartImportModal: React.FC<SmartImportModalProps> = ({ onClose, onImport, 
 Valid types: lecture, tutorial, lab, quiz, assignment, exam, study, other.
 Return ONLY the JSON array.`;
 
-  const examPrompt = `I am sending you an image of my exam schedule. Please extract all the exams and their details into a valid JSON array. Each object in the array should follow this structure:
+const EXAM_PROMPT = `I am sending you an image of my exam schedule. Please extract all the exams and their details into a valid JSON array. Each object in the array should follow this structure:
 [
   {
     "date": "2026-05-15",
@@ -52,470 +43,293 @@ Return ONLY the JSON array.`;
 ]
 Return ONLY the JSON array. Ensure the date is in YYYY-MM-DD format.`;
 
-  const promptText = importType === 'weekly' ? weeklyPrompt : examPrompt;
+const DAYS = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+const field: React.CSSProperties = { background: 'var(--sheet-field)', border: '1px solid var(--line)' };
+const muted: React.CSSProperties = { color: 'var(--text-muted)' };
+const cta: React.CSSProperties = { background: 'var(--cta-bg)', color: 'var(--cta-ink)' };
 
-  const [isImporting, setIsImporting] = useState(false);
-  const [importError, setImportError] = useState<string | null>(null);
+const to24 = (t: string) => {
+  const m = (t || '').match(/(\d+):(\d+)\s*(AM|PM)?/i);
+  if (!m) return t || '';
+  let h = parseInt(m[1], 10);
+  const ap = m[3]?.toUpperCase();
+  if (ap === 'PM' && h < 12) h += 12;
+  if (ap === 'AM' && h === 12) h = 0;
+  return `${String(h).padStart(2, '0')}:${m[2]}`;
+};
+const minutesBetween = (a: string, b: string) => {
+  const [ah, am] = a.split(':').map(Number);
+  const [bh, bm] = b.split(':').map(Number);
+  const d = bh * 60 + bm - (ah * 60 + am);
+  return isNaN(d) || d <= 0 ? 60 : d;
+};
+/** Accepts the whole AI reply: pulls out the [ ... ] part even with text or ``` around it. */
+const parseReply = (text: string): ExtractedScheduleItem[] => {
+  const a = text.indexOf('['), b = text.lastIndexOf(']');
+  if (a === -1 || b <= a) throw new Error('no array');
+  const arr = JSON.parse(text.slice(a, b + 1));
+  if (!Array.isArray(arr) || !arr.length) throw new Error('empty');
+  return arr.map((it: ExtractedScheduleItem) => ({ ...it, time_start: to24(it.time_start), time_end: to24(it.time_end) }));
+};
 
-  const handleCopyPrompt = () => {
-    navigator.clipboard.writeText(promptText);
+const Step: React.FC<{ n: number; title: string; children?: React.ReactNode }> = ({ n, title, children }) => (
+  <div className="flex gap-3">
+    <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[12px] font-extrabold" style={cta}>{n}</span>
+    <div className="min-w-0 flex-1">
+      <div className="text-[15px] font-bold">{title}</div>
+      {children}
+    </div>
+  </div>
+);
+
+const SmartImportModal: React.FC<SmartImportModalProps> = ({ onClose, onImport, profiles, activeProfileId }) => {
+  const [kind, setKind] = useState<'weekly' | 'exam'>('weekly');
+  const [reply, setReply] = useState('');
+  const [items, setItems] = useState<ExtractedScheduleItem[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [showPrompt, setShowPrompt] = useState(false);
+  const [editing, setEditing] = useState<number | null>(null);
+  const [profileId, setProfileId] = useState(activeProfileId);
+  const [addToCourses, setAddToCourses] = useState(true);
+  const [usePeriods, setUsePeriods] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [useAi, setUseAi] = useState(false);
+  const [loadingPortal, setLoadingPortal] = useState(false);
+  const [portalError, setPortalError] = useState<string | null>(null);
+
+  const prompt = kind === 'weekly' ? WEEKLY_PROMPT : EXAM_PROMPT;
+  const noun = kind === 'weekly' ? 'class' : 'exam';
+
+  const copyPrompt = async () => {
+    try { await navigator.clipboard.writeText(prompt); } catch { setShowPrompt(true); return; }
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const formatTime24 = (timeStr: string) => {
-    if (!timeStr) return "";
-    const match = timeStr.match(/(\d+):(\d+)\s*(AM|PM)?/i);
-    if (!match) return timeStr;
-    let h = parseInt(match[1], 10);
-    const m = match[2];
-    const ampm = match[3]?.toUpperCase();
-    if (ampm === 'PM' && h < 12) h += 12;
-    if (ampm === 'AM' && h === 12) h = 0;
-    return `${h.toString().padStart(2, '0')}:${m}`;
+  const check = (text: string) => {
+    setError(null);
+    try { setItems(parseReply(text)); }
+    catch { setError("That doesn't look right. Copy the AI's whole answer and paste it again."); }
   };
 
-  const handleParse = () => {
+  const pasteFromClipboard = async () => {
     try {
-      setError(null);
-      // Clean input (remove markdown code blocks if present)
-      const cleaned = jsonInput.replace(/```json|```/g, '').trim();
-      const parsed = JSON.parse(cleaned);
-      
-      if (!Array.isArray(parsed)) {
-        throw new Error('Input must be a JSON array of objects.');
-      }
-      
-      const formattedItems = parsed.map(item => ({
-        ...item,
-        time_start: formatTime24(item.time_start),
-        time_end: formatTime24(item.time_end)
-      }));
+      const t = await navigator.clipboard.readText();
+      if (t) { setReply(t); check(t); }
+    } catch { /* clipboard blocked: they can paste in the box */ }
+  };
 
-      setParsedItems(formattedItems);
-    } catch (err) {
-      setError('Invalid JSON format. Please make sure you copied the entire array correctly.');
-      console.error(err);
+  const fromPortal = async () => {
+    setLoadingPortal(true);
+    setPortalError(null);
+    const res = await getPortalSchedule();
+    setLoadingPortal(false);
+    if (!res.ok) {
+      setPortalError(res.code === 'NO_CREDENTIALS' ? 'Connect your portal in Settings first.' : (res.message || 'Could not read the portal.'));
+    } else if (!res.classes?.length) {
+      setPortalError('No classes found on your portal schedule.');
+    } else {
+      setKind('weekly');
+      setItems(res.classes.map(c => ({ ...c, course_code: '' })));
     }
   };
 
-  const handleFinalImport = async () => {
-    setIsImporting(true);
-    setImportError(null);
-    try {
-      const events: (Partial<ScheduleEvent> & { period_number?: number })[] = parsedItems.map(item => ({
-        title: item.course_name,
-        code: item.course_code,
-        location: item.room,
-        type: (item.type?.toLowerCase() as EventType) || (importType === 'exam' ? 'exam' : 'lecture'),
-        dayOfWeek: item.day,
-        date: item.date,
-        startTime: item.time_start,
-        durationMinutes: calculateDuration(item.time_start, item.time_end),
-        isRecurring: importType === 'weekly',
-        period_number: item.period_number
-      }));
+  const update = (i: number, patch: Partial<ExtractedScheduleItem>) =>
+    setItems(prev => prev && prev.map((it, j) => (j === i ? { ...it, ...patch } : it)));
+  const removeItem = (i: number) => { setItems(prev => prev && prev.filter((_, j) => j !== i)); setEditing(null); };
 
-      await onImport(events, importMode, selectedProfileId, addToCourses);
+  const finish = async () => {
+    if (!items?.length) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const events = items.map(it => ({
+        title: it.course_name,
+        code: it.course_code,
+        location: it.room,
+        type: (it.type?.toLowerCase() as EventType) || (kind === 'exam' ? 'exam' : 'lecture'),
+        group: it.group,
+        dayOfWeek: it.day,
+        date: it.date,
+        startTime: it.time_start,
+        durationMinutes: minutesBetween(it.time_start, it.time_end),
+        isRecurring: kind === 'weekly',
+        period_number: it.period_number,
+      }));
+      await onImport(events, kind === 'weekly' && usePeriods ? 'slots-only' : 'full', profileId, addToCourses);
       onClose();
-    } catch (err: any) {
-      console.error("Import error:", err);
-      setImportError(err.message || "An error occurred during import.");
+    } catch (e: any) {
+      setError(e?.message || 'Something went wrong. Try again.');
     } finally {
-      setIsImporting(false);
+      setSaving(false);
     }
   };
 
-  const calculateDuration = (start: string, end: string) => {
-    if (!start || !end) return 60;
-    try {
-      const [sH, sM] = start.split(':').map(Number);
-      const [eH, eM] = end.split(':').map(Number);
-      const duration = (eH * 60 + eM) - (sH * 60 + sM);
-      return isNaN(duration) || duration <= 0 ? 60 : duration;
-    } catch {
-      return 60;
-    }
-  };
-
-  const removeItem = (index: number) => {
-    setParsedItems(prev => prev.filter((_, i) => i !== index));
-  };
+  const shortDay = (d?: string) => (d || '').slice(0, 3);
 
   return (
-    <div style={styles.modalOverlay} onClick={onClose}>
-      <div 
-        style={{
-          ...styles.modalContent, 
-          width: '95%', 
-          maxWidth: '600px', 
-          maxHeight: '85vh', 
-          display: 'flex', 
-          flexDirection: 'column',
-          padding: 0,
-          overflow: 'hidden'
-        }} 
-        onClick={e => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div style={{padding: '20px', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)'}}>
-          <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
-            <div style={{background: theme.accent, padding: '8px', borderRadius: '12px', color: '#fff'}}>
-              <Brain size={20} />
-            </div>
-            <div>
-              <h2 style={{margin: 0, fontSize: '1.2rem', fontWeight: 800}}>Smart Schedule Import</h2>
-              <p style={{margin: 0, fontSize: '0.75rem', color: theme.textMuted}}>Import from any AI using JSON</p>
-            </div>
-          </div>
-          <button onClick={onClose} style={{background: 'rgba(255,255,255,0.05)', border: 'none', color: '#fff', cursor: 'pointer', padding: '8px', borderRadius: '50%'}}>
-            <X size={20} />
-          </button>
-        </div>
+    <Sheet open onClose={onClose} size="tall">
+      {/* top bar */}
+      <div className="flex shrink-0 items-center justify-between px-4 pb-2.5">
+        <button onClick={items ? () => { setItems(null); setEditing(null); } : onClose}
+          className="flex min-w-[64px] items-center border-0 bg-transparent p-1 text-[16px] font-semibold" style={muted}>
+          {items ? <><ChevronLeft size={18} /> Back</> : 'Cancel'}
+        </button>
+        <span className="text-[17px] font-extrabold">Import classes</span>
+        <span className="min-w-[64px]" />
+      </div>
 
-        <div style={{flex: 1, overflowY: 'auto', padding: '20px'}}>
-          {parsedItems.length === 0 ? (
-            <div style={{display: 'flex', flexDirection: 'column', gap: '24px'}}>
-              {/* Import Type Toggle */}
-              <div style={{background: 'rgba(255,255,255,0.03)', padding: '4px', borderRadius: '14px', display: 'flex', border: '1px solid rgba(255,255,255,0.05)'}}>
-                <button 
-                  onClick={() => setImportType('weekly')}
-                  style={{
-                    flex: 1,
-                    padding: '10px',
-                    borderRadius: '10px',
-                    border: 'none',
-                    background: importType === 'weekly' ? theme.accent : 'transparent',
-                    color: '#fff',
-                    fontSize: '0.8rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  <Calendar size={14} /> Weekly Schedule
+      <div className="flex-1 overflow-y-auto overscroll-contain px-4 pb-10">
+        <AnimatePresence mode="wait" initial={false}>
+          {!items ? (
+            <motion.div key="steps" initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.2 }}>
+              {/* from the portal: one tap */}
+              <div className="mt-2 text-center">
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full" style={{ background: 'var(--surface-2)', color: 'var(--text-primary)' }}>
+                  <Download size={26} />
+                </div>
+                <div className="mt-4 text-[22px] font-extrabold">Import from portal</div>
+                <p className="mt-1 text-[14px]" style={muted}>Reads your weekly schedule. Periods 6 and 7 are skipped.</p>
+                <button onClick={fromPortal} disabled={loadingPortal}
+                  className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl border-0 py-3.5 text-[16px] font-extrabold disabled:opacity-60" style={cta}>
+                  {loadingPortal ? <><Loader2 size={18} className="animate-spin" /> Reading…</> : 'Import my classes'}
                 </button>
-                <button 
-                  onClick={() => setImportType('exam')}
-                  style={{
-                    flex: 1,
-                    padding: '10px',
-                    borderRadius: '10px',
-                    border: 'none',
-                    background: importType === 'exam' ? theme.accent : 'transparent',
-                    color: '#fff',
-                    fontSize: '0.8rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  <Sparkles size={14} /> Exam Schedule
+                {portalError && <p className="mt-2 text-[13px] font-semibold" style={{ color: 'var(--danger)' }}>{portalError}</p>}
+                <button onClick={() => setUseAi(v => !v)} className="mt-3 border-0 bg-transparent p-1 text-[13px] font-semibold" style={muted}>
+                  {useAi ? 'Hide AI import' : 'Use AI instead (photo or exams)'}
                 </button>
               </div>
 
-              {/* Instructions */}
-              <div style={{background: 'rgba(25, 184, 166, 0.1)', border: '1px solid rgba(25, 184, 166, 0.2)', borderRadius: '20px', padding: '20px'}}>
-                <h3 style={{margin: '0 0 12px 0', fontSize: '0.9rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: theme.accent}}>
-                  <Info size={16} /> How it works
-                </h3>
-                <ol style={{margin: 0, paddingLeft: '20px', fontSize: '0.85rem', color: 'rgba(255,255,255,0.8)', display: 'flex', flexDirection: 'column', gap: '8px'}}>
-                  <li>Take a clear photo or screenshot of your {importType === 'weekly' ? 'weekly' : 'exam'} schedule.</li>
-                  <li>Copy the AI Prompt below.</li>
-                  <li>Send the photo and the prompt to ChatGPT, Gemini, or Claude.</li>
-                  <li>Paste the JSON response from the AI into the box below.</li>
-                </ol>
-              </div>
-
-              {/* Prompt Section */}
-              <div>
-                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px'}}>
-                  <label style={{fontSize: '0.8rem', fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase'}}>AI Prompt</label>
-                  <button 
-                    onClick={handleCopyPrompt}
-                    style={{
-                      background: copied ? 'rgba(34, 197, 94, 0.2)' : 'rgba(255,255,255,0.05)', 
-                      border: '1px solid rgba(255,255,255,0.1)', 
-                      color: copied ? '#4ade80' : '#fff', 
-                      padding: '6px 12px', 
-                      borderRadius: '10px', 
-                      fontSize: '0.75rem', 
-                      fontWeight: 600, 
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      transition: 'all 0.2s'
-                    }}
-                  >
-                    {copied ? <Check size={14} /> : <Copy size={14} />}
-                    {copied ? 'Copied!' : 'Copy Prompt'}
+              {useAi && (
+                <div className="mt-4 border-t pt-2" style={{ borderColor: 'var(--line)' }}>
+              <div className="mt-1 flex rounded-2xl p-1" style={field}>
+                {(['weekly', 'exam'] as const).map(k => (
+                  <button key={k} onClick={() => { setKind(k); setError(null); }}
+                    className="flex-1 rounded-xl border-0 py-2.5 text-[14px] font-bold transition-colors"
+                    style={kind === k ? cta : { background: 'transparent', color: 'var(--text-muted)' }}>
+                    {k === 'weekly' ? 'Weekly classes' : 'Exams'}
                   </button>
-                </div>
-                <div style={{background: 'rgba(0,0,0,0.3)', padding: '12px', borderRadius: '12px', fontSize: '0.75rem', color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.05)', fontFamily: 'monospace', whiteSpace: 'pre-wrap'}}>
-                  {promptText}
-                </div>
+                ))}
               </div>
 
-              {/* Input Section */}
-              <div>
-                <label style={{fontSize: '0.8rem', fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', marginBottom: '10px', display: 'block'}}>Paste JSON Here</label>
-                <textarea 
-                  value={jsonInput}
-                  onChange={e => setJsonInput(e.target.value)}
-                  placeholder='[ { "day": "Monday", ... } ]'
-                  style={{
-                    width: '100%',
-                    height: '150px',
-                    background: 'rgba(255,255,255,0.03)',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: '16px',
-                    color: '#fff',
-                    padding: '16px',
-                    fontSize: '0.85rem',
-                    fontFamily: 'monospace',
-                    outline: 'none',
-                    resize: 'none',
-                    boxSizing: 'border-box'
-                  }}
-                />
-                {error && (
-                  <div style={{marginTop: '10px', color: theme.danger, fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px'}}>
-                    <AlertCircle size={14} /> {error}
-                  </div>
-                )}
-                <button 
-                  onClick={handleParse}
-                  disabled={!jsonInput.trim()}
-                  style={{
-                    ...styles.button, 
-                    width: '100%', 
-                    marginTop: '16px', 
-                    opacity: jsonInput.trim() ? 1 : 0.5,
-                    cursor: jsonInput.trim() ? 'pointer' : 'not-allowed'
-                  }}
-                >
-                  <Sparkles size={18} /> Preview Import
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div style={{display: 'flex', flexDirection: 'column', gap: '20px'}}>
-              <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                <h3 style={{margin: 0, fontSize: '1rem', fontWeight: 700}}>Preview ({parsedItems.length} items)</h3>
-                <button onClick={() => setParsedItems([])} style={{background: 'transparent', border: 'none', color: theme.accent, fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer'}}>Start Over</button>
-              </div>
+              <div className="mt-6 space-y-6">
+                <Step n={1} title="Copy the prompt">
+                  <button onClick={copyPrompt} className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl border-0 py-3 text-[15px] font-bold" style={cta}>
+                    {copied ? <><Check size={17} /> Copied</> : <><Copy size={17} /> Copy prompt</>}
+                  </button>
+                  <button onClick={() => setShowPrompt(v => !v)} className="mt-1.5 border-0 bg-transparent p-0 text-[12px] font-semibold" style={muted}>
+                    {showPrompt ? 'Hide prompt' : 'See prompt'}
+                  </button>
+                  {showPrompt && (
+                    <pre className="mt-2 max-h-40 overflow-y-auto whitespace-pre-wrap rounded-xl p-3 text-[11px] select-all" style={{ ...field, ...muted }}>{prompt}</pre>
+                  )}
+                </Step>
 
-              {/* Import Mode Toggle */}
-              <div style={{background: 'rgba(255,255,255,0.03)', padding: '4px', borderRadius: '14px', display: 'flex', border: '1px solid rgba(255,255,255,0.05)'}}>
-                <button 
-                  onClick={() => setImportMode('full')}
-                  style={{
-                    flex: 1,
-                    padding: '10px',
-                    borderRadius: '10px',
-                    border: 'none',
-                    background: importMode === 'full' ? theme.accent : 'transparent',
-                    color: '#fff',
-                    fontSize: '0.8rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  <Clock size={14} /> Timings & Slots
-                </button>
-                <button 
-                  onClick={() => setImportMode('slots-only')}
-                  style={{
-                    flex: 1,
-                    padding: '10px',
-                    borderRadius: '10px',
-                    border: 'none',
-                    background: importMode === 'slots-only' ? theme.accent : 'transparent',
-                    color: '#fff',
-                    fontSize: '0.8rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  <Calendar size={14} /> Slots Only
-                </button>
-              </div>
+                <Step n={2} title="Send it to an AI">
+                  <p className="mt-0.5 text-[13px] leading-snug" style={muted}>
+                    Open ChatGPT, Gemini or Claude. Paste the prompt and add a screenshot of your {kind === 'weekly' ? 'schedule' : 'exam schedule'}.
+                  </p>
+                </Step>
 
-              {/* Import Settings */}
-              <div style={{display: 'flex', flexDirection: 'column', gap: '12px', background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)'}}>
-                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                  <label style={{fontSize: '0.85rem', fontWeight: 600, color: '#fff'}}>Import to Schedule</label>
-                  <select 
-                    value={selectedProfileId}
-                    onChange={(e) => setSelectedProfileId(e.target.value)}
-                    style={{
-                      background: 'rgba(255,255,255,0.05)', 
-                      border: '1px solid rgba(255,255,255,0.1)', 
-                      color: '#fff', 
-                      fontSize: '0.8rem', 
-                      padding: '8px 12px', 
-                      borderRadius: '10px', 
-                      outline: 'none', 
-                      cursor: 'pointer'
-                    }}
-                  >
-                    {profiles.map(p => (
-                      <option key={p.id} value={p.id}>{p.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                  <label style={{fontSize: '0.85rem', fontWeight: 600, color: '#fff', display: 'flex', alignItems: 'center', gap: '8px'}}>
-                    Add distinct courses to Grades section
-                  </label>
-                  <input 
-                    type="checkbox" 
-                    checked={addToCourses}
-                    onChange={(e) => setAddToCourses(e.target.checked)}
-                    style={{width: '18px', height: '18px', cursor: 'pointer', accentColor: theme.accent}}
+                <Step n={3} title="Paste the answer here">
+                  <button onClick={pasteFromClipboard} className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl py-3 text-[15px] font-bold" style={{ ...field, color: 'var(--text-primary)' }}>
+                    <ClipboardPaste size={17} /> Paste answer
+                  </button>
+                  <textarea
+                    value={reply}
+                    onChange={e => { setReply(e.target.value); setError(null); }}
+                    placeholder="…or paste it in here"
+                    className="mt-2 h-24 w-full resize-none rounded-xl p-3 font-mono text-[12px] outline-none"
+                    style={{ ...field, color: 'var(--text-primary)' }}
                   />
-                </div>
+                  {error && <p className="mt-1.5 text-[13px] font-semibold" style={{ color: 'var(--danger)' }}>{error}</p>}
+                  {reply.trim() && (
+                    <button onClick={() => check(reply)} className="mt-2 w-full rounded-xl border-0 py-3 text-[15px] font-bold" style={cta}>Next</button>
+                  )}
+                </Step>
               </div>
+                </div>
+              )}
+            </motion.div>
+          ) : (
+            <motion.div key="review" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 16 }} transition={{ duration: 0.2 }}>
+              <div className="mt-1 text-[22px] font-extrabold">Found {items.length} {items.length === 1 ? noun : noun === 'class' ? 'classes' : 'exams'}</div>
+              <p className="text-[13px]" style={muted}>Tap one to fix it. Tap ✕ to remove it.</p>
 
-              <div style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
-                {parsedItems.map((item, idx) => (
-                  <div key={idx} style={{background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '16px', padding: '14px', display: 'flex', gap: '12px', alignItems: 'flex-start'}}>
-                    <div style={{flex: 1}}>
-                      <div style={{display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '8px'}}>
-                        <input 
-                          value={item.course_name}
-                          onChange={e => {
-                            const newItems = [...parsedItems];
-                            newItems[idx].course_name = e.target.value;
-                            setParsedItems(newItems);
-                          }}
-                          style={{background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', fontSize: '0.85rem', fontWeight: 700, padding: '4px 8px', borderRadius: '6px', flex: 1}}
-                        />
-                        <input 
-                          value={item.course_code || ''}
-                          placeholder="Code"
-                          onChange={e => {
-                            const newItems = [...parsedItems];
-                            newItems[idx].course_code = e.target.value;
-                            setParsedItems(newItems);
-                          }}
-                          style={{background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: theme.textMuted, fontSize: '0.7rem', padding: '4px 8px', borderRadius: '6px', width: '80px'}}
-                        />
-                      </div>
-                      <div style={{display: 'flex', flexWrap: 'wrap', gap: '12px', fontSize: '0.75rem', color: theme.textMuted}}>
-                        <div style={{display: 'flex', alignItems: 'center', gap: '4px'}}>
-                          <Calendar size={12} />
-                          {importType === 'exam' ? (
-                            <input 
-                              type="date"
-                              value={item.date || ''}
-                              onChange={e => {
-                                const newItems = [...parsedItems];
-                                newItems[idx].date = e.target.value;
-                                setParsedItems(newItems);
-                              }}
-                              style={{background: 'transparent', border: 'none', color: theme.textMuted, fontSize: '0.75rem', outline: 'none', cursor: 'pointer'}}
-                            />
-                          ) : (
-                            <select 
-                              value={item.day}
-                              onChange={e => {
-                                const newItems = [...parsedItems];
-                                newItems[idx].day = e.target.value;
-                                setParsedItems(newItems);
-                              }}
-                              style={{background: 'transparent', border: 'none', color: theme.textMuted, fontSize: '0.75rem', outline: 'none', cursor: 'pointer'}}
-                            >
-                              {['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].map(d => (
-                                <option key={d} value={d}>{d}</option>
-                              ))}
-                            </select>
-                          )}
+              <div className="mt-3 overflow-hidden rounded-2xl" style={field}>
+                {items.map((it, i) => (
+                  <div key={i} style={{ borderTop: i ? '1px solid var(--line)' : undefined }}>
+                    <div className="flex items-center gap-2 px-3.5 py-3">
+                      <button onClick={() => setEditing(editing === i ? null : i)} className="min-w-0 flex-1 border-0 bg-transparent p-0 text-left" style={{ color: 'var(--text-primary)' }}>
+                        <div className="truncate text-[15px] font-bold">{it.course_name || 'Untitled'}</div>
+                        <div className="truncate text-[12px]" style={muted}>
+                          {kind === 'exam' ? it.date : shortDay(it.day)} · {it.time_start}–{it.time_end}{it.room ? ` · ${it.room}` : ''}
                         </div>
-                        {importMode === 'full' && (
-                          <div style={{display: 'flex', alignItems: 'center', gap: '4px'}}>
-                            <Clock size={12} />
-                            <input 
-                              type="time"
-                              value={item.time_start}
-                              onChange={e => {
-                                const newItems = [...parsedItems];
-                                newItems[idx].time_start = e.target.value;
-                                setParsedItems(newItems);
-                              }}
-                              style={{background: 'transparent', border: 'none', color: theme.textMuted, fontSize: '0.75rem', outline: 'none'}}
-                            />
-                            -
-                            <input 
-                              type="time"
-                              value={item.time_end}
-                              onChange={e => {
-                                const newItems = [...parsedItems];
-                                newItems[idx].time_end = e.target.value;
-                                setParsedItems(newItems);
-                              }}
-                              style={{background: 'transparent', border: 'none', color: theme.textMuted, fontSize: '0.75rem', outline: 'none'}}
-                            />
-                          </div>
-                        )}
-                        <div style={{display: 'flex', alignItems: 'center', gap: '4px'}}>
-                          <MapPin size={12} />
-                          <input 
-                            value={item.room || ''}
-                            placeholder="Room"
-                            onChange={e => {
-                              const newItems = [...parsedItems];
-                              newItems[idx].room = e.target.value;
-                              setParsedItems(newItems);
-                            }}
-                            style={{background: 'transparent', border: 'none', color: theme.textMuted, fontSize: '0.75rem', outline: 'none', width: '80px'}}
-                          />
-                        </div>
-                      </div>
+                      </button>
+                      <button onClick={() => removeItem(i)} aria-label="Remove" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-0" style={{ background: 'var(--surface-2)', color: 'var(--text-muted)' }}>
+                        <X size={15} />
+                      </button>
                     </div>
-                    <button onClick={() => removeItem(idx)} style={{background: 'rgba(239, 68, 68, 0.1)', border: 'none', color: theme.danger, cursor: 'pointer', padding: '8px', borderRadius: '10px'}}><X size={18} /></button>
+                    <AnimatePresence initial={false}>
+                      {editing === i && (
+                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                          <div className="grid grid-cols-2 gap-2 px-3.5 pb-3 text-[14px]">
+                            <input className="col-span-2 rounded-lg px-3 py-2 outline-none" style={{ ...field, color: 'var(--text-primary)' }} value={it.course_name || ''} placeholder="Name" onChange={e => update(i, { course_name: e.target.value })} />
+                            {kind === 'exam'
+                              ? <input type="date" className="rounded-lg px-3 py-2 outline-none" style={{ ...field, color: 'var(--text-primary)' }} value={it.date || ''} onChange={e => update(i, { date: e.target.value })} />
+                              : <select className="rounded-lg px-3 py-2 outline-none" style={{ ...field, color: 'var(--text-primary)' }} value={it.day} onChange={e => update(i, { day: e.target.value })}>
+                                  {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
+                                </select>}
+                            <input className="rounded-lg px-3 py-2 outline-none" style={{ ...field, color: 'var(--text-primary)' }} value={it.room || ''} placeholder="Room" onChange={e => update(i, { room: e.target.value })} />
+                            <input type="time" className="rounded-lg px-3 py-2 outline-none" style={{ ...field, color: 'var(--text-primary)' }} value={it.time_start} onChange={e => update(i, { time_start: e.target.value })} />
+                            <input type="time" className="rounded-lg px-3 py-2 outline-none" style={{ ...field, color: 'var(--text-primary)' }} value={it.time_end} onChange={e => update(i, { time_end: e.target.value })} />
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
                 ))}
               </div>
 
-            {importError && (
-              <div style={{color: theme.danger, fontSize: '0.85rem', marginTop: '10px', padding: '12px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '12px', textAlign: 'center'}}>
-                {importError}
+              {/* options */}
+              <div className="mt-4 overflow-hidden rounded-2xl text-[14px] font-semibold" style={field}>
+                {profiles.length > 1 && (
+                  <label className="flex items-center justify-between gap-3 px-3.5 py-3">
+                    Add to
+                    <select value={profileId} onChange={e => setProfileId(e.target.value)} className="border-0 bg-transparent text-right outline-none" style={{ color: 'var(--text-primary)' }}>
+                      {profiles.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                  </label>
+                )}
+                <Toggle label="Also add courses to Grades" on={addToCourses} onChange={setAddToCourses} top={profiles.length > 1} />
+                {kind === 'weekly' && <Toggle label="Use my slot times" on={usePeriods} onChange={setUsePeriods} top />}
               </div>
-            )}
 
-            <button 
-              onClick={handleFinalImport}
-              disabled={isImporting}
-              style={{...styles.button, width: '100%', marginTop: '10px', opacity: isImporting ? 0.7 : 1, justifyContent: 'center'}}
-            >
-              {isImporting ? <Loader2 size={20} className="spin" style={{animation: "spin 1s linear infinite"}} /> : `Finalize Import (${parsedItems.length} items)`}
-            </button>
-            </div>
+              {error && <p className="mt-3 text-center text-[13px] font-semibold" style={{ color: 'var(--danger)' }}>{error}</p>}
+
+              <button onClick={finish} disabled={saving || !items.length}
+                className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border-0 py-3.5 text-[16px] font-extrabold disabled:opacity-40" style={cta}>
+                {saving ? <Loader2 size={18} className="animate-spin" /> : `Add ${items.length} to my ${kind === 'weekly' ? 'schedule' : 'exams'}`}
+              </button>
+            </motion.div>
           )}
-        </div>
+        </AnimatePresence>
       </div>
-    </div>
+    </Sheet>
   );
 };
+
+const Toggle: React.FC<{ label: string; on: boolean; onChange: (v: boolean) => void; top?: boolean }> = ({ label, on, onChange, top }) => (
+  <div className="flex items-center justify-between gap-3 px-3.5 py-3" style={{ borderTop: top ? '1px solid var(--line)' : undefined }}>
+    <span>{label}</span>
+    <button type="button" role="switch" aria-checked={on} aria-label={label} onClick={() => onChange(!on)}
+      className="relative h-[30px] w-[50px] shrink-0 rounded-full border-0 p-0 transition-colors duration-200"
+      style={{ background: on ? 'var(--cta-bg)' : 'var(--surface-2)' }}>
+      <motion.span className="absolute top-[3px] left-[3px] h-6 w-6 rounded-full bg-white" style={{ boxShadow: '0 2px 6px rgba(0,0,0,0.25)' }}
+        animate={{ x: on ? 20 : 0 }} transition={{ type: 'spring', stiffness: 520, damping: 32 }} />
+    </button>
+  </div>
+);
 
 export default SmartImportModal;

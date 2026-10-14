@@ -4,7 +4,8 @@ import { AlertCircle, RefreshCw } from 'lucide-react';
 import { Toaster, toast } from 'react-hot-toast';
 import { remindersEnabled, syncReminders } from './services/notifications';
 import { PortalGrades, PortalAttendance, PortalExamSeats } from './components/PortalScreens';
-import { getPortalSummary, getPortalExamSeats, getPortalAlertTopic, syncPortal, clearPortalCache, PortalExamSeat } from './services/portal';
+import PortalSettings from './components/PortalSettings';
+import { getPortalAccount, getPortalSummary, getPortalExamSeats, getPortalAlertTopic, syncPortal, clearPortalCache, PortalExamSeat, PortalClass } from './services/portal';
 import { checkPortalChanges } from './services/portalAlerts';
 import { supabase } from './lib/supabase';
 import { ViewState, ScheduleEvent, ScheduleProfile, EventColorMap, EventType, PeriodDefinition, Announcement, ThemeMode, FoodItem, WaterLog, WorkoutSession, WorkoutRoutine, ExerciseDefinition, GymSettings, ActiveGymState, CourseGrade, ToDoItem, MaterialFile, BodyLog } from './types';
@@ -98,6 +99,7 @@ export const App: React.FC = () => {
 
   // Onboarding State
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showSetup, setShowSetup] = useState(false); // full-screen portal + alerts setup for new users
   const [showPayment, setShowPayment] = useState(false);
   const [selectedPlanPrice, setSelectedPlanPrice] = useState(0);
 
@@ -421,6 +423,36 @@ export const App: React.FC = () => {
         clearInterval(portalSyncInterval);
     };
   }, [session?.user?.id]);
+
+
+  // First sign-in: open the full-screen setup and keep it open until it is finished or skipped.
+  // Progress is saved (portal login on the server, the rest on this device), so it picks up where it stopped.
+  // People who connected the portal before this setup existed are never shown it.
+  useEffect(() => {
+    const uid = session?.user?.id;
+    if (!uid) { setShowSetup(false); return; }
+    const doneKey = `unimate_setup_done_${uid}`;
+    const startedKey = `unimate_setup_started_${uid}`;
+    const has = (k: string) => { try { return !!localStorage.getItem(k); } catch { return false; } };
+    const put = (k: string) => { try { localStorage.setItem(k, '1'); } catch { /* storage blocked */ } };
+    if (has(doneKey)) return;
+    if (has(startedKey)) { setShowSetup(true); return; } // resume, no network needed
+    let cancelled = false;
+    getPortalAccount(true)
+      .then(a => {
+        if (cancelled) return;
+        if (a) put(doneKey); // an older user who already connected: nothing to set up
+        else { put(startedKey); setShowSetup(true); }
+      })
+      .catch(() => { /* offline: try again next launch */ });
+    return () => { cancelled = true; };
+  }, [session?.user?.id]);
+
+  const finishSetup = () => {
+    const uid = session?.user?.id;
+    if (uid) { try { localStorage.setItem(`unimate_setup_done_${uid}`, '1'); } catch { /* ignore */ } }
+    setShowSetup(false);
+  };
 
   const fetchUserData = async (userId: string) => {
       setIsSyncing(true);
@@ -973,6 +1005,29 @@ export const App: React.FC = () => {
     }
   };
 
+
+  /** Drops classes that are already in the schedule (same name, day and start time). */
+  const withoutDuplicates = <T extends Partial<ScheduleEvent>>(list: T[], profileId: string): T[] => {
+    const key = (t?: string, d?: string, s?: string) => `${t}|${d}|${s}`.toLowerCase();
+    const have = new Set(events.filter(e => e.scheduleId === profileId && e.isRecurring).map(e => key(e.title, e.dayOfWeek, e.startTime)));
+    return list.filter(e => !(e.isRecurring && have.has(key(e.title, e.dayOfWeek, e.startTime))));
+  };
+
+  /** Adds the classes read from the portal to the current schedule. Returns how many were new. */
+  const importPortalClasses = async (classes: PortalClass[]): Promise<number> => {
+    const minutes = (a: string, b: string) => {
+      const [ah, am] = a.split(':').map(Number); const [bh, bm] = b.split(':').map(Number);
+      const d = bh * 60 + bm - (ah * 60 + am);
+      return d > 0 ? d : 90;
+    };
+    const fresh = withoutDuplicates(classes.map(c => ({
+      title: c.course_name, location: c.room, group: c.group, type: c.type as EventType,
+      dayOfWeek: c.day, startTime: c.time_start, durationMinutes: minutes(c.time_start, c.time_end), isRecurring: true,
+    })), activeProfileId);
+    if (fresh.length) await onAddEvents(fresh, activeProfileId, true);
+    return fresh.length;
+  };
+
   const onClearSchedule = async (profileId: string) => {
       if (!session?.user?.id) return;
       if (!confirm("Are you sure you want to delete all events in this schedule? This cannot be undone.")) return;
@@ -1163,6 +1218,10 @@ export const App: React.FC = () => {
               />
           </div>
       )
+  }
+
+  if (showSetup) {
+    return <PortalSettings fullscreen onFinish={finishSetup} onImportClasses={importPortalClasses} />;
   }
 
   const renderContent = () => {
@@ -1653,7 +1712,7 @@ export const App: React.FC = () => {
               return finalEvent;
             });
             
-            await onAddEvents(eventsToAdd, targetProfileId, addToCourses);
+            await onAddEvents(withoutDuplicates(eventsToAdd, targetProfileId), targetProfileId, addToCourses);
           }}
         />
       )}

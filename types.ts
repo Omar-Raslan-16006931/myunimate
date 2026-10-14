@@ -63,6 +63,7 @@ export interface ExtractedScheduleItem {
     course_code: string;
     room: string;
     type: string;
+    group?: string;
 }
 
 export interface ReferralCode {

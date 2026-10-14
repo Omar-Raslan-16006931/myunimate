@@ -6,6 +6,7 @@ import { Loader2, Mail, Lock, User, GraduationCap, Calendar, Building, Users, Lo
 import { validateEmail, validatePassword, validateUsername, validateReferralCode } from '../utils/validation';
 import { logError, logAuthEvent } from '../utils/logger';
 import { SIGNUPS_ENABLED } from '../lib/featureFlags';
+import OnboardSteps from './OnboardSteps';
 
 interface AuthProps {
   onEnterTestMode?: () => void;
@@ -285,6 +286,9 @@ function Auth({ onEnterTestMode }: AuthProps) {
     <div style={{...styles.container, justifyContent: 'center', alignItems: 'center', overflow: 'hidden', background: '#0f0f16', backgroundImage: 'none'}}>
       {/* Main */}
       <div className="w-full max-w-[420px] px-5 relative z-10 flex flex-col max-h-[94vh] animate-pop-in">
+        {mode === 'signup' && (
+          <div className="shrink-0 px-2 pb-6"><OnboardSteps current={0} /></div>
+        )}
         {/* Brand */}
         <div className="flex flex-col items-center text-center shrink-0 pb-7">
             <img src="/apple-touch-icon.png" alt="UniMate" className="w-[76px] h-[76px] rounded-[20px] border border-white/10" />

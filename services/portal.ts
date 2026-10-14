@@ -58,6 +58,17 @@ export interface PortalExamSeat {
   exam_type: string;
 }
 
+export interface PortalClass {
+  day: string;
+  period_number: number;
+  time_start: string;
+  time_end: string;
+  course_name: string;
+  room: string;
+  group: string;
+  type: 'lecture' | 'lab' | 'tutorial' | 'other';
+}
+
 export interface PortalSyncResult {
   ok: boolean;
   code?: string;
@@ -68,6 +79,7 @@ export interface PortalSyncResult {
   examSeatsCount?: number;
   examSeats?: any[];
   topic?: string | null;
+  classes?: PortalClass[];
 }
 
 const call = async (body: Record<string, unknown>): Promise<PortalSyncResult> => {
@@ -106,6 +118,9 @@ export const setPortalAlerts = (enabled: boolean) => call({ action: 'set_notify'
 
 export const testPortalAlert = () => call({ action: 'test_notify' });
 
+/** Your weekly classes from the portal's schedule page (first five periods only). */
+export const getPortalSchedule = () => call({ action: 'get_schedule' });
+
 /** The private ntfy topic, or null when phone alerts are off (or not set up on the server yet). */
 export const getPortalAlertTopic = async (): Promise<string | null> => {
   const { data, error } = await supabase.from('portal_accounts').select('notify_topic').maybeSingle();
@@ -139,6 +154,7 @@ export const writePortalCache = (name: string, value: unknown) => {
 export const clearPortalCache = () => {
   try {
     Object.keys(localStorage).filter(k => k.startsWith(CACHE_PREFIX)).forEach(k => localStorage.removeItem(k));
+    localStorage.removeItem('portal_setup_v1'); // setup-guide ticks belong to the signed-in user
   } catch { /* ignore */ }
 };
 
