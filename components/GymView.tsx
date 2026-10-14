@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Construction } from 'lucide-react';
 import { GymViewType, FoodItem, WorkoutSession, WaterLog, GymSettings, WorkoutRoutine, ExerciseDefinition, ActiveGymState, BodyLog } from '../types';
 import { GymDashboard } from './gym/GymDashboard';
 import { GymWorkoutLogger } from './gym/GymWorkoutLogger';
@@ -100,6 +101,10 @@ const GymView: React.FC<GymViewProps> = ({
 
   return (
     <div style={styles.scrollableContent} className="custom-scrollbar">
+        <div className="mx-auto mb-3 flex w-full max-w-3xl items-center gap-2.5 rounded-2xl border border-amber-400/25 bg-amber-400/10 px-3.5 py-2.5">
+            <Construction size={18} className="shrink-0 text-amber-300" />
+            <div className="min-w-0 text-[13px] leading-snug text-amber-100/90"><b className="font-extrabold text-amber-200">Development in progress.</b> Gym is still being built, so some things may change or not work yet.</div>
+        </div>
         <div key={currentView} className="animate-in fade-in slide-in-from-bottom-2 duration-300 max-w-3xl mx-auto w-full">
             {renderView()}
         </div>

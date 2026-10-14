@@ -61,7 +61,14 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
   const [classRem, setClassRem] = useState(() => ntfyRemindersEnabled());
   const [confirmDisc, setConfirmDisc] = useState(false);
   const [saved, setSaved] = useState(false);       // the login was accepted just now
-  const [celebrate, setCelebrate] = useState(false); // shows the "Connected" moment before the next step
+  const [moment, setMoment] = useState<{ title: string; sub: string } | null>(null); // a short "done" screen before the next step
+  const celebrate = !!moment;
+  // show a tick + message for a moment after a step is finished (onboarding only), then move on
+  const confirmStep = (title: string, sub: string, ms = 1300) => {
+    if (!fullscreen) return;
+    setMoment({ title, sub });
+    setTimeout(() => setMoment(null), ms);
+  };
   const setGuide = (patch: GuideFlags) => setGuideState(g => { const n = { ...g, ...patch }; writeGuide(n); return n; });
 
   const load = async () => {
@@ -94,9 +101,9 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
       return;
     }
     setSaved(true);
-    setCelebrate(true);                       // success first…
+    setMoment({ title: 'Portal connected', sub: 'Your login works.' }); // success first…
     await Promise.all([load(), new Promise(r => setTimeout(r, 1500))]);
-    setCelebrate(false);                      // …then on to the next step
+    setMoment(null);                          // …then on to the next step
     setEditing(false);
   };
 
@@ -125,7 +132,10 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
     setBusy('alerts');
     const res = await setPortalAlerts(!topic);
     setBusy(null);
-    if (res.ok) { setTopic(res.topic ?? null); setGuide({ skipped: !res.topic }); }
+    if (res.ok) {
+      if (res.topic) confirmStep('Alerts are on', 'Grades, absences and exam seats.');
+      setTopic(res.topic ?? null); setGuide({ skipped: !res.topic });
+    }
     else toast.error(res.message || 'Could not change phone alerts.');
   };
 
@@ -165,6 +175,7 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
     try {
       const added = await onImportClasses(found);
       toast.success(added ? `Added ${added} class${added === 1 ? '' : 'es'}` : 'Your classes are already in');
+      confirmStep(added ? `${added} class${added === 1 ? '' : 'es'} added` : 'Classes are in', 'They are on your schedule now.');
       setFound(null);
       setGuide({ classes: true });
     } catch {
@@ -216,8 +227,8 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
           <motion.path d="M5 12.5l4.5 4.5L19 7.5" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ delay: 0.3, duration: 0.4, ease: 'easeOut' }} />
         </svg>
       </motion.div>
-      <motion.h1 initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className={`${big ? 'mt-6 text-[28px]' : 'mt-4 text-xl'} font-extrabold tracking-tight text-white`}>Portal connected</motion.h1>
-      <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className={`${big ? 'mt-1.5 text-[15px]' : 'mt-1 text-sm'} text-white/50`}>Your login works.</motion.p>
+      <motion.h1 initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className={`${big ? 'mt-6 text-[28px]' : 'mt-4 text-xl'} font-extrabold tracking-tight text-white`}>{moment?.title}</motion.h1>
+      <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className={`${big ? 'mt-1.5 text-[15px]' : 'mt-1 text-sm'} text-white/50`}>{moment?.sub}</motion.p>
     </motion.div>
   );
 
@@ -294,7 +305,7 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
           </div>
         </div>
       ),
-      actions: <button onClick={() => setGuide({ subscribed: topic ?? undefined })} className={primary}>I added it</button>,
+      actions: <button onClick={() => { confirmStep('ntfy linked', 'Next, a quick test.'); setGuide({ subscribed: topic ?? undefined }); }} className={primary}>I added it</button>,
     },
     test: {
       icon: <Send size={30} />,
@@ -303,7 +314,7 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
       fields: showHelp ? helpList : undefined,
       actions: sentTest ? (
         <>
-          <button onClick={() => setGuide({ tested: topic ?? undefined })} className={primary}><Check size={16} strokeWidth={3} /> Yes, I got it</button>
+          <button onClick={() => { confirmStep('Test received', 'Alerts work.'); setGuide({ tested: topic ?? undefined }); }} className={primary}><Check size={16} strokeWidth={3} /> Yes, I got it</button>
           <button onClick={() => setShowHelp(v => !v)} className={quiet}>{showHelp ? 'Hide help' : 'No, not receiving alerts'}</button>
           <button onClick={testAlert} disabled={busy !== null} className={quiet}>{busy === 'test' ? 'Sending…' : 'Send again'}</button>
         </>

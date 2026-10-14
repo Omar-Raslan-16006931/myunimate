@@ -66,14 +66,14 @@ export const INITIAL_FILES: MaterialFile[] = [
 ];
 
 export const INITIAL_COLORS: Record<EventType, string> = {
-  lecture: "#19b8a6",      
-  tutorial: "#f59e0b",     
-  lab: "#ec4899",          
-  quiz: "#ef4444",         
-  assignment: "#10b981",   
-  exam: "#6366f1",         
-  study: "#06b6d4",        
-  other: "#71717a"         
+  lecture: "#474747",      
+  tutorial: "#6ff1f1",     
+  lab: "#449aab",          
+  quiz: "#a92228",         
+  assignment: "#deeb5d",   
+  exam: "#b62717",         
+  study: "#255a16",        
+  other: "#ffffff"         
 };
 
 // --- GYM CONSTANTS ---

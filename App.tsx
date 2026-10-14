@@ -103,6 +103,8 @@ export const App: React.FC = () => {
 
   // Onboarding State
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [profileFetched, setProfileFetched] = useState(false); // false until the profile lookup has answered, so nothing flashes
+  const [setupChecked, setSetupChecked] = useState(false);     // false until we know if the setup flow is needed
   const [showSetup, setShowSetup] = useState(false); // full-screen portal + alerts setup for new users
   const [showPayment, setShowPayment] = useState(false);
   const [selectedPlanPrice, setSelectedPlanPrice] = useState(0);
@@ -367,6 +369,7 @@ export const App: React.FC = () => {
       }
       else if (_event === 'SIGNED_OUT') {
           setProfile(null);
+          setProfileFetched(false);
           setEvents(INITIAL_EVENTS);
           setProfiles(INITIAL_PROFILES);
           setActiveProfileId(INITIAL_PROFILES[0].id);
@@ -436,21 +439,22 @@ export const App: React.FC = () => {
   // People who connected the portal before this setup existed are never shown it.
   useEffect(() => {
     const uid = session?.user?.id;
-    if (!uid) { setShowSetup(false); return; }
+    if (!uid) { setShowSetup(false); setSetupChecked(false); return; }
     const doneKey = `unimate_setup_done_${uid}`;
     const startedKey = `unimate_setup_started_${uid}`;
     const has = (k: string) => { try { return !!localStorage.getItem(k); } catch { return false; } };
     const put = (k: string) => { try { localStorage.setItem(k, '1'); } catch { /* storage blocked */ } };
-    if (has(doneKey)) return;
-    if (has(startedKey)) { setShowSetup(true); return; } // resume, no network needed
+    if (has(doneKey)) { setSetupChecked(true); return; }
+    if (has(startedKey)) { setShowSetup(true); setSetupChecked(true); return; } // resume, no network needed
     let cancelled = false;
     getPortalAccount(true)
       .then(a => {
         if (cancelled) return;
         if (a) put(doneKey); // an older user who already connected: nothing to set up
         else { put(startedKey); setShowSetup(true); }
+        setSetupChecked(true);
       })
-      .catch(() => { /* offline: try again next launch */ });
+      .catch(() => { if (!cancelled) setSetupChecked(true); /* offline: try again next launch */ });
     return () => { cancelled = true; };
   }, [session?.user?.id]);
 
@@ -461,6 +465,7 @@ export const App: React.FC = () => {
     const uid = session?.user?.id;
     if (uid) { try { localStorage.setItem(`unimate_setup_done_${uid}`, '1'); } catch { /* ignore */ } }
     markWhatsNewSeen(); // a brand-new user has nothing to catch up on
+    setView('dashboard'); // always land on the home screen
     setShowSetup(false);
   };
 
@@ -768,6 +773,7 @@ export const App: React.FC = () => {
 
   const fetchProfile = async (userId: string) => {
     const { data } = await supabase.from('profiles').select('*').eq('id', userId).single();
+    setProfileFetched(true);
     if (data) {
       setProfile(data);
       // Update cache
@@ -1112,7 +1118,15 @@ export const App: React.FC = () => {
     return () => { document.removeEventListener('visibilitychange', onVisible); window.removeEventListener(NTFY_REMINDERS_EVENT, plan); };
   }, [events, activeProfileId]);
 
-  if (!isAppReady) return (
+  // signed in but still waiting to learn who this is: keep the loader so no wrong screen flashes by
+  const settling = !!session && ((!profile && !profileFetched) || !setupChecked);
+  useEffect(() => {
+    if (!settling) return;
+    const t = setTimeout(() => { setProfileFetched(true); setSetupChecked(true); }, 6000); // never get stuck
+    return () => clearTimeout(t);
+  }, [settling]);
+
+  if (!isAppReady || settling) return (
     <div style={{...styles.container, justifyContent: 'center', alignItems: 'center', background: 'var(--bg-gradient)'}} className="transition-opacity duration-500 ease-in-out">
       <div className="flex flex-col items-center gap-6 animate-pulse">
         <div className="relative">
@@ -1135,10 +1149,10 @@ export const App: React.FC = () => {
   );
 
   if (!session) {
-    if (showAuth) return <Auth />;
+    if (showAuth) return <div key="auth" className="page-in-fade"><Auth /></div>;
     // the iPhone app goes straight to sign-in; the website shows the landing page first
-    if (Capacitor.isNativePlatform()) return <Auth />;
-    return <LandingPage onGetStarted={() => setShowAuth(true)} />;
+    if (Capacitor.isNativePlatform()) return <div key="auth" className="page-in-fade"><Auth /></div>;
+    return <div key="landing" className="page-in-fade"><LandingPage onGetStarted={() => setShowAuth(true)} /></div>;
   }
 
   // suspended accounts can't use the app until the suspension ends
@@ -1173,6 +1187,7 @@ export const App: React.FC = () => {
         loading={false} 
         onComplete={async (data) => {
             await handleUpdateProfile(data);
+            toast.success('Profile saved');
             setShowOnboarding(true);
         }} 
         onSignOut={() => { clearPortalCache(); return supabase.auth.signOut(); }}
@@ -1218,7 +1233,7 @@ export const App: React.FC = () => {
   }
 
   if (showSetup) {
-    return <PortalSettings fullscreen onFinish={finishSetup} onImportClasses={importPortalClasses} />;
+    return <div key="setup" className="page-in-fade"><PortalSettings fullscreen onFinish={finishSetup} onImportClasses={importPortalClasses} /></div>;
   }
 
   const renderContent = () => {
@@ -1626,7 +1641,10 @@ export const App: React.FC = () => {
         </div>
       )}
       <ErrorBoundary>
-        {renderContent()}
+        {/* keyed by page, so every page switch fades in */}
+        <div key={view} className="page-in" style={{ flex: '1 1 0%', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+          {renderContent()}
+        </div>
       </ErrorBoundary>
       
       {view !== 'gym' && !isViewingFile && (
