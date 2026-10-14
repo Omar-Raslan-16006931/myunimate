@@ -394,7 +394,12 @@ Deno.serve(async (req: Request) => {
       await withTimeout(checkLogin({ username, password }, connector), 40_000);
     } catch (e) {
       const { code, message } = describe(e);
-      return json({ ok: false, code, message: code === "PORTAL_LOGIN_FAILED" ? message : `Could not check the login. ${message}` });
+      console.error("save_credentials check failed:", code, message);
+      // technical details stay in the logs; the student only sees a plain sentence
+      return json({
+        ok: false, code,
+        message: code === "PORTAL_LOGIN_FAILED" ? MESSAGES.PORTAL_LOGIN_FAILED : "Couldn't reach the portal right now. Try again in a minute.",
+      });
     }
     const key = await portalKey();
     if (key) {
@@ -409,7 +414,10 @@ Deno.serve(async (req: Request) => {
       const { error } = await supabase.rpc("portal_store_password", { p_user: userId, p_username: username, p_password: password });
       if (error) return json({ ok: false, message: "Could not save the portal login." }, 500);
     }
-    return json(await syncUser(userId));
+    // the login is checked and saved: that is a success. Reading grades is a bonus
+    // that must never turn a good login into an error.
+    try { await syncUser(userId); } catch (e) { console.error("first sync failed:", e); }
+    return json({ ok: true });
   }
 
   if (body.action === "sync") {

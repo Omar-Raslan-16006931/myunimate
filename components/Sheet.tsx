@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { AnimatePresence, motion, PanInfo, useDragControls } from 'framer-motion';
 
 /**
@@ -14,25 +15,44 @@ const Sheet: React.FC<{
 }> = ({ open, onClose, size = 'auto', children }) => {
   const drag = useDragControls();
 
-  // stop the page behind from scrolling while the sheet is up
+  // while the sheet is up: freeze the page behind it (the body AND the app's own
+  // scroll areas) and slide the navbar away (index.html reacts to data-sheet)
   useEffect(() => {
     if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = prev; };
+    const body = document.body;
+    const prevOverflow = body.style.overflow;
+    body.style.overflow = 'hidden';
+    body.dataset.sheet = String(Number(body.dataset.sheet || 0) + 1);
+
+    const frozen: [HTMLElement, string][] = [];
+    document.querySelectorAll<HTMLElement>('.app-shell *').forEach(el => {
+      const oy = getComputedStyle(el).overflowY;
+      if ((oy === 'auto' || oy === 'scroll') && el.scrollHeight > el.clientHeight) {
+        frozen.push([el, el.style.overflowY]);
+        el.style.overflowY = 'hidden';
+      }
+    });
+
+    return () => {
+      frozen.forEach(([el, v]) => { el.style.overflowY = v; });
+      body.style.overflow = prevOverflow;
+      const n = Number(body.dataset.sheet || 1) - 1;
+      if (n <= 0) delete body.dataset.sheet; else body.dataset.sheet = String(n);
+    };
   }, [open]);
 
   const onDragEnd = (_: unknown, info: PanInfo) => {
     if (info.offset.y > 110 || info.velocity.y > 600) onClose();
   };
 
-  return (
+  // drawn on <body> so a parent with a transform/blur can never trap or clip it
+  return createPortal(
     <AnimatePresence>
       {open && (
         <div className="fixed inset-0 z-[2000] flex items-end justify-center">
           <motion.div
             className="absolute inset-0"
-            style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)' }}
+            style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', touchAction: 'none' }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -42,7 +62,7 @@ const Sheet: React.FC<{
           <motion.div
             role="dialog"
             aria-modal="true"
-            className="relative w-full max-w-[520px] flex flex-col"
+            className="relative w-full max-w-[520px] flex flex-col overscroll-contain"
             style={{
               background: 'var(--sheet-bg)',
               color: 'var(--text-primary)',
@@ -76,7 +96,8 @@ const Sheet: React.FC<{
           </motion.div>
         </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 };
 

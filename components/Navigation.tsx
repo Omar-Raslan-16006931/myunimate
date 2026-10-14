@@ -17,6 +17,7 @@ const navItems: { view: ViewState; icon: React.ElementType; label: string }[] = 
 const Navigation: React.FC<NavigationProps> = ({ currentView, onNavigate }) => (
   <nav
     aria-label="Main"
+    className="app-nav"
     style={{
       position: 'fixed',
       left: 0,

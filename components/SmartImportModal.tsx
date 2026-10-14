@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Loader2, Copy, Check, X, ClipboardPaste, ChevronLeft, Download } from 'lucide-react';
 import { ExtractedScheduleItem, ScheduleEvent, EventType, ScheduleProfile } from '../types';
 import Sheet from './Sheet';
-import { getPortalSchedule } from '../services/portal';
+import { getPortalSchedule, courseCodeOf } from '../services/portal';
 
 interface SmartImportModalProps {
+  open: boolean;
   onClose: () => void;
   onImport: (events: (Partial<ScheduleEvent> & { period_number?: number })[], importMode: 'full' | 'slots-only', targetProfileId: string, addToCourses: boolean) => void;
   profiles: ScheduleProfile[];
@@ -82,7 +83,7 @@ const Step: React.FC<{ n: number; title: string; children?: React.ReactNode }> =
   </div>
 );
 
-const SmartImportModal: React.FC<SmartImportModalProps> = ({ onClose, onImport, profiles, activeProfileId }) => {
+const SmartImportModal: React.FC<SmartImportModalProps> = ({ open, onClose, onImport, profiles, activeProfileId }) => {
   const [kind, setKind] = useState<'weekly' | 'exam'>('weekly');
   const [reply, setReply] = useState('');
   const [items, setItems] = useState<ExtractedScheduleItem[] | null>(null);
@@ -97,6 +98,13 @@ const SmartImportModal: React.FC<SmartImportModalProps> = ({ onClose, onImport, 
   const [useAi, setUseAi] = useState(false);
   const [loadingPortal, setLoadingPortal] = useState(false);
   const [portalError, setPortalError] = useState<string | null>(null);
+
+  // start fresh each time it opens (the closing animation keeps the old content)
+  useEffect(() => {
+    if (!open) return;
+    setItems(null); setReply(''); setError(null); setPortalError(null);
+    setEditing(null); setUseAi(false); setShowPrompt(false); setProfileId(activeProfileId);
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const prompt = kind === 'weekly' ? WEEKLY_PROMPT : EXAM_PROMPT;
   const noun = kind === 'weekly' ? 'class' : 'exam';
@@ -131,7 +139,7 @@ const SmartImportModal: React.FC<SmartImportModalProps> = ({ onClose, onImport, 
       setPortalError('No classes found on your portal schedule.');
     } else {
       setKind('weekly');
-      setItems(res.classes.map(c => ({ ...c, course_code: '' })));
+      setItems(res.classes.map(c => ({ ...c, course_code: courseCodeOf(c.course_name) })));
     }
   };
 
@@ -169,7 +177,7 @@ const SmartImportModal: React.FC<SmartImportModalProps> = ({ onClose, onImport, 
   const shortDay = (d?: string) => (d || '').slice(0, 3);
 
   return (
-    <Sheet open onClose={onClose} size="tall">
+    <Sheet open={open} onClose={onClose} size="tall">
       {/* top bar */}
       <div className="flex shrink-0 items-center justify-between px-4 pb-2.5">
         <button onClick={items ? () => { setItems(null); setEditing(null); } : onClose}
@@ -282,6 +290,8 @@ const SmartImportModal: React.FC<SmartImportModalProps> = ({ onClose, onImport, 
                                   {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
                                 </select>}
                             <input className="rounded-lg px-3 py-2 outline-none" style={{ ...field, color: 'var(--text-primary)' }} value={it.room || ''} placeholder="Room" onChange={e => update(i, { room: e.target.value })} />
+                            <input className="rounded-lg px-3 py-2 outline-none" style={{ ...field, color: 'var(--text-primary)' }} value={it.course_code || ''} placeholder="Code" onChange={e => update(i, { course_code: e.target.value })} />
+                            <input className="rounded-lg px-3 py-2 outline-none" style={{ ...field, color: 'var(--text-primary)' }} value={it.group || ''} placeholder="Group" onChange={e => update(i, { group: e.target.value })} />
                             <input type="time" className="rounded-lg px-3 py-2 outline-none" style={{ ...field, color: 'var(--text-primary)' }} value={it.time_start} onChange={e => update(i, { time_start: e.target.value })} />
                             <input type="time" className="rounded-lg px-3 py-2 outline-none" style={{ ...field, color: 'var(--text-primary)' }} value={it.time_end} onChange={e => update(i, { time_end: e.target.value })} />
                           </div>

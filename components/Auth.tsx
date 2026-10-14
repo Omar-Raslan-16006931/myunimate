@@ -2,11 +2,13 @@
 import React, { useState, memo, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { styles } from '../theme';
-import { Loader2, Mail, Lock, User, GraduationCap, Calendar, Building, Users, Check, AlertCircle, X } from 'lucide-react';
+import { Loader2, Mail, Lock, User, GraduationCap, Calendar, Building, Users, Check, AlertCircle, X, Fingerprint } from 'lucide-react';
 import { validateEmail, validatePassword, validateUsername } from '../utils/validation';
 import { logError, logAuthEvent } from '../utils/logger';
 import { SIGNUPS_ENABLED } from '../lib/featureFlags';
 import OnboardSteps from './OnboardSteps';
+import VerifyEmail from './VerifyEmail';
+import { passkeysSupported, signInWithPasskey } from '../services/passkeys';
 
 interface AuthProps {
   onEnterTestMode?: () => void;
@@ -17,6 +19,9 @@ function Auth({ onEnterTestMode }: AuthProps) {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  // set after sign-up: shows the animated "check your email" step
+  const [verifyEmail, setVerifyEmail] = useState<string | null>(null);
+  const [passkeyBusy, setPasskeyBusy] = useState(false);
 
   // Auth Identifier (Email or Username for login, Email for signup)
   const [identifier, setIdentifier] = useState('');
@@ -128,8 +133,20 @@ function Auth({ onEnterTestMode }: AuthProps) {
 
         if (signUpError) throw signUpError;
 
+        // email already registered: Supabase answers with no error and no identities
+        if (signUpData.user && signUpData.user.identities?.length === 0) {
+          throw new Error('That email already has an account. Try signing in.');
+        }
+        // a session here means "Confirm email" is OFF on the server. Never let an
+        // unverified account in: sign it out and stop.
+        if (signUpData.session) {
+          await supabase.auth.signOut();
+          console.error('Supabase "Confirm email" is OFF: turn it on in Authentication > Sign In / Providers > Email.');
+          throw new Error('Sign-up is unavailable right now. Please try again later.');
+        }
+
         logAuthEvent('signup', signUpData.user?.id, true);
-        setMessage('Check your email for the confirmation link!');
+        setVerifyEmail(identifier.toLowerCase().trim());
       } else {
         // --- SIGN IN FLOW ---
         let emailToUse = identifier.trim().toLowerCase();
@@ -154,11 +171,23 @@ function Auth({ onEnterTestMode }: AuthProps) {
       }
     } catch (error: any) {
       logError("auth_handleAuth", error);
-      setError(error.message);
+      if (mode === 'signin' && /not confirmed/i.test(error?.message || '') && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier.trim())) {
+        setVerifyEmail(identifier.trim().toLowerCase());
+        return;
+      }
+      setError(/not confirmed/i.test(error?.message || '') ? 'Confirm your email first, then sign in.' : error.message);
       logAuthEvent(mode === 'signup' ? 'signup' : 'signin', undefined, false);
     } finally {
       setLoading(false);
     }
+  };
+
+  const passkeyLogin = async () => {
+    setError(null);
+    setPasskeyBusy(true);
+    const res = await signInWithPasskey();
+    setPasskeyBusy(false);
+    if (!res.ok && !res.cancelled) setError(res.message);
   };
 
   const toggleMode = () => {
@@ -166,6 +195,14 @@ function Auth({ onEnterTestMode }: AuthProps) {
     setMode(mode === 'signin' ? 'signup' : 'signin');
     clearForm();
   };
+
+  if (verifyEmail) {
+    return (
+      <div style={{...styles.container, overflowY: 'auto', background: '#0f0f16', backgroundImage: 'none'}}>
+        <VerifyEmail email={verifyEmail} onBack={() => { setVerifyEmail(null); setMode('signin'); clearForm(); }} />
+      </div>
+    );
+  }
 
   return (
     <div style={{...styles.container, justifyContent: 'center', alignItems: 'center', overflow: 'hidden', background: '#0f0f16', backgroundImage: 'none'}}>
@@ -410,6 +447,18 @@ function Auth({ onEnterTestMode }: AuthProps) {
                 >
                     {loading ? <Loader2 className="animate-spin" size={20} /> : (mode === 'signin' ? 'Sign In' : 'Create Account')}
                 </button>
+
+                {mode === 'signin' && passkeysSupported() && (
+                    <>
+                        <div className="flex items-center gap-3 pt-1">
+                            <div className="h-px flex-1 bg-white/10" /><span className="text-[10px] font-bold uppercase tracking-widest text-white/30">or</span><div className="h-px flex-1 bg-white/10" />
+                        </div>
+                        <button type="button" onClick={passkeyLogin} disabled={passkeyBusy || loading}
+                            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 py-3.5 text-[0.95rem] font-bold text-white transition-transform active:scale-[0.98] disabled:opacity-60">
+                            {passkeyBusy ? <Loader2 className="animate-spin" size={18} /> : <><Fingerprint size={20} className="text-teal-400" /> Sign in with a passkey</>}
+                        </button>
+                    </>
+                )}
             </form>
 
             <div className="mt-6 text-center animate-fade-in-up" style={{animationDelay: '0.7s'}}>

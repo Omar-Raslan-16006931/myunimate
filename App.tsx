@@ -5,7 +5,7 @@ import { Toaster, toast } from 'react-hot-toast';
 import { remindersEnabled, syncReminders } from './services/notifications';
 import { PortalGrades, PortalAttendance, PortalExamSeats } from './components/PortalScreens';
 import PortalSettings from './components/PortalSettings';
-import { getPortalAccount, getPortalSummary, getPortalExamSeats, getPortalAlertTopic, syncPortal, clearPortalCache, PortalExamSeat, PortalClass } from './services/portal';
+import { getPortalAccount, getPortalSummary, getPortalExamSeats, getPortalAlertTopic, syncPortal, clearPortalCache, courseCodeOf, PortalExamSeat, PortalClass } from './services/portal';
 import { checkPortalChanges } from './services/portalAlerts';
 import { supabase } from './lib/supabase';
 import { ViewState, ScheduleEvent, ScheduleProfile, EventColorMap, EventType, PeriodDefinition, Announcement, ThemeMode, FoodItem, WaterLog, WorkoutSession, WorkoutRoutine, ExerciseDefinition, GymSettings, ActiveGymState, CourseGrade, ToDoItem, MaterialFile, BodyLog } from './types';
@@ -30,6 +30,7 @@ import AddEventModal from './components/AddEventModal';
 import EventDetailsModal from './components/EventDetailsModal';
 import ImageImportModal from './components/ImageImportModal';
 import SmartImportModal from './components/SmartImportModal';
+import PasskeyPrompt from './components/PasskeyPrompt';
 import SubscriptionPage from './components/SubscriptionPage';
 import UniversalGradeCalculator from './components/UniversalGradeCalculator';
 import PaymentPage from './components/PaymentPage';
@@ -973,7 +974,7 @@ export const App: React.FC = () => {
       return d > 0 ? d : 90;
     };
     const fresh = withoutDuplicates(classes.map(c => ({
-      title: c.course_name, location: c.room, group: c.group, type: c.type as EventType,
+      title: c.course_name, code: courseCodeOf(c.course_name), location: c.room, group: c.group, type: c.type as EventType,
       dayOfWeek: c.day, startTime: c.time_start, durationMinutes: minutes(c.time_start, c.time_end), isRecurring: true,
     })), activeProfileId);
     if (fresh.length) await onAddEvents(fresh, activeProfileId, true);
@@ -1135,6 +1136,12 @@ export const App: React.FC = () => {
               ? `You can use UniMate again on ${new Date(profile.banned_until).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })}.`
               : 'This account can no longer use UniMate.'}
           </p>
+          {profile.ban_reason && (
+            <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-left">
+              <div className="text-[11px] font-extrabold uppercase tracking-wider text-white/40">Reason</div>
+              <p className="mt-1 text-[15px] leading-snug text-white/85">{profile.ban_reason}</p>
+            </div>
+          )}
           <button onClick={() => { clearPortalCache(); supabase.auth.signOut(); }}
             className="mt-7 w-full rounded-2xl border-0 py-3.5 text-[16px] font-extrabold" style={{ background: 'var(--cta-bg)', color: 'var(--cta-ink)' }}>
             Sign out
@@ -1661,8 +1668,9 @@ export const App: React.FC = () => {
         }}
       />
 
-      {isSmartImportModalOpen && (
-        <SmartImportModal 
+      {(
+        <SmartImportModal
+          open={isSmartImportModalOpen}
           onClose={() => setIsSmartImportModalOpen(false)}
           profiles={profiles}
           activeProfileId={activeProfileId}
@@ -1689,6 +1697,7 @@ export const App: React.FC = () => {
           }}
         />
       )}
+      <PasskeyPrompt userId={session?.user?.id} ready={!loading && !isSmartImportModalOpen} />
       <Toaster 
         position="top-center" 
         containerStyle={{

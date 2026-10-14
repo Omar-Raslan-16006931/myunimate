@@ -69,6 +69,12 @@ export interface PortalClass {
   type: 'lecture' | 'lab' | 'tutorial' | 'other';
 }
 
+/** Pulls a course code like "CSEN 301" out of a portal course name. Empty when there is none. */
+export const courseCodeOf = (name: string): string => {
+  const m = (name || '').match(/\b([A-Za-z]{2,6})[\s-]?(\d{3,4}[A-Za-z]?)\b/);
+  return m ? `${m[1].toUpperCase()} ${m[2].toUpperCase()}` : '';
+};
+
 export interface PortalSyncResult {
   ok: boolean;
   code?: string;

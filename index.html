@@ -189,6 +189,9 @@
           transition-duration: 0.01ms !important;
         }
       }
+      /* navbar slides away while a sheet is open */
+      .app-nav { transition: transform .38s cubic-bezier(.32,.72,0,1), opacity .25s ease; }
+      body[data-sheet] .app-nav { transform: translateY(130%); opacity: 0; pointer-events: none !important; }
     </style>
 </head>
   <body>

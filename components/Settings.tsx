@@ -1,13 +1,16 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Plus, Trash2, Palette, Layers, Loader2, LogOut, ChevronDown, AlertTriangle, User, Check, Shield, Search, Ban, MessageSquare, ChevronRight, Heart, Columns, KeyRound, LifeBuoy } from 'lucide-react';
+import { Plus, Trash2, Palette, Layers, Loader2, LogOut, ChevronDown, AlertTriangle, User, Shield, MessageSquare, ChevronRight, Heart, Columns, KeyRound, LifeBuoy, Fingerprint } from 'lucide-react';
 import { ScheduleProfile, EventColorMap, EventType, ScheduleEvent, PeriodDefinition, ThemeMode, ViewState } from '../types';
-import { theme, styles } from '../theme';
+import { styles } from '../theme';
 import ScheduleSettings from './ScheduleSettings';
 import PortalSettings from './PortalSettings';
 import Support from './Support';
+import Sheet from './Sheet';
+import PasskeySettings from './PasskeySettings';
 import { listTickets, readSeen, hasNewReply } from '../services/support';
 import AdminInbox from './AdminInbox';
+import AdminUsers from './AdminUsers';
 
 // --- SUPPORTING COMPONENTS ---
 
@@ -23,29 +26,6 @@ const useSupportBadge = (userId: string | undefined, refreshKey: unknown) => {
         return () => { alive = false; };
     }, [userId, refreshKey]);
     return count;
-};
-
-const BanModal = ({ isOpen, onClose, onConfirm, username }: { isOpen: boolean, onClose: () => void, onConfirm: (duration: string | null) => void, username: string }) => {
-    if (!isOpen) return null;
-    return (
-        <div style={styles.modalOverlay} onClick={onClose}>
-            <div style={{ ...styles.modalContent, maxWidth: '300px', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
-                <div style={{ margin: '0 auto 16px', width: '50px', height: '50px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.danger }}>
-                    <Ban size={24} />
-                </div>
-                <h3 style={{ fontSize: '1.2rem', fontWeight: 800, margin: '0 0 8px 0' }}>Suspend {username}?</h3>
-                <p style={{ fontSize: '0.85rem', color: theme.textMuted, marginBottom: '20px' }}>Select suspension duration.</p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '12px' }}>
-                    <button onClick={() => onConfirm('1d')} style={{ padding: '8px', background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '0.8rem' }}>1 Day</button>
-                    <button onClick={() => onConfirm('3d')} style={{ padding: '8px', background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '0.8rem' }}>3 Days</button>
-                    <button onClick={() => onConfirm('1w')} style={{ padding: '8px', background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '0.8rem' }}>1 Week</button>
-                    <button onClick={() => onConfirm('1m')} style={{ padding: '8px', background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '0.8rem' }}>1 Month</button>
-                </div>
-                <button onClick={() => onConfirm(null)} style={{ width: '100%', padding: '10px', background: 'rgba(239, 68, 68, 0.2)', color: theme.danger, border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '8px', fontWeight: 700, marginBottom: '8px' }}>Permanent Ban</button>
-                <button onClick={onClose} style={{ width: '100%', padding: '10px', background: 'transparent', color: theme.textMuted, border: 'none' }}>Cancel</button>
-            </div>
-        </div>
-    );
 };
 
 // --- MAIN SETTINGS COMPONENT ---
@@ -65,7 +45,7 @@ interface SettingsProps {
     onImageUpload: (file: File) => void;
     isAnalyzing: boolean;
     onResetApp: () => void;
-    onSignOut: () => void;
+    onSignOut: () => void | Promise<unknown>;
     periods: PeriodDefinition[];
     setPeriods: (periods: PeriodDefinition[]) => void;
     accountInfo: any;
@@ -97,7 +77,7 @@ const SectionHeader = ({ icon: Icon, color, title, isExpanded, onToggle, rightEl
 
 const GroupCard = ({ children, className = "" }: any) => {
     return (
-        <div className={`bg-white/[0.03] backdrop-blur-xl border border-white/[0.05] rounded-[28px] overflow-hidden shadow-2xl ${className}`}>
+        <div className={`bg-white/[0.04] border border-white/[0.06] rounded-[28px] overflow-hidden isolate transform-gpu ${className}`}>
             {children}
         </div>
     );
@@ -111,6 +91,7 @@ const Settings: React.FC<SettingsProps> = ({
     const [isProfilesExpanded, setIsProfilesExpanded] = useState(false);
     const [isColorsExpanded, setIsColorsExpanded] = useState(false);
     const [isPortalExpanded, setIsPortalExpanded] = useState(false);
+    const [isPasskeysExpanded, setIsPasskeysExpanded] = useState(false);
     const [isAccountExpanded, setIsAccountExpanded] = useState(false);
     const [isUserMgmtExpanded, setIsUserMgmtExpanded] = useState(false);
     const [isFeedbackInboxExpanded, setIsFeedbackInboxExpanded] = useState(false);
@@ -119,59 +100,20 @@ const Settings: React.FC<SettingsProps> = ({
     const [editForm, setEditForm] = useState<any>({});
     const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
     const [isCheckingUsername, setIsCheckingUsername] = useState(false);
-    const [users, setUsers] = useState<any[]>([]);
-    const [userSearch, setUserSearch] = useState('');
-    const [debouncedSearch, setDebouncedSearch] = useState('');
-    const [isLoadingUsers, setIsLoadingUsers] = useState(false);
-    const [banModalUser, setBanModalUser] = useState<{ id: string, username: string } | null>(null);
     const [support, setSupport] = useState<null | 'list' | 'new'>(null);
     const supportBadge = useSupportBadge(accountInfo?.id, support);
+    const [showSignOut, setShowSignOut] = useState(false);
+    const [signingOut, setSigningOut] = useState(false);
+    const confirmSignOut = async () => {
+        setSigningOut(true);
+        try { await onSignOut(); }
+        catch { setSigningOut(false); setShowSignOut(false); }
+    };
 
     const handleCreateProfile = () => { if (newProfileName.trim()) { onAddProfile(newProfileName); setNewProfileName(''); } };
     const startEditingAccount = (e: React.MouseEvent) => { e.stopPropagation(); setEditForm({ ...accountInfo }); setIsEditingAccount(true); setIsAccountExpanded(true); setUsernameAvailable(null); };
     const cancelEditingAccount = () => { setIsEditingAccount(false); setEditForm({}); setUsernameAvailable(null); setIsCheckingUsername(false); };
     const saveEditingAccount = () => { onUpdateAccount(editForm); setIsEditingAccount(false); setUsernameAvailable(null); };
-
-    useEffect(() => { const timer = setTimeout(() => setDebouncedSearch(userSearch), 500); return () => clearTimeout(timer); }, [userSearch]);
-
-    const fetchUsers = useCallback(async (manualSearchTerm?: string) => {
-        if (!isUserMgmtExpanded) return;
-        setIsLoadingUsers(true);
-        const term = manualSearchTerm !== undefined ? manualSearchTerm : debouncedSearch;
-        const cleanTerm = term.trim();
-        try {
-            let query = supabase.from('profiles').select('id, username, created_at, updated_at, college, is_banned, settings').order('updated_at', { ascending: false });
-            if (cleanTerm) {
-                const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanTerm);
-                if (isUUID) query = query.eq('id', cleanTerm);
-                else query = query.ilike('username', `%${cleanTerm}%`);
-                query = query.limit(50);
-            } else query = query.limit(20);
-            const { data } = await query;
-            if (data) setUsers(data.map((u: any) => ({ ...u, email: u.settings?.account?.email || 'No Email' })));
-        } catch (err) { console.error(err); } finally { setIsLoadingUsers(false); }
-    }, [debouncedSearch, isUserMgmtExpanded]);
-
-    useEffect(() => { if (isUserMgmtExpanded) fetchUsers(); }, [fetchUsers, isUserMgmtExpanded]);
-
-    const handleBanConfirm = async (duration: string | null) => {
-        if (!banModalUser) return;
-        let bannedUntil = null;
-        if (duration) {
-            const now = new Date();
-            if (duration === '1d') now.setDate(now.getDate() + 1);
-            if (duration === '3d') now.setDate(now.getDate() + 3);
-            if (duration === '1w') now.setDate(now.getDate() + 7);
-            if (duration === '1m') now.setMonth(now.getMonth() + 1);
-            bannedUntil = now.toISOString();
-        }
-        const { error } = await supabase.from('profiles').update({ is_banned: true, banned_until: bannedUntil }).eq('id', banModalUser.id);
-        if (!error) setUsers(users.map(u => u.id === banModalUser.id ? { ...u, is_banned: true } : u));
-        setBanModalUser(null);
-    };
-
-    const unbanUser = async (id: string) => { if (!confirm("Unban this user?")) return; const { error } = await supabase.from('profiles').update({ is_banned: false, banned_until: null }).eq('id', id); if (!error) setUsers(users.map(u => u.id === id ? { ...u, is_banned: false } : u)); };
-    const deleteUser = async (id: string) => { if (!confirm("Are you sure?")) return; const { error } = await supabase.from('profiles').delete().eq('id', id); if (!error) setUsers(users.filter(u => u.id !== id)); };
 
     useEffect(() => {
         if (!isEditingAccount || !editForm.username || editForm.username === accountInfo?.username || editForm.username.length < 4) { setUsernameAvailable(null); setIsCheckingUsername(false); return; }
@@ -199,8 +141,8 @@ const Settings: React.FC<SettingsProps> = ({
 
                 {/* --- PERSONAL GROUP --- */}
                 <GroupCard>
-                    <div className="px-5 pt-6 pb-2">
-                        <div className="flex items-center gap-2 mb-4 opacity-40">
+                    <div className="px-5 pt-5 pb-0">
+                        <div className="flex items-center gap-2 mb-1 opacity-40">
                             <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white">Personal & Identity</span>
                         </div>
                     </div>
@@ -281,8 +223,8 @@ const Settings: React.FC<SettingsProps> = ({
 
                 {/* --- ACADEMIC ENGINE GROUP --- */}
                 <GroupCard>
-                    <div className="px-5 pt-6 pb-2">
-                        <div className="flex items-center gap-2 mb-4 opacity-40">
+                    <div className="px-5 pt-5 pb-0">
+                        <div className="flex items-center gap-2 mb-1 opacity-40">
                             <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white">Academic Engine</span>
                         </div>
                     </div>
@@ -345,10 +287,15 @@ const Settings: React.FC<SettingsProps> = ({
 
                 {/* --- UTILITIES & SUPPORT GROUP --- */}
                 <GroupCard>
-                    <div className="px-5 pt-6 pb-2">
-                        <div className="flex items-center gap-2 mb-4 opacity-40">
+                    <div className="px-5 pt-5 pb-0">
+                        <div className="flex items-center gap-2 mb-1 opacity-40">
                             <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white">System & Support</span>
                         </div>
+                    </div>
+
+                    <div className="border-b border-white/[0.05]">
+                        <SectionHeader icon={Fingerprint} color="#19b8a6" title="Passkeys" isExpanded={isPasskeysExpanded} onToggle={() => setIsPasskeysExpanded(!isPasskeysExpanded)} />
+                        {isPasskeysExpanded && <div className="px-5 pb-6 pt-2 animate-in slide-in-from-top-2 duration-300"><PasskeySettings /></div>}
                     </div>
 
                     <div className="p-4 px-5 space-y-2">
@@ -378,7 +325,7 @@ const Settings: React.FC<SettingsProps> = ({
                     </div>
 
                     <div className="p-5 pt-0">
-                        <button onClick={onSignOut} className="w-full py-4 bg-red-500/10 text-red-500 rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:bg-red-500/20 transition-all flex items-center justify-center gap-3"><LogOut size={16} /> Sign Out</button>
+                        <button onClick={() => setShowSignOut(true)} className="w-full py-4 bg-red-500/10 text-red-500 rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:bg-red-500/20 transition-all flex items-center justify-center gap-3"><LogOut size={16} /> Sign Out</button>
                         <button onClick={() => setShowResetConfirm(true)} className="w-full py-3 text-white/20 hover:text-white/40 text-[10px] font-bold uppercase tracking-widest transition-colors mt-2">Factory Reset</button>
                     </div>
                 </GroupCard>
@@ -386,8 +333,8 @@ const Settings: React.FC<SettingsProps> = ({
                 {/* --- ADMIN ZONE --- */}
                 {accountInfo?.is_admin && (
                     <GroupCard className="border-red-500/20 bg-red-500/[0.02]">
-                        <div className="px-5 pt-6 pb-2">
-                            <div className="flex items-center gap-2 mb-4">
+                        <div className="px-5 pt-5 pb-0">
+                            <div className="flex items-center gap-2 mb-1">
                                 <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
                                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-red-400">Restricted Admin Access</span>
                             </div>
@@ -397,30 +344,7 @@ const Settings: React.FC<SettingsProps> = ({
                             <SectionHeader icon={Shield} color="#ef4444" title="User Control" isExpanded={isUserMgmtExpanded} onToggle={() => setIsUserMgmtExpanded(!isUserMgmtExpanded)} />
                             {isUserMgmtExpanded && (
                                 <div className="px-5 pb-6 pt-2 animate-in slide-in-from-top-2 duration-300">
-                                    <div className="flex gap-2 mb-4">
-                                        <input placeholder="Search username..." value={userSearch} onChange={(e) => setUserSearch(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && fetchUsers(userSearch)} className="flex-1 bg-black/40 border border-white/5 rounded-xl px-4 py-2.5 text-sm text-white" />
-                                        <button onClick={() => fetchUsers(userSearch)} className="bg-white/5 hover:bg-white/10 text-white p-2.5 rounded-xl transition-all"><Search size={18} /></button>
-                                    </div>
-                                    {isLoadingUsers ? <div className="text-center py-4"><Loader2 className="animate-spin text-white/20" /></div> : (
-                                        <div className="space-y-2 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
-                                            {users.map(user => (
-                                                <div key={user.id} className="bg-black/40 p-3 rounded-2xl border border-white/[0.03] flex items-center justify-between">
-                                                    <div>
-                                                        <p className="text-xs font-bold text-white">{user.username}</p>
-                                                        <p className="text-[10px] text-white/30 truncate max-w-[120px]">{user.email}</p>
-                                                    </div>
-                                                    <div className="flex gap-1">
-                                                        {user.is_banned ? (
-                                                            <button onClick={() => unbanUser(user.id)} className="p-1.5 bg-emerald-500/20 text-emerald-400 rounded-lg"><Check size={14} /></button>
-                                                        ) : (
-                                                            <button onClick={() => setBanModalUser({ id: user.id, username: user.username })} className="p-1.5 bg-white/5 text-white/40 rounded-lg"><Ban size={14} /></button>
-                                                        )}
-                                                        <button onClick={() => deleteUser(user.id)} className="p-1.5 bg-red-500/20 text-red-400 rounded-lg"><Trash2 size={14} /></button>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
+                                    <AdminUsers selfId={accountInfo?.id} />
                                 </div>
                             )}
                         </div>
@@ -466,7 +390,25 @@ const Settings: React.FC<SettingsProps> = ({
             )}
 
             <Support open={support !== null} startNew={support === 'new'} onClose={() => setSupport(null)} userId={accountInfo?.id} />
-            <BanModal isOpen={!!banModalUser} username={banModalUser?.username || ''} onClose={() => setBanModalUser(null)} onConfirm={handleBanConfirm} />
+            <Sheet open={showSignOut} onClose={() => { if (!signingOut) setShowSignOut(false); }}>
+                <div className="px-5 pb-6 pt-1 text-center">
+                    <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full" style={{ background: 'var(--surface-2)', color: 'var(--danger)' }}>
+                        {signingOut ? <Loader2 size={24} className="animate-spin" /> : <LogOut size={24} />}
+                    </div>
+                    <div className="text-[20px] font-extrabold">{signingOut ? 'Signing you out…' : 'Sign out?'}</div>
+                    <p className="mt-1 text-[14px]" style={{ color: 'var(--text-muted)' }}>
+                        {signingOut ? 'Hang tight, this takes a second.' : "You'll need your email or username and password to get back in."}
+                    </p>
+                    <button onClick={confirmSignOut} disabled={signingOut}
+                        className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl border-0 py-3.5 text-[16px] font-extrabold text-white disabled:opacity-60" style={{ background: 'var(--danger)' }}>
+                        {signingOut ? 'Signing out…' : 'Sign out'}
+                    </button>
+                    <button onClick={() => setShowSignOut(false)} disabled={signingOut}
+                        className="mt-2 w-full rounded-2xl border-0 py-3.5 text-[16px] font-bold disabled:opacity-40" style={{ background: 'var(--surface-2)', color: 'var(--text-primary)' }}>
+                        Cancel
+                    </button>
+                </div>
+            </Sheet>
         </div>
     );
 };

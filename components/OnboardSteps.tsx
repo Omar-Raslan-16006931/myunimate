@@ -1,7 +1,7 @@
 import React from 'react';
 import { Check } from 'lucide-react';
 
-export const ONBOARD_STEPS = ['Account', 'Portal', 'Classes', 'Alerts', 'Test'];
+export const ONBOARD_STEPS = ['Account', 'Verify', 'Portal', 'Classes', 'Alerts', 'Test'];
 
 /** Row of all setup steps. `current` is the 0-based active step; earlier ones show a tick. */
 const OnboardSteps: React.FC<{ current: number }> = ({ current }) => (

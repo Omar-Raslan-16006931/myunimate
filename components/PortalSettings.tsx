@@ -15,9 +15,15 @@ const writeGuide = (f: GuideFlags) => {
   try { localStorage.setItem(GUIDE_KEY, JSON.stringify(f)); } catch { /* private mode */ }
 };
 
+/** The student only ever sees a short plain sentence, never server details. */
+const plainError = (res: { code?: string }, what = 'connect to the portal'): string =>
+  res.code === 'PORTAL_LOGIN_FAILED' ? 'Wrong username or password.'
+  : res.code === 'NO_CREDENTIALS' ? 'Connect your portal first.'
+  : `Couldn't ${what} right now. Try again in a minute.`;
+
 type Flow = 'login' | 'classes' | 'alerts' | 'ntfy' | 'test' | 'done';
 /** Position in the step bar (0 is the app account, which is already made by now). */
-const BAR: Record<Flow, number> = { login: 1, classes: 2, alerts: 3, ntfy: 3, test: 4, done: 5 };
+const BAR: Record<Flow, number> = { login: 2, classes: 3, alerts: 4, ntfy: 4, test: 5, done: 6 };
 
 interface Props {
   /** Full-screen onboarding instead of the small Settings card. */
@@ -48,6 +54,8 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
   const [found, setFound] = useState<PortalClass[] | null>(null); // classes read from the portal, waiting to be added
   const [sentTest, setSentTest] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [saved, setSaved] = useState(false);       // the login was accepted just now
+  const [celebrate, setCelebrate] = useState(false); // shows the "Connected" moment before the next step
   const setGuide = (patch: GuideFlags) => setGuideState(g => { const n = { ...g, ...patch }; writeGuide(n); return n; });
 
   const load = async () => {
@@ -76,12 +84,14 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
     setPassword('');
     if (!res.ok) {
       // a wrong login is never saved by the server, so there is nothing to refresh
-      setLoginError(res.message || 'Could not connect to the portal.');
+      setLoginError(plainError(res));
       return;
     }
-    await load();
+    setSaved(true);
+    setCelebrate(true);                       // success first…
+    await Promise.all([load(), new Promise(r => setTimeout(r, 1500))]);
+    setCelebrate(false);                      // …then on to the next step
     setEditing(false);
-    toast.success('Portal connected');
   };
 
   const sync = async () => {
@@ -90,7 +100,7 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
     setBusy(null);
     await load();
     if (res.ok) toast.success(res.newGrades ? `${res.newGrades} new grade${res.newGrades === 1 ? '' : 's'}` : 'Up to date');
-    else toast.error(res.message || 'Sync failed.');
+    else toast.error(plainError(res, 'check the portal'));
   };
 
   const remove = async () => {
@@ -136,7 +146,7 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
     setBusy('classes');
     const res = await getPortalSchedule();
     setBusy(null);
-    if (!res.ok) { setClassError(res.message || 'Could not read the portal.'); return; }
+    if (!res.ok) { setClassError(plainError(res, 'read your schedule')); return; }
     if (!res.classes?.length) { setClassError('No classes found on your portal schedule.'); return; }
     setFound(res.classes);
   };
@@ -157,7 +167,7 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
   };
 
   // one flow: login → classes → alerts → ntfy → test → done
-  const loggedIn = !!account?.last_ok_at && !editing;
+  const loggedIn = (!!account?.last_ok_at || (saved && !!account)) && !editing;
   const flow: Flow =
     !loggedIn ? 'login'
     : onImportClasses && !guide.classes ? 'classes'
@@ -182,10 +192,26 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
       <ol className="list-decimal space-y-1.5 pl-4">
         <li>Turn your <b className="text-white">VPN off</b>. It can block ntfy.</li>
         <li>In ntfy, make sure you are subscribed to <b className="text-white">your code</b>. <button onClick={copyTopic} className="border-0 bg-transparent p-0 font-bold text-teal-400">Copy it again</button></li>
-        <li>On your iPhone: Settings → Notifications → ntfy → <b className="text-white">Allow</b>.</li>
-        <li>Open ntfy, pull down to refresh, then send the test again.</li>
+        <li>iPhone Settings → Notifications → ntfy → turn <b className="text-white">Allow Notifications</b> on, with Lock Screen and Banners ticked.</li>
+        <li>Also on: Settings → General → <b className="text-white">Background App Refresh</b> for ntfy. Turn off Low Power Mode and any Focus that mutes it.</li>
+        <li>In ntfy: Settings → <b className="text-white">Default server</b> must be <b className="text-white">ntfy.sh</b>.</li>
+        <li>Swipe ntfy away, then send the test again. The ping should show on your lock screen.</li>
       </ol>
     </div>
+  );
+
+  const connectedView = (
+    <motion.div key="connected" initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} transition={{ type: 'spring', damping: 20, stiffness: 260 }}
+      className={`flex flex-col items-center justify-center text-center ${big ? 'mx-auto w-full max-w-[420px] flex-1 px-5 pb-10' : 'py-8'}`}>
+      <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', damping: 11, stiffness: 220, delay: 0.1 }}
+        className="flex h-20 w-20 items-center justify-center rounded-full bg-teal-500 text-black" style={{ boxShadow: '0 10px 34px rgba(20,184,166,0.45)' }}>
+        <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round">
+          <motion.path d="M5 12.5l4.5 4.5L19 7.5" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ delay: 0.3, duration: 0.4, ease: 'easeOut' }} />
+        </svg>
+      </motion.div>
+      <motion.h1 initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className={`${big ? 'mt-6 text-[28px]' : 'mt-4 text-xl'} font-extrabold tracking-tight text-white`}>Portal connected</motion.h1>
+      <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className={`${big ? 'mt-1.5 text-[15px]' : 'mt-1 text-sm'} text-white/50`}>Your login works.</motion.p>
+    </motion.div>
   );
 
   // each step: icon, title, short line, the fields, and the buttons
@@ -202,7 +228,7 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
             onKeyDown={e => { if (e.key === 'Enter' && password && username.trim() && busy === null) save(); }} />
           {errorText(loginError)}
           {!loginError && account?.last_status === 'error' && !editing && account.last_error && (
-            <p className="text-center text-xs text-amber-400">{account.last_error}</p>
+            <p className="text-center text-xs text-amber-400">Couldn't check the portal last time. Connect again.</p>
           )}
         </div>
       ),
@@ -285,6 +311,7 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
 
   // ── compact card (Settings) ──
   if (!fullscreen) {
+    if (celebrate) return <div className="rounded-2xl border border-white/5 bg-black/30 p-4">{connectedView}</div>;
     if (flow === 'done') {
       const err = account!.last_status === 'error';
       return (
@@ -296,7 +323,7 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-bold text-white">{account!.username}</div>
               <div className="truncate text-xs text-white/50">
-                {err && account!.last_error ? account!.last_error : `Checked ${timeAgo(account!.last_sync_at)} · Alerts ${topic ? 'on' : 'off'}`}
+                {err ? "Couldn't check the portal. Tap refresh." : `Checked ${timeAgo(account!.last_sync_at)} · Alerts ${topic ? 'on' : 'off'}`}
               </div>
             </div>
             <button onClick={sync} disabled={busy !== null} aria-label="Check now"
@@ -306,19 +333,21 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
           </div>
           {topic && (
             <div className="mt-3 border-t border-white/5 pt-2">
-              <button onClick={() => setShowHelp(v => !v)} className="flex w-full items-center justify-center gap-1 py-1 text-xs font-semibold text-white/50">
+              <button onClick={() => setShowHelp(v => !v)} className="flex w-full items-center justify-center gap-1 py-2 text-xs font-semibold text-white/50">
                 Not receiving alerts? <ChevronDown size={13} className={`transition-transform ${showHelp ? 'rotate-180' : ''}`} />
               </button>
               {showHelp && <div className="mt-2">{helpList}</div>}
             </div>
           )}
-          <div className="mt-2 flex flex-wrap justify-center gap-x-5 gap-y-1 border-t border-white/5 pt-3 text-xs font-semibold text-white/50">
+          <div className="mt-4 grid grid-cols-2 gap-2.5 border-t border-white/5 pt-4 text-[13px] font-bold">
             {topic
-              ? <button onClick={testAlert} disabled={busy !== null}>{busy === 'test' ? 'Sending…' : 'Send test'}</button>
-              : <button onClick={toggleAlerts} disabled={busy !== null} className="text-teal-400">{busy === 'alerts' ? 'Turning on…' : 'Turn on alerts'}</button>}
-            {topic && <button onClick={toggleAlerts} disabled={busy !== null}>{busy === 'alerts' ? 'Turning off…' : 'Alerts off'}</button>}
-            <button onClick={() => setEditing(true)} className={err ? 'text-amber-400' : ''}>Change login</button>
-            <button onClick={remove} disabled={busy !== null} className="text-red-400/80">{busy === 'remove' ? 'Removing…' : 'Disconnect'}</button>
+              ? <button onClick={testAlert} disabled={busy !== null} className="flex h-11 items-center justify-center rounded-xl bg-white/5 text-white disabled:opacity-40">{busy === 'test' ? 'Sending…' : 'Send test'}</button>
+              : <button onClick={toggleAlerts} disabled={busy !== null} className="flex h-11 items-center justify-center rounded-xl bg-teal-500/15 text-teal-300 disabled:opacity-40">{busy === 'alerts' ? 'Turning on…' : 'Turn on alerts'}</button>}
+            {topic
+              ? <button onClick={toggleAlerts} disabled={busy !== null} className="flex h-11 items-center justify-center rounded-xl bg-white/5 text-white disabled:opacity-40">{busy === 'alerts' ? 'Turning off…' : 'Alerts off'}</button>
+              : <span />}
+            <button onClick={() => setEditing(true)} className={`flex h-11 items-center justify-center rounded-xl bg-white/5 ${err ? 'text-amber-400' : 'text-white'}`}>Change login</button>
+            <button onClick={remove} disabled={busy !== null} className="flex h-11 items-center justify-center rounded-xl bg-red-500/10 text-red-400 disabled:opacity-40">{busy === 'remove' ? 'Removing…' : 'Disconnect'}</button>
           </div>
         </div>
       );
@@ -353,7 +382,7 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
   return (
     <div className="fixed inset-0 z-[3000] flex flex-col bg-[#0f0f16] text-white" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
       <div className="flex shrink-0 items-center justify-between px-5 pt-4">
-        <span className="text-xs font-bold uppercase tracking-wider text-white/30">{flow === 'done' ? 'All done' : `Step ${BAR[flow] + 1} of 5`}</span>
+        <span className="text-xs font-bold uppercase tracking-wider text-white/30">{flow === 'done' ? 'All done' : `Step ${BAR[flow] + 1} of 6`}</span>
         {flow !== 'done' && <button onClick={finish} className="border-0 bg-transparent p-1 text-sm font-semibold text-white/40">Skip all</button>}
       </div>
       <div className="mx-auto w-full max-w-[420px] shrink-0 px-5 pt-5">
@@ -361,7 +390,7 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
       </div>
 
       <AnimatePresence mode="wait" initial={false}>
-        {flow === 'classes' && found ? (
+        {celebrate ? connectedView : flow === 'classes' && found ? (
           <motion.div key="review" initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }} transition={{ duration: 0.2 }}
             className="mx-auto flex min-h-0 w-full max-w-[420px] flex-1 flex-col px-5 pb-10">
             <div className="shrink-0 pt-6 text-center">
