@@ -2,7 +2,7 @@
 import React, { useState, memo, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { styles } from '../theme';
-import { Loader2, Mail, Lock, Sparkles, User, GraduationCap, Calendar, Building, Users, LogIn, Check, AlertCircle, X, Ticket } from 'lucide-react';
+import { Loader2, Mail, Lock, User, GraduationCap, Calendar, Building, Users, LogIn, Check, AlertCircle, X, Ticket } from 'lucide-react';
 import { validateEmail, validatePassword, validateUsername, validateReferralCode } from '../utils/validation';
 import { logError, logAuthEvent } from '../utils/logger';
 import { SIGNUPS_ENABLED } from '../lib/featureFlags';
@@ -282,53 +282,22 @@ function Auth({ onEnterTestMode }: AuthProps) {
   };
 
   return (
-    <div style={{...styles.container, justifyContent: 'center', alignItems: 'center', overflow: 'hidden'}}>
-      {/* Background Ambience */}
-      <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-teal-600/20 rounded-full blur-[120px] pointer-events-none animate-pulse-slow" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[100px] pointer-events-none" />
-
-      {/* Main Card */}
-      <div 
-        className="w-full max-w-[420px] mx-4 bg-[#0a0a0f] border border-white/10 rounded-3xl shadow-2xl relative z-10 overflow-hidden animate-pop-in flex flex-col max-h-[90vh]"
-      >
-        {/* Animated Header */}
-        <div className="h-40 relative flex items-center justify-center shrink-0 overflow-hidden bg-gradient-to-br from-teal-600 via-cyan-600 to-indigo-800 bg-[length:200%_200%] animate-gradient-x">
-            {/* Liquid Background Overlay */}
-            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay" />
-            <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-white/20 blur-3xl rounded-full animate-blob" />
-            <div className="absolute -top-10 -right-10 w-40 h-40 bg-indigo-300/20 blur-3xl rounded-full animate-blob animation-delay-2000" />
-            
-            <div className="relative z-10 flex flex-col items-center">
-                 <div className="w-16 h-16 bg-white/10 backdrop-blur-xl rounded-2xl flex items-center justify-center mb-3 shadow-2xl border border-white/30 transform transition-transform hover:scale-105 duration-300 group animate-float">
-                    {mode === 'signin' ? (
-                         <Sparkles className="text-white group-hover:rotate-12 transition-transform duration-300" size={32} />
-                    ) : (
-                         <GraduationCap className="text-white group-hover:-rotate-12 transition-transform duration-300" size={32} />
-                    )}
-                 </div>
-                 
-                 {/* Stacked Titles for Smooth Transition */}
-                 <div className="relative h-9 w-64 flex justify-center items-center overflow-hidden">
-                    <h1 
-                        className={`text-3xl font-bold text-white tracking-tight absolute transition-all duration-500 transform ${mode === 'signin' ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'}`}
-                    >
-                        Welcome Back
-                    </h1>
-                    <h1 
-                        className={`text-3xl font-bold text-white tracking-tight absolute transition-all duration-500 transform ${mode === 'signup' ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'}`}
-                    >
-                        Join UniMate
-                    </h1>
-                 </div>
-
-                 <p className="text-white/70 text-xs font-medium tracking-wide uppercase opacity-80 mt-1">
-                    {mode === 'signin' ? 'Your AI Productivity Hub' : 'Start your journey today'}
-                 </p>
-            </div>
+    <div style={{...styles.container, justifyContent: 'center', alignItems: 'center', overflow: 'hidden', background: '#0f0f16', backgroundImage: 'none'}}>
+      {/* Main */}
+      <div className="w-full max-w-[420px] px-5 relative z-10 flex flex-col max-h-[94vh] animate-pop-in">
+        {/* Brand */}
+        <div className="flex flex-col items-center text-center shrink-0 pb-7">
+            <img src="/apple-touch-icon.png" alt="UniMate" className="w-[76px] h-[76px] rounded-[20px] border border-white/10" />
+            <h1 className="mt-5 mb-0 text-[2rem] font-extrabold tracking-[-0.03em] text-white">
+                {mode === 'signin' ? 'Sign in' : 'Join UniMate'}
+            </h1>
+            <p className="mt-1.5 text-[0.95rem] font-medium text-white/50">
+                {mode === 'signin' ? 'Welcome back to UniMate.' : 'Your whole semester, one calm app.'}
+            </p>
         </div>
 
-        {/* Scrollable Content Area */}
-        <div className="p-8 overflow-y-auto custom-scrollbar bg-gradient-to-b from-[#0a0a0f] to-[#12141a]">
+        {/* Form panel */}
+        <div className="overflow-y-auto custom-scrollbar px-1 pb-2">
             <form onSubmit={handleAuth} className="space-y-4">
                 
                 {/* 1. Username Field - Snappy Collapse/Expand */}
@@ -336,7 +305,7 @@ function Auth({ onEnterTestMode }: AuthProps) {
                     className={`grid transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
                         mode === 'signup' 
                             ? 'grid-rows-[1fr] opacity-100 mb-0' 
-                            : 'grid-rows-[0fr] opacity-0 mb-0'
+                            : 'grid-rows-[0fr] opacity-0 mb-0 !mt-0'
                     }`}
                 >
                     <div className="overflow-hidden min-h-0">
@@ -386,7 +355,7 @@ function Auth({ onEnterTestMode }: AuthProps) {
 
                 {/* 2. Static Fields (Email & Password) */}
                 <div className="animate-fade-in-up" style={{animationDelay: '0.3s'}}>
-                    <label className="block text-xs font-bold text-slate-400 mb-1.5 ml-1 uppercase tracking-wide">
+                    <label className={`block text-xs font-bold text-slate-400 mb-1.5 ml-1 uppercase tracking-wide ${mode === 'signin' ? 'sr-only' : ''}`}>
                         {mode === 'signin' ? 'Email or Username' : 'Email Address'} <span className="text-red-500">*</span>
                     </label>
                     <div className="relative group">
@@ -400,14 +369,14 @@ function Auth({ onEnterTestMode }: AuthProps) {
                             required
                             value={identifier}
                             onChange={(e) => setIdentifier(e.target.value)}
-                            className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-white placeholder-white/20 focus:outline-none focus:border-teal-500/50 transition-all focus:bg-white/10"
-                            placeholder={mode === 'signin' ? "username or user@example.com" : "user@example.com"}
+                            className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-white placeholder-white/35 focus:outline-none focus:border-teal-500/50 transition-all focus:bg-white/10"
+                            placeholder={mode === 'signin' ? "Username or email" : "user@example.com"}
                         />
                     </div>
                 </div>
                 
                 <div className="animate-fade-in-up" style={{animationDelay: '0.4s'}}>
-                    <label className="block text-xs font-bold text-slate-400 mb-1.5 ml-1 uppercase tracking-wide">
+                    <label className={`block text-xs font-bold text-slate-400 mb-1.5 ml-1 uppercase tracking-wide ${mode === 'signin' ? 'sr-only' : ''}`}>
                         Password <span className="text-red-500">*</span>
                     </label>
                     <div className="relative group">
@@ -417,8 +386,8 @@ function Auth({ onEnterTestMode }: AuthProps) {
                             required
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-white placeholder-white/20 focus:outline-none focus:border-teal-500/50 transition-all focus:bg-white/10"
-                            placeholder="••••••••"
+                            className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-white placeholder-white/35 focus:outline-none focus:border-teal-500/50 transition-all focus:bg-white/10"
+                            placeholder="Password"
                         />
                     </div>
                     {mode === 'signup' && password.length > 0 && password.length < 6 && (
@@ -431,7 +400,7 @@ function Auth({ onEnterTestMode }: AuthProps) {
                     className={`grid transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
                         mode === 'signup' 
                             ? 'grid-rows-[1fr] opacity-100 mb-0' 
-                            : 'grid-rows-[0fr] opacity-0 mb-0'
+                            : 'grid-rows-[0fr] opacity-0 mb-0 !mt-0'
                     }`}
                 >
                     <div className="overflow-hidden min-h-0">
@@ -464,7 +433,7 @@ function Auth({ onEnterTestMode }: AuthProps) {
                     className={`grid transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
                         mode === 'signup' 
                             ? 'grid-rows-[1fr] opacity-100 mb-0' 
-                            : 'grid-rows-[0fr] opacity-0 mb-0'
+                            : 'grid-rows-[0fr] opacity-0 mb-0 !mt-0'
                     }`}
                 >
                      <div className="overflow-hidden min-h-0">
@@ -505,7 +474,7 @@ function Auth({ onEnterTestMode }: AuthProps) {
                     className={`grid transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
                         mode === 'signup' 
                             ? 'grid-rows-[1fr] opacity-100 pt-2' 
-                            : 'grid-rows-[0fr] opacity-0 pt-0'
+                            : 'grid-rows-[0fr] opacity-0 pt-0 !mt-0'
                     }`}
                 >
                   <div className="overflow-hidden min-h-0 space-y-4">
@@ -587,8 +556,8 @@ function Auth({ onEnterTestMode }: AuthProps) {
                 <button
                     type="submit"
                     disabled={loading}
-                    className="w-full bg-gradient-to-r from-teal-600 to-indigo-600 hover:from-teal-500 hover:to-indigo-500 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-teal-900/30 flex items-center justify-center gap-2 mt-4 active:scale-[0.98] animate-fade-in-up"
-                    style={{animationDelay: '0.6s'}}
+                    className="w-full border-0 font-extrabold text-[1rem] py-4 rounded-2xl transition-transform flex items-center justify-center gap-2 mt-1 active:scale-[0.98] disabled:opacity-70 animate-fade-in-up"
+                    style={{animationDelay: '0.6s', background: '#19b8a6', color: '#ffffff'}}
                 >
                     {loading ? <Loader2 className="animate-spin" size={20} /> : (mode === 'signin' ? 'Sign In' : 'Create Account')}
                 </button>
@@ -606,7 +575,7 @@ function Auth({ onEnterTestMode }: AuthProps) {
                     </button>
                 </p>
                 ) : (
-                <p className="text-white/40 text-sm">New sign-ups are paused for now.</p>
+                <p className="text-white/40 text-[0.82rem]">New sign-ups are paused for now.</p>
                 )}
             </div>
             
