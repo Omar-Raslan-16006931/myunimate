@@ -330,9 +330,9 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
                 <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] ${err ? 'bg-amber-500/20 text-amber-300' : 'bg-teal-500/20 text-teal-300'}`}><CircleUser size={22} /></div>
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-[16px] font-bold text-white">{account!.username}</div>
-                  <div className="mt-0.5 flex items-center gap-1.5 text-[12.5px]">
+                  <div className="mt-0.5 flex items-center gap-1.5 whitespace-nowrap text-[12px]">
                     <span className={`h-2 w-2 shrink-0 rounded-full ${err ? 'bg-amber-400' : 'bg-emerald-400'}`} />
-                    <span className={`truncate ${err ? 'text-amber-300' : 'text-emerald-300/90'}`}>{err ? "Couldn't reach the portal last time" : `Connected · checked ${timeAgo(account!.last_sync_at)}`}</span>
+                    <span className={`truncate ${err ? 'text-amber-300' : 'text-emerald-300/90'}`}>{err ? "Portal check failed" : (account!.last_sync_at ? `Checked ${timeAgo(account!.last_sync_at)}` : "Not checked yet")}</span>
                   </div>
                 </div>
                 <button onClick={() => setShowManage(true)} aria-label="More" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-0 bg-white/[0.07] text-white/80"><MoreHorizontal size={20} /></button>
@@ -347,7 +347,7 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
               {tile('bg-amber-500/20 text-amber-300', <Bell size={18} />)}
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-bold text-white">Phone alerts</div>
-                <div className="truncate text-xs text-white/50">Grades, absences, exam seats</div>
+                <div className="truncate text-xs text-white/50">Grades, absences, exams</div>
               </div>
               <button type="button" role="switch" aria-checked={!!topic} aria-label="Phone alerts" onClick={toggleAlerts} disabled={busy !== null}
                 className="relative h-[30px] w-[50px] shrink-0 rounded-full border-0 p-0 transition-colors duration-200 disabled:opacity-60"
