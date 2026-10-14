@@ -88,6 +88,10 @@ class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasErr
   }
 }
 
+// the old default tutorial color (light cyan) became a darker blue; accounts still on the old default move with it
+const refreshColors = (c: EventColorMap): EventColorMap =>
+  String(c.tutorial).toLowerCase() === '#6ff1f1' ? { ...c, tutorial: INITIAL_COLORS.tutorial } : c;
+
 export const App: React.FC = () => {
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -293,7 +297,7 @@ export const App: React.FC = () => {
         if (parsed.profile && typeof parsed.profile === 'object') {
           setProfile(parsed.profile);
           if (parsed.profile.settings?.theme) setThemeMode(parsed.profile.settings.theme);
-          if (parsed.profile.settings?.eventColors) setEventColors(parsed.profile.settings.eventColors);
+          if (parsed.profile.settings?.eventColors) setEventColors(refreshColors(parsed.profile.settings.eventColors));
         }
 
         hasHydratedRef.current = true;
@@ -469,7 +473,17 @@ export const App: React.FC = () => {
     setShowSetup(false);
   };
 
-  const fetchUserData = async (userId: string) => {
+  // Several sign-in events can fire at once. Only one load per user may run, otherwise each one
+  // sees "no schedules yet" and adds its own default schedule.
+  const userDataLoadRef = useRef<Promise<void> | null>(null);
+  const fetchUserData = (userId: string): Promise<void> => {
+      if (userDataLoadRef.current) return userDataLoadRef.current;
+      const run = loadUserData(userId).finally(() => { userDataLoadRef.current = null; });
+      userDataLoadRef.current = run;
+      return run;
+  };
+
+  const loadUserData = async (userId: string) => {
       setIsSyncing(true);
       try {
           const [eventsRes, profilesRes, coursesRes, todosRes, materialsRes] = await Promise.all([
@@ -790,7 +804,7 @@ export const App: React.FC = () => {
       // Load saved settings if any
       if (data.settings) {
         if (data.settings.theme) setThemeMode(data.settings.theme);
-        if (data.settings.eventColors) setEventColors(data.settings.eventColors);
+        if (data.settings.eventColors) setEventColors(refreshColors(data.settings.eventColors));
       }
     }
   };

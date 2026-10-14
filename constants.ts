@@ -38,9 +38,9 @@ export const INITIAL_PERIODS: PeriodDefinition[] = [
   { id: 'p5', label: "5th", startTime: "15:45", endTime: "17:15", isBreak: false, startVal: 15.75 },
 ];
 
+// every account starts with exactly one schedule
 export const INITIAL_PROFILES: ScheduleProfile[] = [
   { id: 'main', name: 'Main Schedule', periods: INITIAL_PERIODS },
-  { id: 'template', name: 'Student Template', periods: INITIAL_PERIODS },
 ];
 
 export const INITIAL_EVENTS: ScheduleEvent[] = [
@@ -67,7 +67,7 @@ export const INITIAL_FILES: MaterialFile[] = [
 
 export const INITIAL_COLORS: Record<EventType, string> = {
   lecture: "#474747",      
-  tutorial: "#6ff1f1",     
+  tutorial: "#1d4ed8",     
   lab: "#449aab",          
   quiz: "#a92228",         
   assignment: "#deeb5d",   

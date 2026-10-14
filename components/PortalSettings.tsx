@@ -133,7 +133,6 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
     const res = await setPortalAlerts(!topic);
     setBusy(null);
     if (res.ok) {
-      if (res.topic) confirmStep('Alerts are on', 'Grades, absences and exam seats.');
       setTopic(res.topic ?? null); setGuide({ skipped: !res.topic });
     }
     else toast.error(res.message || 'Could not change phone alerts.');
@@ -305,7 +304,7 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
           </div>
         </div>
       ),
-      actions: <button onClick={() => { confirmStep('ntfy linked', 'Next, a quick test.'); setGuide({ subscribed: topic ?? undefined }); }} className={primary}>I added it</button>,
+      actions: <button onClick={() => { setGuide({ subscribed: topic ?? undefined }); }} className={primary}>I added it</button>,
     },
     test: {
       icon: <Send size={30} />,
