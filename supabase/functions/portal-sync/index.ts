@@ -75,6 +75,7 @@ interface SyncResult {
   notified?: number;
   alertsFound?: number;
   alertTitles?: string[];
+  examDbg?: string;
   ntfy?: string;
   topic?: string | null;
 }
@@ -84,6 +85,7 @@ interface Alert { title: string; body: string; tag: string }
 
 // Sends alerts through ntfy.sh, a free push app, so they arrive even when
 // UniMate is closed. Never throws: a failed alert must not fail the sync.
+let examDbg = ""; // numbers about the last exam-seat comparison, shown in the timer report
 let lastNtfy = ""; // what ntfy answered last (status or error), shown in the timer's report
 const sendAlerts = async (topic: string, alerts: Alert[]): Promise<number> => {
   const list = alerts.length > 5
@@ -94,21 +96,31 @@ const sendAlerts = async (topic: string, alerts: Alert[]): Promise<number> => {
     }]
     : alerts;
   let sent = 0;
+  const token = (Deno.env.get("NTFY_TOKEN") ?? "").trim();
+  const relayUrl = (Deno.env.get("NTFY_RELAY_URL") ?? "").trim();
+  const relayKey = (Deno.env.get("NTFY_RELAY_KEY") ?? "").trim();
+  // One try: through the relay (a free Cloudflare Worker, so ntfy sees a different server address) or direct.
+  const post = async (viaRelay: boolean, body: string) => {
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (token) headers.Authorization = `Bearer ${token}`;
+    if (viaRelay) headers["x-relay-key"] = relayKey;
+    return await fetch(viaRelay ? relayUrl : "https://ntfy.sh", { method: "POST", headers, body, signal: AbortSignal.timeout(8000) });
+  };
   for (const a of list) {
-    try {
-      const res = await fetch("https://ntfy.sh", {
-        method: "POST",
-        // With an ntfy account token (secret NTFY_TOKEN) the quota is the account's own. Without it the quota is
-        // shared with everything else sending from the same server address, and it runs out.
-        headers: { "Content-Type": "application/json", ...((Deno.env.get("NTFY_TOKEN") ?? "").trim() ? { Authorization: `Bearer ${(Deno.env.get("NTFY_TOKEN") ?? "").trim()}` } : {}) },
-        body: JSON.stringify({ topic, title: a.title, message: a.body, tags: [a.tag], priority: 4 }),
-        signal: AbortSignal.timeout(8000),
-      });
-      lastNtfy = String(res.status);
-      if (res.ok) sent++; else { console.error("ntfy answered", res.status); lastNtfy += " " + (await res.text().catch(() => "")).slice(0, 80); }
-    } catch (e) {
-      lastNtfy = "failed: " + (e instanceof Error ? e.message : String(e)).slice(0, 80);
-      console.error("ntfy request failed");
+    const body = JSON.stringify({ topic, title: a.title, message: a.body, tags: [a.tag], priority: 4 });
+    // relay first when it is set up; direct ntfy is the fallback
+    const routes = relayUrl && relayKey ? [true, false] : [false];
+    for (const viaRelay of routes) {
+      try {
+        const res = await post(viaRelay, body);
+        lastNtfy = (viaRelay ? "relay " : "") + res.status;
+        if (res.ok) { sent++; break; }
+        console.error("ntfy answered", res.status);
+        lastNtfy += " " + (await res.text().catch(() => "")).slice(0, 80);
+      } catch (e) {
+        lastNtfy = (viaRelay ? "relay " : "") + "failed: " + (e instanceof Error ? e.message : String(e)).slice(0, 80);
+        console.error("ntfy request failed");
+      }
     }
   }
   console.log(`alerts: ${alerts.length} found, ${sent}/${list.length} sent`);
@@ -294,6 +306,7 @@ const save = async (userId: string, data: PortalData, firstSync: boolean): Promi
       if (!firstSync) {
         const { data: oldSeats, error: seatErr } = await supabase
           .from("portal_exam_seats").select("course_key, exam_type, exam_date, start_time, hall, seat").eq("user_id", userId);
+        examDbg = seatErr ? `read error: ${seatErr.message}`.slice(0, 80) : `read ${oldSeats?.length ?? 0} old, portal ${data.examSeats.length}`;
         if (!seatErr) {
           const before = new Map((oldSeats ?? []).map((s) => [
             `${s.course_key}|${s.exam_type}|${s.exam_date ?? ""}`, `${s.start_time}|${s.hall}|${s.seat}`,
@@ -308,6 +321,7 @@ const save = async (userId: string, data: PortalData, firstSync: boolean): Promi
             if (old === undefined) { fresh.push(body); continue; }
             alerts.push({ title: "Exam seat changed", body, tag: "round_pushpin" });
           }
+          examDbg += `, new ${fresh.length}, sample key ${JSON.stringify([data.examSeats[0]?.courseKey, data.examSeats[0]?.examType, data.examSeats[0]?.examDate])} vs ${JSON.stringify([...before.keys()][0] ?? null)}`.slice(0, 200);
           // new seats: one alert for the lot ("5 new exam seats added"), details when it is just one
           if (fresh.length === 1) alerts.push({ title: "Exam seat posted", body: fresh[0], tag: "round_pushpin" });
           else if (fresh.length > 1) alerts.push({ title: `${fresh.length} new exam seats added`, body: fresh.join("\n"), tag: "round_pushpin" });
@@ -364,6 +378,7 @@ const syncUser = async (userId: string): Promise<SyncResult> => {
       notified,
       alertsFound: alerts.length,
       alertTitles: alerts.map((a) => a.title),
+      examDbg,
       ntfy: !topicNow ? "no topic" : account.portal_notify === false ? "portal alerts off" : lastNtfy,
     };
   } catch (e) {
@@ -484,7 +499,7 @@ Deno.serve(async (req: Request) => {
     };
     await Promise.all(Array.from({ length: Math.min(5, queue.length) }, worker));
     // numbers only (no names or codes): how many alerts each account found and sent, and what ntfy said
-    const report = results.map((r) => ({ ok: r.ok, found: r.alertsFound ?? 0, titles: r.alertTitles ?? [], sent: r.notified ?? 0, ntfy: r.ntfy ?? "" }));
+    const report = results.map((r) => ({ ok: r.ok, found: r.alertsFound ?? 0, titles: r.alertTitles ?? [], exam: r.examDbg ?? "", sent: r.notified ?? 0, ntfy: r.ntfy ?? "" }));
     // the ntfy account's own numbers (messages sent today and the daily limit), to see which quota is hit
     let account: unknown = null;
     const tk = (Deno.env.get("NTFY_TOKEN") ?? "").trim();
