@@ -232,6 +232,8 @@ export interface HttpResponse {
   status: number;
   headers: Map<string, string[]>;
   body: string;
+  /** the same body as raw bytes (needed for files such as PDFs) */
+  bytes: Uint8Array;
   keepAlive: boolean;
 }
 
@@ -377,7 +379,7 @@ export class PortalHttp {
       closeAfter = true;
     }
     if (closeAfter) this.close();
-    return { status, headers, body: dec.decode(bodyBytes), keepAlive: !closeAfter };
+    return { status, headers, body: dec.decode(bodyBytes), bytes: bodyBytes, keepAlive: !closeAfter };
   }
 
   /** One request, signing in when the portal asks for it. */

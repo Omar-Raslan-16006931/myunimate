@@ -39,6 +39,7 @@ import UniversalGradeCalculator from './components/UniversalGradeCalculator';
 import PaymentPage from './components/PaymentPage';
 import CoursesView from './components/CoursesView';
 import MaterialsView from './components/MaterialsView';
+import MaterialsHub from './components/CmsScreens';
 
 // Error Boundary Component
 class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean, error: Error | null}> {
@@ -1384,7 +1385,7 @@ export const App: React.FC = () => {
             }}
         />;
       case 'materials':
-        return <MaterialsView 
+        return <MaterialsHub onOpenSettings={() => setView('settings')} filesView={(goBack) => <MaterialsView 
             files={files}
             onAddFile={async (file) => {
                 if (!session?.user?.id) return;
@@ -1445,9 +1446,9 @@ export const App: React.FC = () => {
                 }
             }}
             onLoadFileContent={handleLoadFileContent}
-            onBack={() => setView('dashboard')}
+            onBack={goBack}
             onFileViewChange={setIsViewingFile}
-        />;
+        />} />;
       case 'study_groups':
         return <div style={{ padding: '20px' }}><p>Study Groups View - Coming Soon</p></div>;
       case 'grades':

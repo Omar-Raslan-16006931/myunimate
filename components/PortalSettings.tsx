@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Loader2, RefreshCw, Check, Copy, GraduationCap, CircleUser, AlarmClock, Bell, Smartphone, Send, PartyPopper, CalendarDays, ChevronDown, ChevronRight, MoreHorizontal, Pencil, Unplug } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import Collapse from './ui/Collapse';
+import { setCmsAlerts, getCmsAlertsOn } from '../services/cms';
 import { toast } from 'react-hot-toast';
 import OnboardSteps from './OnboardSteps';
 import Sheet from './Sheet';
@@ -48,7 +49,9 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
   const [refreshing, setRefreshing] = useState(true);
   const [username, setUsername] = useState(cached?.account?.username ?? '');
   const [password, setPassword] = useState('');
-  const [busy, setBusy] = useState<'save' | 'sync' | 'remove' | 'alerts' | 'test' | 'classes' | null>(null);
+  const [busy, setBusy] = useState<'save' | 'sync' | 'remove' | 'alerts' | 'test' | 'classes' | 'cms' | null>(null);
+  const [cmsOn, setCmsOn] = useState(false);      // phone alerts for new CMS files
+  const [wantCms, setWantCms] = useState(true);    // the choice on the onboarding alerts step
   const [topic, setTopic] = useState<string | null>(cached?.topic ?? null);
   const [guide, setGuideState] = useState<GuideFlags>(readGuide);
   const [editing, setEditing] = useState(false);
@@ -77,6 +80,7 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
     try {
       const a = await getPortalAccount(true);
       const t = a ? await getPortalAlertTopic() : null;
+      if (a) setCmsOn(await getCmsAlertsOn());
       setAccount(a);
       if (a) setUsername(a.username);
       setTopic(t);
@@ -135,8 +139,21 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
     setBusy(null);
     if (res.ok) {
       setTopic(res.topic ?? null); setGuide({ skipped: !res.topic });
+      // onboarding: the CMS choice made on the same step
+      if (res.topic && flow === 'alerts' && wantCms && !cmsOn) {
+        const r = await setCmsAlerts(true);
+        if (r.ok) setCmsOn(true);
+      }
     }
     else toast.error(res.message || 'Could not change phone alerts.');
+  };
+
+  const toggleCms = async () => {
+    setBusy('cms');
+    const res = await setCmsAlerts(!cmsOn);
+    setBusy(null);
+    if (res.ok) { setCmsOn(!cmsOn); toast.success(!cmsOn ? 'CMS alerts on' : 'CMS alerts off'); }
+    else toast.error(res.message || 'Could not change CMS alerts.');
   };
 
   const testAlert = async () => {
@@ -245,6 +262,7 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
           <input className={input} type="password" value={password} onChange={e => { setPassword(e.target.value); setLoginError(null); }} placeholder="Password" autoComplete="new-password"
             onKeyDown={e => { if (e.key === 'Enter' && password && username.trim() && busy === null) save(); }} />
           {errorText(loginError)}
+          {!loginError && !editing && <p className="text-center text-xs leading-snug text-white/40">This login also opens your CMS course files in Materials.</p>}
           {!loginError && account?.last_status === 'error' && !editing && account.last_error && (
             <p className="text-center text-xs text-amber-400">Couldn't check the portal last time. Connect again.</p>
           )}
@@ -276,7 +294,20 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
     alerts: {
       icon: <Bell size={30} />,
       title: 'Get alerts?',
-      sub: 'New grades, absences and exam seats',
+      sub: 'New grades, absences, exam seats',
+      fields: (
+        <button type="button" role="switch" aria-checked={wantCms} onClick={() => setWantCms(v => !v)}
+          className="flex w-full items-center gap-3 rounded-xl border border-white/5 bg-black/40 p-3 text-left">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-300"><GraduationCap size={18} /></span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-bold text-white">New CMS files</span>
+            <span className="block text-xs text-white/50">Ping me when a teacher adds a file</span>
+          </span>
+          <span className="relative h-[26px] w-[44px] shrink-0 rounded-full transition-colors duration-200" style={{ background: wantCms ? '#14b8a6' : 'rgba(255,255,255,0.14)' }}>
+            <span className="absolute left-[3px] top-[3px] h-5 w-5 rounded-full bg-white transition-transform duration-200" style={{ transform: wantCms ? 'translateX(18px)' : 'none' }} />
+          </span>
+        </button>
+      ),
       actions: (
         <>
           <button onClick={toggleAlerts} disabled={busy !== null} className={primary}>{busy === 'alerts' ? spin : 'Turn on'}</button>
@@ -383,6 +414,23 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
                   className="relative h-[30px] w-[50px] shrink-0 rounded-full border-0 p-0 transition-colors duration-200"
                   style={{ background: classRem ? '#14b8a6' : 'rgba(255,255,255,0.14)' }}>
                   <motion.span className="absolute left-[3px] top-[3px] h-6 w-6 rounded-full bg-white" style={{ boxShadow: '0 2px 6px rgba(0,0,0,0.25)' }} animate={{ x: classRem ? 20 : 0 }} transition={{ type: 'spring', stiffness: 520, damping: 32 }} />
+                </button>
+              </div>
+            )}
+
+            {topic && (
+              <div className="flex items-center gap-3 border-t border-white/[0.06] px-3.5 py-3">
+                {tile('bg-emerald-500/20 text-emerald-300', <GraduationCap size={18} />)}
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-bold text-white">New CMS files</div>
+                  <div className="truncate text-xs text-white/50">When a teacher adds something</div>
+                </div>
+                <button type="button" role="switch" aria-checked={cmsOn} aria-label="New CMS files" onClick={toggleCms} disabled={busy !== null}
+                  className="relative h-[30px] w-[50px] shrink-0 rounded-full border-0 p-0 transition-colors duration-200 disabled:opacity-60"
+                  style={{ background: cmsOn ? '#14b8a6' : 'rgba(255,255,255,0.14)' }}>
+                  {busy === 'cms'
+                    ? <span className="absolute inset-0 flex items-center justify-center text-white"><Loader2 size={14} className="animate-spin" /></span>
+                    : <motion.span className="absolute left-[3px] top-[3px] h-6 w-6 rounded-full bg-white" style={{ boxShadow: '0 2px 6px rgba(0,0,0,0.25)' }} animate={{ x: cmsOn ? 20 : 0 }} transition={{ type: 'spring', stiffness: 520, damping: 32 }} />}
                 </button>
               </div>
             )}

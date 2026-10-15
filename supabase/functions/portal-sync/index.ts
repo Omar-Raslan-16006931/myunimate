@@ -6,6 +6,8 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkLogin, type Connector, fetchPortal, fetchSchedule, type PortalData } from "./portal.ts";
+import { openCmsSession } from "./cms-session.ts";
+import { runCmsSync } from "./cms-sync.ts";
 
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL") ?? "",
@@ -38,6 +40,9 @@ const MESSAGES: Record<string, string> = {
   PORTAL_PAGE_CHANGED_ATTENDANCE: "The attendance page looks different from what the app expects.",
   PORTAL_TIMEOUT: "The portal took too long to answer.",
   NO_CREDENTIALS: "No portal login is saved yet.",
+  PORTAL_PAGE_CHANGED_CMS: "The CMS page looks different from what the app expects.",
+  CMS_FILE_NOT_FOUND: "That file is not in your CMS list. Refresh and try again.",
+  CMS_BAD_PATH: "That file link is not allowed.",
 };
 
 const describe = (e: unknown): { code: string; message: string } => {
@@ -52,6 +57,8 @@ const describe = (e: unknown): { code: string; message: string } => {
     message: detail && detail !== code && base !== detail ? `${base} (${detail})` : base,
   };
 };
+
+const closeCms = (s: unknown) => { try { (s as { close?: () => void }).close?.(); } catch { /* already closed */ } };
 
 const withTimeout = <T>(p: Promise<T>, ms: number): Promise<T> =>
   Promise.race([p, new Promise<T>((_, reject) => setTimeout(() => reject(new Error("PORTAL_TIMEOUT")), ms))]);
@@ -360,7 +367,7 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json({ ok: false, message: "Method not allowed" }, 405);
 
-  let body: { action?: string; username?: string; password?: string; enabled?: boolean } = {};
+  let body: { action?: string; username?: string; password?: string; enabled?: boolean; contentId?: number } = {};
   try { body = await req.json(); } catch { /* empty body */ }
 
   // the hourly timer
@@ -464,6 +471,58 @@ Deno.serve(async (req: Request) => {
       title: "UniMate", body: "Alerts are working. You will get one for new grades, attendance and exam seats.", tag: "tada",
     }]);
     return sent ? json({ ok: true }) : json({ ok: false, message: "Could not reach ntfy. Try again." }, 502);
+  }
+
+  if (body.action === "set_cms_notify") {
+    const { data: row, error } = await supabase
+      .from("portal_accounts").update({ cms_notify: !!body.enabled }).eq("user_id", userId).select("user_id");
+    if (error) return json({ ok: false, message: "Run the CMS SQL in Supabase first." }, 500);
+    if (!row?.length) return json({ ok: false, message: "Save your portal login first." }, 400);
+    return json({ ok: true });
+  }
+
+  if (body.action === "cms_sync") {
+    const { data: account } = await supabase.from("portal_accounts").select("*").eq("user_id", userId).maybeSingle();
+    if (!account) return json({ ok: false, code: "NO_CREDENTIALS", message: MESSAGES.NO_CREDENTIALS });
+    try {
+      const password = await getPassword(userId, account);
+      const result = await withTimeout((async () => {
+        const session = await openCmsSession({ username: account.username, password }, connector);
+        try { return await runCmsSync(supabase, userId, session); } finally { closeCms(session); }
+      })(), 110_000);
+      const topicNow = activeTopic(account.notify_topic);
+      if (account.cms_notify && topicNow && result.alerts.length) await sendAlerts(topicNow, result.alerts);
+      return json({ ok: true, files: result.files, newFiles: result.newFiles });
+    } catch (e) {
+      const { code, message } = describe(e);
+      console.error("cms sync failed:", code);
+      return json({ ok: false, code, message });
+    }
+  }
+
+  if (body.action === "cms_download") {
+    const { data: file } = await supabase
+      .from("cms_files").select("path").eq("user_id", userId).eq("content_id", Number(body.contentId)).maybeSingle();
+    if (!file) return json({ ok: false, code: "CMS_FILE_NOT_FOUND", message: MESSAGES.CMS_FILE_NOT_FOUND }, 404);
+    // only files the CMS keeps under /Uploads/, never anything else on the site
+    if (!/^\/Uploads\/[^?#]+$/.test(file.path) || file.path.includes("..")) {
+      return json({ ok: false, code: "CMS_BAD_PATH", message: MESSAGES.CMS_BAD_PATH }, 400);
+    }
+    const { data: account } = await supabase.from("portal_accounts").select("*").eq("user_id", userId).maybeSingle();
+    if (!account) return json({ ok: false, code: "NO_CREDENTIALS", message: MESSAGES.NO_CREDENTIALS });
+    try {
+      const password = await getPassword(userId, account);
+      const session = await openCmsSession({ username: account.username, password }, connector);
+      try {
+        const f = await withTimeout(session.getFile(file.path), 60_000);
+        return new Response(f.body as BodyInit, {
+          headers: { ...CORS, "Content-Type": f.contentType || "application/octet-stream" },
+        });
+      } finally { closeCms(session); }
+    } catch (e) {
+      const { code, message } = describe(e);
+      return json({ ok: false, code, message });
+    }
   }
 
   if (body.action === "remove") {

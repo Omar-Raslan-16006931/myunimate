@@ -16,11 +16,11 @@ export interface WhatsNewItem {
 export const WHATS_NEW_ALWAYS = false;
 
 export const WHATS_NEW: { id: string; title: string; items: WhatsNewItem[] } = {
-  id: '2026-10-15',
+  id: '2026-10-15-cms',
   title: "What's new",
   items: [
-    { icon: 'sparkle', title: 'Smoother setup', text: 'Sign-up is one question per screen, with a tick after every step and roomier layouts.' },
-    { icon: 'sparkle', title: 'New look', text: 'New default event colors, white text on your schedule, and soft fade-ins between pages.' },
-    { icon: 'passkey', title: 'Sign in with Face ID', text: 'Add a passkey in Settings > Account and skip the password.' },
+    { icon: 'portal', title: 'CMS in Materials', text: 'Open your GIU course files right in the app. Same login as the portal, newest season first.' },
+    { icon: 'alarm', title: 'New file alerts', text: 'Get a ping when a teacher adds a file. Turn it on in Settings > Portal.' },
+    { icon: 'sparkle', title: 'Smoother everything', text: 'Smooth expand and collapse, periods 6 and 7, better event colors.' },
   ],
 };

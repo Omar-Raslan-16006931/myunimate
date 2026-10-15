@@ -71,7 +71,7 @@ const ExcelViewer: React.FC<{ data: string }> = ({ data }) => {
     );
 };
 
-const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdateFile, onDeleteFile, onLoadFileContent, onFileViewChange }) => {
+const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdateFile, onDeleteFile, onLoadFileContent, onBack, onFileViewChange }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [isLoadingContent, setIsLoadingContent] = useState(false);
@@ -314,11 +314,9 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
   return (
     <div style={styles.scrollableContent} onClick={() => { setActiveMenuId(null); setIsPlusMenuOpen(false); }}>
        <div style={{marginBottom: '20px', paddingTop: '8px', display: 'flex', alignItems: 'center', gap: '12px'}}>
-          {currentFolderId && (
-            <button onClick={() => setCurrentFolderId(null)} aria-label="Back" style={{background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', padding: 0}}>
-                <ArrowLeft size={24} />
-            </button>
-          )}
+          <button onClick={() => currentFolderId ? setCurrentFolderId(null) : onBack()} aria-label="Back" style={{background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', padding: 0}}>
+              <ArrowLeft size={24} />
+          </button>
           <div style={{flex: 1}}>
               <h1 style={styles.title}>{currentFolderId ? files.find(f => f.id === currentFolderId)?.name : 'Materials'}</h1>
               <p style={styles.subtitle}>{currentFolderId ? 'Folder Contents' : 'Documents & Resources'}</p>
