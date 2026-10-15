@@ -149,6 +149,8 @@ export const prefetchCmsLinks = async (courseId: number): Promise<void> => {
   for (const [id, url] of Object.entries(res.links)) linkCache.set(Number(id), { url, at });
 };
 
+const OFFICE_FILE = /\.(pptx?|ppsx?|docx?|xlsx?)$/i;
+
 const freshLink = (id: number): string | null => {
   const c = linkCache.get(id);
   return c && Date.now() - c.at < LINK_TTL ? c.url : null;
@@ -158,7 +160,7 @@ const freshLink = (id: number): string | null => {
  * Opens one file in the phone's own viewer (Safari sheet in the iPhone app, a new tab in a browser)
  * instead of saving it. The server signs in to the CMS for you and sends the file.
  */
-export const openCmsFile = async (file: Pick<CmsFile, 'content_id'>): Promise<{ ok: boolean; message?: string }> => {
+export const openCmsFile = async (file: Pick<CmsFile, 'content_id' | 'path'>): Promise<{ ok: boolean; message?: string }> => {
   const native = (() => { try { return Capacitor.isNativePlatform(); } catch { return false; } })();
   let url = freshLink(file.content_id);
   // browsers only allow a new tab straight after a tap, so open it first when the link is not ready yet
@@ -173,9 +175,12 @@ export const openCmsFile = async (file: Pick<CmsFile, 'content_id'>): Promise<{ 
       url = res.url;
       linkCache.set(file.content_id, { url, at: Date.now() });
     }
-    if (native) await Browser.open({ url, presentationStyle: 'fullscreen' });
-    else if (tab) tab.location.href = url;
-    else if (!window.open(url, '_blank')) window.location.href = url; // pop-up blocked
+    // the iPhone's in-app Safari cannot show PowerPoint, Word or Excel files (it shows a file card),
+    // so those go through Microsoft's viewer, which reads the file from the link and draws it as a page
+    const shown = OFFICE_FILE.test(file.path) ? `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(url)}` : url;
+    if (native) await Browser.open({ url: shown, presentationStyle: 'fullscreen' });
+    else if (tab) tab.location.href = shown;
+    else if (!window.open(shown, '_blank')) window.location.href = shown; // pop-up blocked
     return { ok: true };
   } catch {
     tab?.close();

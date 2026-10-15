@@ -246,7 +246,7 @@ const CmsCourseView: React.FC<{
   const openFile = async (f: CmsFile) => {
     if (busy !== null) return;
     setBusy(f.id);
-    const res = await openCmsFile({ content_id: f.content_id });
+    const res = await openCmsFile({ content_id: f.content_id, path: f.path });
     setBusy(null);
     if (res.ok) {
       if (f.is_new) { onSeen([f.id]); markCmsFilesSeen([f.id]); }
