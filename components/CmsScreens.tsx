@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, ChevronDown, ChevronRight, ExternalLink, FileText, Folder, GraduationCap, KeyRound, Loader2, RefreshCw, Search } from 'lucide-react';
+import { ArrowLeft, ChevronRight, ExternalLink, FileText, Folder, GraduationCap, KeyRound, Loader2, RefreshCw, Search } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { styles } from '../theme';
 import Collapse from './ui/Collapse';
@@ -131,9 +131,13 @@ const CmsCourses: React.FC<{
   onBack: () => void; onSync: () => void; onOpenCourse: (c: CmsCourse) => void; onOpenSettings: () => void;
 }> = ({ data, syncing, problem, onBack, onSync, onOpenCourse, onOpenSettings }) => {
   const [query, setQuery] = useState('');
-  const [open, setOpen] = useState<Set<number>>(new Set());
 
-  const seasons = useMemo(() => groupSeasons(data?.courses ?? [], data?.files ?? []), [data]);
+  // only the current season is shown
+  const seasons = useMemo(() => {
+    const all = groupSeasons(data?.courses ?? [], data?.files ?? []);
+    const now = all.find(s => s.current) ?? all[0];
+    return now ? [now] : [];
+  }, [data]);
   const q = query.trim().toLowerCase();
   const shown = useMemo(
     () => seasons
@@ -141,14 +145,6 @@ const CmsCourses: React.FC<{
       .filter(s => s.courses.length > 0),
     [seasons, q],
   );
-  // the current season starts open (once the data is here)
-  useEffect(() => {
-    if (!seasons.length) return;
-    setOpen(prev => (prev.size ? prev : new Set([(seasons.find(s => s.current) ?? seasons[0]).id])));
-  }, [seasons]);
-
-  const toggle = (id: number) => setOpen(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
-
   return (
     <div style={styles.scrollableContent} className="custom-scrollbar">
       <div className="mx-auto w-full max-w-3xl page-in">
@@ -175,20 +171,17 @@ const CmsCourses: React.FC<{
                   />
                 </label>
                 {shown.map(s => {
-                  const expanded = q ? true : open.has(s.id);
+                  const expanded = true;
                   return (
                     <section key={s.id} className="overflow-hidden rounded-[20px]" style={card}>
                       <button
-                        onClick={() => toggle(s.id)}
-                        aria-expanded={expanded}
-                        className="flex w-full items-center gap-2 border-0 bg-transparent px-3.5 py-3 text-left"
+                        className="flex w-full cursor-default items-center gap-2 border-0 bg-transparent px-3.5 py-3 text-left"
                       >
                         <span className="text-[0.95rem] font-extrabold" style={strong}>{s.title}</span>
                         {s.current && <span className="rounded-full px-2 py-[1px] text-[0.62rem] font-extrabold" style={{ background: 'var(--accent)', color: 'var(--on-accent)' }}>Current</span>}
                         <span className="flex-1" />
                         {s.newCount > 0 && <NewBadge n={s.newCount} />}
                         <span className="text-[0.75rem] font-semibold" style={muted}>{s.courses.length} {s.courses.length === 1 ? 'course' : 'courses'}</span>
-                        <ChevronDown size={16} style={{ ...muted, transform: expanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.28s cubic-bezier(0.4,0,0.2,1)' }} />
                       </button>
                       <Collapse open={expanded}>
                         {s.courses.map(c => {
@@ -311,7 +304,7 @@ const CmsCourseView: React.FC<{
                     >
                       <span className="h-[7px] w-[7px] shrink-0 rounded-full" style={{ background: f.is_new ? 'var(--accent)' : 'transparent' }} />
                       <span className="min-w-0 flex-1">
-                        <span className="block text-[0.92rem] font-semibold leading-tight" style={{ color: f.is_new ? 'var(--text-primary)' : 'var(--text-muted)' }}>{f.title}</span>
+                        <span className="block text-[0.92rem] font-semibold leading-tight" style={{ color: 'var(--text-primary)' }}>{f.title}</span>
                         {f.file_type && <span className="mt-0.5 block text-[0.76rem]" style={{ color: 'var(--text-muted)', opacity: 0.8 }}>{f.file_type}</span>}
                       </span>
                       {busy === f.id ? <Loader2 size={19} className="animate-spin" style={muted} /> : <ExternalLink size={19} style={muted} />}

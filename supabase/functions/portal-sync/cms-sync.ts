@@ -25,14 +25,11 @@ export interface CmsSyncResult {
 // deno-lint-ignore no-explicit-any
 type Db = any;
 
-/** The newest season is re-read every time (its files change). */
+/** Only the current season is read (the app shows nothing older). */
 const currentSeasons = (seasons: CmsSeason[]): CmsSeason[] => {
   const current = seasons.filter((s) => s.current);
   return current.length ? current : seasons.slice(0, 1);
 };
-
-/** Older seasons are read once (until they have files saved), newest first, within a time budget. */
-const OLD_SEASON_BUDGET_MS = 70_000;
 
 export const runCmsSync = async (db: Db, userId: string, session: CmsSession): Promise<CmsSyncResult> => {
   const now = new Date().toISOString();
@@ -52,10 +49,9 @@ export const runCmsSync = async (db: Db, userId: string, session: CmsSession): P
   }
 
   // files already saved: tells us what is new, and which seasons were already read
-  const { data: existing, error: readErr } = await db.from("cms_files").select("content_id, season_id").eq("user_id", userId);
+  const { data: existing, error: readErr } = await db.from("cms_files").select("content_id").eq("user_id", userId);
   if (readErr) throw new Error(`DB_READ_FAILED: ${readErr.message}`);
   const known = new Set<number>((existing ?? []).map((r: { content_id: number }) => r.content_id));
-  const readSeasons = new Set<number>((existing ?? []).map((r: { season_id: number }) => r.season_id));
   const firstSync = known.size === 0;
 
   const alerts: CmsAlert[] = [];
@@ -100,20 +96,5 @@ export const runCmsSync = async (db: Db, userId: string, session: CmsSession): P
     for (const course of season.courses) await readCourse(season, course, true);
   }
 
-  // older seasons: newest first, only the ones with nothing saved yet, until the time budget is used
-  const started = Date.now();
-  for (const season of seasons) {
-    if (current.includes(season) || readSeasons.has(season.id)) continue;
-    for (const course of season.courses) {
-      if (Date.now() - started > OLD_SEASON_BUDGET_MS) break;
-      try {
-        await readCourse(season, course, false);
-      } catch (e) {
-        // one broken old course must not stop the rest; a wrong login still stops everything
-        if (e instanceof Error && e.message.startsWith("PORTAL_LOGIN_FAILED")) throw e;
-        console.error("old course skipped:", season.id, course.id, e instanceof Error ? e.message : e);
-      }
-    }
-  }
   return { files: total, newFiles, alerts };
 };
