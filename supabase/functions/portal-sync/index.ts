@@ -392,6 +392,8 @@ const MIME: Record<string, string> = {
   pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
   doc: "application/msword", docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   xls: "application/vnd.ms-excel", xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  pps: "application/vnd.ms-powerpoint", ppsx: "application/vnd.openxmlformats-officedocument.presentationml.slideshow",
+  odp: "application/vnd.oasis.opendocument.presentation", key: "application/x-iwork-keynote-sffkey",
   zip: "application/zip", txt: "text/plain; charset=utf-8", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg",
 };
 
@@ -585,10 +587,14 @@ Deno.serve(async (req: Request) => {
   if (body.action === "cms_link") {
     const contentId = Number(body.contentId);
     const { data: file } = await supabase
-      .from("cms_files").select("content_id").eq("user_id", userId).eq("content_id", contentId).maybeSingle();
+      .from("cms_files").select("title, path").eq("user_id", userId).eq("content_id", contentId).maybeSingle();
     if (!file) return json({ ok: false, code: "CMS_FILE_NOT_FOUND", message: MESSAGES.CMS_FILE_NOT_FOUND }, 404);
     const base = (Deno.env.get("SUPABASE_URL") ?? "").replace(/\/$/, "");
-    return json({ ok: true, url: `${base}/functions/v1/portal-sync?t=${encodeURIComponent(await signLink(userId, contentId))}` });
+    // the link ends in the real file name (Lecture 6.pptx): phones decide how to preview a file from its ending
+    const ext = (file.path.match(/\.([A-Za-z0-9]{1,5})$/)?.[1] ?? "").toLowerCase();
+    const stem = file.title.replace(/\.[A-Za-z0-9]{1,5}$/, "").replace(/[^A-Za-z0-9 ._-]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 80) || "file";
+    const name = ext ? `${stem}.${ext}` : stem;
+    return json({ ok: true, url: `${base}/functions/v1/portal-sync/${encodeURIComponent(name)}?t=${encodeURIComponent(await signLink(userId, contentId))}` });
   }
 
   if (body.action === "remove") {
