@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Loader2, RefreshCw, Check, Copy, GraduationCap, CircleUser, AlarmClock, Bell, Smartphone, Send, PartyPopper, CalendarDays, ChevronDown, ChevronRight, MoreHorizontal, Pencil, Unplug } from 'lucide-react';
+import { Loader2, RefreshCw, Check, GraduationCap, CircleUser, AlarmClock, Bell, Smartphone, Send, PartyPopper, CalendarDays, ChevronDown, ChevronRight, MoreHorizontal, Pencil, Unplug } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import Collapse from './ui/Collapse';
 import { setCmsAlerts, getCmsAlertsOn } from '../services/cms';
@@ -7,10 +7,9 @@ import { toast } from 'react-hot-toast';
 import OnboardSteps from './OnboardSteps';
 import Sheet from './Sheet';
 import { ntfyRemindersEnabled, setNtfyReminders } from '../services/ntfyReminders';
-import { getPortalAccount, savePortalLogin, syncPortal, removePortalLogin, setPortalAlerts, changePortalTopic, setBarkKey, isBarkTopic, setPortalNotify, getPortalNotifyOn, testPortalAlert, getPortalAlertTopic, getPortalSchedule, timeAgo, readPortalCache, writePortalCache, PortalAccount, PortalClass } from '../services/portal';
+import { getPortalAccount, savePortalLogin, syncPortal, removePortalLogin, setPortalAlerts, setBarkKey, setPortalNotify, getPortalNotifyOn, testPortalAlert, getPortalAlertTopic, getPortalSchedule, timeAgo, readPortalCache, writePortalCache, PortalAccount, PortalClass } from '../services/portal';
 
 const BARK_APP = 'https://apps.apple.com/app/bark-customed-notifications/id1403753865';
-const NTFY_APP = 'https://apps.apple.com/app/ntfy/id1625396347';
 const GUIDE_KEY = 'portal_setup_v1';
 type GuideFlags = { subscribed?: string; tested?: string; skipped?: boolean; classes?: boolean };
 const readGuide = (): GuideFlags => {
@@ -100,12 +99,11 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
   const [found, setFound] = useState<PortalClass[] | null>(null); // classes read from the portal, waiting to be added
   const [sentTest, setSentTest] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [showManage, setShowManage] = useState(false);
   const [classRem, setClassRem] = useState(() => ntfyRemindersEnabled());
   const [barkKey, setBarkKeyText] = useState('');
   const [confirmDisc, setConfirmDisc] = useState(false);
-  const [confirmCode, setConfirmCode] = useState(false);
+  const [, setConfirmCode] = useState(false);
   const [saved, setSaved] = useState(false);       // the login was accepted just now
   const [moment, setMoment] = useState<{ title: string; sub: string } | null>(null); // a short "done" screen before the next step
   const celebrate = !!moment;
@@ -208,18 +206,6 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
     }
   };
 
-  const newCode = async () => {
-    setBusy('alerts');
-    const res = await changePortalTopic();
-    setBusy(null);
-    if (res.ok && res.topic) {
-      setTopic(res.topic);
-      setShowManage(false); setConfirmCode(false);
-      setGuide({ skipped: false }); // the setup steps come back so you can add the new code in ntfy and test it
-      toast.success('New alert code. Add it in ntfy');
-    } else toast.error(res.message || 'Could not change the alert code.');
-  };
-
   // iPhone alternative to ntfy: the student pastes the key shown in the Bark app
   const useBark = async () => {
     setBusy('alerts');
@@ -239,16 +225,6 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
     setBusy(null);
     if (res.ok) { setSentTest(true); toast.success(`Test sent. Check your phone.${(res as { where?: string }).where ? ` (${(res as { where?: string }).where})` : ''}`); }
     else toast.error(res.message || 'Could not send the test.');
-  };
-
-  const copyTopic = async () => {
-    try {
-      await navigator.clipboard.writeText(topic ?? '');
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2200);
-    } catch {
-      toast.error('Could not copy. Select the text and copy it by hand.');
-    }
   };
 
   // 1) read the portal schedule and show what was found
@@ -302,12 +278,11 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
     <div className="rounded-xl border border-white/5 bg-black/40 p-3.5 text-left text-[13px] leading-snug text-white/70">
       <div className="mb-2 font-bold text-white">Not receiving alerts?</div>
       <ol className="list-decimal space-y-1.5 pl-4">
-        <li>Turn your <b className="text-white">VPN off</b>. It can block ntfy.</li>
-        <li>In ntfy, make sure you are subscribed to <b className="text-white">your code</b>. <button onClick={copyTopic} className="border-0 bg-transparent p-0 font-bold text-teal-400">{copied ? 'Copied ✓' : 'Copy it again'}</button></li>
-        <li>iPhone Settings → Notifications → ntfy → turn <b className="text-white">Allow Notifications</b> on, with Lock Screen and Banners ticked.</li>
-        <li>Also on: Settings → General → <b className="text-white">Background App Refresh</b> for ntfy. Turn off Low Power Mode and any Focus that mutes it.</li>
-        <li>In ntfy: Settings → <b className="text-white">Default server</b> must be <b className="text-white">ntfy.sh</b>.</li>
-        <li>Swipe ntfy away, then send the test again. The ping should show on your lock screen.</li>
+        <li>Turn your <b className="text-white">VPN off</b>.</li>
+        <li>iPhone Settings → Notifications → Bark → turn <b className="text-white">Allow Notifications</b> on, with Lock Screen and Banners ticked.</li>
+        <li>Turn off Low Power Mode and any Focus that mutes Bark.</li>
+        <li>In Bark, check the key you pasted in UniMate is the one Bark shows now.</li>
+        <li>Swipe Bark away, then send the test again.</li>
       </ol>
     </div>
   );
@@ -391,40 +366,30 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
     },
     ntfy: {
       icon: <Smartphone size={30} />,
-      title: 'Set up ntfy',
-      sub: 'A free app that shows the alerts',
+      title: 'Set up Bark',
+      sub: 'A free iPhone app that shows the alerts',
       fields: (
         <div className="space-y-3">
           <div className="flex items-center gap-3 rounded-xl border border-white/5 bg-black/40 p-3">
             <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-teal-500 text-[11px] font-extrabold text-black">1</span>
-            <span className="min-w-0 flex-1 text-sm font-semibold text-white">Install ntfy</span>
-            <a href={NTFY_APP} target="_blank" rel="noopener noreferrer" className="shrink-0 rounded-lg bg-white/10 px-3 py-1.5 text-xs font-bold text-white">Get app</a>
+            <span className="min-w-0 flex-1 text-sm font-semibold text-white">Install Bark</span>
+            <a href={BARK_APP} target="_blank" rel="noopener noreferrer" className="shrink-0 rounded-lg bg-white/10 px-3 py-1.5 text-xs font-bold text-white">Get app</a>
           </div>
           <div className="rounded-xl border border-white/5 bg-black/40 p-3">
             <div className="flex items-center gap-3">
               <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-teal-500 text-[11px] font-extrabold text-black">2</span>
-              <span className="min-w-0 flex-1 text-sm font-semibold text-white">In ntfy tap + and paste this</span>
-              <button onClick={copyTopic} className={`flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${copied ? 'bg-teal-500/25 text-teal-200' : 'bg-white/10 text-white'}`}>{copied ? <><Check size={12} strokeWidth={3} /> Copied</> : <><Copy size={12} /> Copy</>}</button>
+              <span className="min-w-0 flex-1 text-sm font-semibold text-white">Open Bark, copy the key it shows, paste it here</span>
             </div>
-            <div className="mt-2.5 truncate rounded-lg bg-black/40 px-3 py-2.5 font-mono text-xs text-white/60 select-all">{topic}</div>
-          </div>
-          <div className="rounded-xl border border-white/5 bg-black/40 p-3">
-            <div className="flex items-center gap-3">
-              <span className="min-w-0 flex-1 text-sm font-semibold text-white">ntfy not working? Use Bark</span>
-              <a href={BARK_APP} target="_blank" rel="noopener noreferrer" className="shrink-0 rounded-lg bg-white/10 px-3 py-1.5 text-xs font-bold text-white">Get Bark</a>
-            </div>
-            <p className="mt-1.5 text-xs leading-snug text-white/50">Free iPhone app. Open it, copy the key (or the link) it shows, and paste it here.</p>
             <input className={`${input} mt-2.5`} value={barkKey} onChange={e => setBarkKeyText(e.target.value)} placeholder="Paste your Bark key" autoCapitalize="none" autoCorrect="off" spellCheck={false} autoComplete="off" />
-            <button onClick={useBark} disabled={busy !== null || barkKey.trim().length < 10} className={`${primary} mt-2.5`}>{busy === 'alerts' ? spin : 'Use Bark'}</button>
           </div>
         </div>
       ),
-      actions: <button onClick={() => { setGuide({ subscribed: topic ?? undefined }); }} className={primary}>I added it</button>,
+      actions: <button onClick={useBark} disabled={busy !== null || barkKey.trim().length < 10} className={primary}>{busy === 'alerts' ? spin : 'Connect Bark'}</button>,
     },
     test: {
       icon: <Send size={30} />,
       title: sentTest ? 'Did it arrive?' : 'Send a test',
-      sub: sentTest ? (isBarkTopic(topic) ? 'Check Bark on your phone' : 'Check ntfy on your phone') : 'You should get a ping',
+      sub: sentTest ? 'Check Bark on your phone' : 'You should get a ping',
       fields: showHelp ? helpList : undefined,
       actions: sentTest ? (
         <>
@@ -510,30 +475,13 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
                 <div className="text-[19px] font-extrabold">Uni Portal</div>
                 <div className="text-[13px]" style={{ color: 'var(--text-muted)' }}>{account!.username}</div>
               </div>
-              {confirmCode ? (
-                <div className="text-center">
-                  <p className="mb-4 text-[14px]" style={{ color: 'var(--text-muted)' }}>Make a new alert code? The old one stops working, and you add the new one in ntfy.</p>
-                  <button onClick={newCode} disabled={busy !== null}
-                    className="flex w-full items-center justify-center gap-2 rounded-2xl border-0 py-3.5 text-[16px] font-extrabold disabled:opacity-60" style={{ background: 'var(--cta-bg)', color: 'var(--cta-ink)' }}>
-                    {busy === 'alerts' ? <Loader2 size={18} className="animate-spin" /> : 'Make a new code'}
-                  </button>
-                  <button onClick={() => setConfirmCode(false)} disabled={busy !== null}
-                    className="mt-2 w-full rounded-2xl border-0 py-3.5 text-[16px] font-bold" style={{ background: 'var(--surface-2)', color: 'var(--text-primary)' }}>Cancel</button>
-                </div>
-              ) : !confirmDisc ? (
+              {!confirmDisc ? (
                 <div className="space-y-2.5">
                   <button onClick={() => { setShowManage(false); setEditing(true); }}
                     className="flex w-full items-center gap-3 rounded-2xl border-0 p-3.5 text-left" style={{ background: 'var(--sheet-field)', color: 'var(--text-primary)' }}>
                     <span className="flex h-10 w-10 items-center justify-center rounded-[14px]" style={{ background: 'var(--surface-2)' }}><Pencil size={17} /></span>
                     <span className="flex-1"><span className="block text-[15px] font-bold">Change login</span><span className="block text-xs" style={{ color: 'var(--text-muted)' }}>New portal username or password</span></span>
                   </button>
-                  {topic && (
-                    <button onClick={() => setConfirmCode(true)}
-                      className="flex w-full items-center gap-3 rounded-2xl border-0 p-3.5 text-left" style={{ background: 'var(--sheet-field)', color: 'var(--text-primary)' }}>
-                      <span className="flex h-10 w-10 items-center justify-center rounded-[14px]" style={{ background: 'var(--surface-2)' }}><RefreshCw size={17} /></span>
-                      <span className="flex-1"><span className="block text-[15px] font-bold">New alert code</span><span className="block text-xs" style={{ color: 'var(--text-muted)' }}>Change the ntfy code, the old one stops working</span></span>
-                    </button>
-                  )}
                   <button onClick={() => setConfirmDisc(true)}
                     className="flex w-full items-center gap-3 rounded-2xl border-0 p-3.5 text-left" style={{ background: 'var(--sheet-field)', color: 'var(--danger)' }}>
                     <span className="flex h-10 w-10 items-center justify-center rounded-[14px]" style={{ background: 'rgba(255,90,95,0.14)' }}><Unplug size={17} /></span>

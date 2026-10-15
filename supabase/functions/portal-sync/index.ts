@@ -332,19 +332,25 @@ const save = async (userId: string, data: PortalData, firstSync: boolean): Promi
             `${s.course_key}|${s.exam_type}|${s.exam_date ?? ""}`, `${s.start_time}|${s.hall}|${s.seat}`,
           ]));
           const fresh: string[] = [];
+          const freshDates: string[] = []; // exam dates of the new seats, for the grouped alert
           for (const s of data.examSeats) {
             const old = before.get(`${s.courseKey}|${s.examType}|${s.examDate ?? ""}`);
             if (old === `${s.startTime}|${s.hall}|${s.seat}`) continue;
             const where = [s.hall ? `Hall ${s.hall}` : "", s.seat ? `Seat ${s.seat}` : ""].filter(Boolean).join(", ");
             const when = [s.examDate, to12h(s.startTime)].filter(Boolean).join(" ");
             const body = [`${s.courseName}${s.examType ? " " + s.examType : ""}`, where, when].filter(Boolean).join(" · ");
-            if (old === undefined) { fresh.push(body); continue; }
+            if (old === undefined) { fresh.push(body); if (s.examDate) freshDates.push(s.examDate); continue; }
             alerts.push({ title: "Exam seat changed", body, tag: "round_pushpin" });
           }
           examDbg += `, new ${fresh.length}, sample key ${JSON.stringify([data.examSeats[0]?.courseKey, data.examSeats[0]?.examType, data.examSeats[0]?.examDate])} vs ${JSON.stringify([...before.keys()][0] ?? null)}`.slice(0, 200);
           // new seats: one alert for the lot ("5 new exam seats added"), details when it is just one
           if (fresh.length === 1) alerts.push({ title: "Exam seat posted", body: fresh[0], tag: "round_pushpin" });
-          else if (fresh.length > 1) alerts.push({ title: `${fresh.length} new exam seats added`, body: fresh.join("\n"), tag: "round_pushpin" });
+          else if (fresh.length > 1) {
+            // the grouped alert lists the dates only ("28 Oct · 30 Oct")
+            const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+            const dates = [...new Set(freshDates)].sort().map((d) => { const m = d.match(/^\d{4}-(\d{2})-(\d{2})/); return m ? `${Number(m[2])} ${MON[Number(m[1]) - 1] ?? ""}`.trim() : d; });
+            alerts.push({ title: `${fresh.length} new exam seats added`, body: dates.join(" · ") || "Open UniMate for the details", tag: "round_pushpin" });
+          }
         }
       }
       await supabase.from("portal_exam_seats").delete().eq("user_id", userId);
