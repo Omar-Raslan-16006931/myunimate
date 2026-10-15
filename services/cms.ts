@@ -137,23 +137,45 @@ export const groupWeeks = (files: CmsFile[]): CmsWeek[] => {
   return weeks.sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''));
 };
 
+// File links are prepared when a course is opened, so a tap opens the file at once.
+// A link works for 5 minutes on the server; it is renewed after 4.
+const LINK_TTL = 4 * 60 * 1000;
+const linkCache = new Map<number, { url: string; at: number }>();
+
+export const prefetchCmsLinks = async (courseId: number): Promise<void> => {
+  const res = await call({ action: 'cms_links', courseId }) as CmsResult & { links?: Record<string, string> };
+  if (!res.ok || !res.links) return;
+  const at = Date.now();
+  for (const [id, url] of Object.entries(res.links)) linkCache.set(Number(id), { url, at });
+};
+
+const freshLink = (id: number): string | null => {
+  const c = linkCache.get(id);
+  return c && Date.now() - c.at < LINK_TTL ? c.url : null;
+};
+
 /**
  * Opens one file in the phone's own viewer (Safari sheet in the iPhone app, a new tab in a browser)
- * instead of saving it. The server gives a link that works for 5 minutes.
+ * instead of saving it. The server signs in to the CMS for you and sends the file.
  */
 export const openCmsFile = async (file: Pick<CmsFile, 'content_id'>): Promise<{ ok: boolean; message?: string }> => {
-  // browsers only allow a new tab straight after a tap, so open it first and fill it in after
   const native = (() => { try { return Capacitor.isNativePlatform(); } catch { return false; } })();
-  const tab = native ? null : window.open('', '_blank');
+  let url = freshLink(file.content_id);
+  // browsers only allow a new tab straight after a tap, so open it first when the link is not ready yet
+  const tab = !url && !native ? window.open('', '_blank') : null;
   try {
-    const res = await call({ action: 'cms_link', contentId: file.content_id }) as CmsResult & { url?: string };
-    if (!res.ok || !res.url) {
-      tab?.close();
-      return { ok: false, message: res.message || 'Could not open the file.' };
+    if (!url) {
+      const res = await call({ action: 'cms_link', contentId: file.content_id }) as CmsResult & { url?: string };
+      if (!res.ok || !res.url) {
+        tab?.close();
+        return { ok: false, message: res.message || 'Could not open the file.' };
+      }
+      url = res.url;
+      linkCache.set(file.content_id, { url, at: Date.now() });
     }
-    if (native) await Browser.open({ url: res.url, presentationStyle: 'fullscreen' });
-    else if (tab) tab.location.href = res.url;
-    else window.location.href = res.url; // pop-up blocked: leave the page for the file
+    if (native) await Browser.open({ url, presentationStyle: 'fullscreen' });
+    else if (tab) tab.location.href = url;
+    else if (!window.open(url, '_blank')) window.location.href = url; // pop-up blocked
     return { ok: true };
   } catch {
     tab?.close();

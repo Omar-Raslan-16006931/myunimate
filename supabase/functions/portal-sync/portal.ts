@@ -234,6 +234,8 @@ export interface HttpResponse {
   body: string;
   /** the same body as raw bytes (needed for files such as PDFs) */
   bytes: Uint8Array;
+  /** set (and body left unread) only when the caller asked for a stream and the size is known */
+  stream?: ReadableStream<Uint8Array>;
   keepAlive: boolean;
 }
 
@@ -290,6 +292,7 @@ export class PortalHttp {
   private reader: Reader | null = null;
   private cookies = new Map<string, string>();
   private basicHeader: string | null = null;
+  private wantStream = false;
   /** what we say we can receive; for files this is widened so the site does not answer 406 */
   accept = "text/html,application/xhtml+xml";
   /** the page a request claims to come from (file links need one on some sites) */
@@ -367,6 +370,20 @@ export class PortalHttp {
     const one = (k: string) => headers.get(k)?.[0] ?? "";
     let bodyBytes: Uint8Array = new Uint8Array(0);
     let closeAfter = /close/i.test(one("connection"));
+    if (this.wantStream && status === 200 && !/chunked/i.test(one("transfer-encoding")) && one("content-length") !== "") {
+      // hand the body over piece by piece, so the caller can pass it on while it is still arriving
+      let left = parseInt(one("content-length"), 10);
+      const stream = new ReadableStream<Uint8Array>({
+        async pull(ctrl) {
+          if (left <= 0) { ctrl.close(); return; }
+          const chunk = await r.exactly(Math.min(65536, left));
+          left -= chunk.length;
+          ctrl.enqueue(chunk);
+          if (left <= 0) ctrl.close();
+        },
+      });
+      return { status, headers, body: "", bytes: bodyBytes, stream, keepAlive: !closeAfter };
+    }
     if (method === "HEAD" || status === 204 || status === 304) {
       // no body
     } else if (/chunked/i.test(one("transfer-encoding"))) {
@@ -386,6 +403,12 @@ export class PortalHttp {
     }
     if (closeAfter) this.close();
     return { status, headers, body: dec.decode(bodyBytes), bytes: bodyBytes, keepAlive: !closeAfter };
+  }
+
+  /** Like request(), but a 200 answer with a known size comes back as `stream` (not yet read). */
+  async requestStream(path: string): Promise<HttpResponse> {
+    this.wantStream = true;
+    try { return await this.request("GET", path); } finally { this.wantStream = false; }
   }
 
   /** One request, signing in when the portal asks for it. */

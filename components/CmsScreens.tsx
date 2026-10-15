@@ -5,7 +5,7 @@ import { styles } from '../theme';
 import { getPortalAccount, readPortalCache, writePortalCache } from '../services/portal';
 import {
   CmsCourse, CmsFile, openCmsFile, getCmsCourses, getCmsFiles, groupSeasons, groupWeeks,
-  markCmsFilesSeen, shortDate, syncCms,
+  markCmsFilesSeen, prefetchCmsLinks, shortDate, syncCms,
 } from '../services/cms';
 
 const card: React.CSSProperties = {
@@ -234,6 +234,14 @@ const CmsCourseView: React.FC<{
     [mine, filter],
   );
   const newCount = mine.filter(f => f.is_new).length;
+
+  // prepare the file links (and the server's CMS sign-in) while the list is on screen, so a tap opens at once
+  useEffect(() => {
+    if (!mine.length) return;
+    prefetchCmsLinks(course.course_id).catch(() => { /* the tap falls back to asking for the link */ });
+    const t = setInterval(() => { prefetchCmsLinks(course.course_id).catch(() => {}); }, 3.5 * 60 * 1000);
+    return () => clearInterval(t);
+  }, [course.course_id, mine.length]);
 
   const openFile = async (f: CmsFile) => {
     if (busy !== null) return;

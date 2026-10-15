@@ -397,38 +397,50 @@ const MIME: Record<string, string> = {
   zip: "application/zip", txt: "text/plain; charset=utf-8", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg",
 };
 
+/** The signed link for one file; it ends in the real file name so phones know how to preview it. */
+const fileLink = async (userId: string, row: { content_id: number; title: string; path: string }): Promise<string> => {
+  const base = (Deno.env.get("SUPABASE_URL") ?? "").replace(/\/$/, "");
+  const ext = (row.path.match(/\.([A-Za-z0-9]{1,5})$/)?.[1] ?? "").toLowerCase();
+  const stem = row.title.replace(/\.[A-Za-z0-9]{1,5}$/, "").replace(/[^A-Za-z0-9 ._-]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 80) || "file";
+  const name = ext ? `${stem}.${ext}` : stem;
+  return `${base}/functions/v1/portal-sync/${encodeURIComponent(name)}?t=${encodeURIComponent(await signLink(userId, row.content_id))}`;
+};
+
 /** Serves one CMS file inline so the browser shows it instead of saving it. */
 const serveCmsFile = async (token: string): Promise<Response> => {
   const fail = (status: number, message: string) =>
     new Response(message, { status, headers: { ...CORS, "Content-Type": "text/plain; charset=utf-8" } });
   const link = await readLink(token);
   if (!link) return fail(403, "This link expired. Go back to UniMate and tap the file again.");
-  const { data: file } = await supabase
-    .from("cms_files").select("path, title").eq("user_id", link.u).eq("content_id", link.c).maybeSingle();
+  const [{ data: file }, { data: account }] = await Promise.all([
+    supabase.from("cms_files").select("path, title").eq("user_id", link.u).eq("content_id", link.c).maybeSingle(),
+    supabase.from("portal_accounts").select("*").eq("user_id", link.u).maybeSingle(),
+  ]);
   if (!file) return fail(404, MESSAGES.CMS_FILE_NOT_FOUND);
   // only files the CMS keeps under /Uploads/, never anything else on the site
   if (!/^\/Uploads\/[^?#]+$/.test(file.path) || file.path.includes("..")) return fail(400, MESSAGES.CMS_BAD_PATH);
-  const { data: account } = await supabase.from("portal_accounts").select("*").eq("user_id", link.u).maybeSingle();
   if (!account) return fail(400, MESSAGES.NO_CREDENTIALS);
+  let session: Awaited<ReturnType<typeof openCmsSession>> | null = null;
   try {
     const password = await getPassword(link.u, account);
-    const session = await openCmsSession({ username: account.username, password }, connector);
-    try {
-      const f = await withTimeout(session.getFile(file.path), 100_000);
-      const ext = (file.path.match(/\.([A-Za-z0-9]{1,5})$/)?.[1] ?? "").toLowerCase();
-      const name = /\.[A-Za-z0-9]{1,5}$/.test(file.title) ? file.title : file.title + (ext ? "." + ext : "");
-      // the CMS often answers "octet-stream", which makes browsers save the file; use the real type
-      const type = MIME[ext] ?? (f.contentType && !/octet-stream/i.test(f.contentType) ? f.contentType : "application/octet-stream");
-      return new Response(f.body as BodyInit, {
-        headers: {
-          ...CORS,
-          "Content-Type": type,
-          "Content-Disposition": `inline; filename*=UTF-8''${encodeURIComponent(name)}`,
-          "Cache-Control": "private, no-store",
-        },
-      });
-    } finally { closeCms(session); }
+    session = await openCmsSession({ username: account.username, password }, connector);
+    const f = await withTimeout(session.getFile(file.path), 100_000);
+    const ext = (file.path.match(/\.([A-Za-z0-9]{1,5})$/)?.[1] ?? "").toLowerCase();
+    const name = /\.[A-Za-z0-9]{1,5}$/.test(file.title) ? file.title : file.title + (ext ? "." + ext : "");
+    // the CMS often answers "octet-stream", which makes browsers save the file; use the real type
+    const type = MIME[ext] ?? (f.contentType && !/octet-stream/i.test(f.contentType) ? f.contentType : "application/octet-stream");
+    // the file is passed on while it is still arriving; the connection is kept (or dropped) by the stream itself
+    return new Response(f.body as BodyInit, {
+      headers: {
+        ...CORS,
+        "Content-Type": type,
+        ...(f.length ? { "Content-Length": String(f.length) } : {}),
+        "Content-Disposition": `inline; filename*=UTF-8''${encodeURIComponent(name)}`,
+        "Cache-Control": "private, no-store",
+      },
+    });
   } catch (e) {
+    session?.destroy();
     const { code, message } = describe(e);
     console.error("cms file failed:", code);
     return fail(502, message);
@@ -443,7 +455,7 @@ Deno.serve(async (req: Request) => {
   }
   if (req.method !== "POST") return json({ ok: false, message: "Method not allowed" }, 405);
 
-  let body: { action?: string; username?: string; password?: string; enabled?: boolean; contentId?: number } = {};
+  let body: { action?: string; username?: string; password?: string; enabled?: boolean; contentId?: number; courseId?: number } = {};
   try { body = await req.json(); } catch { /* empty body */ }
 
   // the hourly timer
@@ -585,16 +597,28 @@ Deno.serve(async (req: Request) => {
   }
 
   if (body.action === "cms_link") {
-    const contentId = Number(body.contentId);
     const { data: file } = await supabase
-      .from("cms_files").select("title, path").eq("user_id", userId).eq("content_id", contentId).maybeSingle();
+      .from("cms_files").select("content_id, title, path").eq("user_id", userId).eq("content_id", Number(body.contentId)).maybeSingle();
     if (!file) return json({ ok: false, code: "CMS_FILE_NOT_FOUND", message: MESSAGES.CMS_FILE_NOT_FOUND }, 404);
-    const base = (Deno.env.get("SUPABASE_URL") ?? "").replace(/\/$/, "");
-    // the link ends in the real file name (Lecture 6.pptx): phones decide how to preview a file from its ending
-    const ext = (file.path.match(/\.([A-Za-z0-9]{1,5})$/)?.[1] ?? "").toLowerCase();
-    const stem = file.title.replace(/\.[A-Za-z0-9]{1,5}$/, "").replace(/[^A-Za-z0-9 ._-]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 80) || "file";
-    const name = ext ? `${stem}.${ext}` : stem;
-    return json({ ok: true, url: `${base}/functions/v1/portal-sync/${encodeURIComponent(name)}?t=${encodeURIComponent(await signLink(userId, contentId))}` });
+    return json({ ok: true, url: await fileLink(userId, file) });
+  }
+
+  // all links of one course at once, so a tap in the app opens the file without waiting for a link
+  if (body.action === "cms_links") {
+    const { data: rows } = await supabase
+      .from("cms_files").select("content_id, title, path").eq("user_id", userId).eq("course_id", Number(body.courseId));
+    const links: Record<string, string> = {};
+    for (const r of rows ?? []) links[String(r.content_id)] = await fileLink(userId, r);
+    // sign in to the CMS now, in the background, so the next file tap finds the connection ready
+    const warm = (async () => {
+      const { data: account } = await supabase.from("portal_accounts").select("*").eq("user_id", userId).maybeSingle();
+      if (!account) return;
+      const session = await openCmsSession({ username: account.username, password: await getPassword(userId, account) }, connector);
+      try { await withTimeout(session.get("/apps/student/ViewAllCourseStn.aspx"), 20_000); session.close(); } catch { session.destroy(); }
+    })().catch(() => { /* warming is only a speed-up */ });
+    // deno-lint-ignore no-explicit-any
+    (globalThis as any).EdgeRuntime?.waitUntil?.(warm);
+    return json({ ok: true, links });
   }
 
   if (body.action === "remove") {
