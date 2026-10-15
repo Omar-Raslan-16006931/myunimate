@@ -73,6 +73,8 @@ interface SyncResult {
   examSeatsCount?: number;
   examSeats?: any[];
   notified?: number;
+  alertsFound?: number;
+  ntfy?: string;
   topic?: string | null;
 }
 
@@ -81,6 +83,7 @@ interface Alert { title: string; body: string; tag: string }
 
 // Sends alerts through ntfy.sh, a free push app, so they arrive even when
 // UniMate is closed. Never throws: a failed alert must not fail the sync.
+let lastNtfy = ""; // what ntfy answered last (status or error), shown in the timer's report
 const sendAlerts = async (topic: string, alerts: Alert[]): Promise<number> => {
   const list = alerts.length > 5
     ? [{
@@ -98,8 +101,10 @@ const sendAlerts = async (topic: string, alerts: Alert[]): Promise<number> => {
         body: JSON.stringify({ topic, title: a.title, message: a.body, tags: [a.tag], priority: 4 }),
         signal: AbortSignal.timeout(8000),
       });
-      if (res.ok) sent++; else console.error("ntfy answered", res.status);
-    } catch {
+      lastNtfy = String(res.status);
+      if (res.ok) sent++; else { console.error("ntfy answered", res.status); lastNtfy += " " + (await res.text().catch(() => "")).slice(0, 80); }
+    } catch (e) {
+      lastNtfy = "failed: " + (e instanceof Error ? e.message : String(e)).slice(0, 80);
       console.error("ntfy request failed");
     }
   }
@@ -354,6 +359,8 @@ const syncUser = async (userId: string): Promise<SyncResult> => {
       examSeatsCount: data.examSeats.length,
       examSeats: data.examSeats,
       notified,
+      alertsFound: alerts.length,
+      ntfy: !topicNow ? "no topic" : account.portal_notify === false ? "portal alerts off" : lastNtfy,
     };
   } catch (e) {
     const { code, message } = describe(e);
@@ -472,7 +479,9 @@ Deno.serve(async (req: Request) => {
       for (let a = queue.shift(); a; a = queue.shift()) results.push(await syncUser(a.user_id));
     };
     await Promise.all(Array.from({ length: Math.min(5, queue.length) }, worker));
-    return json({ ok: true, synced: results.length, failed: results.filter((r) => !r.ok).length });
+    // numbers only (no names or codes): how many alerts each account found and sent, and what ntfy said
+    const report = results.map((r) => ({ ok: r.ok, found: r.alertsFound ?? 0, sent: r.notified ?? 0, ntfy: r.ntfy ?? "" }));
+    return json({ ok: true, synced: results.length, failed: results.filter((r) => !r.ok).length, report });
   }
 
   // everything else needs a signed-in app user
