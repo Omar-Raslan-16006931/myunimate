@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { Document, Page, pdfjs } from 'react-pdf';
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
@@ -7,12 +8,14 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 ).toString();
 
 const GAP = 10;
-const MAX_SCALE = 3;
+const PAD = 8;
+const MAX_SCALE = 4;
+const RENDER = 2; // pages are drawn once at 2x and only resized by zoom, so zooming never redraws (no flicker)
 const clamp = (n: number, a: number, b: number) => Math.min(b, Math.max(a, n));
 
 /**
- * Light PDF reader: the phone's own smooth scrolling, only the pages near the screen are drawn
- * (the rest are empty placeholders of the right size), pinch / double-tap zoom and a "3 / 12" page badge.
+ * Light PDF reader: the phone's own smooth scrolling, only the pages near the screen are drawn,
+ * pinch zoom around your fingers (with the rubber-band at the ends), double-tap zoom and a "3 / 12" page badge.
  */
 export const PdfViewer = ({ file }: { file: string }) => {
   const box = useRef<HTMLDivElement>(null);
@@ -29,7 +32,7 @@ export const PdfViewer = ({ file }: { file: string }) => {
   const scaleRef = useRef(1);
   scaleRef.current = scale;
 
-  const baseW = Math.min(boxW - 16, 960);
+  const baseW = Math.min(boxW - PAD * 2, 960);
   const pageW = baseW * scale;
   const firstRatio = ratios[1] ?? 1.414;
   const ratioOf = (n: number) => ratios[n] ?? firstRatio;
@@ -80,60 +83,128 @@ export const PdfViewer = ({ file }: { file: string }) => {
   useEffect(() => { if (numPages) onScroll(); }, [numPages, onScroll]); // flash the badge when it opens
   useEffect(() => () => window.clearTimeout(badgeTimer.current), []);
 
-  // zoom keeps the middle of the screen where it was
-  const zoomTo = useCallback((next: number) => {
+  // Real zoom: sizes change in one step and the scroll is set in the same frame so the point under
+  // your fingers (mx, my = their position on screen) stays put. Pages are not redrawn, so nothing flickers.
+  const commitZoom = useCallback((next: number, mx: number, my: number) => {
     const root = box.current;
     const old = scaleRef.current;
     next = clamp(next, 1, MAX_SCALE);
     if (!root || next === old) return;
     const k = next / old;
-    const cy = root.scrollTop + root.clientHeight / 2;
-    const cx = root.scrollLeft + root.clientWidth / 2;
-    setScale(next);
-    requestAnimationFrame(() => {
-      root.scrollTop = cy * k - root.clientHeight / 2;
-      root.scrollLeft = cx * k - root.clientWidth / 2;
-    });
+    const cx = root.scrollLeft + mx;
+    const cy = root.scrollTop + my;
+    flushSync(() => setScale(next));
+    root.scrollLeft = cx * k - mx;
+    root.scrollTop = cy * k - my;
   }, []);
 
-  // pinch (live, no re-drawing until the fingers lift) and double-tap
+  // hand gestures: pinch around the fingers (live, follows them, rubber-bands past the limits),
+  // two-finger drag while pinching, double-tap to zoom in / back out at the tapped spot
   useEffect(() => {
     const root = box.current;
     if (!root) return;
     // the pages (and so this wrapper) only exist once the PDF has loaded, so it is looked up when needed
-    const inner = { get style() { return (content.current ?? document.createElement('div')).style; } };
-    let startDist = 0;
-    let live = 1;
-    let lastTap = 0;
-    let noTapUntil = 0; // lifting the fingers after a pinch is not a tap
-    const dist = (t: TouchList) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+    const el = () => content.current;
+
+    let pinching = false;
+    let d0 = 1, mx0 = 0, my0 = 0, mxNow = 0, myNow = 0, ratio = 1;
+    let ox = 0, oy = 0; // the content point that sits under the fingers when the pinch begins
+    let lastTap = 0, lastX = 0, lastY = 0, noTapUntil = 0, settling = false;
+
+    const pos = (t: TouchList) => {
+      const r = root.getBoundingClientRect();
+      return {
+        d: Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY),
+        x: (t[0].clientX + t[1].clientX) / 2 - r.left,
+        y: (t[0].clientY + t[1].clientY) / 2 - r.top,
+      };
+    };
+    const paint = (r: number, dx: number, dy: number) => {
+      const c = el();
+      if (!c) return;
+      c.style.transformOrigin = `${ox}px ${oy}px`;
+      c.style.transform = `translate(${dx}px, ${dy}px) scale(${r})`;
+    };
+    const clear = () => {
+      const c = el();
+      if (c) { c.style.transition = ''; c.style.transform = ''; }
+    };
+
+    // eased zoom to a target scale around a screen point, used for double-tap and for the rubber-band
+    const animateTo = (target: number, mx: number, my: number) => {
+      const c = el();
+      const cur = scaleRef.current;
+      target = clamp(target, 1, MAX_SCALE);
+      if (!c || settling) return;
+      if (target === cur) { clear(); return; }
+      settling = true;
+      ox = root.scrollLeft + mx; oy = root.scrollTop + my;
+      c.style.transition = 'none';
+      paint(1, 0, 0);
+      void c.offsetWidth; // apply the start state, then ease to the end state
+      c.style.transition = 'transform 0.22s ease-out';
+      paint(target / cur, 0, 0);
+      window.setTimeout(() => {
+        clear();
+        commitZoom(target, mx, my);
+        settling = false;
+      }, 230);
+    };
 
     const start = (e: TouchEvent) => {
-      if (e.touches.length === 2) { startDist = dist(e.touches); live = 1; }
+      if (settling) return;
+      if (e.touches.length === 2) {
+        const p = pos(e.touches);
+        pinching = true;
+        d0 = p.d || 1; mx0 = mxNow = p.x; my0 = myNow = p.y; ratio = 1;
+        ox = root.scrollLeft + p.x; oy = root.scrollTop + p.y;
+        root.style.overflow = 'hidden'; // the page stands still while you pinch (the iPhone would otherwise keep scrolling)
+        const c = el();
+        if (c) c.style.transition = 'none';
+      }
     };
     const move = (e: TouchEvent) => {
-      if (e.touches.length !== 2 || !startDist) return;
+      if (!pinching || e.touches.length !== 2) return;
       e.preventDefault();
-      const cur = scaleRef.current;
-      live = clamp(cur * (dist(e.touches) / startDist), 1, MAX_SCALE) / cur;
-      inner.style.transformOrigin = `${root.scrollLeft + root.clientWidth / 2}px ${root.scrollTop + root.clientHeight / 2}px`;
-      inner.style.transform = `scale(${live})`;
+      const p = pos(e.touches);
+      mxNow = p.x; myNow = p.y;
+      // a little stretch past the limits (like iOS), it springs back on release
+      ratio = clamp(scaleRef.current * (p.d / d0), 0.75, MAX_SCALE * 1.2) / scaleRef.current;
+      paint(ratio, mxNow - mx0, myNow - my0);
     };
     const end = (e: TouchEvent) => {
-      if (startDist && e.touches.length < 2) {
-        const target = scaleRef.current * live;
-        startDist = 0;
-        inner.style.transform = '';
-        if (live !== 1) zoomTo(target);
-        live = 1;
-        lastTap = 0;
+      if (pinching && e.touches.length < 2) {
+        pinching = false;
+        root.style.overflow = '';
+        const target = scaleRef.current * ratio;
+        const settled = clamp(target, 1, MAX_SCALE);
         noTapUntil = Date.now() + 500;
+        lastTap = 0;
+        if (settled !== target) {
+          // past a limit: spring back to it, then lock the zoom in
+          const c = el();
+          if (c) {
+            c.style.transition = 'transform 0.2s ease-out';
+            paint(settled / scaleRef.current, mxNow - mx0, myNow - my0);
+            settling = true;
+            window.setTimeout(() => { clear(); commitZoom(settled, mxNow, myNow); settling = false; }, 210);
+          }
+        } else {
+          clear();
+          commitZoom(settled, mxNow, myNow);
+        }
         return;
       }
-      if (e.touches.length === 0 && e.changedTouches.length === 1) {
+      if (e.touches.length === 0 && e.changedTouches.length === 1 && !pinching) {
         const now = Date.now();
+        const t = e.changedTouches[0];
+        const r = root.getBoundingClientRect();
+        const x = t.clientX - r.left, y = t.clientY - r.top;
         if (now < noTapUntil) return;
-        if (now - lastTap < 280) { zoomTo(scaleRef.current > 1.2 ? 1 : 2.5); lastTap = 0; } else lastTap = now;
+        if (now - lastTap < 300 && Math.hypot(x - lastX, y - lastY) < 40) {
+          animateTo(scaleRef.current > 1.2 ? 1 : 2.5, x, y);
+          lastTap = 0;
+        } else { lastTap = now; lastX = x; lastY = y; }
       }
     };
     root.addEventListener('touchstart', start, { passive: true });
@@ -145,13 +216,18 @@ export const PdfViewer = ({ file }: { file: string }) => {
       root.removeEventListener('touchmove', move);
       root.removeEventListener('touchend', end);
       root.removeEventListener('touchcancel', end);
+      root.style.overflow = '';
     };
-  }, [zoomTo]);
+  }, [commitZoom]);
 
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const gap = GAP * scale;
+  const pad = PAD * scale;
 
   return (
-    <div className="relative h-full w-full bg-zinc-950 select-none">
+    <div className="pdfv relative h-full w-full bg-zinc-950 select-none">
+      {/* pages are drawn at a fixed size and stretched to fit, so changing the zoom never redraws them */}
+      <style>{`.pdfv .react-pdf__Page{width:100%!important;height:100%!important}.pdfv .react-pdf__Page canvas{width:100%!important;height:100%!important;display:block}`}</style>
       <div
         ref={box}
         onScroll={onScroll}
@@ -169,7 +245,7 @@ export const PdfViewer = ({ file }: { file: string }) => {
           }
           error={<div className="mt-20 text-center text-sm text-zinc-400">Could not open this PDF.</div>}
         >
-          <div ref={content} style={{ width: pageW + 16, minWidth: '100%', padding: `${GAP}px 8px`, boxSizing: 'border-box', willChange: 'transform' }}>
+          <div ref={content} style={{ width: pageW + pad * 2, margin: '0 auto', padding: `${gap}px ${pad}px 0`, boxSizing: 'border-box', willChange: 'transform' }}>
             {Array.from({ length: numPages }, (_, i) => {
               const n = i + 1;
               return (
@@ -177,12 +253,12 @@ export const PdfViewer = ({ file }: { file: string }) => {
                   key={n}
                   data-page={n}
                   ref={el => { pageEls.current[i] = el; }}
-                  style={{ width: pageW, height: pageW * ratioOf(n), marginBottom: GAP, marginLeft: 'auto', marginRight: 'auto', background: '#fff', borderRadius: 2, overflow: 'hidden', boxShadow: '0 6px 18px rgba(0,0,0,0.45)' }}
+                  style={{ width: pageW, height: pageW * ratioOf(n), marginBottom: gap, background: '#fff', borderRadius: 2, overflow: 'hidden', boxShadow: '0 6px 18px rgba(0,0,0,0.45)' }}
                 >
                   {near.has(n) && (
                     <Page
                       pageNumber={n}
-                      width={pageW}
+                      width={baseW * RENDER}
                       devicePixelRatio={dpr}
                       renderTextLayer={false}
                       renderAnnotationLayer={false}
