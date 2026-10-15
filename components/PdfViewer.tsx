@@ -107,7 +107,8 @@ export const PdfViewer = ({ file }: { file: string }) => {
     const el = () => content.current;
 
     let pinching = false;
-    let d0 = 1, mx0 = 0, my0 = 0, mxNow = 0, myNow = 0, ratio = 1;
+    let releasePending = false; // fingers are still on the glass after a pinch: lock the zoom in when the last one lifts
+    let d0 = 1, mx0 = 0, my0 = 0, mxNow = 0, myNow = 0, ratio = 1, base = 1;
     let ox = 0, oy = 0; // the content point that sits under the fingers when the pinch begins
     let lastTap = 0, lastX = 0, lastY = 0, noTapUntil = 0, settling = false;
 
@@ -129,8 +130,16 @@ export const PdfViewer = ({ file }: { file: string }) => {
       const c = el();
       if (c) { c.style.transition = ''; c.style.transform = ''; }
     };
+    // stretching past the limits gets harder the further you go (rubber band)
+    const rubber = (t: number) => {
+      if (t < 1) return Math.max(0.45, 1 - (1 - t) * 0.6);
+      if (t > MAX_SCALE) return Math.min(MAX_SCALE * 1.6, MAX_SCALE + (t - MAX_SCALE) * 0.45);
+      return t;
+    };
+    const SPRING = 'transform 0.42s cubic-bezier(0.2, 1.25, 0.4, 1)'; // a little overshoot, then settles
+    const EASE = 'transform 0.24s ease-out';
 
-    // eased zoom to a target scale around a screen point, used for double-tap and for the rubber-band
+    // zoom to a target scale around a screen point, used for double-tap
     const animateTo = (target: number, mx: number, my: number) => {
       const c = el();
       const cur = scaleRef.current;
@@ -142,23 +151,57 @@ export const PdfViewer = ({ file }: { file: string }) => {
       c.style.transition = 'none';
       paint(1, 0, 0);
       void c.offsetWidth; // apply the start state, then ease to the end state
-      c.style.transition = 'transform 0.22s ease-out';
+      c.style.transition = EASE;
       paint(target / cur, 0, 0);
       window.setTimeout(() => {
         clear();
         commitZoom(target, mx, my);
         settling = false;
-      }, 230);
+      }, 250);
+    };
+
+    // last finger is up: spring back inside the limits if needed, then lock the zoom in (when no finger touches, so the scroll position sticks)
+    const finish = () => {
+      releasePending = false;
+      root.style.overflow = '';
+      const cur = scaleRef.current;
+      const target = cur * ratio;
+      const settled = clamp(target, 1, MAX_SCALE);
+      noTapUntil = Date.now() + 500;
+      lastTap = 0;
+      const lock = () => {
+        clear();
+        commitZoom(settled, mxNow, myNow);
+        // some phones ignore a scroll change in the very same frame: set it again on the next one
+        const st = root.scrollTop, sl = root.scrollLeft;
+        requestAnimationFrame(() => { root.scrollTop = st; root.scrollLeft = sl; });
+        settling = false;
+      };
+      if (settled !== target) {
+        const c = el();
+        if (!c) { lock(); return; }
+        settling = true;
+        c.style.transition = SPRING;
+        paint(settled / cur, mxNow - mx0, myNow - my0);
+        window.setTimeout(lock, 440);
+      } else lock();
     };
 
     const start = (e: TouchEvent) => {
       if (settling) return;
       if (e.touches.length === 2) {
         const p = pos(e.touches);
+        if (releasePending) {
+          // fingers came back before the last one lifted: carry on from where it is
+          base = ratio; d0 = p.d || 1; mx0 = p.x - (mxNow - mx0); my0 = p.y - (myNow - my0);
+          mxNow = p.x; myNow = p.y;
+        } else {
+          d0 = p.d || 1; mx0 = mxNow = p.x; my0 = myNow = p.y; ratio = 1; base = 1;
+          ox = root.scrollLeft + p.x; oy = root.scrollTop + p.y;
+          root.style.overflow = 'hidden'; // the page stands still while you pinch (the iPhone would otherwise keep scrolling)
+        }
         pinching = true;
-        d0 = p.d || 1; mx0 = mxNow = p.x; my0 = myNow = p.y; ratio = 1;
-        ox = root.scrollLeft + p.x; oy = root.scrollTop + p.y;
-        root.style.overflow = 'hidden'; // the page stands still while you pinch (the iPhone would otherwise keep scrolling)
+        releasePending = false;
         const c = el();
         if (c) c.style.transition = 'none';
       }
@@ -168,34 +211,17 @@ export const PdfViewer = ({ file }: { file: string }) => {
       e.preventDefault();
       const p = pos(e.touches);
       mxNow = p.x; myNow = p.y;
-      // a little stretch past the limits (like iOS), it springs back on release
-      ratio = clamp(scaleRef.current * (p.d / d0), 0.75, MAX_SCALE * 1.2) / scaleRef.current;
+      const cur = scaleRef.current;
+      ratio = rubber(cur * base * (p.d / d0)) / cur;
       paint(ratio, mxNow - mx0, myNow - my0);
     };
     const end = (e: TouchEvent) => {
-      if (pinching && e.touches.length < 2) {
-        pinching = false;
-        root.style.overflow = '';
-        const target = scaleRef.current * ratio;
-        const settled = clamp(target, 1, MAX_SCALE);
-        noTapUntil = Date.now() + 500;
-        lastTap = 0;
-        if (settled !== target) {
-          // past a limit: spring back to it, then lock the zoom in
-          const c = el();
-          if (c) {
-            c.style.transition = 'transform 0.2s ease-out';
-            paint(settled / scaleRef.current, mxNow - mx0, myNow - my0);
-            settling = true;
-            window.setTimeout(() => { clear(); commitZoom(settled, mxNow, myNow); settling = false; }, 210);
-          }
-        } else {
-          clear();
-          commitZoom(settled, mxNow, myNow);
-        }
+      if (pinching && e.touches.length < 2) { pinching = false; releasePending = true; }
+      if (releasePending) {
+        if (e.touches.length === 0) finish();
         return;
       }
-      if (e.touches.length === 0 && e.changedTouches.length === 1 && !pinching) {
+      if (e.touches.length === 0 && e.changedTouches.length === 1) {
         const now = Date.now();
         const t = e.changedTouches[0];
         const r = root.getBoundingClientRect();
