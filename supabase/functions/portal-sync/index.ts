@@ -102,7 +102,8 @@ const sendAlerts = async (topic: string, alerts: Alert[]): Promise<number> => {
   // One try: through the relay (a free Cloudflare Worker, so ntfy sees a different server address) or direct.
   const post = async (viaRelay: boolean, body: string) => {
     const headers: Record<string, string> = { "Content-Type": "application/json" };
-    if (token) headers.Authorization = `Bearer ${token}`;
+    // the relay goes out anonymous from Cloudflare's address; only the direct route uses the account token
+    if (token && !viaRelay) headers.Authorization = `Bearer ${token}`;
     if (viaRelay) headers["x-relay-key"] = relayKey;
     return await fetch(viaRelay ? relayUrl : "https://ntfy.sh", { method: "POST", headers, body, signal: AbortSignal.timeout(8000) });
   };
@@ -113,12 +114,12 @@ const sendAlerts = async (topic: string, alerts: Alert[]): Promise<number> => {
     for (const viaRelay of routes) {
       try {
         const res = await post(viaRelay, body);
-        lastNtfy = (viaRelay ? "relay " : "") + res.status;
-        if (res.ok) { sent++; break; }
+        const label = (viaRelay ? "relay " : "direct ") + res.status;
+        if (res.ok) { lastNtfy = label; sent++; break; }
         console.error("ntfy answered", res.status);
-        lastNtfy += " " + (await res.text().catch(() => "")).slice(0, 80);
+        lastNtfy = (viaRelay ? "" : lastNtfy + " | ") + label + " " + (await res.text().catch(() => "")).slice(0, 80);
       } catch (e) {
-        lastNtfy = (viaRelay ? "relay " : "") + "failed: " + (e instanceof Error ? e.message : String(e)).slice(0, 80);
+        lastNtfy = (viaRelay ? "" : lastNtfy + " | ") + (viaRelay ? "relay" : "direct") + " failed: " + (e instanceof Error ? e.message : String(e)).slice(0, 80);
         console.error("ntfy request failed");
       }
     }
