@@ -753,7 +753,9 @@ export const calcDurationMinutes = (start: string, end: string): number => {
 export const splitExamCourse = (raw: string): { key: string; name: string } => {
   // e.g. "GIU-Cairo.General - RPW401 Research Paper Writing (A2) - Winter 2026"
   const parts = raw.split(" - ").map(p => p.trim());
-  let target = parts.length >= 2 ? parts[1] : raw;
+  // the part that starts with the course code (ICS510 ...); the track name ("Software Engineering 5th") has none
+  const withCode = parts.find(p => /^[A-Z]{2,4}\s*\d{3,4}[A-Z]?\b/i.test(p));
+  let target = withCode ?? (parts.length >= 2 ? parts[1] : raw);
   const codeMatch = target.match(/\b([A-Z]{2,4}\s*\d{3,4}[A-Z]?)\b/i);
   const key = codeMatch ? codeMatch[1].replace(/\s+/g, "") : target;
   return { key, name: target };
