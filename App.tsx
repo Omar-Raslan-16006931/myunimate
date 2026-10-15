@@ -1,9 +1,8 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { AlertCircle, RefreshCw } from 'lucide-react';
 import { Toaster, toast } from 'react-hot-toast';
 import { remindersEnabled, syncReminders } from './services/notifications';
-import { PortalGrades, PortalAttendance, PortalExamSeats } from './components/PortalScreens';
 import PortalSettings from './components/PortalSettings';
 import { getPortalAccount, getPortalSummary, getPortalExamSeats, getPortalAlertTopic, isBarkTopic, syncPortal, clearPortalCache, bindPortalUser, courseCodeOf, PortalExamSeat, PortalClass } from './services/portal';
 import { checkPortalChanges } from './services/portalAlerts';
@@ -21,24 +20,40 @@ import CompleteProfile from './components/CompleteProfile';
 import Navigation from './components/Navigation';
 import { Dashboard } from './components/Dashboard';
 import Schedule from './components/Schedule';
-import AIChat from './components/AIChat';
-import Settings from './components/Settings';
-import GymView from './components/GymView';
-import ToDoList from './components/ToDoList';
 
 import AddEventModal from './components/AddEventModal';
 import EventDetailsModal from './components/EventDetailsModal';
-import ImageImportModal from './components/ImageImportModal';
-import SmartImportModal from './components/SmartImportModal';
 import PasskeyPrompt from './components/PasskeyPrompt';
 import WhatsNew, { markWhatsNewSeen } from './components/WhatsNew';
 import ReplyNotifier from './components/ReplyNotifier';
-import SubscriptionPage from './components/SubscriptionPage';
-import UniversalGradeCalculator from './components/UniversalGradeCalculator';
-import PaymentPage from './components/PaymentPage';
-import CoursesView from './components/CoursesView';
-import MaterialsView from './components/MaterialsView';
-import MaterialsHub from './components/CmsScreens';
+
+// Screens that are not needed to open the app load on demand, so the first screen shows much sooner.
+const AIChat = lazy(() => import('./components/AIChat'));
+const Settings = lazy(() => import('./components/Settings'));
+const GymView = lazy(() => import('./components/GymView'));
+const ToDoList = lazy(() => import('./components/ToDoList'));
+const ImageImportModal = lazy(() => import('./components/ImageImportModal'));
+const SmartImportModal = lazy(() => import('./components/SmartImportModal'));
+const SubscriptionPage = lazy(() => import('./components/SubscriptionPage'));
+const UniversalGradeCalculator = lazy(() => import('./components/UniversalGradeCalculator'));
+const PaymentPage = lazy(() => import('./components/PaymentPage'));
+const CoursesView = lazy(() => import('./components/CoursesView'));
+const MaterialsView = lazy(() => import('./components/MaterialsView'));
+const MaterialsHub = lazy(() => import('./components/CmsScreens'));
+const PortalGrades = lazy(() => import('./components/PortalScreens').then(m => ({ default: m.PortalGrades })));
+const PortalAttendance = lazy(() => import('./components/PortalScreens').then(m => ({ default: m.PortalAttendance })));
+const PortalExamSeats = lazy(() => import('./components/PortalScreens').then(m => ({ default: m.PortalExamSeats })));
+// after the first screen is up, quietly fetch the rest in the background so opening them feels instant
+const prefetchScreens = () => {
+  const go = () => {
+    [() => import('./components/Settings'), () => import('./components/CoursesView'), () => import('./components/ToDoList'),
+      () => import('./components/CmsScreens'), () => import('./components/PortalScreens'), () => import('./components/AIChat'),
+      () => import('./components/GymView'), () => import('./components/MaterialsView')]
+      .forEach((load, i) => setTimeout(() => { load().catch(() => {}); }, 400 * i));
+  };
+  const idle = (window as unknown as { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => void }).requestIdleCallback;
+  if (idle) idle(go, { timeout: 4000 }); else setTimeout(go, 2500);
+};
 
 // Error Boundary Component
 class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean, error: Error | null}> {
@@ -95,6 +110,8 @@ const refreshColors = (c: EventColorMap): EventColorMap =>
 export const App: React.FC = () => {
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const imageModalSeen = useRef(false); // the import modals load only once they have been opened
+  const smartModalSeen = useRef(false);
   const [showAuth, setShowAuth] = useState(false);
   const [profile, setProfile] = useState<any>(null);
   const [view, setView] = useState<ViewState>('dashboard');
@@ -335,10 +352,25 @@ export const App: React.FC = () => {
         if (session) {
             // Wait for initial data to be loaded before showing the app
             // This prevents the "stuff is gone" flash
-            await Promise.all([
+            const refresh = Promise.all([
                 fetchProfile(session.user.id),
                 fetchUserData(session.user.id)
             ]);
+            // A returning user already has a saved copy on this phone (shown a moment ago from the cache),
+            // so open straight away and let the fresh data arrive behind it. First-ever launch still waits.
+            let warm = false;
+            try {
+                const c = JSON.parse(localStorage.getItem('unimate_v1_cache') || 'null');
+                warm = !!(c && c.profile && Array.isArray(c.events) && Array.isArray(c.profiles) && c.profiles.length);
+            } catch { /* no usable copy: wait for the network */ }
+            if (warm) {
+                setProfileFetched(true);
+                setLoading(false);
+                clearTimeout(loadingTimeout);
+                await refresh.catch(() => undefined);
+            } else {
+                await refresh;
+            }
             hasHydratedRef.current = true;
         } else {
             // Default states for non-logged in users
@@ -1155,6 +1187,10 @@ export const App: React.FC = () => {
     return () => { cancelled = true; document.removeEventListener('visibilitychange', onVisible); };
   }, [session?.user?.id]);
 
+  // once the first screen is up, fetch the other screens quietly in the background
+  const prefetched = useRef(false);
+  useEffect(() => { if (!loading && !prefetched.current) { prefetched.current = true; prefetchScreens(); } }, [loading]);
+
   // Class reminders: re-plan whenever the schedule changes or the app comes back to the front.
   useEffect(() => {
     const plan = () => {
@@ -1248,7 +1284,7 @@ export const App: React.FC = () => {
   if (showPayment) {
       return (
           <div style={{ ...styles.container, paddingTop: 'calc(env(safe-area-inset-top) + 16px)', paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px)' }} className={themeMode}>
-              <PaymentPage 
+              <Suspense fallback={null}><PaymentPage 
                   price={selectedPlanPrice} 
                   onSuccess={async () => {
                       await handleUpgrade(selectedPlanPrice);
@@ -1256,7 +1292,7 @@ export const App: React.FC = () => {
                       setShowOnboarding(false);
                   }}
                   onCancel={() => setShowPayment(false)}
-              />
+              /></Suspense>
           </div>
       )
   }
@@ -1264,7 +1300,7 @@ export const App: React.FC = () => {
   if (showOnboarding) {
       return (
           <div style={{ ...styles.container, paddingTop: 'calc(env(safe-area-inset-top) + 16px)', paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px)' }} className={themeMode}>
-              <SubscriptionPage 
+              <Suspense fallback={null}><SubscriptionPage 
                   subscriptionTier={0} 
                   nextRenewalDate={new Date().toISOString()} 
                   pendingDowngrade={false}
@@ -1277,7 +1313,7 @@ export const App: React.FC = () => {
                       setShowOnboarding(false);
                   }}
                   onBack={() => setShowOnboarding(false)}
-              />
+              /></Suspense>
           </div>
       )
   }
@@ -1693,7 +1729,7 @@ export const App: React.FC = () => {
       <ErrorBoundary>
         {/* keyed by page, so every page switch fades in */}
         <div key={view} className="page-in" style={{ flex: '1 1 0%', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-          {renderContent()}
+          <Suspense fallback={null}>{renderContent()}</Suspense>
         </div>
       </ErrorBoundary>
       
@@ -1745,7 +1781,7 @@ export const App: React.FC = () => {
         periods={currentPeriods}
       />
 
-      <ImageImportModal 
+      {(imageModalSeen.current = imageModalSeen.current || isImportModalOpen) && <Suspense fallback={null}><ImageImportModal 
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
         onImport={(extracted) => {
@@ -1753,10 +1789,10 @@ export const App: React.FC = () => {
             // Simplified for demo
             console.log("Imported", extracted);
         }}
-      />
+      /></Suspense>}
 
-      {(
-        <SmartImportModal
+      {(smartModalSeen.current = smartModalSeen.current || isSmartImportModalOpen) && (
+        <Suspense fallback={null}><SmartImportModal
           open={isSmartImportModalOpen}
           onClose={() => setIsSmartImportModalOpen(false)}
           profiles={profiles}
@@ -1782,7 +1818,7 @@ export const App: React.FC = () => {
             
             await onAddEvents(withoutDuplicates(eventsToAdd, targetProfileId), targetProfileId, addToCourses);
           }}
-        />
+        /></Suspense>
       )}
       <ReplyNotifier userId={session?.user?.id} onOpen={() => { setView('settings'); setOpenSupportKey(k => k + 1); }} />
       <WhatsNew ready={!loading && !isSmartImportModalOpen} onOpenChange={setWhatsNewOpen} />
