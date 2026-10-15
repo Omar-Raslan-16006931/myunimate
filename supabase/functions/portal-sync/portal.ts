@@ -290,6 +290,10 @@ export class PortalHttp {
   private reader: Reader | null = null;
   private cookies = new Map<string, string>();
   private basicHeader: string | null = null;
+  /** what we say we can receive; for files this is widened so the site does not answer 406 */
+  accept = "text/html,application/xhtml+xml";
+  /** the page a request claims to come from (file links need one on some sites) */
+  referer: string | null = null;
 
   private host: string;
   private connector: Connector;
@@ -322,11 +326,13 @@ export class PortalHttp {
       `${method} ${path} HTTP/1.1`,
       `Host: ${this.host}`,
       "User-Agent: Mozilla/5.0 (UniMate portal sync)",
-      "Accept: text/html,application/xhtml+xml",
+      `Accept: ${this.accept}`,
+      "Accept-Language: en-US,en;q=0.9",
       "Accept-Encoding: identity",
       "Connection: keep-alive",
     ];
     if (this.cookies.size) lines.push("Cookie: " + [...this.cookies].map(([k, v]) => `${k}=${v}`).join("; "));
+    if (this.referer) lines.push(`Referer: ${this.referer}`);
     if (authHeader) lines.push(`Authorization: ${authHeader}`);
     if (method === "POST") {
       lines.push("Content-Type: application/x-www-form-urlencoded");

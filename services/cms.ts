@@ -137,20 +137,26 @@ export const groupWeeks = (files: CmsFile[]): CmsWeek[] => {
   return weeks.sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''));
 };
 
-const CMS_ORIGIN = 'https://cms.giu-uni.de';
-
 /**
- * Opens one file in the phone's own viewer (Safari sheet in the iPhone app, a new tab in a browser).
- * Files under /Uploads/ open without a login on the CMS, so the app just opens the link.
+ * Opens one file in the phone's own viewer (Safari sheet in the iPhone app, a new tab in a browser)
+ * instead of saving it. The server gives a link that works for 5 minutes.
  */
-export const openCmsFile = async (file: Pick<CmsFile, 'path'>): Promise<{ ok: boolean; message?: string }> => {
-  if (!/^\/Uploads\/[^?#]+$/.test(file.path) || file.path.includes('..')) return { ok: false, message: 'That file link is not allowed.' };
-  const url = new URL(file.path, CMS_ORIGIN).href;
+export const openCmsFile = async (file: Pick<CmsFile, 'content_id'>): Promise<{ ok: boolean; message?: string }> => {
+  // browsers only allow a new tab straight after a tap, so open it first and fill it in after
+  const native = (() => { try { return Capacitor.isNativePlatform(); } catch { return false; } })();
+  const tab = native ? null : window.open('', '_blank');
   try {
-    if (Capacitor.isNativePlatform()) await Browser.open({ url, presentationStyle: 'fullscreen' });
-    else if (!window.open(url, '_blank', 'noopener')) window.location.href = url; // pop-up blocked
+    const res = await call({ action: 'cms_link', contentId: file.content_id }) as CmsResult & { url?: string };
+    if (!res.ok || !res.url) {
+      tab?.close();
+      return { ok: false, message: res.message || 'Could not open the file.' };
+    }
+    if (native) await Browser.open({ url: res.url, presentationStyle: 'fullscreen' });
+    else if (tab) tab.location.href = res.url;
+    else window.location.href = res.url; // pop-up blocked: leave the page for the file
     return { ok: true };
   } catch {
+    tab?.close();
     return { ok: false, message: 'Could not open the file.' };
   }
 };

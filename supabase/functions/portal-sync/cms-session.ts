@@ -24,6 +24,18 @@ export const openCmsSession = (auth: CmsAuth, connector: Connector): Promise<Cms
       okPage(res.status, "CMS");
       return res.body;
     },
+    async getFile(path) {
+      http.accept = "application/pdf,application/octet-stream,*/*;q=0.8";
+      http.referer = `https://${CMS_HOST}/apps/student/ViewAllCourseStn.aspx`;
+      const res = await http.request("GET", path);
+      if (res.status !== 200) {
+        // a short piece of the answer helps to see why the site refused
+        const hint = res.body.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 100);
+        if (res.status === 401 || res.status === 403) throw new Error("PORTAL_LOGIN_FAILED");
+        throw new Error(`PORTAL_HTTP_${res.status}_CMS_FILE${hint ? ": " + hint : ""}`);
+      }
+      return { body: res.bytes, contentType: res.headers.get("content-type")?.[0] ?? "application/octet-stream" };
+    },
     close: () => http.close(),
   };
   return Promise.resolve(session);
