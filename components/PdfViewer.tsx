@@ -99,20 +99,20 @@ export const PdfViewer = ({ file }: { file: string }) => {
   // pinch (live, no re-drawing until the fingers lift) and double-tap
   useEffect(() => {
     const root = box.current;
-    const inner = content.current;
-    if (!root || !inner) return;
+    if (!root) return;
+    // the pages (and so this wrapper) only exist once the PDF has loaded, so it is looked up when needed
+    const inner = { get style() { return (content.current ?? document.createElement('div')).style; } };
     let startDist = 0;
     let live = 1;
     let lastTap = 0;
     let noTapUntil = 0; // lifting the fingers after a pinch is not a tap
     const dist = (t: TouchList) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
 
-    const hasGestures = 'ongesturestart' in window;
     const start = (e: TouchEvent) => {
-      if (!hasGestures && e.touches.length === 2) { startDist = dist(e.touches); live = 1; }
+      if (e.touches.length === 2) { startDist = dist(e.touches); live = 1; }
     };
     const move = (e: TouchEvent) => {
-      if (hasGestures || e.touches.length !== 2 || !startDist) return;
+      if (e.touches.length !== 2 || !startDist) return;
       e.preventDefault();
       const cur = scaleRef.current;
       live = clamp(cur * (dist(e.touches) / startDist), 1, MAX_SCALE) / cur;
@@ -127,6 +127,7 @@ export const PdfViewer = ({ file }: { file: string }) => {
         if (live !== 1) zoomTo(target);
         live = 1;
         lastTap = 0;
+        noTapUntil = Date.now() + 500;
         return;
       }
       if (e.touches.length === 0 && e.changedTouches.length === 1) {
@@ -135,38 +136,15 @@ export const PdfViewer = ({ file }: { file: string }) => {
         if (now - lastTap < 280) { zoomTo(scaleRef.current > 1.2 ? 1 : 2.5); lastTap = 0; } else lastTap = now;
       }
     };
-    // iPhone Safari / the app: its own pinch events are the reliable way to catch a two-finger pinch
-    let gStart = 1;
-    const gStartEv = (e: Event) => { e.preventDefault(); gStart = scaleRef.current; live = 1; };
-    const gChange = (e: Event) => {
-      e.preventDefault();
-      const cur = scaleRef.current;
-      live = clamp(gStart * (e as unknown as { scale: number }).scale, 1, MAX_SCALE) / cur;
-      inner.style.transformOrigin = `${root.scrollLeft + root.clientWidth / 2}px ${root.scrollTop + root.clientHeight / 2}px`;
-      inner.style.transform = `scale(${live})`;
-    };
-    const gEnd = (e: Event) => {
-      e.preventDefault();
-      const target = scaleRef.current * live;
-      inner.style.transform = '';
-      if (live !== 1) zoomTo(target);
-      live = 1;
-      lastTap = 0;
-      noTapUntil = Date.now() + 500;
-    };
-    root.addEventListener('gesturestart', gStartEv);
-    root.addEventListener('gesturechange', gChange);
-    root.addEventListener('gestureend', gEnd);
     root.addEventListener('touchstart', start, { passive: true });
     root.addEventListener('touchmove', move, { passive: false });
     root.addEventListener('touchend', end, { passive: true });
+    root.addEventListener('touchcancel', end, { passive: true });
     return () => {
-      root.removeEventListener('gesturestart', gStartEv);
-      root.removeEventListener('gesturechange', gChange);
-      root.removeEventListener('gestureend', gEnd);
       root.removeEventListener('touchstart', start);
       root.removeEventListener('touchmove', move);
       root.removeEventListener('touchend', end);
+      root.removeEventListener('touchcancel', end);
     };
   }, [zoomTo]);
 
