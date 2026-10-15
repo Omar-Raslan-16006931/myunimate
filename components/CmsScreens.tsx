@@ -1,14 +1,12 @@
-import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, X, ChevronRight, ExternalLink, FileText, Folder, GraduationCap, KeyRound, Loader2, RefreshCw, Search } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowLeft, ChevronRight, ExternalLink, FileText, Folder, GraduationCap, KeyRound, Loader2, RefreshCw, Search } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { styles } from '../theme';
 import { getPortalAccount, readPortalCache, writePortalCache } from '../services/portal';
 import {
   CmsCourse, CmsFile, openCmsFile, getCmsCourses, getCmsFiles, groupSeasons, groupWeeks,
-  markCmsFilesSeen, shortDate, syncCms, cmsViewKind, loadCmsBlob,
+  markCmsFilesSeen, prefetchCmsLinks, shortDate, syncCms,
 } from '../services/cms';
-
-const PdfViewer = lazy(() => import('./PdfViewer').then(m => ({ default: m.PdfViewer })));
 
 const card: React.CSSProperties = {
   background: 'var(--surface)',
@@ -222,8 +220,7 @@ const GROUP_LABEL: Record<string, string> = { lectures: 'Lectures', assignments:
 const CmsCourseView: React.FC<{
   course: CmsCourse; files: CmsFile[]; syncing: boolean; problem: string | null;
   onBack: () => void; onSync: () => void; onSeen: (ids: number[]) => void;
-  onViewerChange?: (open: boolean) => void;
-}> = ({ course, files, syncing, problem, onBack, onSync, onSeen, onViewerChange }) => {
+}> = ({ course, files, syncing, problem, onBack, onSync, onSeen }) => {
   const [filter, setFilter] = useState<string>('all');
   const [busy, setBusy] = useState<number | null>(null);
 
@@ -238,32 +235,24 @@ const CmsCourseView: React.FC<{
   );
   const newCount = mine.filter(f => f.is_new).length;
 
-  const [viewing, setViewing] = useState<{ title: string; kind: 'pdf' | 'image'; url: string } | null>(null);
-  // the bottom bar hides while a file is open
-  useEffect(() => { onViewerChange?.(!!viewing); }, [viewing, onViewerChange]);
-  useEffect(() => () => onViewerChange?.(false), [onViewerChange]);
-  const closeViewer = () => { setViewing(v => { if (v) URL.revokeObjectURL(v.url); return null; }); };
-  useEffect(() => () => { setViewing(v => { if (v) URL.revokeObjectURL(v.url); return null; }); }, []);
+  // prepare the file links (and the server's CMS sign-in) while the list is on screen, so a tap opens at once
+  useEffect(() => {
+    if (!mine.length) return;
+    prefetchCmsLinks(course.course_id).catch(() => { /* the tap falls back to asking for the link */ });
+    const t = setInterval(() => { prefetchCmsLinks(course.course_id).catch(() => {}); }, 3.5 * 60 * 1000);
+    return () => clearInterval(t);
+  }, [course.course_id, mine.length]);
 
-  // a file is downloaded only when tapped, and kept on the phone so opening it again is instant
   const openFile = async (f: CmsFile) => {
     if (busy !== null) return;
     setBusy(f.id);
-    const kind = cmsViewKind(f.path);
-    let ok = false;
-    if (kind) {
-      const res = await loadCmsBlob({ content_id: f.content_id, path: f.path });
-      if (res.ok && res.blob) {
-        ok = true;
-        setViewing({ title: f.title, kind, url: URL.createObjectURL(res.blob) });
-      } else toast.error(res.message || 'Could not open the file.');
-    } else {
-      const res = await openCmsFile({ content_id: f.content_id, path: f.path });
-      ok = res.ok;
-      if (!res.ok) toast.error(res.message || 'Could not open the file.');
-    }
+    const res = await openCmsFile({ content_id: f.content_id, path: f.path });
     setBusy(null);
-    if (ok && f.is_new) { onSeen([f.id]); markCmsFilesSeen([f.id]); }
+    if (res.ok) {
+      if (f.is_new) { onSeen([f.id]); markCmsFilesSeen([f.id]); }
+    } else {
+      toast.error(res.message || 'Could not open the file.');
+    }
   };
 
   return (
@@ -328,23 +317,6 @@ const CmsCourseView: React.FC<{
           </div>
         )}
       </div>
-      {viewing && (
-        <div className="fixed inset-0 z-[80] flex flex-col" style={{ background: '#09090b' }}>
-          <div className="flex items-center gap-3 px-4 pb-3" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 12px)', borderBottom: '1px solid var(--line)' }}>
-            <button onClick={closeViewer} className="flex h-9 w-9 shrink-0 items-center justify-center border-0 bg-transparent" style={strong} aria-label="Close"><X size={24} /></button>
-            <div className="min-w-0 flex-1 truncate text-[0.95rem] font-bold" style={strong}>{viewing.title}</div>
-          </div>
-          <div className="min-h-0 flex-1">
-            {viewing.kind === 'pdf' ? (
-              <Suspense fallback={<div className="flex h-full items-center justify-center"><Loader2 size={26} className="animate-spin" style={muted} /></div>}>
-                <PdfViewer file={viewing.url} />
-              </Suspense>
-            ) : (
-              <img src={viewing.url} alt={viewing.title} className="h-full w-full object-contain" />
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 };
@@ -356,8 +328,7 @@ type Section = 'hub' | 'files' | 'cms';
 const MaterialsHub: React.FC<{
   filesView: (goBack: () => void) => React.ReactNode;
   onOpenSettings: () => void;
-  onViewerChange?: (open: boolean) => void;
-}> = ({ filesView, onOpenSettings, onViewerChange }) => {
+}> = ({ filesView, onOpenSettings }) => {
   const [section, setSection] = useState<Section>('hub');
   const [course, setCourse] = useState<CmsCourse | null>(null);
   const cms = useCms();
@@ -375,7 +346,6 @@ const MaterialsHub: React.FC<{
         onBack={() => setCourse(null)}
         onSync={cms.sync}
         onSeen={cms.patchFiles}
-        onViewerChange={onViewerChange}
       />
     );
   }

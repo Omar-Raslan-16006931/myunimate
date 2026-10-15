@@ -137,78 +137,16 @@ export const groupWeeks = (files: CmsFile[]): CmsWeek[] => {
   return weeks.sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''));
 };
 
+// File links are prepared when a course is opened, so a tap opens the file at once.
 // A link works for 5 minutes on the server; it is renewed after 4.
 const LINK_TTL = 4 * 60 * 1000;
 const linkCache = new Map<number, { url: string; at: number }>();
 
-// ── Files are downloaded only when tapped, then kept on the phone so reopening is instant ──
-const CACHE_NAME = 'unimate-cms-v1';
-const MAX_CACHED = 40;
-const memoryCache = new Map<number, Blob>(); // fallback when the phone's cache storage is unavailable
-const cacheKey = (id: number) => `${location.origin}/__cms/${id}`;
-
-const openCache = async (): Promise<Cache | null> => {
-  try { return typeof caches !== 'undefined' ? await caches.open(CACHE_NAME) : null; } catch { return null; }
-};
-
-/** What the in-app viewer can show; everything else opens through the link flow below. */
-export const cmsViewKind = (path: string): 'pdf' | 'image' | null => {
-  if (/\.pdf$/i.test(path)) return 'pdf';
-  if (/\.(png|jpe?g|gif|webp)$/i.test(path)) return 'image';
-  return null;
-};
-
-export const isCmsFileCached = async (contentId: number): Promise<boolean> => {
-  if (memoryCache.has(contentId)) return true;
-  const c = await openCache();
-  return !!c && !!(await c.match(cacheKey(contentId)).catch(() => undefined));
-};
-
-/** The file's bytes: from the phone if saved before, otherwise downloaded now (and saved). */
-export const loadCmsBlob = async (file: Pick<CmsFile, 'content_id' | 'path'>): Promise<{ ok: boolean; blob?: Blob; message?: string }> => {
-  const id = file.content_id;
-  const mem = memoryCache.get(id);
-  if (mem) return { ok: true, blob: mem };
-  const cache = await openCache();
-  try {
-    const hit = await cache?.match(cacheKey(id));
-    if (hit) return { ok: true, blob: await hit.blob() };
-  } catch { /* fall through to download */ }
-
-  const res = await call({ action: 'cms_link', contentId: id }) as CmsResult & { url?: string };
-  if (!res.ok || !res.url) return { ok: false, message: res.message || 'Could not open the file.' };
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 120_000);
-  try {
-    const r = await fetch(res.url, { signal: ctrl.signal });
-    if (!r.ok) {
-      const text = await r.text().catch(() => '');
-      return { ok: false, message: text && text.length < 200 ? text : 'Could not open the file.' };
-    }
-    const raw = await r.blob();
-    const kind = cmsViewKind(file.path);
-    const type = raw.type && !/octet-stream/i.test(raw.type) ? raw.type : kind === 'pdf' ? 'application/pdf' : raw.type;
-    const blob = type === raw.type ? raw : new Blob([raw], { type });
-    memoryCache.set(id, blob);
-    if (memoryCache.size > 6) memoryCache.delete(memoryCache.keys().next().value as number);
-    if (cache) {
-      try {
-        await cache.put(cacheKey(id), new Response(blob, { headers: { 'Content-Type': blob.type } }));
-        const keys = await cache.keys(); // oldest first
-        for (const k of keys.slice(0, Math.max(0, keys.length - MAX_CACHED))) await cache.delete(k);
-      } catch { /* storage full: it just is not kept */ }
-    }
-    return { ok: true, blob };
-  } catch {
-    return { ok: false, message: 'Could not download the file. Check your connection and try again.' };
-  } finally {
-    clearTimeout(timer);
-  }
-};
-
-export const clearCmsFileCache = () => {
-  memoryCache.clear();
-  try { if (typeof caches !== 'undefined') void caches.delete(CACHE_NAME); } catch { /* ignore */ }
+export const prefetchCmsLinks = async (courseId: number): Promise<void> => {
+  const res = await call({ action: 'cms_links', courseId }) as CmsResult & { links?: Record<string, string> };
+  if (!res.ok || !res.links) return;
+  const at = Date.now();
+  for (const [id, url] of Object.entries(res.links)) linkCache.set(Number(id), { url, at });
 };
 
 const OFFICE_FILE = /\.(pptx?|ppsx?|docx?|xlsx?)$/i;
