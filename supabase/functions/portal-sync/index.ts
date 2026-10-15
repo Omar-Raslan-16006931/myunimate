@@ -99,7 +99,7 @@ const sendAlerts = async (topic: string, alerts: Alert[]): Promise<number> => {
         method: "POST",
         // With an ntfy account token (secret NTFY_TOKEN) the quota is the account's own. Without it the quota is
         // shared with everything else sending from the same server address, and it runs out.
-        headers: { "Content-Type": "application/json", ...(Deno.env.get("NTFY_TOKEN") ? { Authorization: `Bearer ${Deno.env.get("NTFY_TOKEN")}` } : {}) },
+        headers: { "Content-Type": "application/json", ...((Deno.env.get("NTFY_TOKEN") ?? "").trim() ? { Authorization: `Bearer ${(Deno.env.get("NTFY_TOKEN") ?? "").trim()}` } : {}) },
         body: JSON.stringify({ topic, title: a.title, message: a.body, tags: [a.tag], priority: 4 }),
         signal: AbortSignal.timeout(8000),
       });
@@ -483,7 +483,9 @@ Deno.serve(async (req: Request) => {
     await Promise.all(Array.from({ length: Math.min(5, queue.length) }, worker));
     // numbers only (no names or codes): how many alerts each account found and sent, and what ntfy said
     const report = results.map((r) => ({ ok: r.ok, found: r.alertsFound ?? 0, sent: r.notified ?? 0, ntfy: r.ntfy ?? "" }));
-    return json({ ok: true, synced: results.length, failed: results.filter((r) => !r.ok).length, report });
+    // token: whether the NTFY_TOKEN secret reached the function (yes/no only, never the value)
+    const token = (Deno.env.get("NTFY_TOKEN") ?? "").trim() ? "yes" : "no";
+    return json({ ok: true, synced: results.length, failed: results.filter((r) => !r.ok).length, token, report });
   }
 
   // everything else needs a signed-in app user
