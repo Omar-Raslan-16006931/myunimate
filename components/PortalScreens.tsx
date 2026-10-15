@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import Collapse from './ui/Collapse';
 import { ArrowLeft, RefreshCw, Loader2, ChevronDown, KeyRound, Calendar, MapPin, Armchair, Clock } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { styles } from '../theme';
@@ -38,7 +39,7 @@ const Shell: React.FC<{
   children: React.ReactNode;
 }> = ({ title, account, loading, syncing, checking = null, onSync, onBack, onOpenSettings, empty, emptyText, children }) => (
   <div style={styles.scrollableContent} className="custom-scrollbar">
-    <div className="max-w-3xl mx-auto w-full">
+    <div className="max-w-3xl mx-auto w-full page-in">
       <div className="mb-3.5 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5 min-w-0">
           <button onClick={onBack} aria-label="Back" className="flex items-center justify-center w-10 h-10 rounded-[14px] shrink-0" style={{ ...card, ...strong }}>
@@ -69,9 +70,9 @@ const Shell: React.FC<{
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-16" style={muted}><Loader2 size={22} className="animate-spin" /></div>
+        <div key="loading" className="page-in-fade flex justify-center py-16" style={muted}><Loader2 size={22} className="animate-spin" /></div>
       ) : !account ? (
-        <div className="rounded-[20px] px-5 py-6 text-center" style={card}>
+        <div key="noaccount" className="page-in rounded-[20px] px-5 py-6 text-center" style={card}>
           <KeyRound size={22} className="mx-auto mb-2" style={{ color: 'var(--accent)' }} />
           <div className="text-[1rem] font-extrabold" style={strong}>Connect your uni portal</div>
           <p className="mt-1 mb-4 text-[0.82rem] leading-snug" style={muted}>Add your GIU portal username and password in Settings. The app then reads this page for you.</p>
@@ -80,7 +81,7 @@ const Shell: React.FC<{
           </button>
         </div>
       ) : (
-        <>
+        <div key="content" className="stagger-in">
           {account.last_status === 'error' && account.last_error && (
             <div className="mb-3 rounded-[16px] px-3.5 py-2.5 text-[0.8rem] font-semibold" style={{ ...card, color: '#fbbf24' }}>
               {account.last_error} Showing the last saved data.
@@ -89,7 +90,7 @@ const Shell: React.FC<{
           {empty ? (
             <div className="rounded-[18px] px-4 py-5 text-center text-[0.85rem]" style={{ ...card, ...muted }}>{emptyText}</div>
           ) : children}
-        </>
+        </div>
       )}
     </div>
   </div>
@@ -465,11 +466,11 @@ export const PortalAttendance: React.FC<ScreenProps> = ({ onBack, onOpenSettings
                       <span key={r.id} className="inline-block w-[6px] h-[18px] rounded-full" style={{ background: isAbsent(r.status) ? '#fbbf24' : 'var(--accent)' }} />
                     ))}
                   </div>
-                  <ChevronDown size={16} style={{ ...muted, transform: expanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
+                  <ChevronDown size={16} style={{ ...muted, transform: expanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.28s cubic-bezier(0.4,0,0.2,1)' }} />
                 </div>
               </button>
 
-              {expanded && (
+              <Collapse open={expanded}>
                 <div className="pb-1">
                   {c.rows.map(r => (
                     <div key={r.id} className="flex items-center justify-between gap-3 py-2" style={{ borderTop: '1px solid var(--line)' }}>
@@ -488,7 +489,7 @@ export const PortalAttendance: React.FC<ScreenProps> = ({ onBack, onOpenSettings
                     </div>
                   ))}
                 </div>
-              )}
+              </Collapse>
             </section>
           );
         })}

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Collapse from './ui/Collapse';
 import { supabase } from '../lib/supabase';
 import { Plus, Trash2, Palette, Layers, Loader2, LogOut, ChevronDown, AlertTriangle, User, Shield, MessageSquare, ChevronRight, Heart, Columns, KeyRound, LifeBuoy, Fingerprint } from 'lucide-react';
 import { ScheduleProfile, EventColorMap, EventType, ScheduleEvent, PeriodDefinition, ThemeMode, ViewState } from '../types';
@@ -163,8 +164,8 @@ const Settings: React.FC<SettingsProps> = ({
                                     <button onClick={startEditingAccount} className="px-3 py-1.5 bg-white/5 rounded-full text-[11px] font-bold text-white/60 hover:text-white transition-colors border border-white/5">Edit</button>
                                 )}
                             />
-                            {isAccountExpanded && (
-                                <div className="px-5 pb-6 pt-2 animate-in slide-in-from-top-2 duration-300">
+                            <Collapse open={isAccountExpanded}>
+                                <div className="px-5 pb-6 pt-2">
                                     {isEditingAccount && (
                                         <div className="flex gap-2 mb-5">
                                             <button onClick={saveEditingAccount} disabled={isSaveDisabled} className="flex-1 py-2.5 bg-blue-600 rounded-xl text-xs font-bold text-white shadow-lg shadow-blue-900/20 disabled:opacity-50">Save Changes</button>
@@ -220,18 +221,18 @@ const Settings: React.FC<SettingsProps> = ({
                                         </div>
                                     </div>
                                 </div>
-                            )}
+                            </Collapse>
                         </div>
                     )}
 
                     <div className="border-b border-white/[0.05] last:border-0">
                         <SectionHeader icon={KeyRound} color="#19b8a6" title="Uni Portal" isExpanded={isPortalExpanded} onToggle={() => setIsPortalExpanded(!isPortalExpanded)} />
-                        {isPortalExpanded && <div className="px-5 pb-6 pt-2 animate-in slide-in-from-top-2 duration-300"><PortalSettings /></div>}
+                        <Collapse open={isPortalExpanded}><div className="px-5 pb-6 pt-2"><PortalSettings /></div></Collapse>
                     </div>
 
                     <div className="border-b border-white/[0.05] last:border-0">
                         <SectionHeader icon={Fingerprint} color="#19b8a6" title="Passkeys" isExpanded={isPasskeysExpanded} onToggle={() => setIsPasskeysExpanded(!isPasskeysExpanded)} />
-                        {isPasskeysExpanded && <div className="px-5 pb-6 pt-2 animate-in slide-in-from-top-2 duration-300"><PasskeySettings /></div>}
+                        <Collapse open={isPasskeysExpanded}><div className="px-5 pb-6 pt-2"><PasskeySettings /></div></Collapse>
                     </div>
                 </GroupCard>
 
@@ -249,8 +250,8 @@ const Settings: React.FC<SettingsProps> = ({
                             isExpanded={isProfilesExpanded} onToggle={() => setIsProfilesExpanded(!isProfilesExpanded)}
                             rightElement={<span className="text-[10px] font-bold text-white/30 bg-white/5 px-2 py-0.5 rounded-md">{profiles.length} Profiles</span>}
                         />
-                        {isProfilesExpanded && (
-                            <div className="px-5 pb-6 pt-2 animate-in slide-in-from-top-2 duration-300 space-y-4">
+                        <Collapse open={isProfilesExpanded}>
+                            <div className="px-5 pb-6 pt-2 space-y-4">
                                 <div className="grid gap-2">
                                     {profiles.map(s => (
                                         <div key={s.id} className={`flex items-center justify-between p-3 rounded-2xl border transition-all ${s.id === activeProfileId ? 'bg-teal-500/10 border-teal-500/30' : 'bg-white/5 border-transparent'}`} onClick={() => onSwitchProfile(s.id)}>
@@ -269,19 +270,19 @@ const Settings: React.FC<SettingsProps> = ({
                                     <button onClick={handleCreateProfile} className="bg-teal-600 text-white px-4 rounded-xl shadow-lg shadow-teal-900/20 active:scale-95 transition-transform"><Plus size={20} /></button>
                                 </div>
                             </div>
-                        )}
+                        </Collapse>
                     </div>
 
                     <div className="border-b border-white/[0.05] last:border-0">
                         <SectionHeader icon={Columns} color="#ec4899" title="Timeline Grid" isExpanded={isScheduleSettingsExpanded} onToggle={() => setIsScheduleSettingsExpanded(!isScheduleSettingsExpanded)} />
-                        {isScheduleSettingsExpanded && <div className="px-5 pb-6 pt-2 animate-in slide-in-from-top-2 duration-300"><ScheduleSettings periods={periods} setPeriods={setPeriods} /></div>}
+                        <Collapse open={isScheduleSettingsExpanded}><div className="px-5 pb-6 pt-2"><ScheduleSettings periods={periods} setPeriods={setPeriods} /></div></Collapse>
                     </div>
 
 
                     <div className="border-b border-white/[0.05] last:border-0">
                         <SectionHeader icon={Palette} color="#f59e0b" title="Theme Colors" isExpanded={isColorsExpanded} onToggle={() => setIsColorsExpanded(!isColorsExpanded)} />
-                        {isColorsExpanded && (
-                            <div className="px-5 pb-6 pt-2 animate-in slide-in-from-top-2 duration-300 grid grid-cols-2 gap-2">
+                        <Collapse open={isColorsExpanded}>
+                            <div className="px-5 pb-6 pt-2 grid grid-cols-2 gap-2">
                                 {Object.keys(eventColors).map(key => (
                                     <div key={key} className="bg-black/40 p-2.5 rounded-2xl border border-white/[0.03] flex items-center justify-between">
                                         <span className="text-[11px] font-bold text-white/40 uppercase tracking-wider pl-1">{key}</span>
@@ -291,7 +292,7 @@ const Settings: React.FC<SettingsProps> = ({
                                     </div>
                                 ))}
                             </div>
-                        )}
+                        </Collapse>
                     </div>
                 </GroupCard>
 
@@ -348,16 +349,16 @@ const Settings: React.FC<SettingsProps> = ({
 
                         <div className="border-b border-red-500/10 last:border-0">
                             <SectionHeader icon={Shield} color="#ef4444" title="User Control" isExpanded={isUserMgmtExpanded} onToggle={() => setIsUserMgmtExpanded(!isUserMgmtExpanded)} />
-                            {isUserMgmtExpanded && (
-                                <div className="px-5 pb-6 pt-2 animate-in slide-in-from-top-2 duration-300">
+                            <Collapse open={isUserMgmtExpanded}>
+                                <div className="px-5 pb-6 pt-2">
                                     <AdminUsers selfId={accountInfo?.id} />
                                 </div>
-                            )}
+                            </Collapse>
                         </div>
 
                         <div className="border-b border-red-500/10 last:border-0">
                             <SectionHeader icon={MessageSquare} color="#3b82f6" title="Feedback Inbox" isExpanded={isFeedbackInboxExpanded} onToggle={() => setIsFeedbackInboxExpanded(!isFeedbackInboxExpanded)} />
-                            {isFeedbackInboxExpanded && <div className="px-5 pb-6 pt-2 animate-in slide-in-from-top-2 duration-300"><AdminInbox /></div>}
+                            <Collapse open={isFeedbackInboxExpanded}><div className="px-5 pb-6 pt-2"><AdminInbox /></div></Collapse>
                         </div>
                     </GroupCard>
                 )}

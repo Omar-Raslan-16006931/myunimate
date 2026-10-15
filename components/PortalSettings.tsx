@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Loader2, RefreshCw, Check, Copy, GraduationCap, CircleUser, AlarmClock, Bell, Smartphone, Send, PartyPopper, CalendarDays, ChevronDown, ChevronRight, MoreHorizontal, Pencil, Unplug } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
+import Collapse from './ui/Collapse';
 import { toast } from 'react-hot-toast';
 import OnboardSteps from './OnboardSteps';
 import Sheet from './Sheet';
@@ -401,9 +402,9 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
           {topic && (
             <div className="mt-1.5">
               <button onClick={() => setShowHelp(v => !v)} className="flex w-full items-center justify-center gap-1 border-0 bg-transparent py-2.5 text-xs font-semibold text-white/45">
-                Not receiving alerts? <ChevronDown size={13} className={`transition-transform ${showHelp ? 'rotate-180' : ''}`} />
+                Not receiving alerts? <ChevronDown size={13} className={`transition-transform duration-300 ${showHelp ? 'rotate-180' : ''}`} />
               </button>
-              {showHelp && <div className="mt-1">{helpList}</div>}
+              <Collapse open={showHelp}><div className="mt-1">{helpList}</div></Collapse>
             </div>
           )}
 

@@ -26,6 +26,19 @@ interface DashboardProps {
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
+/** Subtitle on a portal card: keeps its height from the start and fades the text in, so the card never jumps. */
+const PortalSub: React.FC<{ ready: boolean; text: string; accent?: boolean }> = ({ ready, text, accent }) => (
+  <span className="block h-[1.05rem] overflow-hidden text-[0.7rem] leading-[1.05rem] truncate" style={{ color: accent ? 'var(--accent-text)' : 'var(--text-muted)' }}>
+    <AnimatePresence initial={false} mode="wait">
+      {ready && (
+        <motion.span key={text} className="block truncate" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}>
+          {text}
+        </motion.span>
+      )}
+    </AnimatePresence>
+  </span>
+);
+
 export const Dashboard: React.FC<DashboardProps> = ({ events, onNavigate, onEventClick, onAddEventClick, onSmartImportClick, periods, announcement, username, onSync }) => {
   const [syncStatus, setSyncStatus] = useState<'idle' | 'loading' | 'success'>('idle');
   const [greeting, setGreeting] = useState('Good Morning');
@@ -415,27 +428,21 @@ export const Dashboard: React.FC<DashboardProps> = ({ events, onNavigate, onEven
               <GraduationCap size={20} className="shrink-0" style={{ color: 'var(--accent)' }} />
               <span className="min-w-0">
                 <span className="block text-[0.86rem] font-bold leading-tight" style={{ color: 'var(--text-primary)' }}>Portal grades</span>
-                <span className="block text-[0.7rem] truncate" style={{ color: portal?.newGrades ? 'var(--accent-text)' : 'var(--text-muted)' }}>
-                  {!portal ? ' ' : !portal.connected ? 'Not connected' : portal.newGrades ? `${portal.newGrades} new` : 'No new grades'}
-                </span>
+                <PortalSub ready={!!portal} text={!portal ? '' : !portal.connected ? 'Not connected' : portal.newGrades ? `${portal.newGrades} new` : 'No new grades'} accent={!!portal?.newGrades} />
               </span>
             </button>
             <button onClick={() => onNavigate('attendance')} className="flex items-center gap-2.5 rounded-[18px] px-3 py-2.5 text-left" style={cardStyle}>
               <UserCheck size={20} className="shrink-0" style={{ color: 'var(--accent)' }} />
               <span className="min-w-0">
                 <span className="block text-[0.86rem] font-bold leading-tight" style={{ color: 'var(--text-primary)' }}>Attendance</span>
-                <span className="block text-[0.7rem] truncate" style={{ color: 'var(--text-muted)' }}>
-                  {!portal ? ' ' : !portal.connected ? 'Not connected' : portal.absences ? `${portal.absences} absence${portal.absences === 1 ? '' : 's'}` : 'No absences'}
-                </span>
+                <PortalSub ready={!!portal} text={!portal ? '' : !portal.connected ? 'Not connected' : portal.absences ? `${portal.absences} absence${portal.absences === 1 ? '' : 's'}` : 'No absences'} />
               </span>
             </button>
             <button onClick={() => onNavigate('exam_seats')} className="flex items-center gap-2.5 rounded-[18px] px-3 py-2.5 text-left" style={cardStyle}>
               <Armchair size={20} className="shrink-0" style={{ color: 'var(--accent)' }} />
               <span className="min-w-0">
                 <span className="block text-[0.86rem] font-bold leading-tight" style={{ color: 'var(--text-primary)' }}>Exam seats</span>
-                <span className="block text-[0.7rem] truncate" style={{ color: 'var(--text-muted)' }}>
-                  {!portal ? ' ' : !portal.connected ? 'Not connected' : portal.examSeats ? `${portal.examSeats} scheduled` : 'View seats'}
-                </span>
+                <PortalSub ready={!!portal} text={!portal ? '' : !portal.connected ? 'Not connected' : portal.examSeats ? `${portal.examSeats} scheduled` : 'View seats'} />
               </span>
             </button>
           </motion.div>

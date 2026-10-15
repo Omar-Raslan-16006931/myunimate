@@ -1462,7 +1462,7 @@ export const GymWorkoutLogger: React.FC<WorkoutLoggerProps> = ({
                               className="text-[10px] font-bold text-white/40 hover:text-white transition flex items-center gap-1"
                           >
                               {showAllHistory ? 'Show Less' : 'View All'}
-                              <ChevronDown size={12} className={showAllHistory ? 'rotate-180' : ''} />
+                              <ChevronDown size={12} className={`transition-transform duration-300 ${showAllHistory ? 'rotate-180' : ''}`} />
                           </button>
                       )}
                   </div>

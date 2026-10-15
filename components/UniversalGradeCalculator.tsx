@@ -1,9 +1,10 @@
 
+import Collapse from './ui/Collapse';
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
     Plus, Trash2, ArrowLeft, 
-    X, ChevronDown, ChevronUp, Calculator, AlertTriangle, TrendingUp, Award, Save, Check
+    X, ChevronDown, Calculator, AlertTriangle, TrendingUp, Award, Save, Check
 } from 'lucide-react';
 import { CourseGrade, GradeCategory, GradeItem } from '../types';
 import { generateId } from '../constants';
@@ -95,13 +96,13 @@ const CategorySection = ({ cat, updateCategory, deleteCategory, addItem, updateI
                     </div>
                 </div>
                 <div className="text-white/20 pl-3 border-l border-white/5 ml-2">
-                    {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                    <ChevronDown size={20} className={`transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
                 </div>
             </div>
 
             {/* Expanded Details */}
-            {isExpanded && (
-                <div className="border-t border-white/5 bg-black/20 p-4 space-y-4 animate-in slide-in-from-top-2">
+            <Collapse open={isExpanded}>
+                <div className="border-t border-white/5 bg-black/20 p-4 space-y-4">
                     
                     {/* Settings Row */}
                     <div className="grid grid-cols-2 gap-4 bg-white/5 p-3 rounded-xl border border-white/5">
@@ -203,7 +204,7 @@ const CategorySection = ({ cat, updateCategory, deleteCategory, addItem, updateI
                         </button>
                     </div>
                 </div>
-            )}
+            </Collapse>
         </div>
     );
 };

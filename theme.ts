@@ -86,6 +86,7 @@ export const styles: { [key: string]: React.CSSProperties } = {
   scrollableContent: {
     flex: 1,
     overflowY: "auto",
+    overscrollBehavior: "none",
     padding: "14px 16px calc(92px + env(safe-area-inset-bottom)) 16px", 
     scrollbarWidth: "none",
     WebkitOverflowScrolling: "touch",
