@@ -463,7 +463,7 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, part, onFinish, o
           <div className="overflow-hidden rounded-[22px] border border-white/[0.06] bg-white/5">
             {showTop && <div className="p-3.5">
               <div className="flex items-center gap-3">
-                <div className={`flex h-11 w-11 shrink-0 items-center justify-center ${err ? 'text-amber-300' : 'text-teal-300'}`}><CircleUser size={22} /></div>
+                <div className={`flex h-11 w-11 shrink-0 items-center justify-center ${err ? 'text-amber-300' : 'text-teal-300'}`}><CircleUser size={26} /></div>
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-[16px] font-bold text-white">{account!.username}</div>
                   <div className="mt-0.5 flex items-center gap-1.5 whitespace-nowrap text-[12px]">
@@ -486,16 +486,16 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, part, onFinish, o
                   onToggle={() => { setRowBusy(key); applyAlerts({ ...cur, [key]: !cur[key] }); }} />
               );
               return <>
-                {row('portal', 'bg-amber-500/20 text-amber-300', <ClipboardCheck size={18} />, 'Grades, absences, exams', 'New grade, absence or exam seat')}
-                {row('cls', 'bg-violet-500/20 text-violet-300', <AlarmClock size={18} />, 'Class reminders', '15 min before each class')}
-                {row('cms', 'bg-emerald-500/20 text-emerald-300', <GraduationCap size={18} />, 'New CMS files', 'When a teacher adds something')}
+                {row('portal', 'bg-amber-500/20 text-amber-300', <ClipboardCheck size={22} />, 'Grades, absences, exams', 'New grade, absence or exam seat')}
+                {row('cls', 'bg-violet-500/20 text-violet-300', <AlarmClock size={22} />, 'Class reminders', '15 min before each class')}
+                {row('cms', 'bg-emerald-500/20 text-emerald-300', <GraduationCap size={22} />, 'New CMS files', 'When a teacher adds something')}
               </>;
             })()}
 
             {showAlerts && topic && (
               <button onClick={testAlert} disabled={busy !== null}
                 className="flex w-full items-center gap-3 border-0 border-t border-white/[0.06] bg-transparent px-3.5 py-3 text-left disabled:opacity-60">
-                {tile('bg-sky-500/20 text-sky-300', busy === 'test' ? <Loader2 size={17} className="animate-spin" /> : <Send size={17} />)}
+                {tile('bg-sky-500/20 text-sky-300', busy === 'test' ? <Loader2 size={17} className="animate-spin" /> : <Send size={21} />)}
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-bold text-white">Send a test</div>
                   <div className="truncate text-xs text-white/50">Make sure it reaches your phone</div>
@@ -506,7 +506,7 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, part, onFinish, o
             {showAlerts && topic && isBarkTopic(topic) && (
               <button onClick={() => setChangingKey(true)} disabled={busy !== null}
                 className="flex w-full items-center gap-3 border-0 border-t border-white/[0.06] bg-transparent px-3.5 py-3 text-left disabled:opacity-60">
-                {tile('text-teal-300', <KeyRound size={17} />)}
+                {tile('text-teal-300', <KeyRound size={21} />)}
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-bold text-white">Change Bark key</div>
                   <div className="truncate text-xs text-white/50">Paste a different key from Bark</div>
