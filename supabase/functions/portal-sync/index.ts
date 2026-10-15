@@ -41,7 +41,8 @@ const MESSAGES: Record<string, string> = {
 };
 
 const describe = (e: unknown): { code: string; message: string } => {
-  const raw = e instanceof Error ? (e.stack || e.message) : String(e);
+  // the message starts with the code (e.g. "PORTAL_LOGIN_FAILED"); the stack starts with "Error:" and hides it
+  const raw = e instanceof Error ? (e.message || e.stack || "") : String(e);
   const code = raw.match(/^[A-Z][A-Z0-9_]+/)?.[0] ?? "PORTAL_UNREACHABLE";
   const http = code.match(/^PORTAL_HTTP_(\d+)/);
   const detail = raw.replace(/^[A-Z][A-Z0-9_]+:?\s*/, "").trim();

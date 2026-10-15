@@ -520,9 +520,19 @@ export const App: React.FC = () => {
 
           // Process Profiles
           if (profilesRes.data && profilesRes.data.length > 0) {
-              finalProfiles = profilesRes.data;
+              // Older accounts only saved 5 periods: add the 6th and 7th
+              finalProfiles = profilesRes.data.map((p: any) => {
+                  const ps = Array.isArray(p.periods) ? p.periods : [];
+                  if (ps.length > 0 && ps[ps.length - 1]?.id === 'p5' && !ps.some((x: any) => x.id === 'p6')) {
+                      const extra = INITIAL_PERIODS.filter(x => ['b5', 'p6', 'b6', 'p7'].includes(x.id));
+                      const merged = [...ps, ...extra];
+                      supabase.from('schedule_profiles').update({ periods: merged }).eq('id', p.id).then(() => {});
+                      return { ...p, periods: merged };
+                  }
+                  return p;
+              });
               setProfiles(finalProfiles);
-              const active = profilesRes.data.find((p: any) => p.is_active);
+              const active = finalProfiles.find((p: any) => p.is_active);
               if (active) setActiveProfileId(active.id);
               else setActiveProfileId(profilesRes.data[0].id);
           } else {

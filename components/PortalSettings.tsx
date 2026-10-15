@@ -19,7 +19,7 @@ const writeGuide = (f: GuideFlags) => {
 
 /** The student only ever sees a short plain sentence, never server details. */
 const plainError = (res: { code?: string }, what = 'connect to the portal'): string =>
-  res.code === 'PORTAL_LOGIN_FAILED' ? 'Wrong username or password.'
+  res.code === 'PORTAL_LOGIN_FAILED' ? "Those portal details didn't work. Use the login you use on the GIU portal, not your UniMate one."
   : res.code === 'NO_CREDENTIALS' ? 'Connect your portal first.'
   : `Couldn't ${what} right now. Try again in a minute.`;
 
@@ -261,7 +261,7 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
     classes: {
       icon: <CalendarDays size={30} />,
       title: 'Import classes',
-      sub: 'From your portal. Periods 6 and 7 are skipped',
+      sub: 'From your portal, all periods',
       fields: errorText(classError),
       actions: (
         <>

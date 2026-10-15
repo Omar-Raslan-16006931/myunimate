@@ -1,4 +1,5 @@
 
+import { eventFill } from '../utils/colors';
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, ChevronRight, MapPin, Plus, Brain, ChevronDown, X, RotateCcw, Trash2, Download, MoreHorizontal } from 'lucide-react';
 import { ScheduleEvent, EventColorMap, ScheduleProfile, PeriodDefinition } from '../types';
@@ -231,7 +232,7 @@ const Schedule: React.FC<ScheduleProps> = ({
 
   // Helper to render a single event card
   const renderEventCard = (ev: ScheduleEvent, isSmall: boolean = false) => {
-       const bg = eventColors[ev.type] || '#64748b';
+       const bg = eventFill(eventColors[ev.type] || '#64748b');
        const txtColor = getContrastColor(bg);
        const isDragging = draggedEventId === ev.id;
        const small = isSmall ? '0.62rem' : '0.68rem';
@@ -507,7 +508,7 @@ const Schedule: React.FC<ScheduleProps> = ({
                     </div>
                     <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
                         {expandedSlot.map(ev => {
-                             const bg = eventColors[ev.type] || '#64748b';
+                             const bg = eventFill(eventColors[ev.type] || '#64748b');
                              const txtColor = getContrastColor(bg);
                              return (
                                  <div 

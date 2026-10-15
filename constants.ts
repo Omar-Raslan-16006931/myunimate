@@ -36,6 +36,10 @@ export const INITIAL_PERIODS: PeriodDefinition[] = [
   { id: 'p4', label: "4th", startTime: "13:45", endTime: "15:15", isBreak: false, startVal: 13.75 },
   { id: 'b4', label: "Break", startTime: "15:15", endTime: "15:45", isBreak: true, startVal: 15.25 },
   { id: 'p5', label: "5th", startTime: "15:45", endTime: "17:15", isBreak: false, startVal: 15.75 },
+  { id: 'b5', label: "Break", startTime: "17:15", endTime: "17:30", isBreak: true, startVal: 17.25 },
+  { id: 'p6', label: "6th", startTime: "17:30", endTime: "19:00", isBreak: false, startVal: 17.5 },
+  { id: 'b6', label: "Break", startTime: "19:00", endTime: "19:15", isBreak: true, startVal: 19 },
+  { id: 'p7', label: "7th", startTime: "19:15", endTime: "20:45", isBreak: false, startVal: 19.25 },
 ];
 
 // every account starts with exactly one schedule

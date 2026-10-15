@@ -124,7 +124,7 @@ export const setPortalAlerts = (enabled: boolean) => call({ action: 'set_notify'
 
 export const testPortalAlert = () => call({ action: 'test_notify' });
 
-/** Your weekly classes from the portal's schedule page (first five periods only). */
+/** Your weekly classes from the portal's schedule page (all seven periods). */
 export const getPortalSchedule = () => call({ action: 'get_schedule' });
 
 /** The private ntfy topic, or null when phone alerts are off (or not set up on the server yet). */

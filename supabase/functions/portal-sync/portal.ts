@@ -779,10 +779,11 @@ export const parseExamSeats = (html: string): ExamSeat[] => {
 // ───────────────────────── weekly schedule ─────────────────────────
 
 export const SCHEDULE_PATH = "/GIUb/EXTStudent/GroupSchedule_m.aspx";
-/** Evening periods (sixth and seventh) are not imported. */
-export const SCHEDULE_MAX_PERIOD = 5;
+/** All seven periods are imported. */
+export const SCHEDULE_MAX_PERIOD = 7;
 const DEFAULT_PERIOD_TIMES: [string, string][] = [
   ["08:30", "10:00"], ["10:15", "11:45"], ["12:00", "13:30"], ["13:45", "15:15"], ["15:45", "17:15"],
+  ["17:30", "19:00"], ["19:15", "20:45"], // used only when the portal header does not give a time
 ];
 
 export interface ScheduleClass {
@@ -818,7 +819,8 @@ export const parseSchedule = (html: string): ScheduleClass[] => {
   const firstDay = grid.search(/<tr[^>]*id="ContentPlaceHolder1_(?:rw|altR)\d+"/i);
   const header = firstDay > 0 ? grid.slice(0, firstDay) : "";
   const times = [...header.matchAll(/(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/g)].map(m => [pad2(m[1]), pad2(m[2])] as [string, string]);
-  const periodTimes = times.length >= SCHEDULE_MAX_PERIOD ? times : DEFAULT_PERIOD_TIMES;
+  // header time when the portal gives one, otherwise the usual time for that period
+  const periodTimes = Array.from({ length: SCHEDULE_MAX_PERIOD }, (_, i) => times[i] ?? DEFAULT_PERIOD_TIMES[i]);
 
   const out: ScheduleClass[] = [];
   const rows = grid.split(/(?=<tr[^>]*id="ContentPlaceHolder1_(?:rw|altR)\d+")/i).filter(r => /ContentPlaceHolder1_(?:rw|altR)\d+"/i.test(r.slice(0, 80)));
