@@ -7,8 +7,6 @@ import { type CmsSeason, parseCourseList, parseCourseView } from "./cms.ts";
 export interface CmsSession {
   /** Page HTML for a path like "/apps/student/ViewAllCourseStn.aspx". */
   get(path: string): Promise<string>;
-  /** A file under /Uploads/ for the student. */
-  getFile(path: string): Promise<{ body: ReadableStream<Uint8Array> | Uint8Array; contentType: string }>;
 }
 
 export const COURSE_LIST_PATH = "/apps/student/ViewAllCourseStn.aspx";

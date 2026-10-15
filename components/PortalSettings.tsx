@@ -7,7 +7,7 @@ import { toast } from 'react-hot-toast';
 import OnboardSteps from './OnboardSteps';
 import Sheet from './Sheet';
 import { ntfyRemindersEnabled, setNtfyReminders } from '../services/ntfyReminders';
-import { getPortalAccount, savePortalLogin, syncPortal, removePortalLogin, setPortalAlerts, testPortalAlert, getPortalAlertTopic, getPortalSchedule, timeAgo, readPortalCache, writePortalCache, PortalAccount, PortalClass } from '../services/portal';
+import { getPortalAccount, savePortalLogin, syncPortal, removePortalLogin, setPortalAlerts, setPortalNotify, getPortalNotifyOn, testPortalAlert, getPortalAlertTopic, getPortalSchedule, timeAgo, readPortalCache, writePortalCache, PortalAccount, PortalClass } from '../services/portal';
 
 const NTFY_APP = 'https://apps.apple.com/app/ntfy/id1625396347';
 const GUIDE_KEY = 'portal_setup_v1';
@@ -24,6 +24,41 @@ const plainError = (res: { code?: string }, what = 'connect to the portal'): str
   res.code === 'PORTAL_LOGIN_FAILED' ? "Those portal details didn't work. Use the login you use on the GIU portal, not your UniMate one."
   : res.code === 'NO_CREDENTIALS' ? 'Connect your portal first.'
   : `Couldn't ${what} right now. Try again in a minute.`;
+
+/** A row with a switch, used on the compact Settings card. */
+const AlertRow: React.FC<{ tile: React.ReactNode; title: string; sub: string; on: boolean; busy: boolean; disabled: boolean; onToggle: () => void }> =
+  ({ tile, title, sub, on, busy, disabled, onToggle }) => (
+    <div className="flex items-center gap-3 border-t border-white/[0.06] px-3.5 py-3">
+      {tile}
+      <div className="min-w-0 flex-1">
+        <div className="text-sm font-bold text-white">{title}</div>
+        <div className="truncate text-xs text-white/50">{sub}</div>
+      </div>
+      <button type="button" role="switch" aria-checked={on} aria-label={title} onClick={onToggle} disabled={disabled}
+        className="relative h-[30px] w-[50px] shrink-0 rounded-full border-0 p-0 transition-colors duration-200 disabled:opacity-60"
+        style={{ background: on ? '#14b8a6' : 'rgba(255,255,255,0.14)' }}>
+        {busy
+          ? <span className="absolute inset-0 flex items-center justify-center text-white"><Loader2 size={14} className="animate-spin" /></span>
+          : <motion.span className="absolute left-[3px] top-[3px] h-6 w-6 rounded-full bg-white" style={{ boxShadow: '0 2px 6px rgba(0,0,0,0.25)' }} animate={{ x: on ? 20 : 0 }} transition={{ type: 'spring', stiffness: 520, damping: 32 }} />}
+      </button>
+    </div>
+  );
+
+/** A choice with a switch, used on the onboarding alerts step. */
+const AlertChoice: React.FC<{ tint: string; icon: React.ReactNode; title: string; sub: string; on: boolean; onToggle: () => void }> =
+  ({ tint, icon, title, sub, on, onToggle }) => (
+    <button type="button" role="switch" aria-checked={on} onClick={onToggle}
+      className="flex w-full items-center gap-3 rounded-xl border border-white/5 bg-black/40 p-3 text-left">
+      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${tint}`}>{icon}</span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-bold text-white">{title}</span>
+        <span className="block text-xs text-white/50">{sub}</span>
+      </span>
+      <span className="relative h-[26px] w-[44px] shrink-0 rounded-full transition-colors duration-200" style={{ background: on ? '#14b8a6' : 'rgba(255,255,255,0.14)' }}>
+        <span className="absolute left-[3px] top-[3px] h-5 w-5 rounded-full bg-white transition-transform duration-200" style={{ transform: on ? 'translateX(18px)' : 'none' }} />
+      </span>
+    </button>
+  );
 
 type Flow = 'login' | 'classes' | 'alerts' | 'ntfy' | 'test' | 'done';
 /** Position in the step bar (0 is the app account, which is already made by now). */
@@ -51,7 +86,11 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState<'save' | 'sync' | 'remove' | 'alerts' | 'test' | 'classes' | 'cms' | null>(null);
   const [cmsOn, setCmsOn] = useState(false);      // phone alerts for new CMS files
-  const [wantCms, setWantCms] = useState(true);    // the choice on the onboarding alerts step
+  const [portalOn, setPortalOn] = useState(true);    // alerts for grades, absences, exam seats
+  // the choices on the onboarding alerts step
+  const [wantPortal, setWantPortal] = useState(true);
+  const [wantClass, setWantClass] = useState(true);
+  const [wantCms, setWantCms] = useState(true);
   const [topic, setTopic] = useState<string | null>(cached?.topic ?? null);
   const [guide, setGuideState] = useState<GuideFlags>(readGuide);
   const [editing, setEditing] = useState(false);
@@ -80,7 +119,7 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
     try {
       const a = await getPortalAccount(true);
       const t = a ? await getPortalAlertTopic() : null;
-      if (a) setCmsOn(await getCmsAlertsOn());
+      if (a) { setCmsOn(await getCmsAlertsOn()); setPortalOn(await getPortalNotifyOn()); }
       setAccount(a);
       if (a) setUsername(a.username);
       setTopic(t);
@@ -133,27 +172,35 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
     } else toast.error(res.message || 'Could not remove the portal login.');
   };
 
-  const toggleAlerts = async () => {
+  /**
+   * The three alert choices (grades/absences/exams, class reminders, new CMS files).
+   * The ntfy channel exists only while at least one is on; with all three off it is switched off.
+   */
+  const applyAlerts = async (next: { portal: boolean; cls: boolean; cms: boolean }): Promise<boolean> => {
+    const any = next.portal || next.cls || next.cms;
     setBusy('alerts');
-    const res = await setPortalAlerts(!topic);
-    setBusy(null);
-    if (res.ok) {
-      setTopic(res.topic ?? null); setGuide({ skipped: !res.topic });
-      // onboarding: the CMS choice made on the same step
-      if (res.topic && flow === 'alerts' && wantCms && !cmsOn) {
-        const r = await setCmsAlerts(true);
-        if (r.ok) setCmsOn(true);
+    try {
+      let t = topic;
+      if (any !== !!t) {
+        const res = await setPortalAlerts(any);
+        if (!res.ok) { toast.error(res.message || 'Could not change phone alerts.'); return false; }
+        t = res.topic ?? null;
+        setTopic(t);
       }
+      if (next.portal !== portalOn) {
+        const r = await setPortalNotify(next.portal);
+        if (!r.ok) toast.error(r.message || 'Could not change grade alerts.'); else setPortalOn(next.portal);
+      }
+      if (next.cms !== cmsOn) {
+        const r = await setCmsAlerts(next.cms);
+        if (!r.ok) toast.error(r.message || 'Could not change CMS alerts.'); else setCmsOn(next.cms);
+      }
+      if (next.cls !== classRem) { setClassRem(next.cls); setNtfyReminders(next.cls); }
+      setGuide({ skipped: !t });
+      return true;
+    } finally {
+      setBusy(null);
     }
-    else toast.error(res.message || 'Could not change phone alerts.');
-  };
-
-  const toggleCms = async () => {
-    setBusy('cms');
-    const res = await setCmsAlerts(!cmsOn);
-    setBusy(null);
-    if (res.ok) { setCmsOn(!cmsOn); toast.success(!cmsOn ? 'CMS alerts on' : 'CMS alerts off'); }
-    else toast.error(res.message || 'Could not change CMS alerts.');
   };
 
   const testAlert = async () => {
@@ -294,25 +341,22 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
     alerts: {
       icon: <Bell size={30} />,
       title: 'Get alerts?',
-      sub: 'New grades, absences, exam seats',
+      sub: 'Pick what you want a ping for',
       fields: (
-        <button type="button" role="switch" aria-checked={wantCms} onClick={() => setWantCms(v => !v)}
-          className="flex w-full items-center gap-3 rounded-xl border border-white/5 bg-black/40 p-3 text-left">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-300"><GraduationCap size={18} /></span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-sm font-bold text-white">New CMS files</span>
-            <span className="block text-xs text-white/50">Ping me when a teacher adds a file</span>
-          </span>
-          <span className="relative h-[26px] w-[44px] shrink-0 rounded-full transition-colors duration-200" style={{ background: wantCms ? '#14b8a6' : 'rgba(255,255,255,0.14)' }}>
-            <span className="absolute left-[3px] top-[3px] h-5 w-5 rounded-full bg-white transition-transform duration-200" style={{ transform: wantCms ? 'translateX(18px)' : 'none' }} />
-          </span>
-        </button>
+        <div className="space-y-2.5">
+          <AlertChoice tint="bg-amber-500/20 text-amber-300" icon={<Bell size={18} />} title="Grades, absences, exams" sub="New grade, absence or exam seat"
+            on={wantPortal} onToggle={() => setWantPortal(v => !v)} />
+          <AlertChoice tint="bg-violet-500/20 text-violet-300" icon={<AlarmClock size={18} />} title="Class reminders" sub="15 min before each class"
+            on={wantClass} onToggle={() => setWantClass(v => !v)} />
+          <AlertChoice tint="bg-emerald-500/20 text-emerald-300" icon={<GraduationCap size={18} />} title="New CMS files" sub="When a teacher adds a file"
+            on={wantCms} onToggle={() => setWantCms(v => !v)} />
+          {!(wantPortal || wantClass || wantCms) && <p className="px-1 pt-1 text-xs text-white/40">All off, so there is nothing to set up. You can turn alerts on later in Settings.</p>}
+        </div>
       ),
       actions: (
-        <>
-          <button onClick={toggleAlerts} disabled={busy !== null} className={primary}>{busy === 'alerts' ? spin : 'Turn on'}</button>
-          <button onClick={() => setGuide({ skipped: true })} className={quiet}>Not now</button>
-        </>
+        <button onClick={() => applyAlerts({ portal: wantPortal, cls: wantClass, cms: wantCms })} disabled={busy !== null} className={primary}>
+          {busy === 'alerts' ? spin : (wantPortal || wantClass || wantCms) ? 'Turn on' : 'Continue'}
+        </button>
       ),
     },
     ntfy: {
@@ -387,53 +431,18 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
               </button>
             </div>
 
-            <div className="flex items-center gap-3 border-t border-white/[0.06] px-3.5 py-3">
-              {tile('bg-amber-500/20 text-amber-300', <Bell size={18} />)}
-              <div className="min-w-0 flex-1">
-                <div className="text-sm font-bold text-white">Phone alerts</div>
-                <div className="truncate text-xs text-white/50">Grades, absences, exams</div>
-              </div>
-              <button type="button" role="switch" aria-checked={!!topic} aria-label="Phone alerts" onClick={toggleAlerts} disabled={busy !== null}
-                className="relative h-[30px] w-[50px] shrink-0 rounded-full border-0 p-0 transition-colors duration-200 disabled:opacity-60"
-                style={{ background: topic ? '#14b8a6' : 'rgba(255,255,255,0.14)' }}>
-                {switching
-                  ? <span className="absolute inset-0 flex items-center justify-center text-white"><Loader2 size={14} className="animate-spin" /></span>
-                  : <motion.span className="absolute left-[3px] top-[3px] h-6 w-6 rounded-full bg-white" style={{ boxShadow: '0 2px 6px rgba(0,0,0,0.25)' }} animate={{ x: topic ? 20 : 0 }} transition={{ type: 'spring', stiffness: 520, damping: 32 }} />}
-              </button>
-            </div>
-
-            {topic && (
-              <div className="flex items-center gap-3 border-t border-white/[0.06] px-3.5 py-3">
-                {tile('bg-violet-500/20 text-violet-300', <AlarmClock size={18} />)}
-                <div className="min-w-0 flex-1">
-                  <div className="text-sm font-bold text-white">Class reminders</div>
-                  <div className="truncate text-xs text-white/50">15 min before each class</div>
-                </div>
-                <button type="button" role="switch" aria-checked={classRem} aria-label="Class reminders" 
-                  onClick={() => { const next = !classRem; setClassRem(next); setNtfyReminders(next); toast.success(next ? 'Class reminders on' : 'Class reminders off'); }}
-                  className="relative h-[30px] w-[50px] shrink-0 rounded-full border-0 p-0 transition-colors duration-200"
-                  style={{ background: classRem ? '#14b8a6' : 'rgba(255,255,255,0.14)' }}>
-                  <motion.span className="absolute left-[3px] top-[3px] h-6 w-6 rounded-full bg-white" style={{ boxShadow: '0 2px 6px rgba(0,0,0,0.25)' }} animate={{ x: classRem ? 20 : 0 }} transition={{ type: 'spring', stiffness: 520, damping: 32 }} />
-                </button>
-              </div>
-            )}
-
-            {topic && (
-              <div className="flex items-center gap-3 border-t border-white/[0.06] px-3.5 py-3">
-                {tile('bg-emerald-500/20 text-emerald-300', <GraduationCap size={18} />)}
-                <div className="min-w-0 flex-1">
-                  <div className="text-sm font-bold text-white">New CMS files</div>
-                  <div className="truncate text-xs text-white/50">When a teacher adds something</div>
-                </div>
-                <button type="button" role="switch" aria-checked={cmsOn} aria-label="New CMS files" onClick={toggleCms} disabled={busy !== null}
-                  className="relative h-[30px] w-[50px] shrink-0 rounded-full border-0 p-0 transition-colors duration-200 disabled:opacity-60"
-                  style={{ background: cmsOn ? '#14b8a6' : 'rgba(255,255,255,0.14)' }}>
-                  {busy === 'cms'
-                    ? <span className="absolute inset-0 flex items-center justify-center text-white"><Loader2 size={14} className="animate-spin" /></span>
-                    : <motion.span className="absolute left-[3px] top-[3px] h-6 w-6 rounded-full bg-white" style={{ boxShadow: '0 2px 6px rgba(0,0,0,0.25)' }} animate={{ x: cmsOn ? 20 : 0 }} transition={{ type: 'spring', stiffness: 520, damping: 32 }} />}
-                </button>
-              </div>
-            )}
+            {(() => {
+              const cur = { portal: !!topic && portalOn, cls: !!topic && classRem, cms: !!topic && cmsOn };
+              const row = (key: keyof typeof cur, bg: string, icon: React.ReactNode, title: string, sub: string) => (
+                <AlertRow key={key} tile={tile(bg, icon)} title={title} sub={sub} on={cur[key]} busy={switching} disabled={busy !== null}
+                  onToggle={() => applyAlerts({ ...cur, [key]: !cur[key] })} />
+              );
+              return <>
+                {row('portal', 'bg-amber-500/20 text-amber-300', <Bell size={18} />, 'Grades, absences, exams', 'New grade, absence or exam seat')}
+                {row('cls', 'bg-violet-500/20 text-violet-300', <AlarmClock size={18} />, 'Class reminders', '15 min before each class')}
+                {row('cms', 'bg-emerald-500/20 text-emerald-300', <GraduationCap size={18} />, 'New CMS files', 'When a teacher adds something')}
+              </>;
+            })()}
 
             {topic && (
               <button onClick={testAlert} disabled={busy !== null}

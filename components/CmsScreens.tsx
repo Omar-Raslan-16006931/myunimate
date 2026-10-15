@@ -147,7 +147,7 @@ const CmsCourses: React.FC<{
   return (
     <div style={styles.scrollableContent} className="custom-scrollbar">
       <div className="mx-auto w-full max-w-3xl page-in">
-        <Header title="CMS" sub={syncing ? 'Checking for updates…' : undefined} onBack={onBack} onSync={data?.connected ? onSync : undefined} syncing={syncing} />
+        <Header title="CMS" sub={syncing ? 'Checking for updates…' : (seasons[0]?.courses.length ? `${seasons[0].courses.length} ${seasons[0].courses.length === 1 ? 'course' : 'courses'} this semester` : undefined)} onBack={onBack} onSync={data?.connected ? onSync : undefined} syncing={syncing} />
         {data && !data.connected ? <NotConnected onOpenSettings={onOpenSettings} /> : (
           <>
             {problem && <Problem text={problem} />}
@@ -238,7 +238,7 @@ const CmsCourseView: React.FC<{
   const openFile = async (f: CmsFile) => {
     if (busy !== null) return;
     setBusy(f.id);
-    const res = await openCmsFile({ content_id: f.content_id });
+    const res = await openCmsFile({ path: f.path });
     setBusy(null);
     if (res.ok) {
       if (f.is_new) { onSeen([f.id]); markCmsFilesSeen([f.id]); }

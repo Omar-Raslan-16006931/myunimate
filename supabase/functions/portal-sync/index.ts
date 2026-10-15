@@ -16,7 +16,7 @@ const supabase = createClient(
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-cron-secret",
 };
 
@@ -41,8 +41,6 @@ const MESSAGES: Record<string, string> = {
   PORTAL_TIMEOUT: "The portal took too long to answer.",
   NO_CREDENTIALS: "No portal login is saved yet.",
   PORTAL_PAGE_CHANGED_CMS: "The CMS page looks different from what the app expects.",
-  CMS_FILE_NOT_FOUND: "That file is not in your CMS list. Refresh and try again.",
-  CMS_BAD_PATH: "That file link is not allowed.",
 };
 
 const describe = (e: unknown): { code: string; message: string } => {
@@ -339,7 +337,7 @@ const syncUser = async (userId: string): Promise<SyncResult> => {
     const data = await withTimeout(fetchPortal({ username: account.username, password }, connector), 110_000);
     const { newCount: newGrades, alerts } = await save(userId, data, !account.last_ok_at);
     const topicNow = activeTopic(account.notify_topic);
-    const notified = topicNow && alerts.length ? await sendAlerts(topicNow, alerts) : 0;
+    const notified = topicNow && account.portal_notify !== false && alerts.length ? await sendAlerts(topicNow, alerts) : 0;
     const now = new Date().toISOString();
     await supabase.from("portal_accounts").update({
       last_sync_at: now, last_ok_at: now, last_status: "ok", last_error: null,
@@ -363,85 +361,11 @@ const syncUser = async (userId: string): Promise<SyncResult> => {
   }
 };
 
-// ── CMS file links ──
-// A file is opened by the phone's own browser, which cannot send the app login. So the app asks
-// for a link that works for 5 minutes, signed so it cannot be guessed or changed.
-const b64url = (u: Uint8Array) => b64(u).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-const unb64url = (s: string) => unb64(s.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - (s.length % 4)) % 4));
-const hmacKey = () => crypto.subtle.importKey(
-  "raw", enc.encode("cms-link:" + (Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "")), { name: "HMAC", hash: "SHA-256" }, false, ["sign", "verify"],
-);
-const signLink = async (userId: string, contentId: number): Promise<string> => {
-  const payload = b64url(enc.encode(JSON.stringify({ u: userId, c: contentId, e: Date.now() + 5 * 60_000 })));
-  const sig = new Uint8Array(await crypto.subtle.sign("HMAC", await hmacKey(), enc.encode(payload)));
-  return `${payload}.${b64url(sig)}`;
-};
-const readLink = async (token: string): Promise<{ u: string; c: number } | null> => {
-  const [payload, sig] = token.split(".");
-  if (!payload || !sig) return null;
-  try {
-    const ok = await crypto.subtle.verify("HMAC", await hmacKey(), unb64url(sig), enc.encode(payload));
-    if (!ok) return null;
-    const p = JSON.parse(dec.decode(unb64url(payload)));
-    return typeof p.u === "string" && typeof p.c === "number" && p.e > Date.now() ? { u: p.u, c: p.c } : null;
-  } catch { return null; }
-};
-
-const MIME: Record<string, string> = {
-  pdf: "application/pdf", ppt: "application/vnd.ms-powerpoint",
-  pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-  doc: "application/msword", docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  xls: "application/vnd.ms-excel", xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  zip: "application/zip", txt: "text/plain; charset=utf-8", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg",
-};
-
-/** Serves one CMS file inline so the browser shows it instead of saving it. */
-const serveCmsFile = async (token: string): Promise<Response> => {
-  const fail = (status: number, message: string) =>
-    new Response(message, { status, headers: { ...CORS, "Content-Type": "text/plain; charset=utf-8" } });
-  const link = await readLink(token);
-  if (!link) return fail(403, "This link expired. Go back to UniMate and tap the file again.");
-  const { data: file } = await supabase
-    .from("cms_files").select("path, title").eq("user_id", link.u).eq("content_id", link.c).maybeSingle();
-  if (!file) return fail(404, MESSAGES.CMS_FILE_NOT_FOUND);
-  // only files the CMS keeps under /Uploads/, never anything else on the site
-  if (!/^\/Uploads\/[^?#]+$/.test(file.path) || file.path.includes("..")) return fail(400, MESSAGES.CMS_BAD_PATH);
-  const { data: account } = await supabase.from("portal_accounts").select("*").eq("user_id", link.u).maybeSingle();
-  if (!account) return fail(400, MESSAGES.NO_CREDENTIALS);
-  try {
-    const password = await getPassword(link.u, account);
-    const session = await openCmsSession({ username: account.username, password }, connector);
-    try {
-      const f = await withTimeout(session.getFile(file.path), 100_000);
-      const ext = (file.path.match(/\.([A-Za-z0-9]{1,5})$/)?.[1] ?? "").toLowerCase();
-      const name = /\.[A-Za-z0-9]{1,5}$/.test(file.title) ? file.title : file.title + (ext ? "." + ext : "");
-      // the CMS often answers "octet-stream", which makes browsers save the file; use the real type
-      const type = MIME[ext] ?? (f.contentType && !/octet-stream/i.test(f.contentType) ? f.contentType : "application/octet-stream");
-      return new Response(f.body as BodyInit, {
-        headers: {
-          ...CORS,
-          "Content-Type": type,
-          "Content-Disposition": `inline; filename*=UTF-8''${encodeURIComponent(name)}`,
-          "Cache-Control": "private, no-store",
-        },
-      });
-    } finally { closeCms(session); }
-  } catch (e) {
-    const { code, message } = describe(e);
-    console.error("cms file failed:", code);
-    return fail(502, message);
-  }
-};
-
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
-  if (req.method === "GET") {
-    const t = new URL(req.url).searchParams.get("t");
-    return t ? await serveCmsFile(t) : new Response("Not found", { status: 404, headers: CORS });
-  }
   if (req.method !== "POST") return json({ ok: false, message: "Method not allowed" }, 405);
 
-  let body: { action?: string; username?: string; password?: string; enabled?: boolean; contentId?: number } = {};
+  let body: { action?: string; username?: string; password?: string; enabled?: boolean } = {};
   try { body = await req.json(); } catch { /* empty body */ }
 
   // the hourly timer
@@ -547,6 +471,14 @@ Deno.serve(async (req: Request) => {
     return sent ? json({ ok: true }) : json({ ok: false, message: "Could not reach ntfy. Try again." }, 502);
   }
 
+  if (body.action === "set_portal_notify") {
+    const { data: row, error } = await supabase
+      .from("portal_accounts").update({ portal_notify: !!body.enabled }).eq("user_id", userId).select("user_id");
+    if (error) return json({ ok: false, message: "Run the alerts SQL in Supabase first." }, 500);
+    if (!row?.length) return json({ ok: false, message: "Save your portal login first." }, 400);
+    return json({ ok: true });
+  }
+
   if (body.action === "set_cms_notify") {
     const { data: row, error } = await supabase
       .from("portal_accounts").update({ cms_notify: !!body.enabled }).eq("user_id", userId).select("user_id");
@@ -572,15 +504,6 @@ Deno.serve(async (req: Request) => {
       console.error("cms sync failed:", code);
       return json({ ok: false, code, message });
     }
-  }
-
-  if (body.action === "cms_link") {
-    const contentId = Number(body.contentId);
-    const { data: file } = await supabase
-      .from("cms_files").select("content_id").eq("user_id", userId).eq("content_id", contentId).maybeSingle();
-    if (!file) return json({ ok: false, code: "CMS_FILE_NOT_FOUND", message: MESSAGES.CMS_FILE_NOT_FOUND }, 404);
-    const base = (Deno.env.get("SUPABASE_URL") ?? "").replace(/\/$/, "");
-    return json({ ok: true, url: `${base}/functions/v1/portal-sync?t=${encodeURIComponent(await signLink(userId, contentId))}` });
   }
 
   if (body.action === "remove") {

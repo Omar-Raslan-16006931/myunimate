@@ -24,13 +24,6 @@ export const openCmsSession = (auth: CmsAuth, connector: Connector): Promise<Cms
       okPage(res.status, "CMS");
       return res.body;
     },
-    async getFile(path) {
-      http.accept = "*/*";
-      http.referer = `https://${CMS_HOST}/apps/student/ViewAllCourseStn.aspx`;
-      const res = await http.request("GET", path);
-      okPage(res.status, "CMS_FILE");
-      return { body: res.bytes, contentType: res.headers.get("content-type")?.[0] ?? "application/octet-stream" };
-    },
     close: () => http.close(),
   };
   return Promise.resolve(session);

@@ -127,6 +127,14 @@ export const testPortalAlert = () => call({ action: 'test_notify' });
 /** Your weekly classes from the portal's schedule page (all seven periods). */
 export const getPortalSchedule = () => call({ action: 'get_schedule' });
 
+/** Alerts for new grades, absences and exam seats (one of the three alert choices). */
+export const setPortalNotify = (enabled: boolean) => call({ action: 'set_portal_notify', enabled });
+export const getPortalNotifyOn = async (): Promise<boolean> => {
+  const { data, error } = await supabase.from('portal_accounts').select('portal_notify').maybeSingle();
+  // not set up yet (or no row): behave as before, grade alerts on
+  return error || !data ? true : (data as { portal_notify: boolean | null }).portal_notify !== false;
+};
+
 /** The private ntfy topic, or null when phone alerts are off (or not set up on the server yet). */
 export const getPortalAlertTopic = async (): Promise<string | null> => {
   const { data, error } = await supabase.from('portal_accounts').select('notify_topic').maybeSingle();
