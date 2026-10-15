@@ -140,7 +140,7 @@ const Settings: React.FC<SettingsProps> = ({
         <div style={styles.scrollableContent} className="animate-in fade-in duration-700">
             <header className="mb-8 px-1">
                 <h1 className="text-3xl font-black text-white tracking-tight leading-tight">Settings</h1>
-                <p className="text-[13px] text-white/40 font-medium tracking-wide">Manage your university operating system</p>
+                <p className="text-[13px] text-white/40 font-medium tracking-wide">Manage your account and preferences</p>
             </header>
 
             <div className="space-y-6">
