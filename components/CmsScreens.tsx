@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, ChevronRight, ExternalLink, FileText, Folder, GraduationCap, KeyRound, Loader2, RefreshCw, Search } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { styles } from '../theme';
-import Collapse from './ui/Collapse';
 import { getPortalAccount, readPortalCache, writePortalCache } from '../services/portal';
 import {
   CmsCourse, CmsFile, openCmsFile, getCmsCourses, getCmsFiles, groupSeasons, groupWeeks,
@@ -124,7 +123,7 @@ const NewBadge: React.FC<{ n: number }> = ({ n }) => (
   <span className="shrink-0 rounded-full px-2 py-[1px] text-[0.68rem] font-extrabold" style={{ background: 'var(--accent)', color: 'var(--on-accent)' }}>{n} new</span>
 );
 
-// ───────────── course list (seasons, highest first) ─────────────
+// ───────────── course list (current season) ─────────────
 
 const CmsCourses: React.FC<{
   data: CmsData | null; syncing: boolean; problem: string | null;
@@ -170,40 +169,34 @@ const CmsCourses: React.FC<{
                     style={strong}
                   />
                 </label>
-                {shown.map(s => {
-                  const expanded = true;
-                  return (
-                    <section key={s.id} className="overflow-hidden rounded-[20px]" style={card}>
-                      <button
-                        className="flex w-full cursor-default items-center gap-2 border-0 bg-transparent px-3.5 py-3 text-left"
-                      >
-                        <span className="text-[0.95rem] font-extrabold" style={strong}>{s.title}</span>
-                        {s.current && <span className="rounded-full px-2 py-[1px] text-[0.62rem] font-extrabold" style={{ background: 'var(--accent)', color: 'var(--on-accent)' }}>Current</span>}
-                        <span className="flex-1" />
-                        {s.newCount > 0 && <NewBadge n={s.newCount} />}
-                        <span className="text-[0.75rem] font-semibold" style={muted}>{s.courses.length} {s.courses.length === 1 ? 'course' : 'courses'}</span>
-                      </button>
-                      <Collapse open={expanded}>
-                        {s.courses.map(c => {
-                          const n = (data.files ?? []).filter(f => f.course_id === c.course_id && f.is_new).length;
-                          return (
-                            <button
-                              key={c.course_id}
-                              onClick={() => onOpenCourse(c)}
-                              className="flex w-full items-center gap-2.5 border-0 bg-transparent px-3.5 py-2.5 text-left"
-                              style={{ borderTop: '1px solid var(--line)' }}
-                            >
-                              <span className="w-[58px] shrink-0 rounded-[8px] py-1 text-center text-[0.68rem] font-extrabold tracking-wide" style={{ background: 'rgba(25,184,166,0.14)', color: 'var(--accent-text)' }}>{c.code || '—'}</span>
-                              <span className="min-w-0 flex-1 truncate text-[0.88rem] font-semibold" style={strong}>{c.name}</span>
-                              {n > 0 && <NewBadge n={n} />}
-                              <ChevronRight size={15} style={muted} />
-                            </button>
-                          );
-                        })}
-                      </Collapse>
-                    </section>
-                  );
-                })}
+                {shown.map(s => (
+                  <section key={s.id}>
+                    <div className="mb-2 flex items-center gap-2 px-1">
+                      <span className="text-[0.8rem] font-bold" style={muted}>{s.title}</span>
+                      {s.current && <span className="rounded-full px-2 py-[1px] text-[0.62rem] font-extrabold" style={{ background: 'var(--accent)', color: 'var(--on-accent)' }}>Current</span>}
+                      <span className="flex-1" />
+                      {s.newCount > 0 && <NewBadge n={s.newCount} />}
+                    </div>
+                    <div className="overflow-hidden rounded-[20px]" style={card}>
+                      {s.courses.map((c, i) => {
+                        const n = (data.files ?? []).filter(f => f.course_id === c.course_id && f.is_new).length;
+                        return (
+                          <button
+                            key={c.course_id}
+                            onClick={() => onOpenCourse(c)}
+                            className="flex w-full items-center gap-3 border-0 bg-transparent px-3.5 py-3.5 text-left"
+                            style={i > 0 ? { borderTop: '1px solid var(--line)' } : undefined}
+                          >
+                            <span className="w-[58px] shrink-0 rounded-[8px] py-1 text-center text-[0.68rem] font-extrabold tracking-wide" style={{ background: 'rgba(25,184,166,0.14)', color: 'var(--accent-text)' }}>{c.code || '—'}</span>
+                            <span className="min-w-0 flex-1 text-[0.92rem] font-semibold leading-tight" style={strong}>{c.name}</span>
+                            {n > 0 && <NewBadge n={n} />}
+                            <ChevronRight size={15} style={muted} />
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </section>
+                ))}
                 {shown.length === 0 && <div className="px-1 text-[0.85rem]" style={muted}>No course matches “{query}”.</div>}
               </div>
             )}
