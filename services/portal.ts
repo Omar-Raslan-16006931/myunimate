@@ -254,22 +254,30 @@ export interface PortalSummary {
 
 export const isAbsent = (status: string) => /absent/i.test(status);
 
+/** The last summary saved on this phone, so the home cards show real numbers the moment they appear. */
+export const getCachedPortalSummary = (): PortalSummary | null => readPortalCache<PortalSummary>('summary');
+
 export const getPortalSummary = async (): Promise<PortalSummary> => {
-  const account = await getPortalAccount();
-  if (!account) return { connected: false, newGrades: 0, absences: 0, examSeats: 0, lastSyncAt: null, lastStatus: null };
-  const [grades, attendance, examSeats] = await Promise.all([
+  // all four lookups at once (the account row no longer has to finish first)
+  const [account, grades, attendance, examSeats] = await Promise.all([
+    getPortalAccount(),
     supabase.from('portal_grades').select('id', { count: 'exact', head: true }).eq('is_new', true),
     supabase.from('portal_attendance').select('id', { count: 'exact', head: true }).ilike('status', '%absent%'),
     supabase.from('portal_exam_seats').select('id', { count: 'exact', head: true }),
   ]);
-  return {
-    connected: true,
-    newGrades: grades.count ?? 0,
-    absences: attendance.count ?? 0,
-    examSeats: examSeats.count ?? 0,
-    lastSyncAt: account.last_sync_at,
-    lastStatus: account.last_status,
-  };
+  const summary: PortalSummary = !account
+    ? { connected: false, newGrades: 0, absences: 0, examSeats: 0, lastSyncAt: null, lastStatus: null }
+    : {
+      connected: true,
+      newGrades: grades.count ?? 0,
+      absences: attendance.count ?? 0,
+      examSeats: examSeats.count ?? 0,
+      lastSyncAt: account.last_sync_at,
+      lastStatus: account.last_status,
+    };
+  // a failed lookup (offline) must not overwrite good numbers with zeros
+  if (!(grades.error || attendance.error || examSeats.error)) writePortalCache('summary', summary);
+  return summary;
 };
 
 export const timeAgo = (iso: string | null): string => {

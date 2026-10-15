@@ -9,7 +9,7 @@ import { getLocalISOString } from '../constants';
 import { styles } from '../theme';
 import { toast } from 'react-hot-toast';
 import { remindersEnabled, enableReminders, disableReminders, syncReminders, reminderSupport } from '../services/notifications';
-import { getPortalSummary, PortalSummary } from '../services/portal';
+import { getPortalSummary, getCachedPortalSummary, PortalSummary } from '../services/portal';
 
 interface DashboardProps {
   events: ScheduleEvent[];
@@ -49,7 +49,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ events, onNavigate, onEven
   const [syncStatus, setSyncStatus] = useState<'idle' | 'loading' | 'success'>('idle');
   const [greeting, setGreeting] = useState('Good Morning');
   const [remindersOn, setRemindersOn] = useState(() => remindersEnabled());
-  const [portal, setPortal] = useState<PortalSummary | null>(null);
+  const [portal, setPortal] = useState<PortalSummary | null>(() => getCachedPortalSummary()); // last known numbers show at once, fresh ones replace them
 
   useEffect(() => {
     let alive = true;
