@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { Loader2, RefreshCw, Check, GraduationCap, CircleUser, AlarmClock, Bell, Smartphone, Send, PartyPopper, CalendarDays, ChevronDown, ChevronRight, MoreHorizontal, Pencil, Unplug } from 'lucide-react';
+import { Loader2, RefreshCw, Check, GraduationCap, CircleUser, AlarmClock, Bell, Smartphone, Send, PartyPopper, CalendarDays, ChevronDown, ChevronRight, MoreHorizontal, Pencil, Unplug, KeyRound, ClipboardCheck } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import Collapse from './ui/Collapse';
 import { setCmsAlerts, getCmsAlertsOn } from '../services/cms';
 import { toast } from 'react-hot-toast';
 import OnboardSteps from './OnboardSteps';
 import Sheet from './Sheet';
-import { ntfyRemindersEnabled, setNtfyReminders } from '../services/ntfyReminders';
-import { getPortalAccount, savePortalLogin, syncPortal, removePortalLogin, setPortalAlerts, setBarkKey, setPortalNotify, getPortalNotifyOn, testPortalAlert, getPortalAlertTopic, getPortalSchedule, timeAgo, readPortalCache, writePortalCache, PortalAccount, PortalClass } from '../services/portal';
+import { remindersEnabled, enableReminders, disableReminders } from '../services/notifications';
+import { getPortalAccount, savePortalLogin, syncPortal, removePortalLogin, setPortalAlerts, setBarkKey, isBarkTopic, setPortalNotify, getPortalNotifyOn, testPortalAlert, getPortalAlertTopic, getPortalSchedule, timeAgo, readPortalCache, writePortalCache, PortalAccount, PortalClass } from '../services/portal';
 
 const BARK_APP = 'https://apps.apple.com/app/bark-customed-notifications/id1403753865';
 const GUIDE_KEY = 'portal_setup_v1';
@@ -60,13 +60,15 @@ const AlertChoice: React.FC<{ tint: string; icon: React.ReactNode; title: string
     </button>
   );
 
-type Flow = 'login' | 'classes' | 'alerts' | 'ntfy' | 'test' | 'done';
+type Flow = 'login' | 'classes' | 'alerts' | 'bark' | 'test' | 'done';
 /** Position in the step bar (0 is the app account, which is already made by now). */
-const BAR: Record<Flow, number> = { login: 2, classes: 3, alerts: 4, ntfy: 4, test: 5, done: 6 };
+const BAR: Record<Flow, number> = { login: 2, classes: 3, alerts: 4, bark: 4, test: 5, done: 6 };
 
 interface Props {
   /** Full-screen onboarding instead of the small Settings card. */
   fullscreen?: boolean;
+  /** In Settings the flow is split in two sections: the portal login, and notifications. */
+  part?: 'portal' | 'alerts';
   onFinish?: () => void;
   /** When given, the flow has an "Import classes" step. Returns how many classes were new. */
   onImportClasses?: (classes: PortalClass[]) => Promise<number>;
@@ -76,7 +78,7 @@ interface Props {
  * Uni portal login, class import and phone alerts as one step-by-step flow.
  * Settings shows it as a card; onboarding shows it full screen.
  */
-const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImportClasses }) => {
+const PortalSettings: React.FC<Props> = ({ fullscreen = false, part, onFinish, onImportClasses }) => {
   // show the saved copy right away, then refresh it from the server
   const cached = readPortalCache<{ account: PortalAccount | null; topic: string | null; cmsOn?: boolean; portalOn?: boolean }>('settings');
   const [account, setAccount] = useState<PortalAccount | null>(cached?.account ?? null);
@@ -100,8 +102,9 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
   const [sentTest, setSentTest] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [showManage, setShowManage] = useState(false);
-  const [classRem, setClassRem] = useState(() => ntfyRemindersEnabled());
+  const [classRem, setClassRem] = useState(() => remindersEnabled());
   const [barkKey, setBarkKeyText] = useState('');
+  const [changingKey, setChangingKey] = useState(false); // Settings: show the Bark key step again to paste a new key
   const [confirmDisc, setConfirmDisc] = useState(false);
   const [, setConfirmCode] = useState(false);
   const [saved, setSaved] = useState(false);       // the login was accepted just now
@@ -133,6 +136,12 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
     }
   };
   useEffect(() => { load(); }, []);
+  // the two Settings sections (portal, notifications) are separate cards: keep them in step
+  useEffect(() => {
+    const again = () => { setGuideState(readGuide()); load(); };
+    window.addEventListener('portal-settings-changed', again);
+    return () => window.removeEventListener('portal-settings-changed', again);
+  }, []);
   // keep the saved copy in step with every change, so the switches never replay their animation
   useEffect(() => { if (loaded && account) writePortalCache('settings', { account, topic, cmsOn, portalOn }); }, [loaded, account, topic, cmsOn, portalOn]);
 
@@ -150,6 +159,7 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
     setSaved(true);
     setMoment({ title: 'Portal connected', sub: 'Your login works.' }); // success first…
     await Promise.all([load(), new Promise(r => setTimeout(r, 1500))]);
+    window.dispatchEvent(new Event('portal-settings-changed'));
     setMoment(null);                          // …then on to the next step
     setEditing(false);
   };
@@ -168,6 +178,7 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
     const res = await removePortalLogin();
     setBusy(null);
     if (res.ok) {
+      window.dispatchEvent(new Event('portal-settings-changed'));
       setAccount(null);
       setUsername('');
       setPassword('');
@@ -177,12 +188,21 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
 
   /**
    * The three alert choices (grades/absences/exams, class reminders, new CMS files).
-   * The ntfy channel exists only while at least one is on; with all three off it is switched off.
+   * The alert channel exists only while at least one is on; with all three off it is switched off.
    */
   const applyAlerts = async (next: { portal: boolean; cls: boolean; cms: boolean }): Promise<boolean> => {
-    const any = next.portal || next.cls || next.cms;
+    const any = next.portal || next.cms; // class reminders are set on the phone itself, they need no Bark key
     setBusy('alerts');
     try {
+      // first: iOS only shows its permission prompt right after a tap
+      if (next.cls !== classRem) {
+        if (next.cls) {
+          const r = await enableReminders();
+          if (r !== 'granted') { toast.error('Allow notifications for UniMate in iPhone Settings first.'); next = { ...next, cls: false }; }
+        } else await disableReminders();
+        setClassRem(next.cls);
+        window.dispatchEvent(new Event('class-reminders-changed'));
+      }
       let t = topic;
       if (any !== !!t) {
         const res = await setPortalAlerts(any);
@@ -198,15 +218,14 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
         const r = await setCmsAlerts(next.cms);
         if (!r.ok) toast.error(r.message || 'Could not change CMS alerts.'); else setCmsOn(next.cms);
       }
-      if (next.cls !== classRem) { setClassRem(next.cls); setNtfyReminders(next.cls); }
-      setGuide({ skipped: !t });
+      setGuide({ skipped: !t && !next.cls });
       return true;
     } finally {
       setBusy(null);
     }
   };
 
-  // iPhone alternative to ntfy: the student pastes the key shown in the Bark app
+  // the student pastes the key shown in the Bark app
   const useBark = async () => {
     setBusy('alerts');
     const res = await setBarkKey(barkKey);
@@ -214,7 +233,9 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
     if (res.ok && res.topic) {
       setTopic(res.topic);
       setBarkKeyText('');
-      setGuide({ subscribed: res.topic }); // nothing to subscribe to in Bark, so go straight to the test
+      setChangingKey(false);
+      setGuide({ subscribed: res.topic });
+      window.dispatchEvent(new Event('portal-settings-changed'));
       toast.success('Bark connected');
     } else toast.error(res.message || 'Could not connect Bark.');
   };
@@ -254,14 +275,14 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
     setBusy(null);
   };
 
-  // one flow: login → classes → alerts → ntfy → test → done
+  // one flow: login → classes → alerts → bark → test → done
   const loggedIn = (!!account?.last_ok_at || (saved && !!account)) && !editing;
   const flow: Flow =
     !loggedIn ? 'login'
     : onImportClasses && !guide.classes ? 'classes'
     : !topic ? (guide.skipped ? 'done' : 'alerts')
+    : !isBarkTopic(topic) ? 'bark' // alerts are on but no Bark key yet
     : guide.tested === topic ? 'done'
-    : guide.subscribed !== topic ? 'ntfy'
     : 'test';
 
   const big = fullscreen;
@@ -349,7 +370,7 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
       sub: 'Pick what you want a ping for',
       fields: (
         <div className="space-y-2.5">
-          <AlertChoice tint="bg-amber-500/20 text-amber-300" icon={<Bell size={18} />} title="Grades, absences, exams" sub="New grade, absence or exam seat"
+          <AlertChoice tint="bg-amber-500/20 text-amber-300" icon={<ClipboardCheck size={18} />} title="Grades, absences, exams" sub="New grade, absence or exam seat"
             on={wantPortal} onToggle={() => setWantPortal(v => !v)} />
           <AlertChoice tint="bg-violet-500/20 text-violet-300" icon={<AlarmClock size={18} />} title="Class reminders" sub="15 min before each class"
             on={wantClass} onToggle={() => setWantClass(v => !v)} />
@@ -364,7 +385,7 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
         </button>
       ),
     },
-    ntfy: {
+    bark: {
       icon: <Smartphone size={30} />,
       title: 'Set up Bark',
       sub: 'A free iPhone app that shows the alerts',
@@ -378,13 +399,27 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
           <div className="rounded-xl border border-white/5 bg-black/40 p-3">
             <div className="flex items-center gap-3">
               <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-teal-500 text-[11px] font-extrabold text-black">2</span>
-              <span className="min-w-0 flex-1 text-sm font-semibold text-white">Open Bark, copy the key it shows, paste it here</span>
+              <span className="min-w-0 flex-1 text-sm font-semibold text-white">Open Bark and tap <b>Enable Notifications</b></span>
+            </div>
+            <div className="mt-3 flex items-center gap-3">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-teal-500 text-[11px] font-extrabold text-black">3</span>
+              <span className="min-w-0 flex-1 text-sm font-semibold text-white">Tap <b>Copy</b>, then tap <b>Copy Key</b></span>
+            </div>
+            <img src="/bark-guide.jpg" alt="In Bark: tap Enable Notifications, then Copy, then Copy Key" className="mt-3 w-full rounded-xl border border-white/5" />
+            <div className="mt-3 flex items-center gap-3">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-teal-500 text-[11px] font-extrabold text-black">4</span>
+              <span className="min-w-0 flex-1 text-sm font-semibold text-white">Paste the key here</span>
             </div>
             <input className={`${input} mt-2.5`} value={barkKey} onChange={e => setBarkKeyText(e.target.value)} placeholder="Paste your Bark key" autoCapitalize="none" autoCorrect="off" spellCheck={false} autoComplete="off" />
           </div>
         </div>
       ),
-      actions: <button onClick={useBark} disabled={busy !== null || barkKey.trim().length < 10} className={primary}>{busy === 'alerts' ? spin : 'Connect Bark'}</button>,
+      actions: (
+        <>
+          <button onClick={useBark} disabled={busy !== null || barkKey.trim().length < 10} className={primary}>{busy === 'alerts' ? spin : 'Connect Bark'}</button>
+          {changingKey && <button onClick={() => { setChangingKey(false); setBarkKeyText(''); }} disabled={busy !== null} className={quiet}>Cancel</button>}
+        </>
+      ),
     },
     test: {
       icon: <Send size={30} />,
@@ -409,16 +444,26 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
   // ── compact card (Settings) ──
   if (!fullscreen) {
     if (celebrate) return <div className="rounded-2xl border border-white/5 bg-black/30 p-4">{connectedView}</div>;
-    if (flow === 'done') {
+    // which section shows a setup step right now, and which shows its finished card
+    const portalStep = flow === 'login' || flow === 'classes';
+    const alertsStep = flow === 'alerts' || flow === 'bark' || flow === 'test' || changingKey;
+    const stepFlow: Flow = changingKey && part === 'alerts' ? 'bark' : flow;
+    if (part === 'alerts' && !loggedIn) {
+      return <div className="rounded-2xl border border-white/5 bg-black/30 p-4 text-center text-[13px] text-white/50">Connect your Uni Portal first, then you can turn on notifications.</div>;
+    }
+    const stepHere = part === 'alerts' ? alertsStep : part === 'portal' ? portalStep : flow !== 'done';
+    if (!stepHere) {
+      const showTop = part !== 'alerts';
+      const showAlerts = part !== 'portal';
       const err = account!.last_status === 'error';
-      const tile = (bg: string, icon: React.ReactNode) => <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px] ${bg}`}>{icon}</div>;
+      const tile = (bg: string, icon: React.ReactNode) => <div className={`flex h-10 w-10 shrink-0 items-center justify-center ${bg.split(' ').filter(c => c.startsWith('text-')).join(' ')}`}>{icon}</div>;
       return (
         <div>
           {/* one box: portal, alerts, test */}
           <div className="overflow-hidden rounded-[22px] border border-white/[0.06] bg-white/5">
-            <div className="p-3.5">
+            {showTop && <div className="p-3.5">
               <div className="flex items-center gap-3">
-                <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] ${err ? 'bg-amber-500/20 text-amber-300' : 'bg-teal-500/20 text-teal-300'}`}><CircleUser size={22} /></div>
+                <div className={`flex h-11 w-11 shrink-0 items-center justify-center ${err ? 'text-amber-300' : 'text-teal-300'}`}><CircleUser size={22} /></div>
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-[16px] font-bold text-white">{account!.username}</div>
                   <div className="mt-0.5 flex items-center gap-1.5 whitespace-nowrap text-[12px]">
@@ -432,22 +477,22 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
                 className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-xl border-0 bg-teal-500 text-[14px] font-bold text-[#03201c] disabled:opacity-60">
                 {busy === 'sync' ? <><Loader2 size={16} className="animate-spin" /> Checking…</> : <><RefreshCw size={15} /> Check now</>}
               </button>
-            </div>
+            </div>}
 
-            {(() => {
-              const cur = { portal: !!topic && portalOn, cls: !!topic && classRem, cms: !!topic && cmsOn };
+            {showAlerts && (() => {
+              const cur = { portal: !!topic && portalOn, cls: classRem, cms: !!topic && cmsOn };
               const row = (key: keyof typeof cur, bg: string, icon: React.ReactNode, title: string, sub: string) => (
                 <AlertRow key={key} tile={tile(bg, icon)} title={title} sub={sub} on={cur[key]} busy={busy === 'alerts' && rowBusy === key} disabled={busy !== null}
                   onToggle={() => { setRowBusy(key); applyAlerts({ ...cur, [key]: !cur[key] }); }} />
               );
               return <>
-                {row('portal', 'bg-amber-500/20 text-amber-300', <Bell size={18} />, 'Grades, absences, exams', 'New grade, absence or exam seat')}
+                {row('portal', 'bg-amber-500/20 text-amber-300', <ClipboardCheck size={18} />, 'Grades, absences, exams', 'New grade, absence or exam seat')}
                 {row('cls', 'bg-violet-500/20 text-violet-300', <AlarmClock size={18} />, 'Class reminders', '15 min before each class')}
                 {row('cms', 'bg-emerald-500/20 text-emerald-300', <GraduationCap size={18} />, 'New CMS files', 'When a teacher adds something')}
               </>;
             })()}
 
-            {topic && (
+            {showAlerts && topic && (
               <button onClick={testAlert} disabled={busy !== null}
                 className="flex w-full items-center gap-3 border-0 border-t border-white/[0.06] bg-transparent px-3.5 py-3 text-left disabled:opacity-60">
                 {tile('bg-sky-500/20 text-sky-300', busy === 'test' ? <Loader2 size={17} className="animate-spin" /> : <Send size={17} />)}
@@ -458,8 +503,19 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
                 <ChevronRight size={18} className="shrink-0 text-white/25" />
               </button>
             )}
+            {showAlerts && topic && isBarkTopic(topic) && (
+              <button onClick={() => setChangingKey(true)} disabled={busy !== null}
+                className="flex w-full items-center gap-3 border-0 border-t border-white/[0.06] bg-transparent px-3.5 py-3 text-left disabled:opacity-60">
+                {tile('text-teal-300', <KeyRound size={17} />)}
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-bold text-white">Change Bark key</div>
+                  <div className="truncate text-xs text-white/50">Paste a different key from Bark</div>
+                </div>
+                <ChevronRight size={18} className="shrink-0 text-white/25" />
+              </button>
+            )}
           </div>
-          {topic && (
+          {showAlerts && topic && (
             <div className="mt-1.5">
               <button onClick={() => setShowHelp(v => !v)} className="flex w-full items-center justify-center gap-1 border-0 bg-transparent py-2.5 text-xs font-semibold text-white/45">
                 Not receiving alerts? <ChevronDown size={13} className={`transition-transform duration-300 ${showHelp ? 'rotate-180' : ''}`} />
@@ -469,7 +525,7 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
           )}
 
           {/* rare actions live in a sheet */}
-          <Sheet open={showManage} onClose={() => { if (busy === null) { setShowManage(false); setConfirmDisc(false); setConfirmCode(false); } }}>
+          {showTop && <Sheet open={showManage} onClose={() => { if (busy === null) { setShowManage(false); setConfirmDisc(false); setConfirmCode(false); } }}>
             <div className="px-5 pb-6 pt-1">
               <div className="mb-4 text-center">
                 <div className="text-[19px] font-extrabold">Uni Portal</div>
@@ -500,11 +556,11 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
                 </div>
               )}
             </div>
-          </Sheet>
+          </Sheet>}
         </div>
       );
     }
-    const sc = screens[flow];
+    const sc = screens[stepFlow as Exclude<Flow, 'done'>];
     const at = flow === 'login' || flow === 'classes' ? 0 : flow === 'test' ? 2 : 1;
     return (
       <div className="rounded-2xl border border-white/5 bg-black/30 p-4">
@@ -516,7 +572,7 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
           </div>
         )}
         <AnimatePresence mode="wait" initial={false}>
-          <motion.div key={flow + (editing ? '-edit' : '')} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.18 }}>
+          <motion.div key={stepFlow + (editing ? '-edit' : '')} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.18 }}>
             <div className="mb-4 text-center">
               <div className="text-lg font-bold text-white">{sc.title}</div>
               <div className="text-xs text-white/50">{sc.sub}</div>

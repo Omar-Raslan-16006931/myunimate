@@ -3,7 +3,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { AlertCircle, RefreshCw } from 'lucide-react';
 import { Toaster, toast } from 'react-hot-toast';
 import { remindersEnabled, syncReminders } from './services/notifications';
-import { ntfyRemindersEnabled, syncNtfyReminders, NTFY_REMINDERS_EVENT } from './services/ntfyReminders';
 import { PortalGrades, PortalAttendance, PortalExamSeats } from './components/PortalScreens';
 import PortalSettings from './components/PortalSettings';
 import { getPortalAccount, getPortalSummary, getPortalExamSeats, getPortalAlertTopic, isBarkTopic, syncPortal, clearPortalCache, bindPortalUser, courseCodeOf, PortalExamSeat, PortalClass } from './services/portal';
@@ -675,8 +674,8 @@ export const App: React.FC = () => {
   // Phone notification for new grades, attendance and exam seats.
   // If the phone will not show notifications, say it inside the app instead.
   const alertPortalChanges = async (userId: string, force = false) => {
-    // with ntfy on, the server sends the alert itself; do not show it twice
-    const silent = !!(await getPortalAlertTopic());
+    // with Bark on, the server sends the alert itself; do not show it twice
+    const silent = isBarkTopic(await getPortalAlertTopic());
     const { alerts, shown } = await checkPortalChanges(userId, { force, silent });
     if (!alerts.length || shown) return;
     toast(alerts.length === 1 ? `${alerts[0].title}: ${alerts[0].body}` : `${alerts.length} portal updates`, { icon: '🔔' });
@@ -1158,25 +1157,15 @@ export const App: React.FC = () => {
 
   // Class reminders: re-plan whenever the schedule changes or the app comes back to the front.
   useEffect(() => {
-    const plan = async () => {
-      const mine = events.filter(e => e.scheduleId === activeProfileId);
-      // Bark cannot hold a reminder for later, so with Bark the reminders stay on the phone itself
-      const bark = ntfyRemindersEnabled() ? isBarkTopic(await getPortalAlertTopic()) : false;
-      if (bark) {
-        syncReminders(mine);
-      } else if (ntfyRemindersEnabled()) {
-        // ntfy sends the reminder, so clear the on-phone ones to avoid two alerts
-        syncReminders([]);
-        syncNtfyReminders(mine);
-      } else if (remindersEnabled()) {
-        syncReminders(mine);
-      }
+    const plan = () => {
+      // class reminders are scheduled on the phone itself (Bark cannot hold a reminder for later)
+      if (remindersEnabled()) syncReminders(events.filter(e => e.scheduleId === activeProfileId));
     };
     plan();
     const onVisible = () => { if (document.visibilityState === 'visible') plan(); };
     document.addEventListener('visibilitychange', onVisible);
-    window.addEventListener(NTFY_REMINDERS_EVENT, plan);
-    return () => { document.removeEventListener('visibilitychange', onVisible); window.removeEventListener(NTFY_REMINDERS_EVENT, plan); };
+    window.addEventListener('class-reminders-changed', plan);
+    return () => { document.removeEventListener('visibilitychange', onVisible); window.removeEventListener('class-reminders-changed', plan); };
   }, [events, activeProfileId]);
 
   // signed in but still waiting to learn who this is: keep the loader so no wrong screen flashes by

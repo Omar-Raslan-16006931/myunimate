@@ -83,10 +83,11 @@ interface SyncResult {
 // one phone alert
 interface Alert { title: string; body: string; tag: string }
 
-// Sends alerts through ntfy.sh, a free push app, so they arrive even when
-// UniMate is closed. Never throws: a failed alert must not fail the sync.
+// Sends alerts to the student's phone through Bark (a free iPhone push app; the key is stored as "bark:<key>"
+// in notify_topic). Apple delivers them, so they arrive even when UniMate is closed.
+// Never throws: a failed alert must not fail the sync.
 let examDbg = ""; // numbers about the last exam-seat comparison, shown in the timer report
-let lastNtfy = ""; // what ntfy answered last (status or error), shown in the timer's report
+let lastNtfy = ""; // what Bark answered last (status or error), shown in the timer's report
 const sendAlerts = async (topic: string, alerts: Alert[]): Promise<number> => {
   const list = alerts.length > 5
     ? [{
@@ -95,52 +96,21 @@ const sendAlerts = async (topic: string, alerts: Alert[]): Promise<number> => {
       tag: "bell",
     }]
     : alerts;
+  if (!topic.startsWith("bark:")) { lastNtfy = "no Bark key yet"; return 0; }
   let sent = 0;
-  const token = (Deno.env.get("NTFY_TOKEN") ?? "").trim();
-  const relayUrl = (Deno.env.get("NTFY_RELAY_URL") ?? "").trim();
-  const relayKey = (Deno.env.get("NTFY_RELAY_KEY") ?? "").trim();
-  // One try: through the relay (a free Cloudflare Worker, so ntfy sees a different server address) or direct.
-  const post = async (viaRelay: boolean, body: string) => {
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
-    // the relay goes out anonymous from Cloudflare's address; only the direct route uses the account token
-    if (token && !viaRelay) headers.Authorization = `Bearer ${token}`;
-    if (viaRelay) headers["x-relay-key"] = relayKey;
-    return await fetch(viaRelay ? relayUrl : "https://ntfy.sh", { method: "POST", headers, body, signal: AbortSignal.timeout(8000) });
-  };
-  // Bark (free iPhone push app): the topic is "bark:<device key>". Apple delivers it, no shared quota.
-  if (topic.startsWith("bark:")) {
-    for (const a of list) {
-      try {
-        const res = await fetch("https://api.day.app/push", {
-          method: "POST",
-          headers: { "Content-Type": "application/json; charset=utf-8" },
-          body: JSON.stringify({ device_key: topic.slice(5), title: a.title, body: a.body, group: "UniMate", level: "timeSensitive" }),
-          signal: AbortSignal.timeout(8000),
-        });
-        lastNtfy = "bark " + res.status;
-        if (res.ok) sent++; else { console.error("bark answered", res.status); lastNtfy += " " + (await res.text().catch(() => "")).slice(0, 80); }
-      } catch (e) {
-        lastNtfy = "bark failed: " + (e instanceof Error ? e.message : String(e)).slice(0, 80);
-      }
-    }
-    console.log(`alerts: ${alerts.length} found, ${sent}/${list.length} sent (bark)`);
-    return sent;
-  }
   for (const a of list) {
-    const body = JSON.stringify({ topic, title: a.title, message: a.body, tags: [a.tag], priority: 4 });
-    // relay first when it is set up; direct ntfy is the fallback
-    const routes = relayUrl && relayKey ? [true, false] : [false];
-    for (const viaRelay of routes) {
-      try {
-        const res = await post(viaRelay, body);
-        const label = (viaRelay ? "relay " : "direct ") + res.status;
-        if (res.ok) { lastNtfy = label; sent++; break; }
-        console.error("ntfy answered", res.status);
-        lastNtfy = (viaRelay ? "" : lastNtfy + " | ") + label + " " + (await res.text().catch(() => "")).slice(0, 80);
-      } catch (e) {
-        lastNtfy = (viaRelay ? "" : lastNtfy + " | ") + (viaRelay ? "relay" : "direct") + " failed: " + (e instanceof Error ? e.message : String(e)).slice(0, 80);
-        console.error("ntfy request failed");
-      }
+    try {
+      const res = await fetch("https://api.day.app/push", {
+        method: "POST",
+        headers: { "Content-Type": "application/json; charset=utf-8" },
+        body: JSON.stringify({ device_key: topic.slice(5), title: a.title, body: a.body, group: "UniMate", level: "timeSensitive" }),
+        signal: AbortSignal.timeout(8000),
+      });
+      lastNtfy = "bark " + res.status;
+      if (res.ok) sent++; else { console.error("bark answered", res.status); lastNtfy += " " + (await res.text().catch(() => "")).slice(0, 80); }
+    } catch (e) {
+      lastNtfy = "bark failed: " + (e instanceof Error ? e.message : String(e)).slice(0, 80);
+      console.error("bark request failed");
     }
   }
   console.log(`alerts: ${alerts.length} found, ${sent}/${list.length} sent`);
@@ -148,7 +118,7 @@ const sendAlerts = async (topic: string, alerts: Alert[]): Promise<number> => {
 };
 
 // Alerts off keeps the topic as "off:<topic>", so turning them back on gives the
-// same topic and the phone's ntfy subscription keeps working.
+// same Bark key.
 const OFF = "off:";
 const activeTopic = (t: string | null | undefined) => (t && !t.startsWith(OFF) ? t : null);
 
@@ -524,21 +494,9 @@ Deno.serve(async (req: Request) => {
       for (let a = queue.shift(); a; a = queue.shift()) results.push(await syncUser(a.user_id));
     };
     await Promise.all(Array.from({ length: Math.min(5, queue.length) }, worker));
-    // numbers only (no names or codes): how many alerts each account found and sent, and what ntfy said
+    // numbers only (no names or codes): how many alerts each account found and sent, and what Bark said
     const report = results.map((r) => ({ ok: r.ok, found: r.alertsFound ?? 0, titles: r.alertTitles ?? [], exam: r.examDbg ?? "", sent: r.notified ?? 0, ntfy: r.ntfy ?? "" }));
-    // the ntfy account's own numbers (messages sent today and the daily limit), to see which quota is hit
-    let account: unknown = null;
-    const tk = (Deno.env.get("NTFY_TOKEN") ?? "").trim();
-    if (tk) {
-      try {
-        const r = await fetch("https://ntfy.sh/v1/account", { headers: { Authorization: `Bearer ${tk}` }, signal: AbortSignal.timeout(8000) });
-        const j = r.ok ? await r.json() : null;
-        account = { status: r.status, sent: j?.stats?.messages, limit: j?.limits?.messages, left: j?.stats?.messages_remaining, tier: j?.tier?.code ?? "free" };
-      } catch (e) { account = { error: String(e).slice(0, 60) }; }
-    }
-    // token: whether the NTFY_TOKEN secret reached the function (yes/no only, never the value)
-    const token = (Deno.env.get("NTFY_TOKEN") ?? "").trim() ? "yes" : "no";
-    return json({ ok: true, synced: results.length, failed: results.filter((r) => !r.ok).length, region: Deno.env.get("SB_REGION") ?? "?", token, account, report });
+    return json({ ok: true, synced: results.length, failed: results.filter((r) => !r.ok).length, report });
   }
 
   // everything else needs a signed-in app user
@@ -633,22 +591,6 @@ Deno.serve(async (req: Request) => {
     return json({ ok: true, topic: stored });
   }
 
-  // a new private code: the old one stops working, so anyone who learned it stops receiving alerts
-  if (body.action === "new_topic") {
-    const { data: current } = await supabase.from("portal_accounts").select("notify_topic").eq("user_id", userId).maybeSingle();
-    const saved: string | null = current?.notify_topic ?? null;
-    if (!saved) return json({ ok: false, message: "Turn on phone alerts first." }, 400);
-    if (saved.replace(OFF, "").startsWith("bark:")) return json({ ok: false, message: "Bark has its own key. Set up ntfy again to get a new code." }, 400);
-    const wasOff = saved.startsWith(OFF);
-    for (let i = 0; i < 3; i++) {
-      const topic = newTopic();
-      const { error } = await supabase.from("portal_accounts").update({ notify_topic: wasOff ? OFF + topic : topic }).eq("user_id", userId);
-      if (!error) return json({ ok: true, topic: wasOff ? null : topic });
-      if (error.code !== "23505") return json({ ok: false, message: "Could not change the alert code." }, 500);
-    }
-    return json({ ok: false, message: "Could not change the alert code. Try again." }, 500);
-  }
-
   if (body.action === "test_notify") {
     const { data: account } = await supabase.from("portal_accounts").select("notify_topic").eq("user_id", userId).maybeSingle();
     const testTopic = activeTopic(account?.notify_topic);
@@ -656,8 +598,8 @@ Deno.serve(async (req: Request) => {
     const sent = await sendAlerts(testTopic, [{
       title: "UniMate", body: "Alerts are working. You will get one for new grades, attendance and exam seats.", tag: "tada",
     }]);
-    // region + what the push service said, so a test can be compared with the timer's runs
-    const where = `${Deno.env.get("SB_REGION") ?? "?"} · ${lastNtfy}`;
+    // what Bark said, so a failed test explains itself
+    const where = lastNtfy;
     return sent ? json({ ok: true, where }) : json({ ok: false, message: `Could not send the alert (${where.slice(0, 120)})` }, 502);
   }
 

@@ -193,7 +193,7 @@ export const checkPortalChanges = async (
     ]);
     const { next, alerts } = findPortalChanges(readSnapshot(userId), { grades, attendance, seats });
     writeSnapshot(userId, next);
-    // silent: the server already pushed these through ntfy, so only remember them
+    // silent: the server already pushed these through Bark, so only remember them
     if (!alerts.length || opts.silent) return none;
     const shown = await deliver(compact(alerts));
     return { alerts, shown };

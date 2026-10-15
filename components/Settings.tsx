@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Collapse from './ui/Collapse';
 import { supabase } from '../lib/supabase';
-import { Plus, Trash2, Palette, Layers, Loader2, LogOut, ChevronDown, AlertTriangle, User, Shield, MessageSquare, ChevronRight, Columns, KeyRound, Headset, Fingerprint } from 'lucide-react';
+import { Plus, Trash2, Palette, Layers, Loader2, LogOut, ChevronDown, AlertTriangle, User, Shield, MessageSquare, ChevronRight, Columns, KeyRound, Headset, Fingerprint, Bell } from 'lucide-react';
 import { ScheduleProfile, EventColorMap, EventType, ScheduleEvent, PeriodDefinition, ThemeMode, ViewState } from '../types';
 import { styles } from '../theme';
 import ScheduleSettings from './ScheduleSettings';
@@ -63,7 +63,7 @@ const SectionHeader = ({ icon: Icon, color, title, isExpanded, onToggle, rightEl
     return (
         <div onClick={onToggle} className="flex items-center justify-between cursor-pointer p-4 group">
             <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-300 group-hover:scale-110" style={{ background: `${color}15`, color: color }}>
+                <div className="w-10 h-10 flex items-center justify-center" style={{ color: color }}>
                     <Icon size={20} />
                 </div>
                 <h3 className="text-[15px] font-bold text-white tracking-tight">{title}</h3>
@@ -94,6 +94,7 @@ const Settings: React.FC<SettingsProps> = ({
     const [isProfilesExpanded, setIsProfilesExpanded] = useState(false);
     const [isColorsExpanded, setIsColorsExpanded] = useState(false);
     const [isPortalExpanded, setIsPortalExpanded] = useState(false);
+    const [isNotifExpanded, setIsNotifExpanded] = useState(false);
     const [isPasskeysExpanded, setIsPasskeysExpanded] = useState(false);
     const [isAccountExpanded, setIsAccountExpanded] = useState(false);
     const [isUserMgmtExpanded, setIsUserMgmtExpanded] = useState(false);
@@ -227,7 +228,12 @@ const Settings: React.FC<SettingsProps> = ({
 
                     <div className="border-b border-white/[0.05] last:border-0">
                         <SectionHeader icon={KeyRound} color="#19b8a6" title="Uni Portal" isExpanded={isPortalExpanded} onToggle={() => setIsPortalExpanded(!isPortalExpanded)} />
-                        <Collapse open={isPortalExpanded}><div className="px-5 pb-6 pt-2"><PortalSettings /></div></Collapse>
+                        <Collapse open={isPortalExpanded}><div className="px-5 pb-6 pt-2"><PortalSettings part="portal" /></div></Collapse>
+                    </div>
+
+                    <div className="border-b border-white/[0.05] last:border-0">
+                        <SectionHeader icon={Bell} color="#f59e0b" title="Notifications" isExpanded={isNotifExpanded} onToggle={() => setIsNotifExpanded(!isNotifExpanded)} />
+                        <Collapse open={isNotifExpanded}><div className="px-5 pb-6 pt-2"><PortalSettings part="alerts" /></div></Collapse>
                     </div>
 
                     <div className="border-b border-white/[0.05] last:border-0">

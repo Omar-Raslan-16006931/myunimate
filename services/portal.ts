@@ -119,11 +119,9 @@ export const syncPortal = (): Promise<PortalSyncResult> => {
   return syncInFlight;
 };
 
-/** Turns phone alerts (through the ntfy app) on or off. Turning on makes a new private topic. */
+/** Turns phone alerts on or off. Alerts reach the phone once a Bark key is saved (setBarkKey). */
 export const setPortalAlerts = (enabled: boolean) => call({ action: 'set_notify', enabled });
 
-/** Replaces the private alert code with a fresh one (the old one stops working). */
-export const changePortalTopic = () => call({ action: 'new_topic' });
 /** iPhone alerts through the Bark app: sends the key (or the link Bark shows). */
 export const setBarkKey = (key: string) => call({ action: 'set_bark', key });
 export const isBarkTopic = (t: string | null | undefined) => !!t && t.startsWith('bark:');
@@ -140,7 +138,7 @@ export const getPortalNotifyOn = async (): Promise<boolean> => {
   return error || !data ? true : (data as { portal_notify: boolean | null }).portal_notify !== false;
 };
 
-/** The private ntfy topic, or null when phone alerts are off (or not set up on the server yet). */
+/** The saved alert target ("bark:<key>"), or null when phone alerts are off (or not set up on the server yet). */
 export const getPortalAlertTopic = async (): Promise<string | null> => {
   const { data, error } = await supabase.from('portal_accounts').select('notify_topic').maybeSingle();
   const t = error || !data ? null : ((data as { notify_topic: string | null }).notify_topic ?? null);
@@ -182,7 +180,7 @@ export const bindPortalUser = (uid: string | undefined | null) => {
     const prev = localStorage.getItem(USER_KEY);
     if (prev && prev !== uid) {
       clearPortalCache();
-      ['ntfy_class_reminders', 'ntfy_class_reminders_sent_v1', 'class_reminders_enabled'].forEach(k => localStorage.removeItem(k));
+      ['class_reminders_enabled'].forEach(k => localStorage.removeItem(k));
     }
     if (prev !== uid) localStorage.setItem(USER_KEY, uid);
   } catch { /* ignore */ }
