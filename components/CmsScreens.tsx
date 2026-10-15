@@ -222,7 +222,8 @@ const GROUP_LABEL: Record<string, string> = { lectures: 'Lectures', assignments:
 const CmsCourseView: React.FC<{
   course: CmsCourse; files: CmsFile[]; syncing: boolean; problem: string | null;
   onBack: () => void; onSync: () => void; onSeen: (ids: number[]) => void;
-}> = ({ course, files, syncing, problem, onBack, onSync, onSeen }) => {
+  onViewerChange?: (open: boolean) => void;
+}> = ({ course, files, syncing, problem, onBack, onSync, onSeen, onViewerChange }) => {
   const [filter, setFilter] = useState<string>('all');
   const [busy, setBusy] = useState<number | null>(null);
 
@@ -238,6 +239,9 @@ const CmsCourseView: React.FC<{
   const newCount = mine.filter(f => f.is_new).length;
 
   const [viewing, setViewing] = useState<{ title: string; kind: 'pdf' | 'image'; url: string } | null>(null);
+  // the bottom bar hides while a file is open
+  useEffect(() => { onViewerChange?.(!!viewing); }, [viewing, onViewerChange]);
+  useEffect(() => () => onViewerChange?.(false), [onViewerChange]);
   const closeViewer = () => { setViewing(v => { if (v) URL.revokeObjectURL(v.url); return null; }); };
   useEffect(() => () => { setViewing(v => { if (v) URL.revokeObjectURL(v.url); return null; }); }, []);
 
@@ -352,7 +356,8 @@ type Section = 'hub' | 'files' | 'cms';
 const MaterialsHub: React.FC<{
   filesView: (goBack: () => void) => React.ReactNode;
   onOpenSettings: () => void;
-}> = ({ filesView, onOpenSettings }) => {
+  onViewerChange?: (open: boolean) => void;
+}> = ({ filesView, onOpenSettings, onViewerChange }) => {
   const [section, setSection] = useState<Section>('hub');
   const [course, setCourse] = useState<CmsCourse | null>(null);
   const cms = useCms();
@@ -370,6 +375,7 @@ const MaterialsHub: React.FC<{
         onBack={() => setCourse(null)}
         onSync={cms.sync}
         onSeen={cms.patchFiles}
+        onViewerChange={onViewerChange}
       />
     );
   }

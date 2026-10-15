@@ -1446,7 +1446,7 @@ export const App: React.FC = () => {
             }}
         />;
       case 'materials':
-        return <MaterialsHub onOpenSettings={() => setView('settings')} filesView={(goBack) => <MaterialsView 
+        return <MaterialsHub onOpenSettings={() => setView('settings')} onViewerChange={setIsViewingFile} filesView={(goBack) => <MaterialsView 
             files={files}
             onAddFile={async (file) => {
                 if (!session?.user?.id) return;
