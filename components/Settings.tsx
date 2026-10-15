@@ -314,7 +314,7 @@ const Settings: React.FC<SettingsProps> = ({
                     <div className="p-4 px-5 space-y-2">
                         <button onClick={() => setSupport('list')} className="w-full flex items-center justify-between p-4 bg-white/5 rounded-[20px] hover:bg-white/10 transition-all group border border-white/[0.03]">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-2xl bg-teal-500/10 text-teal-300 flex items-center justify-center group-hover:scale-110 transition-transform"><Headset size={20} /></div>
+                                <div className="w-10 h-10 text-teal-300 flex items-center justify-center"><Headset size={20} /></div>
                                 <div className="text-left">
                                     <p className="text-[15px] font-bold text-white leading-tight">Support</p>
                                     <p className="text-[11px] text-white/40 font-medium">{supportBadge > 0 ? `${supportBadge} new ${supportBadge === 1 ? 'reply' : 'replies'}` : 'Your tickets and replies'}</p>
@@ -327,7 +327,7 @@ const Settings: React.FC<SettingsProps> = ({
                         </button>
                         <button onClick={() => setSupport('new')} className="w-full flex items-center justify-between p-4 bg-white/5 rounded-[20px] hover:bg-white/10 transition-all group border border-white/[0.03]">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-2xl bg-white/5 text-white/70 flex items-center justify-center group-hover:scale-110 transition-transform"><Plus size={20} /></div>
+                                <div className="w-10 h-10 text-white/70 flex items-center justify-center"><Plus size={20} /></div>
                                 <div className="text-left">
                                     <p className="text-[15px] font-bold text-white leading-tight">New ticket</p>
                                     <p className="text-[11px] text-white/40 font-medium">Report a bug, share an idea or ask</p>
