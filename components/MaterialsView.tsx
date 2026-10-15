@@ -71,7 +71,7 @@ const ExcelViewer: React.FC<{ data: string }> = ({ data }) => {
     );
 };
 
-const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdateFile, onDeleteFile, onLoadFileContent, onBack, onFileViewChange }) => {
+const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdateFile, onDeleteFile, onLoadFileContent, onFileViewChange }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [isLoadingContent, setIsLoadingContent] = useState(false);
@@ -314,9 +314,11 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
   return (
     <div style={styles.scrollableContent} onClick={() => { setActiveMenuId(null); setIsPlusMenuOpen(false); }}>
        <div style={{marginBottom: '20px', paddingTop: '8px', display: 'flex', alignItems: 'center', gap: '12px'}}>
-          <button onClick={() => currentFolderId ? setCurrentFolderId(null) : onBack()} style={{background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', padding: 0}}>
-              <ArrowLeft size={24} />
-          </button>
+          {currentFolderId && (
+            <button onClick={() => setCurrentFolderId(null)} aria-label="Back" style={{background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', padding: 0}}>
+                <ArrowLeft size={24} />
+            </button>
+          )}
           <div style={{flex: 1}}>
               <h1 style={styles.title}>{currentFolderId ? files.find(f => f.id === currentFolderId)?.name : 'Materials'}</h1>
               <p style={styles.subtitle}>{currentFolderId ? 'Folder Contents' : 'Documents & Resources'}</p>
@@ -339,13 +341,13 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({ files, onAddFile, onUpdat
        )}
 
        <div style={{marginBottom: '24px', position: 'relative'}}>
-          <Search size={18} style={{position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: theme.textMuted}} />
           <input 
             placeholder="Search files..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             style={{...styles.input, width: '100%', paddingLeft: '42px', boxSizing: 'border-box', borderRadius: '16px'}}
           />
+          <Search size={18} style={{position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: theme.textMuted, zIndex: 2, pointerEvents: 'none'}} />
        </div>
 
        {isLoadingContent && (
