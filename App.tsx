@@ -752,7 +752,7 @@ export const App: React.FC = () => {
       const newExamEvent: ScheduleEvent = {
         id: eventId,
         scheduleId,
-        title: `${seat.course_name} Exam`,
+        title: `${(seat.course_name || '').replace(/^[A-Za-z]{2,4}\s?\d{3,4}[A-Za-z]?\s+/, '').trim() || seat.course_name} Exam`, // no course code in the name
         code: seat.course_key,
         type: 'exam',
         isRecurring: false,

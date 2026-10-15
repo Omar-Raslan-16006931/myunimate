@@ -290,17 +290,19 @@ const save = async (userId: string, data: PortalData, firstSync: boolean): Promi
           const before = new Map((oldSeats ?? []).map((s) => [
             `${s.course_key}|${s.exam_type}|${s.exam_date ?? ""}`, `${s.start_time}|${s.hall}|${s.seat}`,
           ]));
+          const fresh: string[] = [];
           for (const s of data.examSeats) {
             const old = before.get(`${s.courseKey}|${s.examType}|${s.examDate ?? ""}`);
             if (old === `${s.startTime}|${s.hall}|${s.seat}`) continue;
             const where = [s.hall ? `Hall ${s.hall}` : "", s.seat ? `Seat ${s.seat}` : ""].filter(Boolean).join(", ");
             const when = [s.examDate, to12h(s.startTime)].filter(Boolean).join(" ");
-            alerts.push({
-              title: old === undefined ? "Exam seat posted" : "Exam seat changed",
-              body: [`${s.courseName}${s.examType ? " " + s.examType : ""}`, where, when].filter(Boolean).join(" · "),
-              tag: "round_pushpin",
-            });
+            const body = [`${s.courseName}${s.examType ? " " + s.examType : ""}`, where, when].filter(Boolean).join(" · ");
+            if (old === undefined) { fresh.push(body); continue; }
+            alerts.push({ title: "Exam seat changed", body, tag: "round_pushpin" });
           }
+          // new seats: one alert for the lot ("5 new exam seats added"), details when it is just one
+          if (fresh.length === 1) alerts.push({ title: "Exam seat posted", body: fresh[0], tag: "round_pushpin" });
+          else if (fresh.length > 1) alerts.push({ title: `${fresh.length} new exam seats added`, body: fresh.join("\n"), tag: "round_pushpin" });
         }
       }
       await supabase.from("portal_exam_seats").delete().eq("user_id", userId);
