@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowUp, Bug, ChevronLeft, ChevronRight, HelpCircle, LifeBuoy, Lightbulb, Loader2, Plus, RotateCw, Check } from 'lucide-react';
+import { ArrowUp, Bug, ChevronLeft, ChevronRight, HelpCircle, Headset, Lightbulb, Loader2, Plus, RotateCw, Check } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import Sheet from './Sheet';
 import { supabase } from '../lib/supabase';
@@ -263,7 +263,7 @@ const TicketList: React.FC<{
       ) : tickets.length === 0 ? (
         <div className="flex flex-col items-center px-4 pt-[12vh] text-center">
           <div className="flex h-[72px] w-[72px] items-center justify-center rounded-[22px]" style={{ background: 'var(--surface-2)', color: 'var(--cta-bg)' }}>
-            <LifeBuoy size={34} />
+            <Headset size={34} />
           </div>
           <div className="mt-5 text-[22px] font-extrabold">How can we help?</div>
           <p className="mt-1.5 max-w-[280px] text-[15px] leading-snug" style={muted}>

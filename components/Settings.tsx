@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Collapse from './ui/Collapse';
 import { supabase } from '../lib/supabase';
-import { Plus, Trash2, Palette, Layers, Loader2, LogOut, ChevronDown, AlertTriangle, User, Shield, MessageSquare, ChevronRight, Columns, KeyRound, LifeBuoy, Fingerprint } from 'lucide-react';
+import { Plus, Trash2, Palette, Layers, Loader2, LogOut, ChevronDown, AlertTriangle, User, Shield, MessageSquare, ChevronRight, Columns, KeyRound, Headset, Fingerprint } from 'lucide-react';
 import { ScheduleProfile, EventColorMap, EventType, ScheduleEvent, PeriodDefinition, ThemeMode, ViewState } from '../types';
 import { styles } from '../theme';
 import ScheduleSettings from './ScheduleSettings';
@@ -308,7 +308,7 @@ const Settings: React.FC<SettingsProps> = ({
                     <div className="p-4 px-5 space-y-2">
                         <button onClick={() => setSupport('list')} className="w-full flex items-center justify-between p-4 bg-white/5 rounded-[20px] hover:bg-white/10 transition-all group border border-white/[0.03]">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-2xl bg-teal-500/10 text-teal-300 flex items-center justify-center group-hover:scale-110 transition-transform"><LifeBuoy size={20} /></div>
+                                <div className="w-10 h-10 rounded-2xl bg-teal-500/10 text-teal-300 flex items-center justify-center group-hover:scale-110 transition-transform"><Headset size={20} /></div>
                                 <div className="text-left">
                                     <p className="text-[15px] font-bold text-white leading-tight">Support</p>
                                     <p className="text-[11px] text-white/40 font-medium">{supportBadge > 0 ? `${supportBadge} new ${supportBadge === 1 ? 'reply' : 'replies'}` : 'Your tickets and replies'}</p>
