@@ -97,7 +97,9 @@ const sendAlerts = async (topic: string, alerts: Alert[]): Promise<number> => {
     try {
       const res = await fetch("https://ntfy.sh", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        // With an ntfy account token (secret NTFY_TOKEN) the quota is the account's own. Without it the quota is
+        // shared with everything else sending from the same server address, and it runs out.
+        headers: { "Content-Type": "application/json", ...(Deno.env.get("NTFY_TOKEN") ? { Authorization: `Bearer ${Deno.env.get("NTFY_TOKEN")}` } : {}) },
         body: JSON.stringify({ topic, title: a.title, message: a.body, tags: [a.tag], priority: 4 }),
         signal: AbortSignal.timeout(8000),
       });
