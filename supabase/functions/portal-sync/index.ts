@@ -74,6 +74,7 @@ interface SyncResult {
   examSeats?: any[];
   notified?: number;
   alertsFound?: number;
+  alertTitles?: string[];
   ntfy?: string;
   topic?: string | null;
 }
@@ -362,6 +363,7 @@ const syncUser = async (userId: string): Promise<SyncResult> => {
       examSeats: data.examSeats,
       notified,
       alertsFound: alerts.length,
+      alertTitles: alerts.map((a) => a.title),
       ntfy: !topicNow ? "no topic" : account.portal_notify === false ? "portal alerts off" : lastNtfy,
     };
   } catch (e) {
@@ -482,10 +484,20 @@ Deno.serve(async (req: Request) => {
     };
     await Promise.all(Array.from({ length: Math.min(5, queue.length) }, worker));
     // numbers only (no names or codes): how many alerts each account found and sent, and what ntfy said
-    const report = results.map((r) => ({ ok: r.ok, found: r.alertsFound ?? 0, sent: r.notified ?? 0, ntfy: r.ntfy ?? "" }));
+    const report = results.map((r) => ({ ok: r.ok, found: r.alertsFound ?? 0, titles: r.alertTitles ?? [], sent: r.notified ?? 0, ntfy: r.ntfy ?? "" }));
+    // the ntfy account's own numbers (messages sent today and the daily limit), to see which quota is hit
+    let account: unknown = null;
+    const tk = (Deno.env.get("NTFY_TOKEN") ?? "").trim();
+    if (tk) {
+      try {
+        const r = await fetch("https://ntfy.sh/v1/account", { headers: { Authorization: `Bearer ${tk}` }, signal: AbortSignal.timeout(8000) });
+        const j = r.ok ? await r.json() : null;
+        account = { status: r.status, sent: j?.stats?.messages, limit: j?.limits?.messages, left: j?.stats?.messages_remaining, tier: j?.tier?.code ?? "free" };
+      } catch (e) { account = { error: String(e).slice(0, 60) }; }
+    }
     // token: whether the NTFY_TOKEN secret reached the function (yes/no only, never the value)
     const token = (Deno.env.get("NTFY_TOKEN") ?? "").trim() ? "yes" : "no";
-    return json({ ok: true, synced: results.length, failed: results.filter((r) => !r.ok).length, token, report });
+    return json({ ok: true, synced: results.length, failed: results.filter((r) => !r.ok).length, token, account, report });
   }
 
   // everything else needs a signed-in app user
