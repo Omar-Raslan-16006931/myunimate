@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, ChevronDown, ChevronRight, Download, FileText, Folder, GraduationCap, KeyRound, Loader2, RefreshCw, Search } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronRight, ExternalLink, FileText, Folder, GraduationCap, KeyRound, Loader2, RefreshCw, Search } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { styles } from '../theme';
 import Collapse from './ui/Collapse';
 import { getPortalAccount, readPortalCache, writePortalCache } from '../services/portal';
 import {
-  CmsCourse, CmsFile, downloadCmsFile, getCmsCourses, getCmsFiles, groupSeasons, groupWeeks,
+  CmsCourse, CmsFile, openCmsFile, getCmsCourses, getCmsFiles, groupSeasons, groupWeeks,
   markCmsFilesSeen, shortDate, syncCms,
 } from '../services/cms';
 
@@ -249,15 +249,15 @@ const CmsCourseView: React.FC<{
   );
   const newCount = mine.filter(f => f.is_new).length;
 
-  const download = async (f: CmsFile) => {
+  const openFile = async (f: CmsFile) => {
     if (busy !== null) return;
     setBusy(f.id);
-    const res = await downloadCmsFile({ content_id: f.content_id, title: f.title, path: f.path });
+    const res = await openCmsFile({ content_id: f.content_id });
     setBusy(null);
     if (res.ok) {
       if (f.is_new) { onSeen([f.id]); markCmsFilesSeen([f.id]); }
     } else {
-      toast.error(res.message || 'Could not download the file.');
+      toast.error(res.message || 'Could not open the file.');
     }
   };
 
@@ -305,7 +305,7 @@ const CmsCourseView: React.FC<{
                   {w.files.map((f, i) => (
                     <button
                       key={f.id}
-                      onClick={() => download(f)}
+                      onClick={() => openFile(f)}
                       className="flex w-full items-center gap-3 border-0 bg-transparent px-3.5 py-3 text-left"
                       style={i > 0 ? { borderTop: '1px solid var(--line)' } : undefined}
                     >
@@ -314,7 +314,7 @@ const CmsCourseView: React.FC<{
                         <span className="block text-[0.92rem] font-semibold leading-tight" style={{ color: f.is_new ? 'var(--text-primary)' : 'var(--text-muted)' }}>{f.title}</span>
                         {f.file_type && <span className="mt-0.5 block text-[0.76rem]" style={{ color: 'var(--text-muted)', opacity: 0.8 }}>{f.file_type}</span>}
                       </span>
-                      {busy === f.id ? <Loader2 size={19} className="animate-spin" style={muted} /> : <Download size={19} style={muted} />}
+                      {busy === f.id ? <Loader2 size={19} className="animate-spin" style={muted} /> : <ExternalLink size={19} style={muted} />}
                     </button>
                   ))}
                 </div>

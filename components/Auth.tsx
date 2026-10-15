@@ -2,7 +2,8 @@
 import React, { useState, memo, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { styles } from '../theme';
-import { Loader2, Mail, Lock, User, GraduationCap, Calendar, Building, Users, Check, AlertCircle, X, Fingerprint, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Loader2, Mail, Lock, User, GraduationCap, Calendar, Building, Users, Check, AlertCircle, X, Fingerprint, ArrowRight, ArrowLeft, Share, SquarePlus, Smartphone, MoreVertical } from 'lucide-react';
+import { Capacitor } from '@capacitor/core';
 import { AnimatePresence, motion } from 'framer-motion';
 import { validateEmail, validatePassword, validateUsername } from '../utils/validation';
 import { logError, logAuthEvent } from '../utils/logger';
@@ -10,6 +11,18 @@ import { SIGNUPS_ENABLED } from '../lib/featureFlags';
 import OnboardSteps from './OnboardSteps';
 import VerifyEmail from './VerifyEmail';
 import { passkeysSupported, signInWithPasskey } from '../services/passkeys';
+
+/** True in a normal browser tab: the app is not installed on the Home Screen yet. */
+const needsHomeScreen = (): boolean => {
+  try {
+    if (Capacitor.isNativePlatform()) return false;
+    const standalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone === true;
+    return !standalone;
+  } catch { return false; }
+};
+const onIos = (): boolean => {
+  try { return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); } catch { return false; }
+};
 
 interface AuthProps {
   onEnterTestMode?: () => void;
@@ -200,8 +213,11 @@ function Auth({ onEnterTestMode }: AuthProps) {
 
   const toggleMode = () => {
     if (!SIGNUPS_ENABLED) return;
-    setMode(mode === 'signin' ? 'signup' : 'signin');
+    const toSignup = mode === 'signin';
+    setMode(toSignup ? 'signup' : 'signin');
     clearForm();
+    // step 0 = "Add to Home Screen", only when the app is opened in a browser tab
+    setSignupStep(toSignup && needsHomeScreen() ? 0 : 1);
   };
 
   if (verifyEmail) {
@@ -237,7 +253,11 @@ function Auth({ onEnterTestMode }: AuthProps) {
       }
       setSignupStep(n => n + 1);
     };
-    const back = () => { setError(null); if (signupStep === 1) toggleMode(); else setSignupStep(n => n - 1); };
+    const back = () => {
+      setError(null);
+      if (signupStep === 0 || (signupStep === 1 && !needsHomeScreen())) toggleMode();
+      else setSignupStep(n => n - 1);
+    };
     const onSubmit = (e: React.FormEvent) => { e.preventDefault(); if (signupStep < SU_TOTAL) next(); else handleAuth(e); };
 
     const head = (icon: React.ReactNode, title: string, sub: string) => (
@@ -254,9 +274,9 @@ function Auth({ onEnterTestMode }: AuthProps) {
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 16px)', paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px)' }}>
         <div className="flex shrink-0 items-center justify-between px-5 pt-2">
           <button type="button" onClick={back} disabled={loading} className="flex items-center gap-1.5 border-0 bg-transparent p-1 text-sm font-semibold text-white/50">
-            <ArrowLeft size={16} /> {signupStep === 1 ? 'Sign in' : 'Back'}
+            <ArrowLeft size={16} /> {signupStep === 0 || (signupStep === 1 && !needsHomeScreen()) ? 'Sign in' : 'Back'}
           </button>
-          <span className="text-xs font-bold uppercase tracking-wider text-white/30">Account · {signupStep} of {SU_TOTAL}</span>
+          <span className="text-xs font-bold uppercase tracking-wider text-white/30">{signupStep === 0 ? 'Before you start' : `Account · ${signupStep} of ${SU_TOTAL}`}</span>
         </div>
         <div className="mx-auto mt-4 flex w-full max-w-[420px] shrink-0 gap-2 px-5">
           {Array.from({ length: SU_TOTAL }, (_, i) => i + 1).map(n => (
@@ -271,6 +291,31 @@ function Auth({ onEnterTestMode }: AuthProps) {
             initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }} transition={{ duration: 0.2 }}
             className="mx-auto flex w-full max-w-[420px] flex-1 flex-col overflow-y-auto px-5 py-4">
             <div className="flex flex-1 flex-col items-center justify-center text-center">
+              {signupStep === 0 && (<>
+                {head(<Smartphone size={30} />, 'Add UniMate to your Home Screen', 'It opens full screen, loads faster, and alerts work properly')}
+                <ol className="mt-7 w-full space-y-3 text-left">
+                  {(onIos()
+                    ? [
+                        { icon: <Share size={18} />, text: <>Tap the <b>Share</b> button at the bottom of Safari</> },
+                        { icon: <SquarePlus size={18} />, text: <>Scroll down and tap <b>Add to Home Screen</b></> },
+                        { icon: <Smartphone size={18} />, text: <>Tap <b>Add</b>, then open UniMate from your Home Screen</> },
+                      ]
+                    : [
+                        { icon: <MoreVertical size={18} />, text: <>Tap the <b>menu</b> (⋮) in your browser</> },
+                        { icon: <SquarePlus size={18} />, text: <>Tap <b>Install app</b> or <b>Add to Home screen</b></> },
+                        { icon: <Smartphone size={18} />, text: <>Open UniMate from your Home Screen</> },
+                      ]
+                  ).map((r, i) => (
+                    <li key={i} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3.5">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-teal-500/15 text-[13px] font-extrabold text-teal-300">{i + 1}</span>
+                      <span className="flex-1 text-[15px] leading-snug text-white/80">{r.text}</span>
+                      <span className="shrink-0 text-white/30">{r.icon}</span>
+                    </li>
+                  ))}
+                </ol>
+                <p className="mt-4 text-[13px] text-white/40">Then sign up from the app. You can also keep going here.</p>
+              </>)}
+
               {signupStep === 1 && (<>
                 {head(<User size={30} />, 'Pick a username', 'This is the name you will see in UniMate')}
                 <div className="mt-7 w-full text-left">
@@ -371,7 +416,7 @@ function Auth({ onEnterTestMode }: AuthProps) {
             <div className="shrink-0 pt-4">
               <button type="submit" disabled={loading}
                 className="flex w-full items-center justify-center gap-2 rounded-2xl border-0 bg-teal-600 py-4 text-base font-bold text-white disabled:opacity-60">
-                {loading ? <Loader2 className="animate-spin" size={18} /> : signupStep < SU_TOTAL ? <>Next <ArrowRight size={16} /></> : <>Create account <ArrowRight size={16} /></>}
+                {loading ? <Loader2 className="animate-spin" size={18} /> : signupStep === 0 ? <>Continue here <ArrowRight size={16} /></> : signupStep < SU_TOTAL ? <>Next <ArrowRight size={16} /></> : <>Create account <ArrowRight size={16} /></>}
               </button>
             </div>
           </motion.form>

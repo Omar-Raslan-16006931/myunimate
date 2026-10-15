@@ -25,11 +25,14 @@ export interface CmsSyncResult {
 // deno-lint-ignore no-explicit-any
 type Db = any;
 
-/** Only the newest season has files that change; older seasons are listed but not re-read each time. */
-const seasonsToRead = (seasons: CmsSeason[]): CmsSeason[] => {
+/** The newest season is re-read every time (its files change). */
+const currentSeasons = (seasons: CmsSeason[]): CmsSeason[] => {
   const current = seasons.filter((s) => s.current);
   return current.length ? current : seasons.slice(0, 1);
 };
+
+/** Older seasons are read once (until they have files saved), newest first, within a time budget. */
+const OLD_SEASON_BUDGET_MS = 70_000;
 
 export const runCmsSync = async (db: Db, userId: string, session: CmsSession): Promise<CmsSyncResult> => {
   const now = new Date().toISOString();
@@ -48,46 +51,67 @@ export const runCmsSync = async (db: Db, userId: string, session: CmsSession): P
     if (error) throw new Error(`DB_WRITE_FAILED (cms_courses: ${error.message})`);
   }
 
-  // files already saved: tells us what is new, and whether this is the very first read
-  const { data: existing, error: readErr } = await db.from("cms_files").select("content_id").eq("user_id", userId);
+  // files already saved: tells us what is new, and which seasons were already read
+  const { data: existing, error: readErr } = await db.from("cms_files").select("content_id, season_id").eq("user_id", userId);
   if (readErr) throw new Error(`DB_READ_FAILED: ${readErr.message}`);
   const known = new Set<number>((existing ?? []).map((r: { content_id: number }) => r.content_id));
+  const readSeasons = new Set<number>((existing ?? []).map((r: { season_id: number }) => r.season_id));
   const firstSync = known.size === 0;
 
   const alerts: CmsAlert[] = [];
   let total = 0;
   let newFiles = 0;
 
-  for (const season of seasonsToRead(seasons)) {
-    for (const course of season.courses) {
-      const weeks = parseCourseView(await session.get(courseViewPath(course.id, season.id)));
-      const freshRows = [];  // files never seen before
-      const oldRows = [];    // files already saved: refreshed, never re-flagged as new
-      for (const w of weeks) {
-        for (const f of w.files) {
-          const isNew = !known.has(f.contentId);
-          const base = {
-            user_id: userId, course_id: course.id, season_id: season.id, content_id: f.contentId,
-            week_date: w.date, week_desc: w.description, position: f.position,
-            title: f.title, file_type: f.type, path: f.path, updated_at: now,
-          };
-          if (isNew) {
-            // files found on the very first read are not flagged: they are old news
-            freshRows.push({ ...base, is_new: !firstSync, first_seen_at: now });
-            if (!firstSync) {
-              newFiles++;
-              alerts.push({ title: "New on the CMS", body: `${course.name} · ${f.title}`, tag: "page_facing_up" });
-            }
-          } else {
-            oldRows.push(base);
+  const readCourse = async (season: CmsSeason, course: CmsSeason["courses"][number], isCurrent: boolean) => {
+    const weeks = parseCourseView(await session.get(courseViewPath(course.id, season.id)));
+    const freshRows = [];  // files never seen before
+    const oldRows = [];    // files already saved: refreshed, never re-flagged as new
+    for (const w of weeks) {
+      for (const f of w.files) {
+        const isNew = !known.has(f.contentId);
+        const base = {
+          user_id: userId, course_id: course.id, season_id: season.id, content_id: f.contentId,
+          week_date: w.date, week_desc: w.description, position: f.position,
+          title: f.title, file_type: f.type, path: f.path, updated_at: now,
+        };
+        if (isNew) {
+          // files found on the very first read, and files of older seasons, are old news
+          const flag = isCurrent && !firstSync;
+          freshRows.push({ ...base, is_new: flag, first_seen_at: now });
+          if (flag) {
+            newFiles++;
+            alerts.push({ title: "New on the CMS", body: `${course.name} · ${f.title}`, tag: "page_facing_up" });
           }
-          total++;
+        } else {
+          oldRows.push(base);
         }
+        total++;
       }
-      for (const rows of [freshRows, oldRows]) {
-        if (!rows.length) continue;
-        const { error } = await db.from("cms_files").upsert(rows, { onConflict: "user_id,content_id" });
-        if (error) throw new Error(`DB_WRITE_FAILED (cms_files: ${error.message})`);
+    }
+    for (const rows of [freshRows, oldRows]) {
+      if (!rows.length) continue;
+      const { error } = await db.from("cms_files").upsert(rows, { onConflict: "user_id,content_id" });
+      if (error) throw new Error(`DB_WRITE_FAILED (cms_files: ${error.message})`);
+    }
+  };
+
+  const current = currentSeasons(seasons);
+  for (const season of current) {
+    for (const course of season.courses) await readCourse(season, course, true);
+  }
+
+  // older seasons: newest first, only the ones with nothing saved yet, until the time budget is used
+  const started = Date.now();
+  for (const season of seasons) {
+    if (current.includes(season) || readSeasons.has(season.id)) continue;
+    for (const course of season.courses) {
+      if (Date.now() - started > OLD_SEASON_BUDGET_MS) break;
+      try {
+        await readCourse(season, course, false);
+      } catch (e) {
+        // one broken old course must not stop the rest; a wrong login still stops everything
+        if (e instanceof Error && e.message.startsWith("PORTAL_LOGIN_FAILED")) throw e;
+        console.error("old course skipped:", season.id, course.id, e instanceof Error ? e.message : e);
       }
     }
   }

@@ -1,3 +1,5 @@
+import { Capacitor } from '@capacitor/core';
+import { Browser } from '@capacitor/browser';
 import { supabase } from '../lib/supabase';
 
 // GIU CMS (course files). The server function "portal-sync" signs into the CMS with
@@ -135,31 +137,27 @@ export const groupWeeks = (files: CmsFile[]): CmsWeek[] => {
   return weeks.sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''));
 };
 
-/** Downloads one file through the server (the CMS needs your login). */
-export const downloadCmsFile = async (file: Pick<CmsFile, 'content_id' | 'title' | 'path'>): Promise<{ ok: boolean; message?: string }> => {
+/**
+ * Opens one file in the phone's own viewer (Safari sheet in the iPhone app, a new tab in a browser)
+ * instead of saving it. The server gives a link that works for 5 minutes.
+ */
+export const openCmsFile = async (file: Pick<CmsFile, 'content_id'>): Promise<{ ok: boolean; message?: string }> => {
+  // browsers only allow a new tab straight after a tap, so open it first and fill it in after
+  const native = (() => { try { return Capacitor.isNativePlatform(); } catch { return false; } })();
+  const tab = native ? null : window.open('', '_blank');
   try {
-    const { data, error } = await supabase.functions.invoke('portal-sync', { body: { action: 'cms_download', contentId: file.content_id } });
-    if (error || !(data instanceof Blob)) {
-      let message = 'Could not download the file.';
-      const res = (error as any)?.context;
-      if (res && typeof res.json === 'function') {
-        try { const p = await res.json(); if (p?.message) message = p.message; } catch { /* keep default */ }
-      }
-      return { ok: false, message };
+    const res = await call({ action: 'cms_link', contentId: file.content_id }) as CmsResult & { url?: string };
+    if (!res.ok || !res.url) {
+      tab?.close();
+      return { ok: false, message: res.message || 'Could not open the file.' };
     }
-    const ext = file.path.match(/\.[A-Za-z0-9]{1,5}$/)?.[0] ?? '';
-    const name = /\.[A-Za-z0-9]{1,5}$/.test(file.title) ? file.title : file.title + ext;
-    const url = URL.createObjectURL(data);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = name;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 30000);
+    if (native) await Browser.open({ url: res.url, presentationStyle: 'fullscreen' });
+    else if (tab) tab.location.href = res.url;
+    else window.location.href = res.url; // pop-up blocked: leave the page for the file
     return { ok: true };
   } catch {
-    return { ok: false, message: 'Could not download the file.' };
+    tab?.close();
+    return { ok: false, message: 'Could not open the file.' };
   }
 };
 
