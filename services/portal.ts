@@ -124,6 +124,9 @@ export const setPortalAlerts = (enabled: boolean) => call({ action: 'set_notify'
 
 /** Replaces the private alert code with a fresh one (the old one stops working). */
 export const changePortalTopic = () => call({ action: 'new_topic' });
+/** iPhone alerts through the Bark app: sends the key (or the link Bark shows). */
+export const setBarkKey = (key: string) => call({ action: 'set_bark', key });
+export const isBarkTopic = (t: string | null | undefined) => !!t && t.startsWith('bark:');
 export const testPortalAlert = () => call({ action: 'test_notify' });
 
 /** Your weekly classes from the portal's schedule page (all seven periods). */

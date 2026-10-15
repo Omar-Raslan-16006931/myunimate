@@ -6,7 +6,7 @@ import { remindersEnabled, syncReminders } from './services/notifications';
 import { ntfyRemindersEnabled, syncNtfyReminders, NTFY_REMINDERS_EVENT } from './services/ntfyReminders';
 import { PortalGrades, PortalAttendance, PortalExamSeats } from './components/PortalScreens';
 import PortalSettings from './components/PortalSettings';
-import { getPortalAccount, getPortalSummary, getPortalExamSeats, getPortalAlertTopic, syncPortal, clearPortalCache, bindPortalUser, courseCodeOf, PortalExamSeat, PortalClass } from './services/portal';
+import { getPortalAccount, getPortalSummary, getPortalExamSeats, getPortalAlertTopic, isBarkTopic, syncPortal, clearPortalCache, bindPortalUser, courseCodeOf, PortalExamSeat, PortalClass } from './services/portal';
 import { checkPortalChanges } from './services/portalAlerts';
 import { supabase } from './lib/supabase';
 import { ViewState, ScheduleEvent, ScheduleProfile, EventColorMap, EventType, PeriodDefinition, Announcement, ThemeMode, FoodItem, WaterLog, WorkoutSession, WorkoutRoutine, ExerciseDefinition, GymSettings, ActiveGymState, CourseGrade, ToDoItem, MaterialFile, BodyLog } from './types';
@@ -1158,9 +1158,13 @@ export const App: React.FC = () => {
 
   // Class reminders: re-plan whenever the schedule changes or the app comes back to the front.
   useEffect(() => {
-    const plan = () => {
+    const plan = async () => {
       const mine = events.filter(e => e.scheduleId === activeProfileId);
-      if (ntfyRemindersEnabled()) {
+      // Bark cannot hold a reminder for later, so with Bark the reminders stay on the phone itself
+      const bark = ntfyRemindersEnabled() ? isBarkTopic(await getPortalAlertTopic()) : false;
+      if (bark) {
+        syncReminders(mine);
+      } else if (ntfyRemindersEnabled()) {
         // ntfy sends the reminder, so clear the on-phone ones to avoid two alerts
         syncReminders([]);
         syncNtfyReminders(mine);

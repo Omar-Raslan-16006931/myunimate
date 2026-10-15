@@ -46,7 +46,7 @@ export const syncNtfyReminders = async (events: ScheduleEvent[]): Promise<number
   running = true;
   try {
     const topic = await getPortalAlertTopic();
-    if (!topic) return 0;
+    if (!topic || topic.startsWith('bark:')) return 0; // Bark cannot schedule ahead
 
     const now = Date.now();
     const sent = readSent();

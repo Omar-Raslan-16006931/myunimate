@@ -7,8 +7,9 @@ import { toast } from 'react-hot-toast';
 import OnboardSteps from './OnboardSteps';
 import Sheet from './Sheet';
 import { ntfyRemindersEnabled, setNtfyReminders } from '../services/ntfyReminders';
-import { getPortalAccount, savePortalLogin, syncPortal, removePortalLogin, setPortalAlerts, changePortalTopic, setPortalNotify, getPortalNotifyOn, testPortalAlert, getPortalAlertTopic, getPortalSchedule, timeAgo, readPortalCache, writePortalCache, PortalAccount, PortalClass } from '../services/portal';
+import { getPortalAccount, savePortalLogin, syncPortal, removePortalLogin, setPortalAlerts, changePortalTopic, setBarkKey, isBarkTopic, setPortalNotify, getPortalNotifyOn, testPortalAlert, getPortalAlertTopic, getPortalSchedule, timeAgo, readPortalCache, writePortalCache, PortalAccount, PortalClass } from '../services/portal';
 
+const BARK_APP = 'https://apps.apple.com/app/bark-customed-notifications/id1403753865';
 const NTFY_APP = 'https://apps.apple.com/app/ntfy/id1625396347';
 const GUIDE_KEY = 'portal_setup_v1';
 type GuideFlags = { subscribed?: string; tested?: string; skipped?: boolean; classes?: boolean };
@@ -102,6 +103,7 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
   const [copied, setCopied] = useState(false);
   const [showManage, setShowManage] = useState(false);
   const [classRem, setClassRem] = useState(() => ntfyRemindersEnabled());
+  const [barkKey, setBarkKeyText] = useState('');
   const [confirmDisc, setConfirmDisc] = useState(false);
   const [confirmCode, setConfirmCode] = useState(false);
   const [saved, setSaved] = useState(false);       // the login was accepted just now
@@ -218,11 +220,24 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
     } else toast.error(res.message || 'Could not change the alert code.');
   };
 
+  // iPhone alternative to ntfy: the student pastes the key shown in the Bark app
+  const useBark = async () => {
+    setBusy('alerts');
+    const res = await setBarkKey(barkKey);
+    setBusy(null);
+    if (res.ok && res.topic) {
+      setTopic(res.topic);
+      setBarkKeyText('');
+      setGuide({ subscribed: res.topic }); // nothing to subscribe to in Bark, so go straight to the test
+      toast.success('Bark connected');
+    } else toast.error(res.message || 'Could not connect Bark.');
+  };
+
   const testAlert = async () => {
     setBusy('test');
     const res = await testPortalAlert();
     setBusy(null);
-    if (res.ok) { setSentTest(true); toast.success('Test sent. Check your phone.'); }
+    if (res.ok) { setSentTest(true); toast.success(`Test sent. Check your phone.${(res as { where?: string }).where ? ` (${(res as { where?: string }).where})` : ''}`); }
     else toast.error(res.message || 'Could not send the test.');
   };
 
@@ -393,6 +408,15 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
             </div>
             <div className="mt-2.5 truncate rounded-lg bg-black/40 px-3 py-2.5 font-mono text-xs text-white/60 select-all">{topic}</div>
           </div>
+          <div className="rounded-xl border border-white/5 bg-black/40 p-3">
+            <div className="flex items-center gap-3">
+              <span className="min-w-0 flex-1 text-sm font-semibold text-white">ntfy not working? Use Bark</span>
+              <a href={BARK_APP} target="_blank" rel="noopener noreferrer" className="shrink-0 rounded-lg bg-white/10 px-3 py-1.5 text-xs font-bold text-white">Get Bark</a>
+            </div>
+            <p className="mt-1.5 text-xs leading-snug text-white/50">Free iPhone app. Open it, copy the key (or the link) it shows, and paste it here.</p>
+            <input className={`${input} mt-2.5`} value={barkKey} onChange={e => setBarkKeyText(e.target.value)} placeholder="Paste your Bark key" autoCapitalize="none" autoCorrect="off" spellCheck={false} autoComplete="off" />
+            <button onClick={useBark} disabled={busy !== null || barkKey.trim().length < 10} className={`${primary} mt-2.5`}>{busy === 'alerts' ? spin : 'Use Bark'}</button>
+          </div>
         </div>
       ),
       actions: <button onClick={() => { setGuide({ subscribed: topic ?? undefined }); }} className={primary}>I added it</button>,
@@ -400,7 +424,7 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
     test: {
       icon: <Send size={30} />,
       title: sentTest ? 'Did it arrive?' : 'Send a test',
-      sub: sentTest ? 'Check ntfy on your phone' : 'You should get a ping',
+      sub: sentTest ? (isBarkTopic(topic) ? 'Check Bark on your phone' : 'Check ntfy on your phone') : 'You should get a ping',
       fields: showHelp ? helpList : undefined,
       actions: sentTest ? (
         <>
