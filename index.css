@@ -14,10 +14,6 @@
   .page-in, .page-in-fade { animation: none; }
 }
 
-/* no rubber-band bounce past the top/bottom/sides */
-html, body, #root { overscroll-behavior: none; }
-.custom-scrollbar, .hide-scroll { overscroll-behavior: none; }
-
 /* children fade + rise one after another */
 .stagger-in > * { animation: page-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) both; }
 .stagger-in > *:nth-child(1) { animation-delay: 0ms; }

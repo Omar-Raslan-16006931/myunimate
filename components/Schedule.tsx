@@ -404,7 +404,7 @@ const Schedule: React.FC<ScheduleProps> = ({
            </div>
         </div>
 
-        <div ref={scrollContainerRef} className="hide-scroll" style={{...styles.scheduleWrapper, flex: '0 1 auto', minHeight: 0, maxHeight: 'none', backdropFilter: 'var(--glass-blur)', WebkitBackdropFilter: 'var(--glass-blur)', boxShadow: 'var(--glass-shadow)', backgroundColor: 'var(--grid-bg)', overscrollBehavior: 'none', borderRadius: '18px'}}>
+        <div ref={scrollContainerRef} className="hide-scroll" style={{...styles.scheduleWrapper, flex: '0 1 auto', minHeight: 0, maxHeight: 'none', backdropFilter: 'var(--glass-blur)', WebkitBackdropFilter: 'var(--glass-blur)', boxShadow: 'var(--glass-shadow)', backgroundColor: 'var(--grid-bg)', overscrollBehavior: 'contain', borderRadius: '18px'}}>
             <div ref={scheduleRef} style={{...styles.scheduleContainer, gridTemplateColumns: gridTemplateColumns, width: 'max-content', minWidth: '100%'}}>
              <div style={{...styles.scheduleHeaderCell, left: 0, zIndex: 30, backgroundColor: 'var(--grid-head)', backdropFilter: 'none'}}></div>
              {periods.map((p, _i) => (

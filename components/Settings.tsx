@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Collapse from './ui/Collapse';
 import { supabase } from '../lib/supabase';
-import { Plus, Trash2, Palette, Layers, Loader2, LogOut, ChevronDown, AlertTriangle, User, Shield, MessageSquare, ChevronRight, Heart, Columns, KeyRound, LifeBuoy, Fingerprint } from 'lucide-react';
+import { Plus, Trash2, Palette, Layers, Loader2, LogOut, ChevronDown, AlertTriangle, User, Shield, MessageSquare, ChevronRight, Columns, KeyRound, LifeBuoy, Fingerprint } from 'lucide-react';
 import { ScheduleProfile, EventColorMap, EventType, ScheduleEvent, PeriodDefinition, ThemeMode, ViewState } from '../types';
 import { styles } from '../theme';
 import ScheduleSettings from './ScheduleSettings';
@@ -363,17 +363,7 @@ const Settings: React.FC<SettingsProps> = ({
                     </GroupCard>
                 )}
 
-                <div className="pt-4 pb-12 text-center flex flex-col items-center gap-3">
-                    <div className="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-full border border-white/5 backdrop-blur-sm">
-                        <Heart size={12} className="text-red-500 fill-red-500" />
-                        <span className="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em]">VERSION 3.5 • Made with PASSION</span>
-                    </div>
-                    <div className="flex gap-4">
-                        <a href="#" className="text-[10px] font-bold text-white/20 hover:text-white transition-colors underline-offset-4 underline decoration-white/10">Terms of Service</a>
-                        <a href="#" className="text-[10px] font-bold text-white/20 hover:text-white transition-colors underline-offset-4 underline decoration-white/10">Privacy Policy</a>
-                        <a href="https://paypal.me/OmarRaslan298" target="_blank" rel="noopener noreferrer" className="text-[10px] font-bold text-teal-400 hover:text-teal-300 transition-colors underline-offset-4 underline decoration-teal-400/30">Support Me</a>
-                    </div>
-                </div>
+                <div className="pb-12" />
             </div>
 
             <Sheet open={showResetConfirm} onClose={() => setShowResetConfirm(false)}>

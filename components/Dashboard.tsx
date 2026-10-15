@@ -30,11 +30,17 @@ const EASE = [0.16, 1, 0.3, 1] as const;
 const PortalSub: React.FC<{ ready: boolean; text: string; accent?: boolean }> = ({ ready, text, accent }) => (
   <span className="block h-[1.05rem] overflow-hidden text-[0.7rem] leading-[1.05rem] truncate" style={{ color: accent ? 'var(--accent-text)' : 'var(--text-muted)' }}>
     <AnimatePresence initial={false} mode="wait">
-      {ready && (
-        <motion.span key={text} className="block truncate" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}>
-          {text}
-        </motion.span>
-      )}
+      <motion.span
+        key={ready ? text : 'checking'}
+        className="block truncate"
+        style={ready ? undefined : { color: 'var(--text-muted)', opacity: 0.7 }}
+        initial={{ opacity: 0, y: 4 }}
+        animate={{ opacity: ready ? 1 : 0.7, y: 0 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+      >
+        {ready ? text : 'Checking…'}
+      </motion.span>
     </AnimatePresence>
   </span>
 );
