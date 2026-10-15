@@ -682,32 +682,62 @@ export const App: React.FC = () => {
     toast(alerts.length === 1 ? `${alerts[0].title}: ${alerts[0].body}` : `${alerts.length} portal updates`, { icon: '🔔' });
   };
 
+  // One exam event per seat, forever: the event id is made from the seat itself, so editing the
+  // event later never makes a second one, and two checks at the same time can't both add it.
+  const examBusy = useRef(false);
+  const seatEventId = async (userId: string, seat: PortalExamSeat) => {
+    const raw = `${userId}|${(seat.course_key || '').replace(/\s+/g, '').toLowerCase()}|${(seat.exam_type || '').toLowerCase()}`;
+    const h = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw)));
+    const x = Array.from(h.slice(0, 16), b => b.toString(16).padStart(2, '0')).join('');
+    return `${x.slice(0, 8)}-${x.slice(8, 12)}-4${x.slice(13, 16)}-a${x.slice(17, 20)}-${x.slice(20, 32)}`;
+  };
+
   const syncExamSeatsToSchedule = async (incomingSeats: PortalExamSeat[], currentEvents: ScheduleEvent[]) => {
     if (!session?.user?.id || !incomingSeats?.length) return;
     const scheduleId = activeProfileId || profiles[0]?.id;
     if (!scheduleId) return;
+    if (examBusy.current) return;
+    examBusy.current = true;
+    try {
+    // always look at what is really saved, not at a copy that may be old
+    const { data: saved } = await supabase.from('events').select('id, code, title, date, type, schedule_id').eq('user_id', session.user.id).eq('type', 'exam');
+    const have: any[] = saved ?? [];
+    const haveIds = new Set(have.map(e => e.id));
+
+    // clean up copies made by the old bug: same course, same day, same title -> keep one
+    const seen = new Set<string>();
+    const extra: string[] = [];
+    for (const e of have) {
+      const k = `${e.schedule_id}|${(e.code || '').replace(/\s+/g, '').toLowerCase()}|${e.date}|${(e.title || '').toLowerCase()}`;
+      if (seen.has(k)) extra.push(e.id); else seen.add(k);
+    }
+    if (extra.length) {
+      await supabase.from('events').delete().in('id', extra);
+      setEvents(prev => prev.filter(e => !extra.includes(e.id)));
+      extra.forEach(id => haveIds.delete(id));
+    }
+    const live = have.filter(e => !extra.includes(e.id));
 
     let addedCount = 0;
     const newEventsToAdd: ScheduleEvent[] = [];
 
     for (const seat of incomingSeats) {
       if (!seat.exam_date) continue;
-      // Check if an event already exists for this exam (same date, matching code or title, and type exam)
+      const eventId = await seatEventId(session.user.id, seat);
+      if (haveIds.has(eventId)) continue; // already made (maybe edited since)
+      // an older event for this exam (made before ids were fixed) counts too
       const keyNorm = (seat.course_key || '').replace(/\s+/g, '').toLowerCase();
       const nameNorm = (seat.course_name || '').toLowerCase();
-      const exists = currentEvents.some(e => {
+      const exists = live.some(e => {
         if (e.date !== seat.exam_date) return false;
-        if (e.type !== 'exam') return false;
         const eCodeNorm = (e.code || '').replace(/\s+/g, '').toLowerCase();
         const eTitleNorm = (e.title || '').toLowerCase();
         return (keyNorm && eCodeNorm && eCodeNorm === keyNorm) ||
                (keyNorm && eTitleNorm.includes(keyNorm)) ||
-               (eTitleNorm.includes(nameNorm) || nameNorm.includes(eTitleNorm));
+               (nameNorm && eTitleNorm.includes(nameNorm));
       });
-
       if (exists) continue;
 
-      const eventId = generateId();
       const location = [seat.hall ? `Hall ${seat.hall}` : '', seat.seat ? `Seat ${seat.seat}` : ''].filter(Boolean).join(' · ');
       const descParts = [
         seat.exam_type ? `Type: ${seat.exam_type}` : '',
@@ -750,8 +780,9 @@ export const App: React.FC = () => {
         code: newExamEvent.code,
       };
 
-      const { error } = await supabase.from('events').insert(insertPayload);
+      const { error } = await supabase.from('events').upsert(insertPayload, { onConflict: 'id', ignoreDuplicates: true });
       if (!error) {
+        haveIds.add(eventId);
         newEventsToAdd.push(newExamEvent);
         addedCount++;
       }
@@ -765,6 +796,7 @@ export const App: React.FC = () => {
           : `Added ${addedCount} exams to your schedule!`
       );
     }
+    } finally { examBusy.current = false; }
   };
 
   const handleSyncAll = async () => {

@@ -35,7 +35,7 @@ const AlertRow: React.FC<{ tile: React.ReactNode; title: string; sub: string; on
         <div className="truncate text-xs text-white/50">{sub}</div>
       </div>
       <button type="button" role="switch" aria-checked={on} aria-label={title} onClick={onToggle} disabled={disabled}
-        className="relative h-[30px] w-[50px] shrink-0 rounded-full border-0 p-0 transition-colors duration-200 disabled:opacity-60"
+        className="relative h-[30px] w-[50px] shrink-0 rounded-full border-0 p-0 transition-colors duration-200"
         style={{ background: on ? '#14b8a6' : 'rgba(255,255,255,0.14)' }}>
         {busy
           ? <span className="absolute inset-0 flex items-center justify-center text-white"><Loader2 size={14} className="animate-spin" /></span>
@@ -81,7 +81,7 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
   const cached = readPortalCache<{ account: PortalAccount | null; topic: string | null }>('settings');
   const [account, setAccount] = useState<PortalAccount | null>(cached?.account ?? null);
   const [loaded, setLoaded] = useState(!!cached);
-  const [refreshing, setRefreshing] = useState(true);
+  const [rowBusy, setRowBusy] = useState<'portal' | 'cls' | 'cms' | null>(null);
   const [username, setUsername] = useState(cached?.account?.username ?? '');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState<'save' | 'sync' | 'remove' | 'alerts' | 'test' | 'classes' | 'cms' | null>(null);
@@ -116,7 +116,6 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
   const setGuide = (patch: GuideFlags) => setGuideState(g => { const n = { ...g, ...patch }; writeGuide(n); return n; });
 
   const load = async () => {
-    setRefreshing(true);
     try {
       const a = await getPortalAccount(true);
       const t = a ? await getPortalAlertTopic() : null;
@@ -129,7 +128,6 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
       /* offline: keep the saved copy */
     } finally {
       setLoaded(true);
-      setRefreshing(false);
     }
   };
   useEffect(() => { load(); }, []);
@@ -420,7 +418,6 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
     if (celebrate) return <div className="rounded-2xl border border-white/5 bg-black/30 p-4">{connectedView}</div>;
     if (flow === 'done') {
       const err = account!.last_status === 'error';
-      const switching = busy === 'alerts';
       const tile = (bg: string, icon: React.ReactNode) => <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px] ${bg}`}>{icon}</div>;
       return (
         <div>
@@ -440,15 +437,15 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
               </div>
               <button onClick={sync} disabled={busy !== null}
                 className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-xl border-0 bg-teal-500 text-[14px] font-bold text-[#03201c] disabled:opacity-60">
-                {busy === 'sync' || refreshing ? <><Loader2 size={16} className="animate-spin" /> Checking…</> : <><RefreshCw size={15} /> Check now</>}
+                {busy === 'sync' ? <><Loader2 size={16} className="animate-spin" /> Checking…</> : <><RefreshCw size={15} /> Check now</>}
               </button>
             </div>
 
             {(() => {
               const cur = { portal: !!topic && portalOn, cls: !!topic && classRem, cms: !!topic && cmsOn };
               const row = (key: keyof typeof cur, bg: string, icon: React.ReactNode, title: string, sub: string) => (
-                <AlertRow key={key} tile={tile(bg, icon)} title={title} sub={sub} on={cur[key]} busy={switching} disabled={busy !== null}
-                  onToggle={() => applyAlerts({ ...cur, [key]: !cur[key] })} />
+                <AlertRow key={key} tile={tile(bg, icon)} title={title} sub={sub} on={cur[key]} busy={busy === 'alerts' && rowBusy === key} disabled={busy !== null}
+                  onToggle={() => { setRowBusy(key); applyAlerts({ ...cur, [key]: !cur[key] }); }} />
               );
               return <>
                 {row('portal', 'bg-amber-500/20 text-amber-300', <Bell size={18} />, 'Grades, absences, exams', 'New grade, absence or exam seat')}
