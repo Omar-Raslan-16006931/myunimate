@@ -7,7 +7,7 @@ import { toast } from 'react-hot-toast';
 import OnboardSteps from './OnboardSteps';
 import Sheet from './Sheet';
 import { ntfyRemindersEnabled, setNtfyReminders } from '../services/ntfyReminders';
-import { getPortalAccount, savePortalLogin, syncPortal, removePortalLogin, setPortalAlerts, setPortalNotify, getPortalNotifyOn, testPortalAlert, getPortalAlertTopic, getPortalSchedule, timeAgo, readPortalCache, writePortalCache, PortalAccount, PortalClass } from '../services/portal';
+import { getPortalAccount, savePortalLogin, syncPortal, removePortalLogin, setPortalAlerts, changePortalTopic, setPortalNotify, getPortalNotifyOn, testPortalAlert, getPortalAlertTopic, getPortalSchedule, timeAgo, readPortalCache, writePortalCache, PortalAccount, PortalClass } from '../services/portal';
 
 const NTFY_APP = 'https://apps.apple.com/app/ntfy/id1625396347';
 const GUIDE_KEY = 'portal_setup_v1';
@@ -103,6 +103,7 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
   const [showManage, setShowManage] = useState(false);
   const [classRem, setClassRem] = useState(() => ntfyRemindersEnabled());
   const [confirmDisc, setConfirmDisc] = useState(false);
+  const [confirmCode, setConfirmCode] = useState(false);
   const [saved, setSaved] = useState(false);       // the login was accepted just now
   const [moment, setMoment] = useState<{ title: string; sub: string } | null>(null); // a short "done" screen before the next step
   const celebrate = !!moment;
@@ -201,6 +202,18 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
     } finally {
       setBusy(null);
     }
+  };
+
+  const newCode = async () => {
+    setBusy('alerts');
+    const res = await changePortalTopic();
+    setBusy(null);
+    if (res.ok && res.topic) {
+      setTopic(res.topic);
+      setShowManage(false); setConfirmCode(false);
+      setGuide({ skipped: false }); // the setup steps come back so you can add the new code in ntfy and test it
+      toast.success('New alert code. Add it in ntfy');
+    } else toast.error(res.message || 'Could not change the alert code.');
   };
 
   const testAlert = async () => {
@@ -466,19 +479,36 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
           )}
 
           {/* rare actions live in a sheet */}
-          <Sheet open={showManage} onClose={() => { if (busy === null) { setShowManage(false); setConfirmDisc(false); } }}>
+          <Sheet open={showManage} onClose={() => { if (busy === null) { setShowManage(false); setConfirmDisc(false); setConfirmCode(false); } }}>
             <div className="px-5 pb-6 pt-1">
               <div className="mb-4 text-center">
                 <div className="text-[19px] font-extrabold">Uni Portal</div>
                 <div className="text-[13px]" style={{ color: 'var(--text-muted)' }}>{account!.username}</div>
               </div>
-              {!confirmDisc ? (
+              {confirmCode ? (
+                <div className="text-center">
+                  <p className="mb-4 text-[14px]" style={{ color: 'var(--text-muted)' }}>Make a new alert code? The old one stops working, and you add the new one in ntfy.</p>
+                  <button onClick={newCode} disabled={busy !== null}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl border-0 py-3.5 text-[16px] font-extrabold disabled:opacity-60" style={{ background: 'var(--cta-bg)', color: 'var(--cta-ink)' }}>
+                    {busy === 'alerts' ? <Loader2 size={18} className="animate-spin" /> : 'Make a new code'}
+                  </button>
+                  <button onClick={() => setConfirmCode(false)} disabled={busy !== null}
+                    className="mt-2 w-full rounded-2xl border-0 py-3.5 text-[16px] font-bold" style={{ background: 'var(--surface-2)', color: 'var(--text-primary)' }}>Cancel</button>
+                </div>
+              ) : !confirmDisc ? (
                 <div className="space-y-2.5">
                   <button onClick={() => { setShowManage(false); setEditing(true); }}
                     className="flex w-full items-center gap-3 rounded-2xl border-0 p-3.5 text-left" style={{ background: 'var(--sheet-field)', color: 'var(--text-primary)' }}>
                     <span className="flex h-10 w-10 items-center justify-center rounded-[14px]" style={{ background: 'var(--surface-2)' }}><Pencil size={17} /></span>
                     <span className="flex-1"><span className="block text-[15px] font-bold">Change login</span><span className="block text-xs" style={{ color: 'var(--text-muted)' }}>New portal username or password</span></span>
                   </button>
+                  {topic && (
+                    <button onClick={() => setConfirmCode(true)}
+                      className="flex w-full items-center gap-3 rounded-2xl border-0 p-3.5 text-left" style={{ background: 'var(--sheet-field)', color: 'var(--text-primary)' }}>
+                      <span className="flex h-10 w-10 items-center justify-center rounded-[14px]" style={{ background: 'var(--surface-2)' }}><RefreshCw size={17} /></span>
+                      <span className="flex-1"><span className="block text-[15px] font-bold">New alert code</span><span className="block text-xs" style={{ color: 'var(--text-muted)' }}>Change the ntfy code, the old one stops working</span></span>
+                    </button>
+                  )}
                   <button onClick={() => setConfirmDisc(true)}
                     className="flex w-full items-center gap-3 rounded-2xl border-0 p-3.5 text-left" style={{ background: 'var(--sheet-field)', color: 'var(--danger)' }}>
                     <span className="flex h-10 w-10 items-center justify-center rounded-[14px]" style={{ background: 'rgba(255,90,95,0.14)' }}><Unplug size={17} /></span>

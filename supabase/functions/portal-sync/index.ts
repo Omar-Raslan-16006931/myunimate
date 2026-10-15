@@ -551,6 +551,21 @@ Deno.serve(async (req: Request) => {
     return json({ ok: true, topic });
   }
 
+  // a new private code: the old one stops working, so anyone who learned it stops receiving alerts
+  if (body.action === "new_topic") {
+    const { data: current } = await supabase.from("portal_accounts").select("notify_topic").eq("user_id", userId).maybeSingle();
+    const saved: string | null = current?.notify_topic ?? null;
+    if (!saved) return json({ ok: false, message: "Turn on phone alerts first." }, 400);
+    const wasOff = saved.startsWith(OFF);
+    for (let i = 0; i < 3; i++) {
+      const topic = newTopic();
+      const { error } = await supabase.from("portal_accounts").update({ notify_topic: wasOff ? OFF + topic : topic }).eq("user_id", userId);
+      if (!error) return json({ ok: true, topic: wasOff ? null : topic });
+      if (error.code !== "23505") return json({ ok: false, message: "Could not change the alert code." }, 500);
+    }
+    return json({ ok: false, message: "Could not change the alert code. Try again." }, 500);
+  }
+
   if (body.action === "test_notify") {
     const { data: account } = await supabase.from("portal_accounts").select("notify_topic").eq("user_id", userId).maybeSingle();
     const testTopic = activeTopic(account?.notify_topic);

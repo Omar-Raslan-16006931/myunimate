@@ -122,6 +122,8 @@ export const syncPortal = (): Promise<PortalSyncResult> => {
 /** Turns phone alerts (through the ntfy app) on or off. Turning on makes a new private topic. */
 export const setPortalAlerts = (enabled: boolean) => call({ action: 'set_notify', enabled });
 
+/** Replaces the private alert code with a fresh one (the old one stops working). */
+export const changePortalTopic = () => call({ action: 'new_topic' });
 export const testPortalAlert = () => call({ action: 'test_notify' });
 
 /** Your weekly classes from the portal's schedule page (all seven periods). */
