@@ -136,6 +136,16 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, part, onFinish, o
     }
   };
   useEffect(() => { load(); }, []);
+  // the server checks every 10 minutes by itself: keep "Checked X ago" in step with it
+  useEffect(() => {
+    const fresh = async () => {
+      if (document.visibilityState !== 'visible') return;
+      try { const a = await getPortalAccount(true); if (a) setAccount(a); } catch { /* offline */ }
+    };
+    const t = setInterval(fresh, 30_000);
+    document.addEventListener('visibilitychange', fresh);
+    return () => { clearInterval(t); document.removeEventListener('visibilitychange', fresh); };
+  }, []);
   // the two Settings sections (portal, notifications) are separate cards: keep them in step
   useEffect(() => {
     const again = () => { setGuideState(readGuide()); load(); };
