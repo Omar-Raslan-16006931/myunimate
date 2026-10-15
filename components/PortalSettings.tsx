@@ -39,7 +39,7 @@ const AlertRow: React.FC<{ tile: React.ReactNode; title: string; sub: string; on
         style={{ background: on ? '#14b8a6' : 'rgba(255,255,255,0.14)' }}>
         {busy
           ? <span className="absolute inset-0 flex items-center justify-center text-white"><Loader2 size={14} className="animate-spin" /></span>
-          : <motion.span className="absolute left-[3px] top-[3px] h-6 w-6 rounded-full bg-white" style={{ boxShadow: '0 2px 6px rgba(0,0,0,0.25)' }} animate={{ x: on ? 20 : 0 }} transition={{ type: 'spring', stiffness: 520, damping: 32 }} />}
+          : <motion.span initial={false} className="absolute left-[3px] top-[3px] h-6 w-6 rounded-full bg-white" style={{ boxShadow: '0 2px 6px rgba(0,0,0,0.25)' }} animate={{ x: on ? 20 : 0 }} transition={{ type: 'spring', stiffness: 520, damping: 32 }} />}
       </button>
     </div>
   );
@@ -78,15 +78,15 @@ interface Props {
  */
 const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImportClasses }) => {
   // show the saved copy right away, then refresh it from the server
-  const cached = readPortalCache<{ account: PortalAccount | null; topic: string | null }>('settings');
+  const cached = readPortalCache<{ account: PortalAccount | null; topic: string | null; cmsOn?: boolean; portalOn?: boolean }>('settings');
   const [account, setAccount] = useState<PortalAccount | null>(cached?.account ?? null);
   const [loaded, setLoaded] = useState(!!cached);
   const [rowBusy, setRowBusy] = useState<'portal' | 'cls' | 'cms' | null>(null);
   const [username, setUsername] = useState(cached?.account?.username ?? '');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState<'save' | 'sync' | 'remove' | 'alerts' | 'test' | 'classes' | 'cms' | null>(null);
-  const [cmsOn, setCmsOn] = useState(false);      // phone alerts for new CMS files
-  const [portalOn, setPortalOn] = useState(true);    // alerts for grades, absences, exam seats
+  const [cmsOn, setCmsOn] = useState(cached?.cmsOn ?? false);      // phone alerts for new CMS files
+  const [portalOn, setPortalOn] = useState(cached?.portalOn ?? true);    // alerts for grades, absences, exam seats
   // the choices on the onboarding alerts step
   const [wantPortal, setWantPortal] = useState(true);
   const [wantClass, setWantClass] = useState(true);
@@ -119,11 +119,13 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
     try {
       const a = await getPortalAccount(true);
       const t = a ? await getPortalAlertTopic() : null;
-      if (a) { setCmsOn(await getCmsAlertsOn()); setPortalOn(await getPortalNotifyOn()); }
+      let cms = cmsOn, portal = portalOn;
+      if (a) { cms = await getCmsAlertsOn(); portal = await getPortalNotifyOn(); setCmsOn(cms); setPortalOn(portal); }
       setAccount(a);
       if (a) setUsername(a.username);
       setTopic(t);
-      writePortalCache('settings', { account: a, topic: t });
+      // the switches are remembered too, so they are drawn in the right place straight away
+      writePortalCache('settings', { account: a, topic: t, cmsOn: cms, portalOn: portal });
     } catch {
       /* offline: keep the saved copy */
     } finally {
@@ -131,6 +133,8 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, onFinish, onImpor
     }
   };
   useEffect(() => { load(); }, []);
+  // keep the saved copy in step with every change, so the switches never replay their animation
+  useEffect(() => { if (loaded && account) writePortalCache('settings', { account, topic, cmsOn, portalOn }); }, [loaded, account, topic, cmsOn, portalOn]);
 
   const save = async () => {
     setLoginError(null);
