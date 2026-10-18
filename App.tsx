@@ -454,7 +454,7 @@ export const App: React.FC = () => {
       try {
         const res = await syncPortal();
         if (res.ok && res.examSeats) {
-          syncExamSeatsToSchedule(res.examSeats, events);
+          syncSeatsRef.current(res.examSeats, events); // the newest copy, not the one from when the timer started
         }
         if (res.ok) alertPortalChanges(session.user.id, true);
       } catch (e) {
@@ -723,15 +723,32 @@ export const App: React.FC = () => {
     return `${x.slice(0, 8)}-${x.slice(8, 12)}-4${x.slice(13, 16)}-a${x.slice(17, 20)}-${x.slice(20, 32)}`;
   };
 
-  const syncExamSeatsToSchedule = async (incomingSeats: PortalExamSeat[], currentEvents: ScheduleEvent[]) => {
-    if (!session?.user?.id || !incomingSeats?.length) return;
+  // Seats come in two shapes: straight from the server check (camelCase) or read from the table (snake_case)
+  const asSeat = (s: any): PortalExamSeat => ({
+    course_key: s.course_key ?? s.courseKey ?? '',
+    course_name: s.course_name ?? s.courseName ?? '',
+    exam_day: s.exam_day ?? s.examDay ?? '',
+    exam_date: s.exam_date ?? s.examDate ?? null,
+    start_time: s.start_time ?? s.startTime ?? '',
+    end_time: s.end_time ?? s.endTime ?? '',
+    duration_minutes: s.duration_minutes ?? s.durationMinutes ?? 0,
+    hall: s.hall ?? '',
+    seat: s.seat ?? '',
+    exam_type: s.exam_type ?? s.examType ?? '',
+  });
+  const SEAT_FP_KEY = 'exam_seat_fp_v1'; // what each exam event was last matched to, so a changed seat updates it once
+  const readFps = (): Record<string, string> => { try { return JSON.parse(localStorage.getItem(SEAT_FP_KEY) || '{}'); } catch { return {}; } };
+
+  const syncExamSeatsToSchedule = async (rawSeats: any[], currentEvents: ScheduleEvent[]) => {
+    const incomingSeats = (rawSeats ?? []).map(asSeat);
+    if (!session?.user?.id || !incomingSeats.length) return;
     const scheduleId = activeProfileId || profiles[0]?.id;
     if (!scheduleId) return;
     if (examBusy.current) return;
     examBusy.current = true;
     try {
     // always look at what is really saved, not at a copy that may be old
-    const { data: saved } = await supabase.from('events').select('id, code, title, date, type, schedule_id').eq('user_id', session.user.id).eq('type', 'exam');
+    const { data: saved } = await supabase.from('events').select('id, code, title, date, type, schedule_id, start_time, duration_minutes, location, description, day_of_week').eq('user_id', session.user.id).eq('type', 'exam');
     const have: any[] = saved ?? [];
     const haveIds = new Set(have.map(e => e.id));
 
@@ -752,10 +769,52 @@ export const App: React.FC = () => {
     let addedCount = 0;
     const newEventsToAdd: ScheduleEvent[] = [];
 
+    const fps = readFps();
+    let updatedCount = 0;
+    const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
     for (const seat of incomingSeats) {
       if (!seat.exam_date) continue;
       const eventId = await seatEventId(session.user.id, seat);
-      if (haveIds.has(eventId)) continue; // already made (maybe edited since)
+
+      const location = [seat.hall ? `Hall ${seat.hall}` : '', seat.seat ? `Seat ${seat.seat}` : ''].filter(Boolean).join(' · ');
+      const descParts = [
+        seat.exam_type ? `Type: ${seat.exam_type}` : '',
+        seat.hall ? `Hall: ${seat.hall}` : '',
+        seat.seat ? `Seat: ${seat.seat}` : ''
+      ].filter(Boolean);
+      const [y, m, d] = seat.exam_date.split('-').map(Number);
+      const dayOfWeek = days[new Date(y, m - 1, d).getDay()];
+      const fp = `${seat.exam_date}|${seat.start_time}|${seat.duration_minutes}|${seat.hall}|${seat.seat}`;
+
+      if (haveIds.has(eventId)) {
+        // the exam event exists: when the portal's seat changed, the event follows it (date, time, hall, seat).
+        // Name and code are never touched, and an unchanged seat never overwrites your own edits.
+        const ev: any = have.find(e => e.id === eventId);
+        const stored = fps[eventId];
+        const startNow = (seat.start_time || '09:00').slice(0, 5);
+        const differs = !ev || ev.date !== seat.exam_date || String(ev.start_time || '').slice(0, 5) !== startNow || (ev.location || '') !== (location || 'TBA');
+        const changed = stored === undefined ? differs : stored !== fp;
+        fps[eventId] = fp;
+        if (!changed || !ev) continue;
+        const patch = {
+          date: seat.exam_date,
+          day_of_week: dayOfWeek,
+          start_time: startNow,
+          duration_minutes: seat.duration_minutes || ev.duration_minutes || 60,
+          location: location || 'TBA',
+          description: descParts.join(' | ') || 'Exam from Student Portal',
+        };
+        const { error: upErr } = await supabase.from('events').update(patch).eq('id', eventId).eq('user_id', session.user.id);
+        if (!upErr) {
+          updatedCount++;
+          setEvents(prev => prev.map(e => e.id === eventId ? {
+            ...e, date: patch.date, dayOfWeek: patch.day_of_week, startTime: patch.start_time,
+            durationMinutes: patch.duration_minutes, location: patch.location, description: patch.description,
+          } : e));
+        }
+        continue;
+      }
       // an older event for this exam (made before ids were fixed) counts too
       const keyNorm = (seat.course_key || '').replace(/\s+/g, '').toLowerCase();
       const nameNorm = (seat.course_name || '').toLowerCase();
@@ -769,16 +828,7 @@ export const App: React.FC = () => {
       });
       if (exists) continue;
 
-      const location = [seat.hall ? `Hall ${seat.hall}` : '', seat.seat ? `Seat ${seat.seat}` : ''].filter(Boolean).join(' · ');
-      const descParts = [
-        seat.exam_type ? `Type: ${seat.exam_type}` : '',
-        seat.hall ? `Hall: ${seat.hall}` : '',
-        seat.seat ? `Seat: ${seat.seat}` : ''
-      ].filter(Boolean);
-
-      const [y, m, d] = seat.exam_date.split('-').map(Number);
-      const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-      const dayOfWeek = seat.exam_day || days[new Date(y, m - 1, d).getDay()];
+      const dayName = seat.exam_day || dayOfWeek;
 
       const newExamEvent: ScheduleEvent = {
         id: eventId,
@@ -787,7 +837,7 @@ export const App: React.FC = () => {
         code: seat.course_key,
         type: 'exam',
         isRecurring: false,
-        dayOfWeek,
+        dayOfWeek: dayName,
         date: seat.exam_date,
         startTime: seat.start_time || '09:00',
         durationMinutes: seat.duration_minutes || 60,
@@ -814,10 +864,13 @@ export const App: React.FC = () => {
       const { error } = await supabase.from('events').upsert(insertPayload, { onConflict: 'id', ignoreDuplicates: true });
       if (!error) {
         haveIds.add(eventId);
+        fps[eventId] = fp;
         newEventsToAdd.push(newExamEvent);
         addedCount++;
       }
     }
+    try { localStorage.setItem(SEAT_FP_KEY, JSON.stringify(fps)); } catch { /* ignore */ }
+    if (updatedCount > 0) toast.success(updatedCount === 1 ? 'Updated 1 exam on your schedule' : `Updated ${updatedCount} exams on your schedule`);
 
     if (newEventsToAdd.length > 0) {
       setEvents(prev => [...prev, ...newEventsToAdd]);
@@ -829,6 +882,9 @@ export const App: React.FC = () => {
     }
     } finally { examBusy.current = false; }
   };
+
+  const syncSeatsRef = useRef(syncExamSeatsToSchedule);
+  syncSeatsRef.current = syncExamSeatsToSchedule;
 
   const handleSyncAll = async () => {
       if (!session?.user?.id) {
