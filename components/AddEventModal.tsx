@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Loader2, ChevronDown, Check } from 'lucide-react';
+import { Loader2, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import { ScheduleEvent, EventColorMap, EventType, PeriodDefinition, CourseGrade } from '../types';
 import { getLocalISOString } from '../constants';
 import Sheet, { riseItem, riseParent } from './Sheet';
@@ -45,34 +45,28 @@ const Row: React.FC<{ label: string; children: React.ReactNode; first?: boolean 
   </div>
 );
 
-/** A tappable row that opens a list under it (same feel as the "My courses" list). */
-const Dropdown: React.FC<{
-  open: boolean; onToggle: () => void; value: React.ReactNode; children: React.ReactNode; last?: boolean;
-}> = ({ open, onToggle, value, children, last }) => (
-  <div style={last ? undefined : { borderBottom: '1px solid var(--line)' }}>
-    <button
-      type="button"
-      onClick={onToggle}
-      aria-expanded={open}
-      className="flex min-h-[52px] w-full items-center justify-between gap-3 border-0 bg-transparent px-3.5 text-left"
-      style={{ color: 'var(--text-primary)' }}
+/**
+ * A row that opens the phone's own picker: a real <select> sits invisibly on top of the row, so a tap
+ * brings up the native iOS list (and the native one on Android / desktop).
+ */
+const Picker: React.FC<{
+  value: string; onChange: (v: string) => void; options: { value: string; label: string }[];
+  display: React.ReactNode; last?: boolean; label: string;
+}> = ({ value, onChange, options, display, last, label }) => (
+  <div className="relative" style={last ? undefined : { borderBottom: '1px solid var(--line)' }}>
+    <div className="flex min-h-[52px] items-center justify-between gap-3 px-3.5" style={{ color: 'var(--text-primary)' }}>
+      <span className="min-w-0 flex-1">{display}</span>
+      <ChevronsUpDown size={19} className="shrink-0" style={{ color: 'var(--text-muted)' }} />
+    </div>
+    <select
+      aria-label={label}
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      className="absolute inset-0 h-full w-full cursor-pointer border-0 opacity-0"
+      style={{ fontSize: 16, appearance: 'none', WebkitAppearance: 'none' }}
     >
-      <span className="min-w-0 flex-1">{value}</span>
-      <motion.span animate={{ rotate: open ? 180 : 0 }} className="flex shrink-0" style={{ color: 'var(--text-muted)' }}><ChevronDown size={20} /></motion.span>
-    </button>
-    <AnimatePresence initial={false}>
-      {open && (
-        <motion.div
-          initial={{ height: 0, opacity: 0 }}
-          animate={{ height: 'auto', opacity: 1 }}
-          exit={{ height: 0, opacity: 0 }}
-          transition={{ duration: 0.22, ease: 'easeOut' }}
-          className="overflow-hidden"
-        >
-          <div style={{ borderTop: '1px solid var(--line)' }}>{children}</div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+      {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+    </select>
   </div>
 );
 
@@ -99,7 +93,6 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ isOpen, onClose, onSave, 
   const [formData, setFormData] = useState<Partial<ScheduleEvent>>({ ...DEFAULTS, date: getLocalISOString() });
   const [timeMode, setTimeMode] = useState<'time' | 'slot'>('slot');
   const [showCoursePicker, setShowCoursePicker] = useState(false);
-  const [menu, setMenu] = useState<'type' | 'time' | null>(null);
   const [addToGrades, setAddToGrades] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -116,7 +109,6 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ isOpen, onClose, onSave, 
     setTimeMode(onSlot || !initialData ? 'slot' : 'time');
     setAddToGrades(false);
     setShowCoursePicker(false);
-    setMenu(null);
     setSaveError(null);
   }, [initialData, isOpen]);
 
@@ -255,34 +247,19 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ isOpen, onClose, onSave, 
         <motion.div variants={riseItem}>
           <div className={sectionLabel} style={{ color: 'var(--text-muted)' }}>Type</div>
           <div className="overflow-hidden rounded-2xl" style={field}>
-            <Dropdown
+            <Picker
               last
-              open={menu === 'type'}
-              onToggle={() => setMenu(m => (m === 'type' ? null : 'type'))}
-              value={
+              label="Type"
+              value={String(formData.type)}
+              onChange={v => set({ type: v as EventType })}
+              options={types.map(t => ({ value: t, label: t.charAt(0).toUpperCase() + t.slice(1) }))}
+              display={
                 <span className="flex items-center gap-2.5 text-[16px] font-bold capitalize">
                   <span className="h-[9px] w-[9px] rounded-full" style={{ background: eventColors[formData.type as EventType] }} />
                   {formData.type}
                 </span>
               }
-            >
-              {types.map((t, i) => {
-                const on = formData.type === t;
-                return (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => { set({ type: t }); setMenu(null); }}
-                    className="flex min-h-[46px] w-full items-center gap-2.5 border-0 bg-transparent px-3.5 text-left text-[15px] font-bold capitalize"
-                    style={{ borderTop: i ? '1px solid var(--line)' : undefined, color: on ? 'var(--hero-progress)' : 'var(--text-primary)' }}
-                  >
-                    <span className="h-[8px] w-[8px] rounded-full" style={{ background: eventColors[t] }} />
-                    <span className="flex-1">{t}</span>
-                    {on && <Check size={18} />}
-                  </button>
-                );
-              })}
-            </Dropdown>
+            />
           </div>
         </motion.div>
 
@@ -328,50 +305,33 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ isOpen, onClose, onSave, 
         <motion.div variants={riseItem}>
           <div className={sectionLabel} style={{ color: 'var(--text-muted)' }}>Time</div>
           <div className="overflow-hidden rounded-2xl" style={field}>
-            {slots.length > 0 && (
-              <Dropdown
-                last={timeMode === 'slot'}
-                open={menu === 'time'}
-                onToggle={() => setMenu(m => (m === 'time' ? null : 'time'))}
-                value={(() => {
-                  const cur = timeMode === 'slot' ? slots.find(p => p.startTime === formData.startTime && formData.durationMinutes === minsOf(p.endTime) - minsOf(p.startTime)) : null;
-                  return cur ? (
+            {slots.length > 0 && (() => {
+              const cur = timeMode === 'slot' ? slots.find(p => p.startTime === formData.startTime && formData.durationMinutes === minsOf(p.endTime) - minsOf(p.startTime)) : null;
+              return (
+                <Picker
+                  last={timeMode === 'slot'}
+                  label="Time"
+                  value={cur ? cur.id : 'custom'}
+                  onChange={v => {
+                    if (v === 'custom') { setTimeMode('time'); return; }
+                    const p = slots.find(x => x.id === v);
+                    if (p) { pickSlot(p); setTimeMode('slot'); }
+                  }}
+                  options={[
+                    ...slots.map(p => ({ value: p.id, label: `${p.label}  ·  ${to12h(p.startTime)} – ${to12h(p.endTime)}` })),
+                    { value: 'custom', label: 'Custom time' },
+                  ]}
+                  display={cur ? (
                     <span className="flex items-baseline gap-2">
                       <span className="text-[16px] font-extrabold">{cur.label}</span>
                       <span className="text-[14px] font-semibold" style={{ color: 'var(--text-muted)' }}>{to12h(cur.startTime)} – {to12h(cur.endTime)}</span>
                     </span>
                   ) : (
                     <span className="text-[16px] font-extrabold">Custom time</span>
-                  );
-                })()}
-              >
-                {slots.map((p, i) => {
-                  const on = timeMode === 'slot' && formData.startTime === p.startTime && formData.durationMinutes === minsOf(p.endTime) - minsOf(p.startTime);
-                  return (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => { pickSlot(p); setTimeMode('slot'); setMenu(null); }}
-                      className="flex min-h-[48px] w-full items-center gap-2 border-0 bg-transparent px-3.5 text-left"
-                      style={{ borderTop: i ? '1px solid var(--line)' : undefined, color: on ? 'var(--hero-progress)' : 'var(--text-primary)' }}
-                    >
-                      <span className="text-[15px] font-extrabold">{p.label}</span>
-                      <span className="flex-1 text-[13px] font-semibold" style={{ color: 'var(--text-muted)' }}>{to12h(p.startTime)} – {to12h(p.endTime)}</span>
-                      {on && <Check size={18} />}
-                    </button>
-                  );
-                })}
-                <button
-                  type="button"
-                  onClick={() => { setTimeMode('time'); setMenu(null); }}
-                  className="flex min-h-[48px] w-full items-center gap-2 border-0 bg-transparent px-3.5 text-left text-[15px] font-extrabold"
-                  style={{ borderTop: '1px solid var(--line)', color: timeMode === 'time' ? 'var(--hero-progress)' : 'var(--text-primary)' }}
-                >
-                  <span className="flex-1">Custom time</span>
-                  {timeMode === 'time' && <Check size={18} />}
-                </button>
-              </Dropdown>
-            )}
+                  )}
+                />
+              );
+            })()}
             {(timeMode === 'time' || slots.length === 0) && (
               <>
                 <Row label="Starts" first>
