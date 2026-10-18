@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Loader2, ChevronDown } from 'lucide-react';
+import { Loader2, ChevronDown, Check } from 'lucide-react';
 import { ScheduleEvent, EventColorMap, EventType, PeriodDefinition, CourseGrade } from '../types';
 import { getLocalISOString } from '../constants';
 import Sheet, { riseItem, riseParent } from './Sheet';
@@ -45,6 +45,37 @@ const Row: React.FC<{ label: string; children: React.ReactNode; first?: boolean 
   </div>
 );
 
+/** A tappable row that opens a list under it (same feel as the "My courses" list). */
+const Dropdown: React.FC<{
+  open: boolean; onToggle: () => void; value: React.ReactNode; children: React.ReactNode; last?: boolean;
+}> = ({ open, onToggle, value, children, last }) => (
+  <div style={last ? undefined : { borderBottom: '1px solid var(--line)' }}>
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={open}
+      className="flex min-h-[52px] w-full items-center justify-between gap-3 border-0 bg-transparent px-3.5 text-left"
+      style={{ color: 'var(--text-primary)' }}
+    >
+      <span className="min-w-0 flex-1">{value}</span>
+      <motion.span animate={{ rotate: open ? 180 : 0 }} className="flex shrink-0" style={{ color: 'var(--text-muted)' }}><ChevronDown size={20} /></motion.span>
+    </button>
+    <AnimatePresence initial={false}>
+      {open && (
+        <motion.div
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: 'auto', opacity: 1 }}
+          exit={{ height: 0, opacity: 0 }}
+          transition={{ duration: 0.22, ease: 'easeOut' }}
+          className="overflow-hidden"
+        >
+          <div style={{ borderTop: '1px solid var(--line)' }}>{children}</div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  </div>
+);
+
 const Switch: React.FC<{ on: boolean; onChange: (v: boolean) => void; label: string }> = ({ on, onChange, label }) => (
   <button
     type="button"
@@ -68,6 +99,7 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ isOpen, onClose, onSave, 
   const [formData, setFormData] = useState<Partial<ScheduleEvent>>({ ...DEFAULTS, date: getLocalISOString() });
   const [timeMode, setTimeMode] = useState<'time' | 'slot'>('slot');
   const [showCoursePicker, setShowCoursePicker] = useState(false);
+  const [menu, setMenu] = useState<'type' | 'time' | null>(null);
   const [addToGrades, setAddToGrades] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -84,6 +116,7 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ isOpen, onClose, onSave, 
     setTimeMode(onSlot || !initialData ? 'slot' : 'time');
     setAddToGrades(false);
     setShowCoursePicker(false);
+    setMenu(null);
     setSaveError(null);
   }, [initialData, isOpen]);
 
@@ -221,25 +254,35 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ isOpen, onClose, onSave, 
         {/* type */}
         <motion.div variants={riseItem}>
           <div className={sectionLabel} style={{ color: 'var(--text-muted)' }}>Type</div>
-          <div className="flex flex-wrap gap-2">
-            {types.map(t => {
-              const on = formData.type === t;
-              const c = eventColors[t];
-              return (
-                <motion.button
-                  key={t}
-                  whileTap={{ scale: 0.93 }}
-                  onClick={() => set({ type: t })}
-                  className="flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[14px] font-bold capitalize transition-colors duration-150"
-                  style={on
-                    ? { background: `color-mix(in srgb, ${c} 22%, transparent)`, border: `1.5px solid ${c}`, color: 'var(--text-primary)' }
-                    : { ...field, color: 'var(--text-muted)' }}
-                >
-                  <span className="h-[7px] w-[7px] rounded-full" style={{ background: c }} />
-                  {t}
-                </motion.button>
-              );
-            })}
+          <div className="overflow-hidden rounded-2xl" style={field}>
+            <Dropdown
+              last
+              open={menu === 'type'}
+              onToggle={() => setMenu(m => (m === 'type' ? null : 'type'))}
+              value={
+                <span className="flex items-center gap-2.5 text-[16px] font-bold capitalize">
+                  <span className="h-[9px] w-[9px] rounded-full" style={{ background: eventColors[formData.type as EventType] }} />
+                  {formData.type}
+                </span>
+              }
+            >
+              {types.map((t, i) => {
+                const on = formData.type === t;
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => { set({ type: t }); setMenu(null); }}
+                    className="flex min-h-[46px] w-full items-center gap-2.5 border-0 bg-transparent px-3.5 text-left text-[15px] font-bold capitalize"
+                    style={{ borderTop: i ? '1px solid var(--line)' : undefined, color: on ? 'var(--hero-progress)' : 'var(--text-primary)' }}
+                  >
+                    <span className="h-[8px] w-[8px] rounded-full" style={{ background: eventColors[t] }} />
+                    <span className="flex-1">{t}</span>
+                    {on && <Check size={18} />}
+                  </button>
+                );
+              })}
+            </Dropdown>
           </div>
         </motion.div>
 
@@ -283,43 +326,54 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ isOpen, onClose, onSave, 
 
         {/* time */}
         <motion.div variants={riseItem}>
-          <div className={`${sectionLabel} flex items-center justify-between`} style={{ color: 'var(--text-muted)' }}>
-            <span>Time</span>
+          <div className={sectionLabel} style={{ color: 'var(--text-muted)' }}>Time</div>
+          <div className="overflow-hidden rounded-2xl" style={field}>
             {slots.length > 0 && (
-              <button
-                onClick={() => setTimeMode(m => (m === 'slot' ? 'time' : 'slot'))}
-                className="border-0 bg-transparent p-0 text-[11px] font-extrabold uppercase tracking-[0.06em]"
-                style={{ color: 'var(--hero-progress)' }}
+              <Dropdown
+                last={timeMode === 'slot'}
+                open={menu === 'time'}
+                onToggle={() => setMenu(m => (m === 'time' ? null : 'time'))}
+                value={(() => {
+                  const cur = timeMode === 'slot' ? slots.find(p => p.startTime === formData.startTime && formData.durationMinutes === minsOf(p.endTime) - minsOf(p.startTime)) : null;
+                  return cur ? (
+                    <span className="flex items-baseline gap-2">
+                      <span className="text-[16px] font-extrabold">{cur.label}</span>
+                      <span className="text-[14px] font-semibold" style={{ color: 'var(--text-muted)' }}>{to12h(cur.startTime)} – {to12h(cur.endTime)}</span>
+                    </span>
+                  ) : (
+                    <span className="text-[16px] font-extrabold">Custom time</span>
+                  );
+                })()}
               >
-                {timeMode === 'slot' ? 'Custom time' : 'Use slots'}
-              </button>
-            )}
-          </div>
-          <AnimatePresence initial={false} mode="wait">
-            {timeMode === 'slot' && slots.length > 0 ? (
-              <motion.div key="slots" className="grid grid-cols-3 gap-2"
-                initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.16 }}>
-                {slots.map(p => {
-                  const on = formData.startTime === p.startTime && formData.durationMinutes === minsOf(p.endTime) - minsOf(p.startTime);
+                {slots.map((p, i) => {
+                  const on = timeMode === 'slot' && formData.startTime === p.startTime && formData.durationMinutes === minsOf(p.endTime) - minsOf(p.startTime);
                   return (
-                    <motion.button
+                    <button
                       key={p.id}
-                      whileTap={{ scale: 0.94 }}
-                      onClick={() => pickSlot(p)}
-                      className="rounded-2xl px-3 py-2.5 text-left transition-colors duration-150"
-                      style={on
-                        ? { background: 'color-mix(in srgb, var(--hero-progress) 14%, transparent)', border: '1.5px solid var(--hero-progress)' }
-                        : field}
+                      type="button"
+                      onClick={() => { pickSlot(p); setTimeMode('slot'); setMenu(null); }}
+                      className="flex min-h-[48px] w-full items-center gap-2 border-0 bg-transparent px-3.5 text-left"
+                      style={{ borderTop: i ? '1px solid var(--line)' : undefined, color: on ? 'var(--hero-progress)' : 'var(--text-primary)' }}
                     >
-                      <div className="text-[15px] font-extrabold" style={{ color: on ? 'var(--hero-progress)' : 'var(--text-primary)' }}>{p.label}</div>
-                      <div className="text-[12px] font-semibold" style={{ color: 'var(--text-muted)' }}>{to12h(p.startTime)} – {to12h(p.endTime)}</div>
-                    </motion.button>
+                      <span className="text-[15px] font-extrabold">{p.label}</span>
+                      <span className="flex-1 text-[13px] font-semibold" style={{ color: 'var(--text-muted)' }}>{to12h(p.startTime)} – {to12h(p.endTime)}</span>
+                      {on && <Check size={18} />}
+                    </button>
                   );
                 })}
-              </motion.div>
-            ) : (
-              <motion.div key="custom" className="overflow-hidden rounded-2xl" style={field}
-                initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.16 }}>
+                <button
+                  type="button"
+                  onClick={() => { setTimeMode('time'); setMenu(null); }}
+                  className="flex min-h-[48px] w-full items-center gap-2 border-0 bg-transparent px-3.5 text-left text-[15px] font-extrabold"
+                  style={{ borderTop: '1px solid var(--line)', color: timeMode === 'time' ? 'var(--hero-progress)' : 'var(--text-primary)' }}
+                >
+                  <span className="flex-1">Custom time</span>
+                  {timeMode === 'time' && <Check size={18} />}
+                </button>
+              </Dropdown>
+            )}
+            {(timeMode === 'time' || slots.length === 0) && (
+              <>
                 <Row label="Starts" first>
                   <input type="time" className={`${inputBase} text-right`} style={{ color: 'var(--text-primary)', colorScheme: 'dark light' }}
                     value={formData.startTime || ''} onChange={e => set({ startTime: e.target.value })} />
@@ -328,9 +382,9 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ isOpen, onClose, onSave, 
                   <input type="number" inputMode="numeric" min={5} step={5} className={`${inputBase} text-right`} style={{ color: 'var(--text-primary)' }}
                     value={formData.durationMinutes ?? ''} onChange={e => set({ durationMinutes: parseInt(e.target.value) || 0 })} />
                 </Row>
-              </motion.div>
+              </>
             )}
-          </AnimatePresence>
+          </div>
         </motion.div>
 
         {/* room + notes */}
