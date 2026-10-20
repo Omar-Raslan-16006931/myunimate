@@ -83,22 +83,22 @@ function useCms() {
   return { data, syncing, problem, sync: () => check(true), patchFiles };
 }
 
-const iconBtn = 'flex items-center justify-center w-10 h-10 rounded-[14px] shrink-0';
+const iconBtn = 'flex items-center justify-center w-9 h-9 rounded-[12px] shrink-0';
 
 const Header: React.FC<{
   title: string; sub?: string; onBack: () => void; onSync?: () => void; syncing?: boolean;
 }> = ({ title, sub, onBack, onSync, syncing }) => (
-  <div className="mb-4 flex items-center gap-3">
+  <div className="mb-3.5 flex items-center gap-2.5">
     <button onClick={onBack} aria-label="Back" className={iconBtn} style={{ ...card, ...strong }}>
-      <ArrowLeft size={18} />
+      <ArrowLeft size={16} />
     </button>
     <div className="min-w-0 flex-1">
-      <h1 className="m-0 truncate font-extrabold leading-tight" style={{ fontSize: '1.45rem', letterSpacing: '-0.02em', ...strong }}>{title}</h1>
-      {sub && <div className="truncate text-[0.78rem] font-semibold" style={muted}>{sub}</div>}
+      <h1 className="m-0 truncate font-extrabold leading-tight" style={{ fontSize: '1.15rem', letterSpacing: '-0.015em', ...strong }}>{title}</h1>
+      {sub && <div className="truncate text-[0.7rem] font-semibold" style={muted}>{sub}</div>}
     </div>
     {onSync && (
       <button onClick={onSync} disabled={syncing} aria-label="Check the CMS now" className={iconBtn} style={{ ...card, color: 'var(--accent)' }}>
-        {syncing ? <Loader2 size={17} className="animate-spin" /> : <RefreshCw size={17} />}
+        {syncing ? <Loader2 size={15} className="animate-spin" /> : <RefreshCw size={15} />}
       </button>
     )}
   </div>
@@ -266,14 +266,14 @@ const CmsCourseView: React.FC<{
         {problem && <Problem text={problem} />}
 
         {groups.length > 1 && (
-          <div className="mb-4 flex gap-5 overflow-x-auto" style={{ borderBottom: '1px solid var(--line)', scrollbarWidth: 'none' }}>
+          <div className="mb-3.5 flex gap-4 overflow-x-auto" style={{ borderBottom: '1px solid var(--line)', scrollbarWidth: 'none' }}>
             {(['all', ...groups] as string[]).map(g => {
               const active = filter === g;
               return (
                 <button
                   key={g}
                   onClick={() => setFilter(g)}
-                  className="shrink-0 border-0 bg-transparent px-0 pb-2.5 text-[0.88rem] font-bold"
+                  className="shrink-0 border-0 bg-transparent px-0 pb-2 text-[0.78rem] font-bold"
                   style={{ color: active ? 'var(--text-primary)' : 'var(--text-muted)', borderBottom: active ? '2px solid var(--accent)' : '2px solid transparent', marginBottom: -1 }}
                 >
                   {g === 'all' ? 'All' : GROUP_LABEL[g]}
@@ -290,25 +290,25 @@ const CmsCourseView: React.FC<{
         ) : (
           <div key={filter} className="stagger-in">
             {weeks.map(w => (
-              <section key={w.date ?? 'none'} className="mb-5">
-                <div className="mb-2 flex items-baseline justify-between px-1">
-                  <div className="text-[0.8rem] font-bold" style={muted}>{w.description || 'Week'}</div>
-                  <div className="text-[0.78rem]" style={{ color: 'var(--text-muted)', opacity: 0.75 }}>{shortDate(w.date)}</div>
+              <section key={w.date ?? 'none'} className="mb-4">
+                <div className="mb-1.5 flex items-baseline justify-between px-1">
+                  <div className="text-[0.72rem] font-bold" style={muted}>{w.description || 'Week'}</div>
+                  <div className="text-[0.68rem]" style={{ color: 'var(--text-muted)', opacity: 0.75 }}>{shortDate(w.date)}</div>
                 </div>
-                <div className="rounded-[16px]" style={card}>
+                <div className="rounded-[14px]" style={card}>
                   {w.files.map((f, i) => (
                     <button
                       key={f.id}
                       onClick={() => openFile(f)}
-                      className="flex w-full items-center gap-3 border-0 bg-transparent px-3.5 py-3 text-left"
+                      className="flex w-full items-center gap-2.5 border-0 bg-transparent px-3 py-2.5 text-left"
                       style={i > 0 ? { borderTop: '1px solid var(--line)' } : undefined}
                     >
-                      <span className="h-[7px] w-[7px] shrink-0 rounded-full" style={{ background: f.is_new ? 'var(--accent)' : 'transparent' }} />
+                      <span className="h-[6px] w-[6px] shrink-0 rounded-full" style={{ background: f.is_new ? 'var(--accent)' : 'transparent' }} />
                       <span className="min-w-0 flex-1">
-                        <span className="block text-[0.92rem] font-semibold leading-tight" style={{ color: 'var(--text-primary)' }}>{f.title}</span>
-                        {f.file_type && <span className="mt-0.5 block text-[0.76rem]" style={{ color: 'var(--text-muted)', opacity: 0.8 }}>{f.file_type}</span>}
+                        <span className="block text-[0.82rem] font-semibold leading-tight" style={{ color: 'var(--text-primary)' }}>{f.title}</span>
+                        {f.file_type && <span className="mt-0.5 block text-[0.68rem]" style={{ color: 'var(--text-muted)', opacity: 0.8 }}>{f.file_type}</span>}
                       </span>
-                      {busy === f.id ? <Loader2 size={19} className="animate-spin" style={muted} /> : <ExternalLink size={19} style={muted} />}
+                      {busy === f.id ? <Loader2 size={16} className="animate-spin" style={muted} /> : <ExternalLink size={16} style={muted} />}
                     </button>
                   ))}
                 </div>
