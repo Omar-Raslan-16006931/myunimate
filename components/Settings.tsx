@@ -80,7 +80,7 @@ const SectionHeader = ({ icon: Icon, color, title, isExpanded, onToggle, rightEl
 
 const GroupCard = ({ children, className = "" }: any) => {
     return (
-        <div className={`bg-white/[0.04] border border-white/[0.06] rounded-[28px] overflow-hidden isolate transform-gpu ${className}`}>
+        <div className={`rounded-[22px] overflow-hidden isolate transform-gpu ${className}`} style={{ background: 'var(--surface)', border: '1px solid var(--line)', backdropFilter: 'var(--glass-blur)', WebkitBackdropFilter: 'var(--glass-blur)', boxShadow: 'var(--glass-shadow)' }}>
             {children}
         </div>
     );
@@ -154,7 +154,7 @@ const Settings: React.FC<SettingsProps> = ({
                     </div>
 
                     {accountInfo && (
-                        <div className="border-b border-white/[0.05] last:border-0">
+                        <div className="border-b border-[color:var(--line)] last:border-0">
                             <SectionHeader
                                 icon={User}
                                 color="#3b82f6"
@@ -226,17 +226,17 @@ const Settings: React.FC<SettingsProps> = ({
                         </div>
                     )}
 
-                    <div className="border-b border-white/[0.05] last:border-0">
+                    <div className="border-b border-[color:var(--line)] last:border-0">
                         <SectionHeader icon={KeyRound} color="#19b8a6" title="Uni Portal" isExpanded={isPortalExpanded} onToggle={() => setIsPortalExpanded(!isPortalExpanded)} />
                         <Collapse open={isPortalExpanded}><div className="px-5 pb-6 pt-2"><PortalSettings part="portal" /></div></Collapse>
                     </div>
 
-                    <div className="border-b border-white/[0.05] last:border-0">
+                    <div className="border-b border-[color:var(--line)] last:border-0">
                         <SectionHeader icon={Bell} color="#f59e0b" title="Notifications" isExpanded={isNotifExpanded} onToggle={() => setIsNotifExpanded(!isNotifExpanded)} />
                         <Collapse open={isNotifExpanded}><div className="px-5 pb-6 pt-2"><PortalSettings part="alerts" /></div></Collapse>
                     </div>
 
-                    <div className="border-b border-white/[0.05] last:border-0">
+                    <div className="border-b border-[color:var(--line)] last:border-0">
                         <SectionHeader icon={Fingerprint} color="#19b8a6" title="Passkeys" isExpanded={isPasskeysExpanded} onToggle={() => setIsPasskeysExpanded(!isPasskeysExpanded)} />
                         <Collapse open={isPasskeysExpanded}><div className="px-5 pb-6 pt-2"><PasskeySettings /></div></Collapse>
                     </div>
@@ -250,7 +250,7 @@ const Settings: React.FC<SettingsProps> = ({
                         </div>
                     </div>
 
-                    <div className="border-b border-white/[0.05] last:border-0">
+                    <div className="border-b border-[color:var(--line)] last:border-0">
                         <SectionHeader
                             icon={Layers} color="#19b8a6" title="Schedules & Profiles"
                             isExpanded={isProfilesExpanded} onToggle={() => setIsProfilesExpanded(!isProfilesExpanded)}
@@ -279,13 +279,13 @@ const Settings: React.FC<SettingsProps> = ({
                         </Collapse>
                     </div>
 
-                    <div className="border-b border-white/[0.05] last:border-0">
+                    <div className="border-b border-[color:var(--line)] last:border-0">
                         <SectionHeader icon={Columns} color="#ec4899" title="Timeline Grid" isExpanded={isScheduleSettingsExpanded} onToggle={() => setIsScheduleSettingsExpanded(!isScheduleSettingsExpanded)} />
                         <Collapse open={isScheduleSettingsExpanded}><div className="px-5 pb-6 pt-2"><ScheduleSettings periods={periods} setPeriods={setPeriods} /></div></Collapse>
                     </div>
 
 
-                    <div className="border-b border-white/[0.05] last:border-0">
+                    <div className="border-b border-[color:var(--line)] last:border-0">
                         <SectionHeader icon={Palette} color="#f59e0b" title="Theme Colors" isExpanded={isColorsExpanded} onToggle={() => setIsColorsExpanded(!isColorsExpanded)} />
                         <Collapse open={isColorsExpanded}>
                             <div className="px-5 pb-6 pt-2 grid grid-cols-2 gap-2">
