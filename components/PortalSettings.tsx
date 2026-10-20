@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Loader2, RefreshCw, Check, GraduationCap, CircleUser, AlarmClock, Bell, Smartphone, Send, PartyPopper, CalendarDays, ChevronDown, ChevronRight, MoreHorizontal, Pencil, Unplug, KeyRound, ClipboardCheck } from 'lucide-react';
+import { Loader2, RefreshCw, Check, GraduationCap, CircleUser, AlarmClock, Bell, Smartphone, Send, PartyPopper, CalendarDays, ChevronDown, ChevronRight, MoreHorizontal, Pencil, Unplug, KeyRound, ClipboardCheck, ListChecks } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import Collapse from './ui/Collapse';
 import { setCmsAlerts, getCmsAlertsOn } from '../services/cms';
+import { setProjectAlerts, getProjectAlertsOn } from '../services/projects';
 import { toast } from 'react-hot-toast';
 import OnboardSteps from './OnboardSteps';
 import Sheet from './Sheet';
@@ -83,11 +84,12 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, part, onFinish, o
   const cached = readPortalCache<{ account: PortalAccount | null; topic: string | null; cmsOn?: boolean; portalOn?: boolean }>('settings');
   const [account, setAccount] = useState<PortalAccount | null>(cached?.account ?? null);
   const [loaded, setLoaded] = useState(!!cached);
-  const [rowBusy, setRowBusy] = useState<'portal' | 'cls' | 'cms' | null>(null);
+  const [rowBusy, setRowBusy] = useState<'portal' | 'cls' | 'cms' | 'proj' | null>(null);
   const [username, setUsername] = useState(cached?.account?.username ?? '');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState<'save' | 'sync' | 'remove' | 'alerts' | 'test' | 'classes' | 'cms' | null>(null);
   const [cmsOn, setCmsOn] = useState(cached?.cmsOn ?? false);      // phone alerts for new CMS files
+  const [projOn, setProjOn] = useState(true);                      // phone alerts for projects and deadlines
   const [portalOn, setPortalOn] = useState(cached?.portalOn ?? true);    // alerts for grades, absences, exam seats
   // the choices on the onboarding alerts step
   const [wantPortal, setWantPortal] = useState(true);
@@ -123,7 +125,7 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, part, onFinish, o
       const a = await getPortalAccount(true);
       const t = a ? await getPortalAlertTopic() : null;
       let cms = cmsOn, portal = portalOn;
-      if (a) { cms = await getCmsAlertsOn(); portal = await getPortalNotifyOn(); setCmsOn(cms); setPortalOn(portal); }
+      if (a) { cms = await getCmsAlertsOn(); portal = await getPortalNotifyOn(); setCmsOn(cms); setPortalOn(portal); setProjOn(await getProjectAlertsOn()); }
       setAccount(a);
       if (a) setUsername(a.username);
       setTopic(t);
@@ -200,8 +202,8 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, part, onFinish, o
    * The three alert choices (grades/absences/exams, class reminders, new CMS files).
    * The alert channel exists only while at least one is on; with all three off it is switched off.
    */
-  const applyAlerts = async (next: { portal: boolean; cls: boolean; cms: boolean }): Promise<boolean> => {
-    const any = next.portal || next.cms; // class reminders are set on the phone itself, they need no Bark key
+  const applyAlerts = async (next: { portal: boolean; cls: boolean; cms: boolean; proj?: boolean }): Promise<boolean> => {
+    const any = next.portal || next.cms || !!next.proj; // class reminders are set on the phone itself, they need no Bark key
     setBusy('alerts');
     try {
       // first: iOS only shows its permission prompt right after a tap
@@ -227,6 +229,9 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, part, onFinish, o
       if (next.cms !== cmsOn) {
         const r = await setCmsAlerts(next.cms);
         if (!r.ok) toast.error(r.message || 'Could not change CMS alerts.'); else setCmsOn(next.cms);
+      }
+      if (next.proj !== undefined && next.proj !== projOn) {
+        if (await setProjectAlerts(next.proj)) setProjOn(next.proj); else toast.error('Could not change project alerts.');
       }
       setGuide({ skipped: !t && !next.cls });
       return true;
@@ -490,7 +495,7 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, part, onFinish, o
             </div>}
 
             {showAlerts && (() => {
-              const cur = { portal: !!topic && portalOn, cls: classRem, cms: !!topic && cmsOn };
+              const cur = { portal: !!topic && portalOn, cls: classRem, cms: !!topic && cmsOn, proj: !!topic && projOn };
               const row = (key: keyof typeof cur, bg: string, icon: React.ReactNode, title: string, sub: string) => (
                 <AlertRow key={key} tile={tile(bg, icon)} title={title} sub={sub} on={cur[key]} busy={busy === 'alerts' && rowBusy === key} disabled={busy !== null}
                   onToggle={() => { setRowBusy(key); applyAlerts({ ...cur, [key]: !cur[key] }); }} />
@@ -499,6 +504,7 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, part, onFinish, o
                 {row('portal', 'bg-amber-500/20 text-amber-300', <ClipboardCheck size={22} />, 'Grades, absences, exams', 'New grade, absence or exam seat')}
                 {row('cls', 'bg-violet-500/20 text-violet-300', <AlarmClock size={22} />, 'Class reminders', '15 min before each class')}
                 {row('cms', 'bg-emerald-500/20 text-emerald-300', <GraduationCap size={22} />, 'New CMS files', 'When a teacher adds something')}
+                {row('proj', 'bg-sky-500/20 text-sky-300', <ListChecks size={22} />, 'Projects & deadlines', 'New projects, delays and reminders')}
               </>;
             })()}
 

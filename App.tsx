@@ -40,6 +40,7 @@ const PaymentPage = lazy(() => import('./components/PaymentPage'));
 const CoursesView = lazy(() => import('./components/CoursesView'));
 const MaterialsView = lazy(() => import('./components/MaterialsView'));
 const MaterialsHub = lazy(() => import('./components/CmsScreens'));
+const ProjectsScreen = lazy(() => import('./components/ProjectsScreen'));
 const PortalGrades = lazy(() => import('./components/PortalScreens').then(m => ({ default: m.PortalGrades })));
 const PortalAttendance = lazy(() => import('./components/PortalScreens').then(m => ({ default: m.PortalAttendance })));
 const PortalExamSeats = lazy(() => import('./components/PortalScreens').then(m => ({ default: m.PortalExamSeats })));
@@ -47,7 +48,7 @@ const PortalExamSeats = lazy(() => import('./components/PortalScreens').then(m =
 const prefetchScreens = () => {
   const go = () => {
     [() => import('./components/Settings'), () => import('./components/CoursesView'), () => import('./components/ToDoList'),
-      () => import('./components/CmsScreens'), () => import('./components/PortalScreens'), () => import('./components/AIChat'),
+      () => import('./components/CmsScreens'), () => import('./components/ProjectsScreen'), () => import('./components/PortalScreens'), () => import('./components/AIChat'),
       () => import('./components/GymView'), () => import('./components/MaterialsView')]
       .forEach((load, i) => setTimeout(() => { load().catch(() => {}); }, 400 * i));
   };
@@ -1696,6 +1697,8 @@ export const App: React.FC = () => {
             onSyncCompleted={(seats) => syncExamSeatsToSchedule(seats, events)}
           />
         );
+      case 'projects':
+        return <ProjectsScreen isAdmin={!!profile?.is_admin} />;
       case 'settings':
         return <Settings 
             openSupportKey={openSupportKey}

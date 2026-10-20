@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Calendar as CalendarIcon, Folder, Settings } from 'lucide-react';
+import { LayoutDashboard, Calendar as CalendarIcon, Folder, Settings, ListChecks } from 'lucide-react';
 import { ViewState } from '../types';
 
 interface NavigationProps {
@@ -10,6 +10,7 @@ interface NavigationProps {
 const navItems: { view: ViewState; icon: React.ElementType; label: string }[] = [
   { view: 'dashboard', icon: LayoutDashboard, label: 'Home' },
   { view: 'schedule', icon: CalendarIcon, label: 'Schedule' },
+  { view: 'projects', icon: ListChecks, label: 'Projects' },
   { view: 'materials', icon: Folder, label: 'Files' },
   { view: 'settings', icon: Settings, label: 'Settings' },
 ];

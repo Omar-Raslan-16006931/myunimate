@@ -190,6 +190,7 @@ export const clearPortalCache = () => {
   try {
     Object.keys(localStorage).filter(k => k.startsWith(CACHE_PREFIX)).forEach(k => localStorage.removeItem(k));
     localStorage.removeItem('portal_setup_v1'); // setup-guide ticks belong to the signed-in user
+    localStorage.removeItem('projects_cache_v1'); // project checklists belong to the signed-in user
   } catch { /* ignore */ }
   try { if (typeof caches !== 'undefined') void caches.delete('unimate-cms-v1'); } catch { /* ignore */ } // saved course files
 };
