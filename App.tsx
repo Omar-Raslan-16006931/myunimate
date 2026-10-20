@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { AlertCircle, RefreshCw } from 'lucide-react';
 import { Toaster, toast } from 'react-hot-toast';
 import { remindersEnabled, syncReminders } from './services/notifications';
+import { syncLiveActivity, endLiveActivity } from './services/liveActivity';
 import PortalSettings from './components/PortalSettings';
 import { getPortalAccount, getPortalSummary, getPortalExamSeats, getPortalAlertTopic, isBarkTopic, syncPortal, clearPortalCache, bindPortalUser, courseCodeOf, PortalExamSeat, PortalClass } from './services/portal';
 import { checkPortalChanges } from './services/portalAlerts';
@@ -1260,6 +1261,17 @@ export const App: React.FC = () => {
     window.addEventListener('class-reminders-changed', plan);
     return () => { document.removeEventListener('visibilitychange', onVisible); window.removeEventListener('class-reminders-changed', plan); };
   }, [events, activeProfileId]);
+
+  // Dynamic Island / lock screen countdown for the next class, exam or project deadline (iPhone app only)
+  useEffect(() => {
+    const mine = events.filter(e => e.scheduleId === activeProfileId);
+    const run = () => { if (document.visibilityState === 'visible') syncLiveActivity(mine); };
+    run();
+    const timer = window.setInterval(run, 60_000);
+    document.addEventListener('visibilitychange', run);
+    return () => { window.clearInterval(timer); document.removeEventListener('visibilitychange', run); };
+  }, [events, activeProfileId]);
+  useEffect(() => { if (!session?.user?.id) endLiveActivity(); }, [session?.user?.id]);
 
   // signed in but still waiting to learn who this is: keep the loader so no wrong screen flashes by
   const settling = !!session && ((!profile && !profileFetched) || !setupChecked);

@@ -6,7 +6,7 @@ name: Build iOS IPA
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [main, live-activity]
 
 concurrency:
   group: ios-ipa-${{ github.ref }}
@@ -44,38 +44,34 @@ jobs:
         run: npm run build
 
       - name: Create the iOS project
-        run: |
-          npx cap add ios
-          npx cap sync ios
+        run: bash native/ios-prepare.sh
 
-      - name: Use the UniMate app icon
+      - name: Add the Dynamic Island and lock screen countdown
+        id: island
+        continue-on-error: true
         run: |
-          ICONSET=ios/App/App/Assets.xcassets/AppIcon.appiconset
-          rm -f "$ICONSET"/*.png
-          cp resources/icon.png "$ICONSET/AppIcon-512@2x.png"
-          cat > "$ICONSET/Contents.json" <<'JSON'
-          {
-            "images": [
-              { "filename": "AppIcon-512@2x.png", "idiom": "universal", "platform": "ios", "size": "1024x1024" }
-            ],
-            "info": { "author": "xcode", "version": 1 }
-          }
-          JSON
+          ruby -rxcodeproj -e '' 2>/dev/null || sudo gem install xcodeproj --no-document
+          ruby native/add-live-activity.rb
+          PLIST=ios/App/App/Info.plist
+          /usr/libexec/PlistBuddy -c "Add :NSSupportsLiveActivities bool true" "$PLIST" 2>/dev/null \
+            || /usr/libexec/PlistBuddy -c "Set :NSSupportsLiveActivities true" "$PLIST"
 
       - name: Build the app without signing
-        working-directory: ios/App
+        id: build_island
+        if: steps.island.outcome == 'success'
+        continue-on-error: true
+        run: bash native/ios-build.sh
+
+      # Safety net: if the island part breaks anything, still ship a normal IPA (just without the island).
+      - name: Build again without the island (only runs if the island broke the build)
+        if: steps.island.outcome != 'success' || steps.build_island.outcome != 'success'
         run: |
-          xcodebuild \
-            -workspace App.xcworkspace \
-            -scheme App \
-            -configuration Release \
-            -sdk iphoneos \
-            -destination 'generic/platform=iOS' \
-            -archivePath "$RUNNER_TEMP/App.xcarchive" \
-            archive \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY=""
+          echo "::warning::The Dynamic Island part failed, so this IPA has NO island. See the failed steps above for why."
+          rm -rf ios
+          npm pkg delete dependencies.unimate-live
+          rm -rf node_modules/unimate-live
+          bash native/ios-prepare.sh
+          bash native/ios-build.sh
 
       - name: Package the IPA
         run: |

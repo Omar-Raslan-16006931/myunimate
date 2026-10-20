@@ -1,0 +1,15 @@
+{
+  "name": "unimate-live",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Dynamic Island and Live Activity for UniMate (iOS only)",
+  "files": [
+    "ios/Sources",
+    "UnimateLive.podspec"
+  ],
+  "capacitor": {
+    "ios": {
+      "src": "ios"
+    }
+  }
+}
