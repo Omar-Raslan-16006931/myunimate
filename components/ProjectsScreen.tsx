@@ -150,8 +150,6 @@ const ProjectsScreen: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
     );
   }
 
-  const next = upcoming[0];
-  const later = upcoming.slice(1);
   const row = (m: Milestone, i: number, faded = false) => {
     const p = projectOf.get(m.project_id);
     const prog = data?.progress[m.id];
@@ -163,7 +161,7 @@ const ProjectsScreen: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[15px] font-bold" style={faded ? muted : strong}>{m.title}</span>
           <span className="mt-0.5 block truncate text-[11.5px] font-semibold" style={{ ...mono, ...muted }}>
-            {[p?.course_code || p?.title, prog?.tasks.length ? tasksDone(prog.tasks) : null, submitted ? 'submitted' : null].filter(Boolean).join(' · ')}
+            {[p?.course_code, p?.title, prog?.tasks.length ? tasksDone(prog.tasks) : null, submitted ? 'submitted' : null].filter(Boolean).join(' · ')}
           </span>
         </span>
         {submitted
@@ -204,78 +202,42 @@ const ProjectsScreen: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
           </div>
         )}
 
-        {next && (() => {
-          const p = projectOf.get(next.project_id);
-          const prog = data?.progress[next.id];
-          const nFiles = (data?.files ?? []).filter(f => f.milestone_id === next.id).length;
-          return (
+        {upcoming.length > 0 && (
+          <>
+            <div className={label} style={muted}>Active</div>
+            <div className="mb-4 overflow-hidden rounded-[18px]" style={card}>{upcoming.map((m, i) => row(m, i))}</div>
+          </>
+        )}
+
+        {data && data.projects.length > 0 && upcoming.length === 0 && (
+          <div className="mb-4 rounded-[18px] px-4 py-5 text-center text-[13.5px]" style={{ ...card, ...muted }}>Nothing due right now.</div>
+        )}
+
+        {/* admin only: projects that have no deadlines yet, so they can still be opened to add one */}
+        {isAdmin && (() => {
+          const bare = (data?.projects ?? []).filter(p => !data!.milestones.some(m => m.project_id === p.id && !m.cancelled && !m.hidden));
+          return bare.length > 0 && (
             <>
-              <div className={label} style={muted}>Due next</div>
-              <div className="mb-4 rounded-[20px] p-3.5" style={card}>
-                <div className="flex items-start justify-between gap-2.5">
-                  <div className="min-w-0">
-                    <div className="truncate text-[11.5px] font-bold" style={{ ...mono, color: 'var(--accent-text)' }}>{[p?.course_code, p?.title].filter(Boolean).join(' · ')}</div>
-                    <div className="mt-0.5 text-[17px] font-extrabold" style={strong}>{next.title}</div>
-                    <div className="mt-0.5 text-[12.5px]" style={muted}>
-                      {[dueText(next.due_at), next.team_size ? `Team of ${next.team_size}` : null, nFiles ? `${nFiles} file${nFiles > 1 ? 's' : ''}` : null].filter(Boolean).join(' · ')}
-                    </div>
-                  </div>
-                  <Pill style={pillStyle(next.due_at, now)}>{timeLeft(next.due_at, now)}</Pill>
-                </div>
-                {!!prog?.tasks.length && (
-                  <div className="mt-3 flex items-center gap-2.5">
-                    <div className="h-[5px] flex-1 overflow-hidden rounded-full" style={{ background: 'var(--surface-2)' }}>
-                      <div className="h-full rounded-full" style={{ width: `${(prog.tasks.filter(t => t.done).length / prog.tasks.length) * 100}%`, background: 'var(--cta-bg)' }} />
-                    </div>
-                    <span className="text-[11.5px] font-bold" style={{ ...mono, ...muted }}>{tasksDone(prog.tasks)}</span>
-                  </div>
-                )}
-                <div className="mt-3 flex gap-2">
-                  <button onClick={() => open(next.project_id, next.id)} className="h-[42px] flex-1 rounded-[13px] text-[14.5px] font-bold" style={{ ...card, boxShadow: 'none', ...strong }}>Details</button>
-                  <button onClick={() => next.submit_link ? openLink(next.submit_link) : toast('No submission link yet.')}
-                    className="flex h-[42px] flex-1 items-center justify-center gap-1.5 rounded-[13px] border-0 text-[14.5px] font-extrabold"
-                    style={{ background: 'var(--cta-bg)', color: 'var(--cta-ink)', opacity: next.submit_link ? 1 : 0.55 }}>
-                    Submit <ArrowUpRight size={16} strokeWidth={2.6} />
+              <div className={label} style={muted}>No deadlines yet</div>
+              <div className="mb-4 overflow-hidden rounded-[18px]" style={card}>
+                {bare.map((p, i) => (
+                  <button key={p.id} onClick={() => open(p.id)} className="flex w-full items-center gap-3 border-0 bg-transparent px-3.5 py-2.5 text-left"
+                    style={i ? { borderTop: '1px solid var(--line)' } : undefined}>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[15px] font-bold" style={strong}>{p.title}</span>
+                      <span className="mt-0.5 block truncate text-[11.5px] font-semibold" style={{ ...mono, ...muted }}>{[p.course_code, p.archived ? 'archived' : 'tap to add a milestone'].filter(Boolean).join(' · ')}</span>
+                    </span>
                   </button>
-                </div>
+                ))}
               </div>
             </>
           );
         })()}
 
-        {later.length > 0 && (
-          <>
-            <div className={label} style={muted}>Later</div>
-            <div className="mb-4 overflow-hidden rounded-[18px]" style={card}>{later.map((m, i) => row(m, i))}</div>
-          </>
-        )}
-
         {done.length > 0 && (
           <>
             <div className={label} style={muted}>Done & closed</div>
             <div className="mb-4 overflow-hidden rounded-[18px]" style={card}>{done.map((m, i) => row(m, i, true))}</div>
-          </>
-        )}
-
-        {!!data?.projects.length && (
-          <>
-            <div className={label} style={muted}>All projects</div>
-            <div className="mb-4 overflow-hidden rounded-[18px]" style={card}>
-              {data.projects.filter(p => isAdmin || !p.archived).map((p, i) => {
-                const ms = data.milestones.filter(m => m.project_id === p.id && !m.cancelled);
-                return (
-                  <button key={p.id} onClick={() => open(p.id)} className="flex w-full items-center gap-3 border-0 bg-transparent px-3.5 py-2.5 text-left"
-                    style={i ? { borderTop: '1px solid var(--line)' } : undefined}>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[15px] font-bold" style={p.archived ? muted : strong}>{p.title}</span>
-                      <span className="mt-0.5 block truncate text-[11.5px] font-semibold" style={{ ...mono, ...muted }}>
-                        {[p.course_code, `${ms.length} milestone${ms.length === 1 ? '' : 's'}`, p.archived ? 'archived' : null].filter(Boolean).join(' · ')}
-                      </span>
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
           </>
         )}
       </div>
