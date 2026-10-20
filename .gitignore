@@ -20,4 +20,4 @@ build
 !.env.example
 # IDE
 .claude/
-ios/
+/ios/
