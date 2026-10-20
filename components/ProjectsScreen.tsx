@@ -93,7 +93,17 @@ const ProjectsScreen: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
         <ProjectSheet
           project={projectSheet === 'new' ? null : projectSheet}
           onClose={() => setProjectSheet(null)}
-          onSaved={async (id, deleted) => { setProjectSheet(null); await reload(); if (deleted) setOpenId(null); else open(id); }}
+          onSaved={(row, deleted) => {
+            setProjectSheet(null);
+            setData(d => {
+              const base = d ?? { projects: [], milestones: [], files: [], progress: {} };
+              if (deleted) return { ...base, projects: base.projects.filter(p => p.id !== row.id), milestones: base.milestones.filter(m => m.project_id !== row.id) };
+              const others = base.projects.filter(p => p.id !== row.id);
+              return { ...base, projects: [row as Project, ...others] };
+            });
+            if (deleted) setOpenId(null); else open(row.id);
+            reload();
+          }}
         />
       )}
       {msSheet && (
@@ -103,7 +113,21 @@ const ProjectsScreen: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
           files={(data?.files ?? []).filter(f => f.milestone_id === msSheet.m?.id)}
           allFiles={data?.files ?? []}
           onClose={() => setMsSheet(null)}
-          onSaved={async (id) => { setMsSheet(null); await reload(); setMsId(id); }}
+          onSaved={(row, uploads) => {
+            setMsSheet(null);
+            const gone = 'deleted' in row;
+            setData(d => {
+              if (!d) return d;
+              const others = d.milestones.filter(m => m.id !== row.id);
+              return { ...d, milestones: gone ? others : [...others, row as Milestone] };
+            });
+            setMsId(gone ? null : row.id);
+            // files go up after the sheet closes; the list refreshes when they are done
+            if (uploads) {
+              const t = toast.loading('Uploading files…');
+              uploads.then(ok => { toast[ok ? 'success' : 'error'](ok ? 'Files uploaded' : 'Some files did not upload', { id: t }); reload(); });
+            } else reload();
+          }}
         />
       )}
     </>
@@ -454,7 +478,7 @@ const Row: React.FC<{ label: string; first?: boolean; children: React.ReactNode 
   </div>
 );
 
-const ProjectSheet: React.FC<{ project: Project | null; onClose: () => void; onSaved: (id: string, deleted?: boolean) => void }> = ({ project, onClose, onSaved }) => {
+const ProjectSheet: React.FC<{ project: Project | null; onClose: () => void; onSaved: (row: Project | { id: string }, deleted?: boolean) => void }> = ({ project, onClose, onSaved }) => {
   const [f, setF] = useState({ title: project?.title ?? '', course_code: project?.course_code ?? '', course_name: project?.course_name ?? '', note: project?.note ?? '', archived: !!project?.archived });
   const [saving, setSaving] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
@@ -467,7 +491,7 @@ const ProjectSheet: React.FC<{ project: Project | null; onClose: () => void; onS
     if (!project) return;
     if (!confirmDel) { setConfirmDel(true); return; }
     setSaving(true);
-    try { await deleteProject(project.id); onSaved(project.id, true); }
+    try { await deleteProject(project.id); onSaved({ id: project.id }, true); }
     catch { toast.error('Could not delete the project.'); setSaving(false); }
   };
   return (
@@ -509,7 +533,7 @@ const toLocalInput = (iso: string | null) => {
 
 const MilestoneSheet: React.FC<{
   projectId: string; milestone: Milestone | null; files: ProjectFile[]; allFiles: ProjectFile[];
-  onClose: () => void; onSaved: (id: string) => void;
+  onClose: () => void; onSaved: (row: Milestone | { id: string; deleted: true }, uploads?: Promise<boolean>) => void;
 }> = ({ projectId, milestone, files, allFiles, onClose, onSaved }) => {
   const [f, setF] = useState({
     title: milestone?.title ?? '', due: toLocalInput(milestone?.due_at ?? null), team_size: milestone?.team_size ? String(milestone.team_size) : '',
@@ -526,14 +550,21 @@ const MilestoneSheet: React.FC<{
   const save = async () => {
     setSaving(true);
     try {
-      const id = await saveMilestone({
+      const row = await saveMilestone({
         id: milestone?.id, project_id: projectId, title: f.title, due_at: new Date(f.due).toISOString(),
         team_size: Number(f.team_size) || null, details: f.details, submit_link: f.submit_link,
         notify: f.notify, hidden: f.hidden, cancelled: f.cancelled,
       });
-      for (const gone of files.filter(x => !keep.some(k => k.id === x.id))) await removeProjectFile(gone);
-      for (const file of pending) await uploadProjectFile(id, file);
-      onSaved(id);
+      const gone = files.filter(x => !keep.some(k => k.id === x.id));
+      const work = gone.length || pending.length
+        ? (async () => {
+            let ok = true;
+            for (const g of gone) { try { await removeProjectFile(g); } catch { ok = false; } }
+            for (const file of pending) { try { await uploadProjectFile(row.id, file); } catch { ok = false; } }
+            return ok;
+          })()
+        : undefined;
+      onSaved(row, work);
     } catch {
       toast.error('Could not save. Check the fields and your connection.');
       setSaving(false);
@@ -543,7 +574,7 @@ const MilestoneSheet: React.FC<{
     if (!milestone) return;
     if (!confirmDel) { setConfirmDel(true); return; }
     setSaving(true);
-    try { await deleteMilestone(milestone.id, allFiles); onSaved(''); }
+    try { await deleteMilestone(milestone.id, allFiles); onSaved({ id: milestone.id, deleted: true }); }
     catch { toast.error('Could not delete.'); setSaving(false); }
   };
 

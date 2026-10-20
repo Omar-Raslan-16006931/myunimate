@@ -175,14 +175,16 @@ export const PortalGrades: React.FC<ScreenProps> = ({ onBack, onOpenSettings }) 
   const { syncing, sync, checking } = screen;
   const loading = !screen.ready;
 
+  // midterms get their own card; the course tabs hold everything else
+  const midterms = useMemo(() => grades.filter(g => g.kind === 'midterm').sort((a, b) => a.course_key.localeCompare(b.course_key)), [grades]);
   const courses = useMemo(() => {
-    const map = new Map<string, { key: string; name: string; items: PortalGrade[]; midterm: PortalGrade | null }>();
+    const map = new Map<string, { key: string; name: string; items: PortalGrade[] }>();
     for (const g of grades) {
-      if (!map.has(g.course_key)) map.set(g.course_key, { key: g.course_key, name: g.course_name, items: [], midterm: null });
-      const c = map.get(g.course_key)!;
-      if (g.kind === 'midterm') c.midterm = g; else c.items.push(g);
+      if (g.kind === 'midterm') continue;
+      if (!map.has(g.course_key)) map.set(g.course_key, { key: g.course_key, name: g.course_name, items: [] });
+      map.get(g.course_key)!.items.push(g);
     }
-    return [...map.values()].sort((a, b) => Number(b.items.some(i => i.is_new) || !!b.midterm?.is_new) - Number(a.items.some(i => i.is_new) || !!a.midterm?.is_new) || a.key.localeCompare(b.key));
+    return [...map.values()].sort((a, b) => Number(b.items.some(i => i.is_new)) - Number(a.items.some(i => i.is_new)) || a.key.localeCompare(b.key));
   }, [grades]);
 
   useEffect(() => {
@@ -215,9 +217,36 @@ export const PortalGrades: React.FC<ScreenProps> = ({ onBack, onOpenSettings }) 
     <Shell
       title="Portal grades" account={account} loading={loading} syncing={syncing} checking={checking} onSync={sync}
       onBack={onBack} onOpenSettings={onOpenSettings}
-      empty={courses.length === 0} emptyText="No grades are on the portal yet. New ones appear here as soon as they are released."
+      empty={grades.length === 0} emptyText="No grades are on the portal yet. New ones appear here as soon as they are released."
     >
       <div className="flex flex-col gap-3">
+        {/* Mid-term results: one table for all courses, always shown (like the portal's own table) */}
+        <section className="overflow-hidden rounded-[18px]" style={card}>
+          <div className="flex items-center justify-between px-3.5 py-2.5 text-[0.7rem] font-extrabold uppercase tracking-[0.07em]" style={{ ...muted, borderBottom: '1px solid var(--line)' }}>
+            <span>Mid-term · Course</span>
+            <span>%</span>
+          </div>
+          {midterms.length === 0 ? (
+            <div className="px-3.5 py-3 text-[0.82rem]" style={muted}>No midterm results are announced yet.</div>
+          ) : midterms.map((g, i) => {
+            const p = pct(g.score, g.total);
+            const name = g.course_name.replace(/\s*\([^)]*\)\s*$/, '').trim() || g.course_name;
+            const tone = p === null ? 'var(--text-primary)' : p >= 85 ? '#34d399' : p >= 65 ? 'var(--accent-text)' : p >= 50 ? '#fbbf24' : 'var(--danger)';
+            return (
+              <div key={g.id} className="flex items-center gap-3 px-3.5 py-2" style={i % 2 ? { background: 'var(--sheet-field)' } : undefined}>
+                <div className="min-w-0 flex-1 truncate text-[0.86rem] font-semibold" style={strong}>
+                  {name}{' '}
+                  <span className="text-[0.7rem] font-semibold" style={{ ...muted, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}>{g.course_key}</span>
+                  {g.is_new && <span className="ml-1.5 rounded-full px-1.5 py-[1px] align-middle text-[0.6rem] font-extrabold uppercase" style={{ background: 'var(--accent)', color: 'var(--on-accent)' }}>New</span>}
+                </div>
+                <div className="shrink-0 text-[0.9rem] font-extrabold" style={{ color: tone, fontVariantNumeric: 'tabular-nums', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}>
+                  {p !== null ? +p.toFixed(2) : g.grade_text}
+                </div>
+              </div>
+            );
+          })}
+        </section>
+
         {/* Course selector matching portal */}
         {courses.length > 1 && (
           <div className="rounded-[18px] p-3" style={card}>
@@ -323,29 +352,7 @@ export const PortalGrades: React.FC<ScreenProps> = ({ onBack, onOpenSettings }) 
                 </div>
               ))}
 
-              {/* Mid-Term Results Section */}
-              <div
-                className="rounded-[14px] p-3"
-                style={{ background: 'var(--surface-2)', border: '1px solid var(--line)' }}
-              >
-                <div className="flex items-center justify-between gap-2 mb-2 pb-1.5" style={{ borderBottom: '1px solid var(--line)' }}>
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="w-1.5 h-3.5 rounded-full shrink-0" style={{ background: 'var(--accent)' }} />
-                    <span className="text-[0.8rem] font-extrabold tracking-wide uppercase truncate" style={strong}>
-                      Mid-Term Results
-                    </span>
-                  </div>
-                </div>
-                {activeCourse.midterm ? (
-                  <GradeRow g={activeCourse.midterm} label="Midterm" first />
-                ) : (
-                  <div className="py-1 text-[0.8rem] font-medium" style={muted}>
-                    No midterm results are announced yet.
-                  </div>
-                )}
-              </div>
-
-              {courseSections.length === 0 && !activeCourse.midterm && (
+              {courseSections.length === 0 && (
                 <div className="py-4 text-center text-[0.82rem]" style={muted}>
                   No grades released for this course yet.
                 </div>

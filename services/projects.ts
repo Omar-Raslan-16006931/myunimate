@@ -62,8 +62,8 @@ export const readProjectsCache = (): ProjectsData | null => {
 };
 
 export const loadProjects = async (): Promise<ProjectsData> => {
-  const { data: auth } = await supabase.auth.getUser();
-  const uid = auth.user?.id;
+  const { data: sess } = await supabase.auth.getSession(); // read on the phone, no network trip
+  const uid = sess.session?.user.id;
   const [p, m, f, g] = await Promise.all([
     supabase.from('projects').select('id, title, course_code, course_name, note, archived, created_at').order('created_at', { ascending: false }),
     supabase.from('project_milestones').select('id, project_id, title, due_at, team_size, submit_link, details, hidden, cancelled, notify, position').order('due_at'),
@@ -88,10 +88,11 @@ export const clearProjectsCache = () => { try { localStorage.removeItem(CACHE_KE
 
 // ── student side ──
 export const saveProgress = async (milestoneId: string, patch: Partial<Omit<Progress, 'milestone_id'>>) => {
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return false;
+  const { data: sess } = await supabase.auth.getSession();
+  const uid = sess.session?.user.id;
+  if (!uid) return false;
   const { error } = await supabase.from('project_progress')
-    .upsert({ user_id: auth.user.id, milestone_id: milestoneId, ...patch }, { onConflict: 'user_id,milestone_id' });
+    .upsert({ user_id: uid, milestone_id: milestoneId, ...patch }, { onConflict: 'user_id,milestone_id' });
   return !error;
 };
 
@@ -121,10 +122,10 @@ export const fileUrl = async (f: ProjectFile): Promise<string | null> => {
 export const saveProject = async (p: Partial<Project> & { title: string }) => {
   const row = { title: p.title.trim(), course_code: p.course_code?.trim() || null, course_name: p.course_name?.trim() || null, note: p.note?.trim() || null, archived: !!p.archived };
   const res = p.id
-    ? await supabase.from('projects').update(row).eq('id', p.id).select('id').single()
-    : await supabase.from('projects').insert(row).select('id').single();
+    ? await supabase.from('projects').update(row).eq('id', p.id).select('id, title, course_code, course_name, note, archived, created_at').single()
+    : await supabase.from('projects').insert(row).select('id, title, course_code, course_name, note, archived, created_at').single();
   if (res.error) throw res.error;
-  return (res.data as { id: string }).id;
+  return res.data as Project;
 };
 
 export const deleteProject = async (id: string) => {
@@ -150,10 +151,10 @@ export const saveMilestone = async (m: Partial<Milestone> & { project_id: string
     position: m.position ?? 0,
   };
   const res = m.id
-    ? await supabase.from('project_milestones').update(row).eq('id', m.id).select('id').single()
-    : await supabase.from('project_milestones').insert(row).select('id').single();
+    ? await supabase.from('project_milestones').update(row).eq('id', m.id).select('id, project_id, title, due_at, team_size, submit_link, details, hidden, cancelled, notify, position').single()
+    : await supabase.from('project_milestones').insert(row).select('id, project_id, title, due_at, team_size, submit_link, details, hidden, cancelled, notify, position').single();
   if (res.error) throw res.error;
-  return (res.data as { id: string }).id;
+  return res.data as Milestone;
 };
 
 export const deleteMilestone = async (id: string, files: ProjectFile[]) => {
