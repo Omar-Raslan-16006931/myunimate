@@ -1,13 +1,15 @@
 
 import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
-import { AlertCircle, RefreshCw } from 'lucide-react';
+import { AlertCircle, RefreshCw, WifiOff } from 'lucide-react';
 import { Toaster, toast } from 'react-hot-toast';
 import { remindersEnabled, syncReminders } from './services/notifications';
 import { syncLiveActivity, endLiveActivity } from './services/liveActivity';
 import PortalSettings from './components/PortalSettings';
-import { getPortalAccount, getPortalSummary, getPortalExamSeats, getPortalAlertTopic, isBarkTopic, syncPortal, clearPortalCache, bindPortalUser, courseCodeOf, PortalExamSeat, PortalClass } from './services/portal';
+import { getPortalAccount, getPortalSummary, getPortalExamSeats, getPortalAlertTopic, isBarkTopic, syncPortal, clearPortalCache, bindPortalUser, courseCodeOf, timeAgo, PortalExamSeat, PortalClass } from './services/portal';
 import { checkPortalChanges } from './services/portalAlerts';
 import { supabase } from './lib/supabase';
+import { useOffline, lastOkSync, markSynced } from './lib/network';
+import { saveOfflineSnapshot } from './services/offlineSnapshot';
 import { ViewState, ScheduleEvent, ScheduleProfile, EventColorMap, EventType, PeriodDefinition, Announcement, ThemeMode, FoodItem, WaterLog, WorkoutSession, WorkoutRoutine, ExerciseDefinition, GymSettings, ActiveGymState, CourseGrade, ToDoItem, MaterialFile, BodyLog } from './types';
 import { INITIAL_EVENTS, INITIAL_PROFILES, INITIAL_COLORS, INITIAL_PERIODS, DEFAULT_GYM_SETTINGS, DEFAULT_ROUTINES, INITIAL_FILES, generateId } from './constants';
 import { styles } from './theme';
@@ -120,6 +122,7 @@ export const App: React.FC = () => {
   const [themeMode, setThemeMode] = useState<ThemeMode>('dark');
   const [isViewingFile, setIsViewingFile] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const offline = useOffline(); // no connection to the server: show the saved copy, view-only
   const [isSyncingPhase2, setIsSyncingPhase2] = useState(false);
   const isInitializingRef = useRef(false);
   const hasHydratedRef = useRef(false);
@@ -530,6 +533,10 @@ export const App: React.FC = () => {
               supabase.from('materials').select('id, name, type, size, date_added, mime_type, parent_id, created_at').eq('user_id', userId)
           ]);
 
+          // No connection (or the server refused): keep what is saved on the phone. An empty reply here
+          // must never replace your schedule or the saved copy.
+          if (eventsRes.error || profilesRes.error) return;
+
           let finalEvents: ScheduleEvent[] = [];
           let finalProfiles: ScheduleProfile[] = [];
           let finalCourses: CourseGrade[] = [];
@@ -611,18 +618,22 @@ export const App: React.FC = () => {
               setFiles(finalFiles);
           }
 
-          // Cache for next load
-          try {
-              localStorage.setItem('unimate_v1_cache', JSON.stringify({
-                  events: finalEvents,
-                  profiles: finalProfiles,
-                  courses: finalCourses,
-                  todos: finalTodos,
-                  files: finalFiles,
-                  lastSynced: Date.now()
-              }));
-          } catch (e) {
-              console.error("Local storage quota exceeded or failed:", e);
+          markSynced(); // the schedule on screen is now as fresh as the server's copy
+
+          // Cache for next load (skipped when part of the reply failed, so a gap never overwrites the saved copy)
+          if (!(coursesRes.error || todosRes.error || materialsRes.error)) {
+              try {
+                  localStorage.setItem('unimate_v1_cache', JSON.stringify({
+                      events: finalEvents,
+                      profiles: finalProfiles,
+                      courses: finalCourses,
+                      todos: finalTodos,
+                      files: finalFiles,
+                      lastSynced: Date.now()
+                  }));
+              } catch (e) {
+                  console.error("Local storage quota exceeded or failed:", e);
+              }
           }
 
           // PHASE 2: Background Loading of File Contents
@@ -1249,6 +1260,35 @@ export const App: React.FC = () => {
   const prefetched = useRef(false);
   useEffect(() => { if (!loading && !prefetched.current) { prefetched.current = true; prefetchScreens(); } }, [loading]);
 
+  // Offline: say so once when a change is refused, and refresh everything the moment the connection is back.
+  useEffect(() => {
+    let last = 0;
+    const onBlocked = () => {
+      if (Date.now() - last < 4000) return;
+      last = Date.now();
+      toast("You're offline, so this is view-only until you're back online.", { icon: '📴', id: 'offline-write' });
+    };
+    window.addEventListener('unimate-offline-write', onBlocked);
+    return () => window.removeEventListener('unimate-offline-write', onBlocked);
+  }, []);
+  const wasOffline = useRef(false);
+  useEffect(() => {
+    const uid = session?.user?.id;
+    if (offline) { wasOffline.current = true; return; }
+    if (!wasOffline.current || !uid) return;
+    wasOffline.current = false;
+    toast.success('Back online', { id: 'back-online' });
+    fetchProfile(uid);
+    fetchUserData(uid);
+  }, [offline, session?.user?.id]);
+
+  // A copy of the schedule for the offline page of the iPhone app (opens when the app starts without internet)
+  useEffect(() => {
+    if (offline || !session?.user?.id || events.length === 0) return;
+    const active = profiles.find(p => p.id === activeProfileId);
+    saveOfflineSnapshot(events, { scheduleId: activeProfileId, scheduleName: active?.name || '' });
+  }, [events, profiles, activeProfileId, offline, session?.user?.id]);
+
   // Class reminders: re-plan whenever the schedule changes or the app comes back to the front.
   useEffect(() => {
     const plan = () => {
@@ -1789,7 +1829,16 @@ export const App: React.FC = () => {
 
   return (
     <div style={styles.container} className={`${themeMode} app-shell`}>
-      {((isSyncing) || (isSyncingPhase2 && view === 'materials')) && !loading && (
+      {offline && !loading && (
+        <div className="fixed top-20 right-4 z-[2000] flex items-center gap-2 bg-slate-900/85 backdrop-blur-md border border-amber-400/30 pl-2.5 pr-3 py-1.5 rounded-2xl shadow-2xl animate-in fade-in slide-in-from-top-2 duration-300">
+           <WifiOff size={13} className="text-amber-300 shrink-0" />
+           <div className="flex flex-col leading-tight">
+             <span className="text-[9px] font-bold text-amber-200 uppercase tracking-widest">Offline · view only</span>
+             {lastOkSync() > 0 && <span className="text-[9px] font-semibold text-white/50">Updated {timeAgo(new Date(lastOkSync()).toISOString())}</span>}
+           </div>
+        </div>
+      )}
+      {!offline && ((isSyncing) || (isSyncingPhase2 && view === 'materials')) && !loading && (
         <div className="fixed top-20 right-4 z-[2000] flex items-center gap-2 bg-slate-900/80 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-full shadow-2xl animate-in fade-in slide-in-from-top-2 duration-300">
            <div className={`w-1.5 h-1.5 ${isSyncing ? 'bg-emerald-500' : 'bg-teal-500'} rounded-full animate-pulse`}></div>
            <span className="text-[9px] font-bold text-white/70 uppercase tracking-widest">
