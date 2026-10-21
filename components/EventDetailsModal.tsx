@@ -152,26 +152,26 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({ event, onClose, o
             </div>
           </motion.div>
 
-          <motion.div variants={riseItem} className="mt-4 grid gap-2" style={{ gridTemplateColumns: slot ? '1.35fr 1fr 1fr' : '1.35fr 1fr' }}>
+          <motion.div variants={riseItem} className="mt-4 grid gap-2" style={{ gridTemplateColumns: slot ? 'minmax(0,1fr) auto auto' : 'minmax(0,1fr) auto' }}>
             <div
-              className="rounded-2xl px-3 py-2.5 min-w-0"
+              className="rounded-2xl px-3 py-2 min-w-0"
               style={e.location
                 ? { background: 'color-mix(in srgb, var(--hero-progress) 11%, transparent)', border: '1px solid color-mix(in srgb, var(--hero-progress) 38%, transparent)' }
                 : tileStyle}
             >
               <div className={label} style={{ color: e.location ? 'var(--hero-progress)' : 'var(--text-muted)' }}>Room</div>
-              <div className="mt-0.5 truncate font-extrabold" style={{ fontSize: e.location ? '1.3rem' : '1rem', color: e.location ? 'var(--text-primary)' : 'var(--text-muted)' }}>
+              <div className="mt-0.5 line-clamp-2 break-words font-extrabold leading-tight" style={{ fontSize: e.location ? '1.05rem' : '0.95rem', color: e.location ? 'var(--text-primary)' : 'var(--text-muted)' }}>
                 {e.location || 'Not set'}
               </div>
             </div>
-            <div className="rounded-2xl px-3 py-2.5" style={tileStyle}>
+            <div className="rounded-2xl px-2.5 py-2" style={tileStyle}>
               <div className={label} style={{ color: 'var(--text-muted)' }}>Length</div>
-              <div className="mt-0.5 text-[1.05rem] font-extrabold">{fmtDuration(e.durationMinutes)}</div>
+              <div className="mt-0.5 text-[1rem] font-extrabold leading-tight">{fmtDuration(e.durationMinutes)}</div>
             </div>
             {slot && (
-              <div className="rounded-2xl px-3 py-2.5" style={tileStyle}>
+              <div className="rounded-2xl px-2.5 py-2" style={tileStyle}>
                 <div className={label} style={{ color: 'var(--text-muted)' }}>Slot</div>
-                <div className="mt-0.5 text-[1.05rem] font-extrabold">{slot}</div>
+                <div className="mt-0.5 text-[1rem] font-extrabold leading-tight">{slot}</div>
               </div>
             )}
           </motion.div>
@@ -180,11 +180,11 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({ event, onClose, o
             variants={riseItem}
             whileTap={{ scale: 0.98 }}
             onClick={() => onEdit(e)}
-            className="mt-2 block w-full rounded-2xl px-3.5 py-3 text-left"
+            className="mt-2 block w-full rounded-2xl px-3 py-2 text-left"
             style={{ ...tileStyle, color: 'var(--text-primary)' }}
           >
             <div className={label} style={{ color: 'var(--text-muted)' }}>Notes</div>
-            <div className="mt-1 whitespace-pre-wrap text-[0.92rem] font-semibold leading-snug" style={{ color: e.description ? 'var(--text-primary)' : 'var(--text-muted)', opacity: e.description ? 1 : 0.75 }}>
+            <div className="mt-0.5 whitespace-pre-wrap text-[0.9rem] font-semibold leading-snug" style={{ color: e.description ? 'var(--text-primary)' : 'var(--text-muted)', opacity: e.description ? 1 : 0.75 }}>
               {e.description || 'Tap to add a note'}
             </div>
           </motion.button>
