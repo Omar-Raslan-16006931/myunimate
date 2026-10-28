@@ -428,7 +428,7 @@ function Auth({ onEnterTestMode }: AuthProps) {
   return (
     <div style={{...styles.container, justifyContent: 'center', alignItems: 'center', overflow: 'hidden', background: '#0f0f16', backgroundImage: 'none'}}>
       {/* Main */}
-      <div className="w-full max-w-[420px] px-5 relative z-10 flex flex-col max-h-[94vh] animate-pop-in">
+      <div className="w-full max-w-[420px] px-5 relative z-10 flex flex-col max-h-[94dvh] animate-pop-in">
         {mode === 'signup' && (
           <div className="shrink-0 px-2 pb-6"><OnboardSteps current={0} /></div>
         )}

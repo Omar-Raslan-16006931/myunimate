@@ -20,7 +20,7 @@ export const styles: { [key: string]: React.CSSProperties } = {
   container: {
     display: "flex",
     flexDirection: "column",
-    height: "100vh",
+    height: "100dvh",
     boxSizing: "border-box",
     paddingTop: "env(safe-area-inset-top)",
     fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
@@ -89,6 +89,8 @@ export const styles: { [key: string]: React.CSSProperties } = {
     padding: "14px 16px calc(92px + env(safe-area-inset-bottom)) 16px", 
     scrollbarWidth: "none",
     WebkitOverflowScrolling: "touch",
+    overscrollBehaviorY: "contain",
+    minHeight: 0,
   },
   header: {
     marginBottom: "20px",
@@ -135,7 +137,7 @@ export const styles: { [key: string]: React.CSSProperties } = {
     backgroundColor: "var(--grid-bg)", 
     WebkitOverflowScrolling: "touch",
     backdropFilter: "blur(30px)",
-    maxHeight: "calc(100vh - 180px)", 
+    maxHeight: "calc(100dvh - 180px)", 
     position: 'relative'
   },
   scheduleContainer: {
@@ -306,7 +308,7 @@ export const styles: { [key: string]: React.CSSProperties } = {
     padding: "24px",
     width: "100%",
     maxWidth: "360px",
-    maxHeight: "80vh",
+    maxHeight: "80dvh",
     overflowY: "auto",
     overflowX: "hidden",
     border: "1px solid rgba(255,255,255,0.1)",

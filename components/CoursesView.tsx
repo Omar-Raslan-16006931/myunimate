@@ -150,7 +150,7 @@ const SchemaEditor = ({
 
     return (
         <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
-            <div className="bg-[#1c1c1e] border border-white/10 rounded-3xl w-full max-w-sm flex flex-col shadow-2xl relative animate-in zoom-in-95 max-h-[85vh]" onClick={e => e.stopPropagation()}>
+            <div className="bg-[#1c1c1e] border border-white/10 rounded-3xl w-full max-w-sm flex flex-col shadow-2xl relative animate-in zoom-in-95 max-h-[85dvh]" onClick={e => e.stopPropagation()}>
                 
                 {/* Header - Fixed */}
                 <div className="flex justify-between items-center p-5 border-b border-white/5 shrink-0">
