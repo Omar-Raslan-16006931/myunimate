@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Loader2, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import { ScheduleEvent, EventColorMap, EventType, PeriodDefinition, CourseGrade } from '../types';
@@ -96,6 +96,9 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ isOpen, onClose, onSave, 
   const [addToGrades, setAddToGrades] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  // one id per "new class" attempt: every retry of this save sends the same id, so a slow
+  // or repeated tap can never create the class twice (the server rejects a second copy)
+  const createKey = useRef<string>('');
 
   const slots = periods.filter(p => !p.isBreak);
 
@@ -110,6 +113,7 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ isOpen, onClose, onSave, 
     setAddToGrades(false);
     setShowCoursePicker(false);
     setSaveError(null);
+    createKey.current = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   }, [initialData, isOpen]);
 
   const set = (patch: Partial<ScheduleEvent>) => setFormData(prev => ({ ...prev, ...patch }));
@@ -137,7 +141,7 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ isOpen, onClose, onSave, 
     setIsSaving(true);
     setSaveError(null);
     try {
-      await onSave(formData, addToGrades);
+      await onSave(isEdit ? formData : { ...formData, id: createKey.current }, addToGrades);
     } catch (err: any) {
       setSaveError(err?.message || 'Could not save. Try again.');
     } finally {

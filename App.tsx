@@ -10,6 +10,7 @@ import { checkPortalChanges } from './services/portalAlerts';
 import { supabase } from './lib/supabase';
 import { useOffline, lastOkSync, markSynced } from './lib/network';
 import { saveOfflineSnapshot } from './services/offlineSnapshot';
+import { deleteWithUndo, isPendingDelete } from './lib/undo';
 import { ViewState, ScheduleEvent, ScheduleProfile, EventColorMap, EventType, PeriodDefinition, Announcement, ThemeMode, FoodItem, WaterLog, WorkoutSession, WorkoutRoutine, ExerciseDefinition, GymSettings, ActiveGymState, CourseGrade, ToDoItem, MaterialFile, BodyLog } from './types';
 import { INITIAL_EVENTS, INITIAL_PROFILES, INITIAL_COLORS, INITIAL_PERIODS, DEFAULT_GYM_SETTINGS, DEFAULT_ROUTINES, INITIAL_FILES, generateId } from './constants';
 import { styles } from './theme';
@@ -25,6 +26,7 @@ import { Dashboard } from './components/Dashboard';
 import Schedule from './components/Schedule';
 
 import AddEventModal from './components/AddEventModal';
+import CommandMenu from './components/CommandMenu';
 import EventDetailsModal from './components/EventDetailsModal';
 import PasskeyPrompt from './components/PasskeyPrompt';
 import WhatsNew, { markWhatsNewSeen } from './components/WhatsNew';
@@ -110,6 +112,9 @@ class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasErr
 // the old default tutorial color (light cyan) became a darker blue; accounts still on the old default move with it
 const refreshColors = (c: EventColorMap): EventColorMap =>
   String(c.tutorial).toLowerCase() === '#6ff1f1' ? { ...c, tutorial: INITIAL_COLORS.tutorial } : c;
+
+/** Screens full of times, timers, grades and percentages: their digits keep a fixed width. */
+const NUMERIC_VIEWS = new Set<ViewState>(['schedule', 'gym', 'grades', 'courses', 'portal_grades', 'attendance', 'exam_seats']);
 
 export const App: React.FC = () => {
   const [session, setSession] = useState<any>(null);
@@ -513,15 +518,16 @@ export const App: React.FC = () => {
   // Several sign-in events can fire at once. Only one load per user may run, otherwise each one
   // sees "no schedules yet" and adds its own default schedule.
   const userDataLoadRef = useRef<Promise<void> | null>(null);
-  const fetchUserData = (userId: string): Promise<void> => {
+  const lastUserFetch = useRef(0);
+  const fetchUserData = (userId: string, quiet = false): Promise<void> => {
       if (userDataLoadRef.current) return userDataLoadRef.current;
-      const run = loadUserData(userId).finally(() => { userDataLoadRef.current = null; });
+      const run = loadUserData(userId, quiet).finally(() => { userDataLoadRef.current = null; lastUserFetch.current = Date.now(); });
       userDataLoadRef.current = run;
       return run;
   };
 
-  const loadUserData = async (userId: string) => {
-      setIsSyncing(true);
+  const loadUserData = async (userId: string, quiet = false) => {
+      if (!quiet) setIsSyncing(true);
       try {
           const [eventsRes, profilesRes, coursesRes, todosRes, materialsRes] = await Promise.all([
               supabase.from('events').select('*').eq('user_id', userId),
@@ -545,7 +551,7 @@ export const App: React.FC = () => {
 
           // Process Events
           if (eventsRes.data && eventsRes.data.length > 0) {
-              finalEvents = eventsRes.data.map((e: any) => ({
+              finalEvents = eventsRes.data.filter((e: any) => !isPendingDelete(e.id)).map((e: any) => ({
                   ...e,
                   scheduleId: e.schedule_id,
                   startTime: e.start_time,
@@ -602,13 +608,13 @@ export const App: React.FC = () => {
 
           // Process Todos
           if (todosRes.data) {
-              finalTodos = todosRes.data.map((t: any) => ({...t, createdAt: t.created_at}));
+              finalTodos = todosRes.data.filter((t: any) => !isPendingDelete(t.id)).map((t: any) => ({...t, createdAt: t.created_at}));
               setToDoItems(finalTodos);
           }
 
           // Process Materials
           if (materialsRes.data) {
-              finalFiles = materialsRes.data.map((m: any) => ({
+              finalFiles = materialsRes.data.filter((m: any) => !isPendingDelete(m.id) && !isPendingDelete(m.parent_id)).map((m: any) => ({
                   ...m, 
                   dateAdded: m.date_added, 
                   mimeType: m.mime_type, 
@@ -1008,7 +1014,7 @@ export const App: React.FC = () => {
     }
 
     // Optimistic UI update
-    setEvents(prev => [...prev, newEvent]);
+    setEvents(prev => prev.some(e => e.id === newEvent.id) ? prev : [...prev, newEvent]);
     setIsAddModalOpen(false);
     setEditingEvent(null);
 
@@ -1033,7 +1039,8 @@ export const App: React.FC = () => {
     
     const { error } = await supabase.from('events').insert(insertPayload);
 
-    if (error) {
+    // 23505 = this id is already saved, i.e. an earlier try of this same save went through
+    if (error && (error as any).code !== '23505') {
         console.error('Error adding event:', error);
         // Rollback on error
         setEvents(prev => prev.filter(e => e.id !== newEvent.id));
@@ -1184,7 +1191,8 @@ export const App: React.FC = () => {
         finalEvent.dayOfWeek = days[dateObj.getDay()];
     }
 
-    setEvents(events.map(e => e.id === finalEvent.id ? finalEvent : e));
+    const previous = events.find(e => e.id === finalEvent.id);
+    setEvents(prev => prev.map(e => e.id === finalEvent.id ? finalEvent : e));
     setViewingEvent(null);
     
     const updatePayload = {
@@ -1207,7 +1215,8 @@ export const App: React.FC = () => {
 
     if (error) {
         console.error("Error updating event:", error);
-        console.error("Error updating event: " + error.message);
+        // put the old version back so the screen never shows a change that wasn't saved
+        if (previous) setEvents(prev => prev.map(e => e.id === previous.id ? previous : e));
         throw new Error(error.message);
     }
   };
@@ -1215,16 +1224,16 @@ export const App: React.FC = () => {
   const onDeleteEvent = async (id: string) => {
     if (!session?.user?.id) return;
     const backup = events.find(e => e.id === id);
-    setEvents(prev => prev.filter(e => e.id !== id));
+    if (!backup) return;
     setViewingEvent(null);
-    const { error } = await supabase.from('events').delete().eq('id', id);
-    if (error) {
-        console.error("Error deleting event:", error);
-        toast.error("Failed to delete event. Please check your connection.");
-        if (backup) setEvents(prev => [...prev, backup]);
-    } else {
-        toast.success("Event deleted");
-    }
+    deleteWithUndo({
+      id,
+      message: `${backup.type === 'exam' ? 'Exam' : 'Class'} deleted`,
+      hide: () => setEvents(prev => prev.filter(e => e.id !== id)),
+      restore: () => setEvents(prev => prev.some(e => e.id === id) ? prev : [...prev, backup]),
+      commit: () => supabase.from('events').delete().eq('id', id),
+      failText: "Couldn't delete it (check your connection). It's back.",
+    });
   };
 
   const handleGymUpdate = (updates: Partial<ActiveGymState>) => setActiveGymState(prev => ({ ...prev, ...updates }));
@@ -1259,6 +1268,21 @@ export const App: React.FC = () => {
   // once the first screen is up, fetch the other screens quietly in the background
   const prefetched = useRef(false);
   useEffect(() => { if (!loading && !prefetched.current) { prefetched.current = true; prefetchScreens(); } }, [loading]);
+
+  // Stale-while-revalidate: the saved copy is already on screen, so when you come back to the app
+  // (or the window gets focus again) quietly fetch the latest in the background. No spinner, no pill.
+  useEffect(() => {
+    const uid = session?.user?.id;
+    if (!uid) return;
+    const refresh = () => {
+      if (document.visibilityState !== 'visible' || !navigator.onLine) return;
+      if (Date.now() - lastUserFetch.current < 30_000) return; // just fetched
+      fetchUserData(uid, true);
+    };
+    document.addEventListener('visibilitychange', refresh);
+    window.addEventListener('focus', refresh);
+    return () => { document.removeEventListener('visibilitychange', refresh); window.removeEventListener('focus', refresh); };
+  }, [session?.user?.id]);
 
   // Offline: say so once when a change is refused, and refresh everything the moment the connection is back.
   useEffect(() => {
@@ -1590,30 +1614,28 @@ export const App: React.FC = () => {
                 
                 console.log("Updating file", id, "with", dbUpdates);
                 
-                // Optimistic update
+                // Optimistic update: rename/move shows at once, and goes back if the server says no
+                const before = files.find(f => f.id === id);
                 setFiles(prevFiles => prevFiles.map(f => f.id === id ? { ...f, ...updates } : f));
                 
                 const { error } = await supabase.from('materials').update(dbUpdates).eq('id', id);
                 if (error) {
                     console.error("Error updating file:", error);
-                    // Rollback if needed, but usually we just log it for now
+                    if (before) setFiles(prevFiles => prevFiles.map(f => f.id === id ? before : f));
+                    toast.error("Couldn't save that change.");
                 }
             }}
             onDeleteFile={async (id) => {
-                if (!confirm("Are you sure you want to delete this file?")) return;
-                
-                const backup = files.find(f => f.id === id);
-                // Optimistic update
-                setFiles(prev => prev.filter(f => f.id !== id && f.parentId !== id));
-                
-                const { error } = await supabase.from('materials').delete().eq('id', id);
-                if (error) {
-                    console.error("Error deleting file:", error);
-                    toast.error("Failed to delete file.");
-                    if (backup) setFiles(prev => [...prev, backup]);
-                } else {
-                    toast.success("File deleted.");
-                }
+                const removed = files.filter(f => f.id === id || f.parentId === id);
+                if (!removed.length) return;
+                const isFolder = removed[0]?.type === 'folder' || removed.length > 1;
+                deleteWithUndo({
+                  id,
+                  message: isFolder ? 'Folder deleted' : 'File deleted',
+                  hide: () => setFiles(prev => prev.filter(f => f.id !== id && f.parentId !== id)),
+                  restore: () => setFiles(prev => [...prev, ...removed.filter(r => !prev.some(f => f.id === r.id))]),
+                  commit: () => supabase.from('materials').delete().eq('id', id),
+                });
             }}
             onLoadFileContent={handleLoadFileContent}
             onBack={goBack}
@@ -1714,16 +1736,33 @@ export const App: React.FC = () => {
             }}
             onToggle={async (id) => {
                 const item = toDoItems.find(i => i.id === id);
-                if (item) {
-                    setToDoItems(toDoItems.map(i => i.id === id ? { ...i, completed: !i.completed } : i));
-                    const { error } = await supabase.from('todos').update({ completed: !item.completed }).eq('id', id);
-                    if (error) console.error("Error toggling todo:", error);
+                if (!item) return;
+                const done = !item.completed;
+                // tick shows straight away; if the server says no, it flips back
+                setToDoItems(prev => prev.map(i => i.id === id ? { ...i, completed: done } : i));
+                const { error } = await supabase.from('todos').update({ completed: done }).eq('id', id);
+                if (error) {
+                    console.error("Error toggling todo:", error);
+                    setToDoItems(prev => prev.map(i => i.id === id ? { ...i, completed: item.completed } : i));
+                    toast.error("Couldn't update the task.", { id: 'todo-toggle' });
                 }
             }}
             onDelete={async (id) => {
-                setToDoItems(toDoItems.filter(i => i.id !== id));
-                const { error } = await supabase.from('todos').delete().eq('id', id);
-                if (error) console.error("Error deleting todo:", error);
+                const index = toDoItems.findIndex(i => i.id === id);
+                const item = toDoItems[index];
+                if (!item) return;
+                deleteWithUndo({
+                  id,
+                  message: 'Task deleted',
+                  hide: () => setToDoItems(prev => prev.filter(i => i.id !== id)),
+                  restore: () => setToDoItems(prev => {
+                    if (prev.some(i => i.id === id)) return prev;
+                    const next = [...prev];
+                    next.splice(Math.min(index, next.length), 0, item);
+                    return next;
+                  }),
+                  commit: () => supabase.from('todos').delete().eq('id', id),
+                });
             }}
             onBack={() => setView('dashboard')}
         />;
@@ -1848,7 +1887,7 @@ export const App: React.FC = () => {
       )}
       <ErrorBoundary>
         {/* keyed by page, so every page switch fades in */}
-        <div key={view} className="page-in" style={{ flex: '1 1 0%', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+        <div key={view} className={`page-in${NUMERIC_VIEWS.has(view) ? ' tnum' : ''}`} style={{ flex: '1 1 0%', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
           <Suspense fallback={null}>{renderContent()}</Suspense>
         </div>
       </ErrorBoundary>
@@ -1940,6 +1979,13 @@ export const App: React.FC = () => {
           }}
         /></Suspense>
       )}
+      <CommandMenu
+        enabled={!!session && !loading}
+        onNavigate={setView}
+        onNewClass={() => { setEditingEvent(null); setIsAddModalOpen(true); }}
+        onImport={() => setIsSmartImportModalOpen(true)}
+        onSupport={() => { setView('settings'); setOpenSupportKey(k => k + 1); }}
+      />
       <ReplyNotifier userId={session?.user?.id} onOpen={() => { setView('settings'); setOpenSupportKey(k => k + 1); }} />
       <WhatsNew ready={!loading && !isSmartImportModalOpen} onOpenChange={setWhatsNewOpen} />
       <PasskeyPrompt userId={session?.user?.id} ready={!loading && !isSmartImportModalOpen && !whatsNewOpen} />

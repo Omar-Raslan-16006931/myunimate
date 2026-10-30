@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, ChevronRight, ExternalLink, FileText, Folder, GraduationCap, KeyRound, Loader2, RefreshCw, Search } from 'lucide-react';
+import { SkeletonList } from './ui/Skeleton';
 import { toast } from 'react-hot-toast';
 import { styles } from '../theme';
 import { getPortalAccount, readPortalCache, writePortalCache } from '../services/portal';
@@ -152,7 +153,7 @@ const CmsCourses: React.FC<{
           <>
             {problem && <Problem text={problem} />}
             {!data ? (
-              <div className="flex justify-center py-16" style={muted}><Loader2 size={22} className="animate-spin" /></div>
+              <SkeletonList field />
             ) : data.courses.length === 0 ? (
               <div className="rounded-[18px] px-4 py-5 text-center text-[0.85rem]" style={{ ...card, ...muted }}>
                 {syncing ? 'Loading your courses…' : 'No courses yet. Tap the refresh button to check the CMS.'}

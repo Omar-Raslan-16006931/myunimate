@@ -49,7 +49,7 @@ const Navigation: React.FC<NavigationProps> = ({ currentView, onNavigate }) => (
         boxShadow: 'var(--nav-shadow)',
       }}
     >
-      {navItems.map(({ view, icon: Icon, label }) => {
+      {navItems.map(({ view, icon: Icon, label }, i) => {
         const active = currentView === view;
         return (
           <button
@@ -57,6 +57,8 @@ const Navigation: React.FC<NavigationProps> = ({ currentView, onNavigate }) => (
             onClick={() => onNavigate(view)}
             aria-current={active ? 'page' : undefined}
             aria-label={label}
+            aria-keyshortcuts={String(i + 1)}
+            title={`${label}  (${i + 1})`}
             style={{
               flex: active ? '1.6 1 0' : '1 1 0',
               height: 46,

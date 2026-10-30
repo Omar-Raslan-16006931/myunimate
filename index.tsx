@@ -1,5 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { MotionConfig } from 'framer-motion';
 import './index.css';
 import { App } from './App';
 import PasskeyHandoff, { passkeyHandoffFromUrl } from './components/PasskeyHandoff';
@@ -22,6 +23,9 @@ const confirmed = !handoff && emailConfirmedFromUrl();
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
+    {/* every framer-motion animation follows the phone's Reduce Motion setting */}
+    <MotionConfig reducedMotion="user">
     {handoff ? <PasskeyHandoff kind={handoff.kind} id={handoff.id} /> : confirmed ? <EmailConfirmed /> : <App />}
+    </MotionConfig>
   </React.StrictMode>
 );

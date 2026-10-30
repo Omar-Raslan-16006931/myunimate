@@ -243,7 +243,7 @@ const AdminInbox: React.FC = () => {
                     className="w-full rounded-xl border border-white/5 bg-black/40 py-2.5 pl-9 pr-8 text-sm text-white placeholder-white/30 outline-none focus:border-teal-500/50" />
                   {search && <button onClick={() => setSearch('')} aria-label="Clear" className="absolute right-1.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full border-0 bg-white/10 text-white/60"><X size={12} /></button>}
                 </div>
-                <button onClick={fetchFeedback} disabled={loading} aria-label="Refresh" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-0 bg-white/5 text-white/70">
+                <button onClick={fetchFeedback} disabled={loading} aria-label="Refresh" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-0 bg-white/5 text-white/70 hit">
                   <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
                 </button>
               </div>
@@ -293,7 +293,7 @@ const AdminInbox: React.FC = () => {
               <button onClick={() => markAsRead(selectedMessage.id, selectedMessage.status)} aria-label={selectedMessage.status === 'unread' ? 'Mark read' : 'Mark unread'}
                 className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border-0 ${selectedMessage.status === 'read' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-white/5 text-white/50'}`}><Check size={16} /></button>
               {personBanned ? (
-                <button onClick={doUnban} disabled={banBusy} aria-label="Unban user" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border-0 bg-teal-500/15 text-teal-300">
+                <button onClick={doUnban} disabled={banBusy} aria-label="Unban user" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border-0 bg-teal-500/15 text-teal-300 hit">
                   {banBusy ? <Loader2 size={15} className="animate-spin" /> : <ShieldCheck size={16} />}
                 </button>
               ) : (

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { SkeletonList } from './ui/Skeleton';
 import Collapse from './ui/Collapse';
 import { ArrowLeft, RefreshCw, Loader2, ChevronDown, KeyRound, Calendar, MapPin, Armchair, Clock } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -42,7 +43,7 @@ const Shell: React.FC<{
     <div className="max-w-3xl mx-auto w-full page-in">
       <div className="mb-3.5 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5 min-w-0">
-          <button onClick={onBack} aria-label="Back" className="flex items-center justify-center w-10 h-10 rounded-[14px] shrink-0" style={{ ...card, ...strong }}>
+          <button onClick={onBack} aria-label="Back" className="flex items-center justify-center w-10 h-10 rounded-[14px] shrink-0 hit" style={{ ...card, ...strong }}>
             <ArrowLeft size={18} />
           </button>
           <div className="min-w-0">
@@ -63,14 +64,14 @@ const Shell: React.FC<{
           </div>
         </div>
         {account && (
-          <button onClick={onSync} disabled={syncing || checking === 'portal'} aria-label="Check the portal now" className="flex items-center justify-center w-10 h-10 rounded-[14px] shrink-0" style={{ ...card, color: 'var(--accent)' }}>
+          <button onClick={onSync} disabled={syncing || checking === 'portal'} aria-label="Check the portal now" className="flex items-center justify-center w-10 h-10 rounded-[14px] shrink-0 hit" style={{ ...card, color: 'var(--accent)' }}>
             {syncing || checking === 'portal' ? <Loader2 size={17} className="animate-spin" /> : <RefreshCw size={17} />}
           </button>
         )}
       </div>
 
       {loading ? (
-        <div key="loading" className="page-in-fade flex justify-center py-16" style={muted}><Loader2 size={22} className="animate-spin" /></div>
+        <SkeletonList key="loading" kind="table" />
       ) : !account ? (
         <div key="noaccount" className="page-in rounded-[20px] px-5 py-6 text-center" style={card}>
           <KeyRound size={22} className="mx-auto mb-2" style={{ color: 'var(--accent)' }} />

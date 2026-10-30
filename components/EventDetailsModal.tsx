@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { X, Trash2, Pencil } from 'lucide-react';
 import { ScheduleEvent, EventColorMap, PeriodDefinition } from '../types';
 import Sheet, { riseItem, riseParent } from './Sheet';
@@ -87,10 +87,8 @@ const label = 'text-[10.5px] font-extrabold uppercase tracking-[0.08em]';
 const EventDetailsModal: React.FC<EventDetailsModalProps> = ({ event, onClose, onDelete, onEdit, eventColors, periods = [] }) => {
   // keep the last event while the sheet slides away
   const [shown, setShown] = useState<ScheduleEvent | null>(event);
-  const [confirmDelete, setConfirmDelete] = useState(false);
   useEffect(() => {
     if (event) setShown(event);
-    setConfirmDelete(false);
   }, [event]);
 
   const e = event ?? shown;
@@ -120,7 +118,7 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({ event, onClose, o
               whileTap={{ scale: 0.88 }}
               onClick={onClose}
               aria-label="Close"
-              className="flex h-9 w-9 items-center justify-center rounded-full border-0"
+              className="flex h-9 w-9 items-center justify-center rounded-full border-0 hit"
               style={{ ...tileStyle, color: 'var(--text-primary)' }}
             >
               <X size={17} strokeWidth={2.6} />
@@ -189,63 +187,26 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({ event, onClose, o
             </div>
           </motion.button>
 
-          <motion.div variants={riseItem} className="mt-5">
-            <AnimatePresence mode="wait" initial={false}>
-              {confirmDelete ? (
-                <motion.div
-                  key="confirm"
-                  className="flex gap-2.5"
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.16 }}
-                >
-                  <motion.button
-                    whileTap={{ scale: 0.97 }}
-                    onClick={() => setConfirmDelete(false)}
-                    className="h-[52px] flex-1 rounded-2xl text-[1rem] font-extrabold"
-                    style={{ ...tileStyle, color: 'var(--text-primary)' }}
-                  >
-                    Keep it
-                  </motion.button>
-                  <motion.button
-                    whileTap={{ scale: 0.97 }}
-                    onClick={() => { onDelete(e.id); onClose(); }}
-                    className="h-[52px] flex-1 rounded-2xl border-0 text-[1rem] font-extrabold text-white"
-                    style={{ background: 'var(--danger)' }}
-                  >
-                    Delete class
-                  </motion.button>
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="actions"
-                  className="flex gap-2.5"
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.16 }}
-                >
-                  <motion.button
-                    whileTap={{ scale: 0.92 }}
-                    onClick={() => setConfirmDelete(true)}
-                    aria-label="Delete class"
-                    className="flex h-[52px] w-[56px] shrink-0 items-center justify-center rounded-2xl"
-                    style={{ background: 'color-mix(in srgb, var(--danger) 12%, transparent)', border: '1px solid color-mix(in srgb, var(--danger) 32%, transparent)', color: 'var(--danger)' }}
-                  >
-                    <Trash2 size={19} />
-                  </motion.button>
-                  <motion.button
-                    whileTap={{ scale: 0.97 }}
-                    onClick={() => onEdit(e)}
-                    className="flex h-[52px] flex-1 items-center justify-center gap-2 rounded-2xl border-0 text-[1rem] font-extrabold"
-                    style={{ background: 'var(--cta-bg)', color: 'var(--cta-ink)' }}
-                  >
-                    <Pencil size={17} strokeWidth={2.5} /> Edit class
-                  </motion.button>
-                </motion.div>
-              )}
-            </AnimatePresence>
+          {/* delete is instant: an Undo toast brings it back (no "are you sure?" step) */}
+          <motion.div variants={riseItem} className="mt-5 flex gap-2.5">
+            <motion.button
+              whileTap={{ scale: 0.92 }}
+              onClick={() => { onDelete(e.id); onClose(); }}
+              aria-label={`Delete ${e.type === 'exam' ? 'exam' : 'class'}`}
+              title="Delete (Undo is available)"
+              className="flex h-[52px] w-[56px] shrink-0 items-center justify-center rounded-2xl"
+              style={{ background: 'color-mix(in srgb, var(--danger) 12%, transparent)', border: '1px solid color-mix(in srgb, var(--danger) 32%, transparent)', color: 'var(--danger)' }}
+            >
+              <Trash2 size={19} />
+            </motion.button>
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              onClick={() => onEdit(e)}
+              className="flex h-[52px] flex-1 items-center justify-center gap-2 rounded-2xl border-0 text-[1rem] font-extrabold"
+              style={{ background: 'var(--cta-bg)', color: 'var(--cta-ink)' }}
+            >
+              <Pencil size={17} strokeWidth={2.5} /> Edit class
+            </motion.button>
           </motion.div>
         </motion.div>
       )}

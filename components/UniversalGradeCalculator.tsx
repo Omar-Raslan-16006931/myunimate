@@ -334,7 +334,7 @@ const UniversalGradeCalculator: React.FC<UniversalGradeCalculatorProps> = ({ cou
                     <button 
                         type="button"
                         onClick={onBack} 
-                        className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/70 hover:text-white transition-colors shrink-0"
+                        className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/70 hover:text-white transition-colors shrink-0 hit"
                     >
                         <ArrowLeft size={18} />
                     </button>

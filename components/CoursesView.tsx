@@ -537,7 +537,7 @@ const GPACalculator = ({ courses, onBack }: { courses: CourseGrade[], onBack: ()
             {/* Header */}
             <div className="flex items-center justify-between mb-6 pt-2">
                 <div className="flex items-center gap-3">
-                    <button onClick={onBack} className="w-8 h-8 bg-white/5 hover:bg-white/10 rounded-full flex items-center justify-center transition-colors">
+                    <button onClick={onBack} className="w-8 h-8 bg-white/5 hover:bg-white/10 rounded-full flex items-center justify-center transition-colors hit">
                         <ArrowLeft size={18} className="text-white" />
                     </button>
                     <div>
@@ -774,7 +774,7 @@ const CoursesView: React.FC<CoursesViewProps> = ({ courses, onSelectCourse, onAd
              </button>
              <button 
                 onClick={onAddCourse} 
-                className="w-10 h-10 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center shadow-lg shadow-indigo-600/20 transition-all active:scale-95"
+                className="w-10 h-10 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center shadow-lg shadow-indigo-600/20 transition-all active:scale-95 hit"
              >
                 <Plus size={20} />
              </button>

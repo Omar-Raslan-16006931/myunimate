@@ -319,7 +319,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ events, onNavigate, onEven
                 <Megaphone size={16} className="mt-0.5 shrink-0" style={{ color: 'var(--accent)' }} />
                 <p className="m-0 text-[0.82rem] font-semibold leading-snug" style={{ color: 'var(--text-primary)' }}>{announcement!.message}</p>
               </div>
-              <button onClick={handleDismissAnnouncement} aria-label="Dismiss" className="shrink-0 flex items-center justify-center w-7 h-7 rounded-full border-0" style={{ background: 'var(--surface-2)', color: 'var(--text-primary)' }}><X size={13} /></button>
+              <button onClick={handleDismissAnnouncement} aria-label="Dismiss" className="shrink-0 flex items-center justify-center w-7 h-7 rounded-full border-0 hit" style={{ background: 'var(--surface-2)', color: 'var(--text-primary)' }}><X size={13} /></button>
             </motion.div>
           )}
         </AnimatePresence>

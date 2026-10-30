@@ -241,7 +241,7 @@ const TicketList: React.FC<{
       left={<TextButton onClick={onClose}>Close</TextButton>}
       title={<span className="text-[17px] font-extrabold">Support</span>}
       right={tickets && tickets.length > 0 ? (
-        <button onClick={onNew} aria-label="New ticket" className="flex h-9 w-9 items-center justify-center rounded-full border-0 active:scale-95" style={cta}>
+        <button onClick={onNew} aria-label="New ticket" className="flex h-9 w-9 items-center justify-center rounded-full border-0 active:scale-95 hit" style={cta}>
           <Plus size={20} strokeWidth={2.6} />
         </button>
       ) : <span />}
@@ -560,7 +560,7 @@ const Thread: React.FC<{ userId: string; ticket: AppFeedback; justOpened: boolea
         <div className="flex items-end gap-2 rounded-[24px] p-1" style={field}>
           <GrowingInput value={text} onChange={setText} onSubmit={send} placeholder="Message" />
           <button onClick={send} disabled={!text.trim()} aria-label="Send"
-            className="mb-[3px] mr-[3px] flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-0 transition-all active:scale-90 disabled:opacity-30" style={cta}>
+            className="mb-[3px] mr-[3px] flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-0 transition-all active:scale-90 disabled:opacity-30 hit" style={cta}>
             <ArrowUp size={19} strokeWidth={2.8} />
           </button>
         </div>

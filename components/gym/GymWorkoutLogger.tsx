@@ -250,7 +250,7 @@ const PlateCalculatorModal = ({ onClose }: { onClose: () => void }) => {
             <div className="bg-[#1c1c1e] border border-white/10 rounded-3xl p-6 max-w-sm w-full shadow-2xl animate-in zoom-in-95" onClick={e => e.stopPropagation()}>
                 <div className="flex justify-between items-center mb-4">
                     <h3 className="text-lg font-bold text-white flex items-center gap-2"><Calculator size={18} className="text-cyan-400" /> Plate Calculator</h3>
-                    <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-white/40 hover:text-white transition"><X size={16} /></button>
+                    <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-white/40 hover:text-white transition hit"><X size={16} /></button>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 mb-4">
@@ -359,7 +359,7 @@ const ExercisePickerModal: React.FC<ExercisePickerProps> = ({ exercises, onSelec
         <div className="fixed inset-0 z-[2000] bg-[#0c0a14]/97 backdrop-blur-xl flex flex-col animate-in slide-in-from-bottom-10 duration-300">
             <div className="p-4 border-b border-white/10 bg-[#16102a]/60">
                 <div className="flex items-center gap-3 mb-3">
-                    <button onClick={onClose} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/50 hover:text-white transition shrink-0"><ArrowLeft size={20} /></button>
+                    <button onClick={onClose} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/50 hover:text-white transition shrink-0 hit"><ArrowLeft size={20} /></button>
                     <h2 className="text-base font-bold text-white flex-1">{title}</h2>
                     <button onClick={() => setCreating(!creating)}
                         className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-bold transition border ${creating ? 'bg-teal-500/20 border-teal-500/50 text-teal-300' : 'bg-white/5 border-white/10 text-white/60 hover:text-white'}`}>
@@ -480,7 +480,7 @@ const RoutineBuilderModal: React.FC<RoutineBuilderProps> = ({ initial, exercises
     return (
         <div className="fixed inset-0 z-[1900] bg-[#0c0a14]/97 backdrop-blur-xl flex flex-col animate-in slide-in-from-bottom-10 duration-300">
             <div className="p-4 border-b border-white/10 bg-[#16102a]/60 flex items-center gap-3">
-                <button onClick={onClose} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/50 hover:text-white transition shrink-0"><ArrowLeft size={20} /></button>
+                <button onClick={onClose} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/50 hover:text-white transition shrink-0 hit"><ArrowLeft size={20} /></button>
                 <div className="flex-1">
                     <h2 className="text-base font-bold text-white">{initial ? 'Edit Routine' : 'New Routine'}</h2>
                     <p className="text-[10px] text-white/40">{chosen.length} exercises</p>
@@ -547,7 +547,7 @@ const PresetPlanModal = ({ plan, onAdd, onClose }: { plan: PresetPlan; onAdd: (p
     return (
         <div className="fixed inset-0 z-[2000] bg-[#0c0a14]/97 backdrop-blur-xl flex flex-col animate-in slide-in-from-bottom-10 duration-300">
             <div className="p-4 border-b border-white/10 bg-[#16102a]/60 flex items-center gap-3">
-                <button onClick={onClose} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/50 hover:text-white transition shrink-0"><ArrowLeft size={20} /></button>
+                <button onClick={onClose} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/50 hover:text-white transition shrink-0 hit"><ArrowLeft size={20} /></button>
                 <div className="flex-1 min-w-0">
                     <h2 className="text-base font-bold text-white truncate">{plan.name}</h2>
                     <p className="text-[10px] text-white/40">{plan.category} • {plan.level} • {plan.daysPerWeek} days/week</p>

@@ -62,7 +62,7 @@ const Sheet: React.FC<{
           <motion.div
             role="dialog"
             aria-modal="true"
-            className="relative w-full max-w-[520px] flex flex-col overscroll-contain"
+            className="squircle relative w-full max-w-[520px] flex flex-col overscroll-contain"
             style={{
               background: 'var(--sheet-bg)',
               color: 'var(--text-primary)',
@@ -87,7 +87,7 @@ const Sheet: React.FC<{
             onDragEnd={onDragEnd}
           >
             <div
-              className="flex justify-center pt-2.5 pb-2 shrink-0 cursor-grab touch-none"
+              className="flex justify-center pt-3 pb-3 -mb-1 shrink-0 cursor-grab touch-none"
               onPointerDown={e => drag.start(e)}
             >
               <div className="h-[5px] w-[38px] rounded-full" style={{ background: 'var(--line)' }} />

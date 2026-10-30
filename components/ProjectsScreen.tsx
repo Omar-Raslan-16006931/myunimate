@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, ArrowUpRight, Check, CheckCircle2, EyeOff, Link2, ListChecks, Loader2, MoreHorizontal, Plus, Trash2, Upload, X } from 'lucide-react';
+import { SkeletonList } from './ui/Skeleton';
 import { toast } from 'react-hot-toast';
 import { styles } from '../theme';
 import Sheet from './Sheet';
@@ -192,7 +193,7 @@ const ProjectsScreen: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
 
         {problem && <div className="mb-3 rounded-2xl px-3.5 py-2.5 text-[13px] font-semibold" style={{ background: 'color-mix(in srgb, var(--danger) 12%, transparent)', color: 'var(--danger)' }}>{problem}</div>}
 
-        {!data && !problem && <div className="flex justify-center py-16"><Loader2 className="animate-spin" style={muted} /></div>}
+        {!data && !problem && <SkeletonList label />}
 
         {data && !data.projects.length && (
           <div className="rounded-[20px] px-5 py-8 text-center" style={card}>
@@ -289,7 +290,7 @@ const ProjectView: React.FC<{
     <div style={styles.scrollableContent} className="custom-scrollbar">
       <div className="mx-auto w-full max-w-3xl page-in">
         <div className="mb-3 flex items-center gap-2.5">
-          <button onClick={onBack} aria-label="Back" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[13px]" style={{ ...card, boxShadow: 'none', ...strong }}><ArrowLeft size={18} /></button>
+          <button onClick={onBack} aria-label="Back" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[13px] hit" style={{ ...card, boxShadow: 'none', ...strong }}><ArrowLeft size={18} /></button>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
               {isAdmin && <span className="rounded-[5px] px-1.5 py-0.5 text-[10px] font-extrabold tracking-wide" style={{ background: 'rgba(167,139,250,0.18)', color: '#a78bfa' }}>ADMIN</span>}
@@ -297,7 +298,7 @@ const ProjectView: React.FC<{
             </div>
             <div className="truncate text-[18px] font-extrabold tracking-tight" style={strong}>{project.title}</div>
           </div>
-          {isAdmin && <button onClick={onEditProject} aria-label="Edit project" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[13px]" style={{ ...card, boxShadow: 'none', ...strong }}><MoreHorizontal size={18} /></button>}
+          {isAdmin && <button onClick={onEditProject} aria-label="Edit project" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[13px] hit" style={{ ...card, boxShadow: 'none', ...strong }}><MoreHorizontal size={18} /></button>}
         </div>
 
         {project.note && (
@@ -322,7 +323,7 @@ const ProjectView: React.FC<{
               );
             })}
             {isAdmin && (
-              <button onClick={onAddMilestone} aria-label="Add milestone" className="flex h-8 w-10 shrink-0 items-center justify-center rounded-[9px] border-0 bg-transparent" style={{ color: 'var(--accent-text)' }}>
+              <button onClick={onAddMilestone} aria-label="Add milestone" className="flex h-8 w-10 shrink-0 items-center justify-center rounded-[9px] border-0 bg-transparent hit" style={{ color: 'var(--accent-text)' }}>
                 <Plus size={17} strokeWidth={2.6} />
               </button>
             )}
