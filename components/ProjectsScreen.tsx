@@ -289,7 +289,7 @@ const ProjectView: React.FC<{
   return (
     <div style={styles.scrollableContent} className="custom-scrollbar">
       <div className="mx-auto w-full max-w-3xl page-in">
-        <div className="mb-3 flex items-center gap-2.5">
+        <div className="mb-2.5 flex items-center gap-2.5">
           <button onClick={onBack} aria-label="Back" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[13px] hit" style={{ ...card, boxShadow: 'none', ...strong }}><ArrowLeft size={18} /></button>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
@@ -308,13 +308,13 @@ const ProjectView: React.FC<{
         )}
 
         {(ms.length > 0 || isAdmin) && (
-          <div role="tablist" className="mb-3 flex gap-1 overflow-x-auto rounded-[13px] p-1" style={{ ...card, boxShadow: 'none', scrollbarWidth: 'none' }}>
+          <div role="tablist" className="mb-2.5 flex gap-1 overflow-x-auto rounded-[12px] p-[3px]" style={{ ...card, boxShadow: 'none', scrollbarWidth: 'none' }}>
             {ms.map(x => {
               const on = x.id === m?.id;
               const sub = data.progress[x.id]?.submitted;
               return (
                 <button key={x.id} role="tab" aria-selected={on} onClick={() => onPickMs(x.id)}
-                  className="flex h-8 min-w-[72px] flex-1 shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-[9px] border-0 px-2.5 text-[13px] font-bold"
+                  className="flex h-[30px] min-w-[72px] flex-1 shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-[9px] border-0 px-2.5 text-[12.5px] font-bold"
                   style={on ? { background: 'var(--nav-active-bg, rgba(25,184,166,0.2))', color: 'var(--accent-text)' } : { background: 'transparent', ...muted, textDecoration: x.cancelled ? 'line-through' : undefined }}>
                   {sub && <Check size={12} strokeWidth={3.2} color="#34d399" />}
                   {x.hidden && <EyeOff size={12} />}
@@ -323,7 +323,7 @@ const ProjectView: React.FC<{
               );
             })}
             {isAdmin && (
-              <button onClick={onAddMilestone} aria-label="Add milestone" className="flex h-8 w-10 shrink-0 items-center justify-center rounded-[9px] border-0 bg-transparent hit" style={{ color: 'var(--accent-text)' }}>
+              <button onClick={onAddMilestone} aria-label="Add milestone" className="flex h-[30px] w-9 shrink-0 items-center justify-center rounded-[9px] border-0 bg-transparent hit" style={{ color: 'var(--accent-text)' }}>
                 <Plus size={17} strokeWidth={2.6} />
               </button>
             )}
@@ -336,29 +336,29 @@ const ProjectView: React.FC<{
           </div>
         ) : (
           <>
-            <div className="rounded-[20px] p-3.5" style={card}>
+            <div className="rounded-[18px] p-3" style={card}>
               <div className="flex items-start justify-between gap-2.5">
                 <div className="min-w-0">
-                  <div className="text-[17px] font-extrabold" style={strong}>{m.title}</div>
-                  <div className="mt-0.5 text-[12.5px]" style={muted}>{[dueText(m.due_at), m.team_size ? `Team of ${m.team_size}` : null].filter(Boolean).join(' · ')}</div>
+                  <div className="text-[16px] font-extrabold leading-tight" style={strong}>{m.title}</div>
+                  <div className="mt-0.5 text-[12px]" style={muted}>{[dueText(m.due_at), m.team_size ? `Team of ${m.team_size}` : null].filter(Boolean).join(' · ')}</div>
                 </div>
                 {m.cancelled ? <Pill style={{ background: 'var(--surface-2)', color: 'var(--text-muted)' }}>cancelled</Pill>
                   : past ? <Pill style={{ background: 'var(--surface-2)', color: 'var(--text-muted)' }}>closed</Pill>
                   : <Pill style={pillStyle(m.due_at, now)}>{timeLeft(m.due_at, now)}</Pill>}
               </div>
 
-              {m.details && <p className="mb-0 mt-2.5 whitespace-pre-line text-[13.5px] leading-relaxed" style={strong}>{m.details}</p>}
+              {m.details && <p className="mb-0 mt-2 whitespace-pre-line break-words text-[13px] leading-snug" style={strong}>{m.details}</p>}
 
               {files.length > 0 && (
                 <>
-                  <div className={`${label} mt-3`} style={muted}>Requirements</div>
+                  <div className={`${label} mt-3 !mb-1`} style={muted}>Requirements</div>
                   <div className="overflow-hidden rounded-[13px]" style={{ background: 'var(--sheet-field)' }}>
                     {files.map((f, i) => (
-                      <button key={f.id} onClick={() => openFile(f)} className="flex w-full items-center gap-2.5 border-0 bg-transparent px-2.5 py-2 text-left"
+                      <button key={f.id} onClick={() => openFile(f)} className="flex w-full items-center gap-2.5 border-0 bg-transparent px-2.5 py-1.5 text-left"
                         style={i ? { borderTop: '1px solid var(--line)' } : undefined}>
-                        <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-lg text-[9px] font-bold"
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] text-[8.5px] font-bold"
                           style={{ ...mono, background: 'color-mix(in srgb, var(--danger) 15%, transparent)', color: 'var(--danger)' }}>{fileKind(f)}</span>
-                        <span className="min-w-0 flex-1 truncate text-[14px] font-bold" style={strong}>{f.name}</span>
+                        <span className="min-w-0 flex-1 truncate text-[13.5px] font-bold" style={strong}>{f.name}</span>
                         {opening === f.id ? <Loader2 size={15} className="animate-spin" style={muted} /> : <span className="text-[12px]" style={muted}>{sizeText(f.size)}</span>}
                       </button>
                     ))}
@@ -366,53 +366,53 @@ const ProjectView: React.FC<{
                 </>
               )}
 
-              <div className="mt-3 flex items-center justify-between">
+              <div className="mb-1 mt-3 flex items-center justify-between">
                 <span className={label.replace('mb-1.5 ', '')} style={muted}>My checklist</span>
                 {tasks.length > 0 && <span className="text-[11.5px] font-bold" style={{ ...mono, color: 'var(--accent-text)' }}>{tasksDone(tasks)}</span>}
               </div>
               {tasks.map((t, i) => (
-                <div key={i} className="flex min-h-[38px] items-center gap-2.5">
+                <div key={i} className="flex min-h-[34px] items-center gap-2.5 px-1">
                   <input type="checkbox" checked={t.done} aria-label={t.t}
                     onChange={() => onProgress(m.id, { tasks: tasks.map((x, j) => j === i ? { ...x, done: !x.done } : x) })}
                     style={{ width: 18, height: 18, margin: 0, accentColor: 'var(--accent)' }} />
-                  <span className="min-w-0 flex-1 text-[14px]" style={t.done ? { ...muted, textDecoration: 'line-through' } : strong}>{t.t}</span>
+                  <span className="min-w-0 flex-1 text-[13.5px]" style={t.done ? { ...muted, textDecoration: 'line-through' } : strong}>{t.t}</span>
                   <button aria-label={`Remove ${t.t}`} onClick={() => onProgress(m.id, { tasks: tasks.filter((_, j) => j !== i) })}
-                    className="flex h-8 w-8 items-center justify-center border-0 bg-transparent" style={muted}><X size={14} /></button>
+                    className="flex h-7 w-7 items-center justify-center border-0 bg-transparent" style={muted}><X size={14} /></button>
                 </div>
               ))}
-              <div className="mt-1 flex items-center gap-2 rounded-[12px] px-3" style={field}>
+              <div className="mt-0.5 flex items-center gap-2 rounded-[11px] px-3" style={field}>
                 <Plus size={15} style={muted} />
                 <input value={newTask} onChange={e => setNewTask(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addTask(); }}
-                  placeholder="Add a task" maxLength={80} className={`${inputBase} h-10 text-[16px] font-medium`} style={strong} />
+                  placeholder="Add a task" maxLength={80} className={`${inputBase} h-9 text-[16px] font-medium`} style={strong} />
                 {newTask.trim() && <button onClick={addTask} className="border-0 bg-transparent text-[14px] font-extrabold" style={{ color: 'var(--accent-text)' }}>Add</button>}
               </div>
             </div>
 
-            <div className="mt-3 flex gap-2">
+            <div className="mt-2.5 flex gap-2">
               <button onClick={() => onProgress(m.id, { submitted: !prog?.submitted })}
-                className="flex h-[46px] flex-1 items-center justify-center gap-1.5 rounded-[15px] text-[14.5px] font-bold"
+                className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-[14px] text-[14px] font-bold"
                 style={prog?.submitted ? { background: 'rgba(52,211,153,0.15)', border: '1px solid rgba(52,211,153,0.35)', color: '#34d399' } : { ...card, boxShadow: 'none', ...strong }}>
                 <CheckCircle2 size={17} /> {prog?.submitted ? 'Submitted' : 'Mark done'}
               </button>
               <button onClick={() => m.submit_link ? openLink(m.submit_link) : toast('No submission link yet.')}
-                className="flex h-[46px] flex-[1.3] items-center justify-center gap-1.5 rounded-[15px] border-0 text-[14.5px] font-extrabold"
+                className="flex h-11 flex-[1.3] items-center justify-center gap-1.5 rounded-[14px] border-0 text-[14px] font-extrabold"
                 style={{ background: 'var(--cta-bg)', color: 'var(--cta-ink)', opacity: m.submit_link ? 1 : 0.55 }}>
                 Submit <ArrowUpRight size={16} strokeWidth={2.6} />
               </button>
             </div>
-            <div className="mt-1.5 text-center text-[11.5px]" style={muted}>{m.submit_link ? 'Submit opens the submission link' : 'The submission link is not posted yet'}</div>
+            {!m.submit_link && <div className="mt-1.5 text-center text-[11.5px]" style={muted}>The submission link is not posted yet</div>}
 
             {isAdmin && (
-              <div className="mt-4 rounded-[18px] p-3.5" style={card}>
+              <div className="mt-2.5 rounded-[18px] p-3" style={card}>
                 <div className="grid grid-cols-3 gap-2 text-center">
                   {[['Viewed', stats?.viewed], ['Marked done', stats?.submitted], ['Students', stats?.total]].map(([t, v]) => (
                     <div key={t as string}>
-                      <div className="text-[19px] font-bold" style={{ ...mono, ...strong }}>{v ?? '–'}</div>
-                      <div className="text-[11.5px]" style={muted}>{t}</div>
+                      <div className="text-[17px] font-bold leading-tight" style={{ ...mono, ...strong }}>{v ?? '–'}</div>
+                      <div className="text-[11px]" style={muted}>{t}</div>
                     </div>
                   ))}
                 </div>
-                <button onClick={() => onEditMilestone(m)} className="mt-3 h-[42px] w-full rounded-[13px] text-[14.5px] font-bold" style={{ ...card, boxShadow: 'none', ...strong }}>Edit milestone</button>
+                <button onClick={() => onEditMilestone(m)} className="mt-2.5 h-10 w-full rounded-[12px] text-[14px] font-bold" style={{ ...card, boxShadow: 'none', ...strong }}>Edit milestone</button>
               </div>
             )}
           </>
