@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, ArrowUpRight, Check, CheckCircle2, EyeOff, Link2, ListChecks, Loader2, MoreHorizontal, Plus, Trash2, Upload, X } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, Check, CheckCircle2, EyeOff, Link2, ListChecks, Loader2, MoreHorizontal, Pencil, Plus, Trash2, Upload, X } from 'lucide-react';
 import { SkeletonList } from './ui/Skeleton';
 import { toast } from 'react-hot-toast';
 import { styles } from '../theme';
@@ -289,26 +289,30 @@ const ProjectView: React.FC<{
   return (
     <div style={styles.scrollableContent} className="custom-scrollbar">
       <div className="mx-auto w-full max-w-3xl page-in">
-        <div className="mb-2.5 flex items-center gap-2.5">
-          <button onClick={onBack} aria-label="Back" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[13px] hit" style={{ ...card, boxShadow: 'none', ...strong }}><ArrowLeft size={18} /></button>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5">
-              {isAdmin && <span className="rounded-[5px] px-1.5 py-0.5 text-[10px] font-extrabold tracking-wide" style={{ background: 'rgba(167,139,250,0.18)', color: '#a78bfa' }}>ADMIN</span>}
-              {project.course_code && <span className="truncate text-[11.5px] font-bold" style={{ ...mono, color: 'var(--accent-text)' }}>{project.course_code}{project.course_name ? ` · ${project.course_name}` : ''}</span>}
-            </div>
-            <div className="truncate text-[18px] font-extrabold tracking-tight" style={strong}>{project.title}</div>
+        {/* header: back, small title, menu */}
+        <div className="mb-3 flex items-center gap-2">
+          <button onClick={onBack} aria-label="Back" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] hit" style={{ ...card, boxShadow: 'none', ...strong }}><ArrowLeft size={17} /></button>
+          <div className="min-w-0 flex-1 px-0.5">
+            <div className="truncate text-[15px] font-bold leading-tight tracking-[-0.01em]" style={strong}>{project.title}</div>
+            {(project.course_code || isAdmin) && (
+              <div className="mt-0.5 flex items-center gap-1.5 truncate text-[11.5px] font-semibold" style={muted}>
+                {isAdmin && <span className="rounded-[4px] px-1 text-[9.5px] font-extrabold tracking-wide" style={{ background: 'rgba(167,139,250,0.18)', color: '#a78bfa' }}>ADMIN</span>}
+                {project.course_code && <span className="truncate">{project.course_code}{project.course_name ? ` · ${project.course_name}` : ''}</span>}
+              </div>
+            )}
           </div>
-          {isAdmin && <button onClick={onEditProject} aria-label="Edit project" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[13px] hit" style={{ ...card, boxShadow: 'none', ...strong }}><MoreHorizontal size={18} /></button>}
+          {isAdmin && <button onClick={onEditProject} aria-label="Edit project" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] hit" style={{ ...card, boxShadow: 'none', ...strong }}><MoreHorizontal size={17} /></button>}
         </div>
 
         {project.note && (
-          <div className="mb-3 rounded-[14px] px-3 py-2.5 text-[13px] leading-snug" style={{ background: 'rgba(96,165,250,0.10)', border: '1px solid rgba(96,165,250,0.22)', ...strong }}>
-            <span className="font-extrabold">Note: </span>{project.note}
+          <div className="mb-3 rounded-[14px] px-3 py-2.5 text-[13.5px] leading-[1.45]" style={{ background: 'rgba(96,165,250,0.10)', border: '1px solid rgba(96,165,250,0.22)', ...strong }}>
+            <span className="font-bold">Note: </span><RichText text={project.note} />
           </div>
         )}
 
-        {(ms.length > 0 || isAdmin) && (
-          <div role="tablist" className="mb-2.5 flex gap-1 overflow-x-auto rounded-[12px] p-[3px]" style={{ ...card, boxShadow: 'none', scrollbarWidth: 'none' }}>
+        {/* milestone switcher: only when there is more than one */}
+        {ms.length > 1 && (
+          <div role="tablist" className="mb-3 flex gap-1 overflow-x-auto rounded-[12px] p-[3px]" style={{ ...card, boxShadow: 'none', scrollbarWidth: 'none' }}>
             {ms.map(x => {
               const on = x.id === m?.id;
               const sub = data.progress[x.id]?.submitted;
@@ -322,97 +326,100 @@ const ProjectView: React.FC<{
                 </button>
               );
             })}
-            {isAdmin && (
-              <button onClick={onAddMilestone} aria-label="Add milestone" className="flex h-[30px] w-9 shrink-0 items-center justify-center rounded-[9px] border-0 bg-transparent hit" style={{ color: 'var(--accent-text)' }}>
-                <Plus size={17} strokeWidth={2.6} />
-              </button>
-            )}
           </div>
         )}
 
         {!m ? (
-          <div className="rounded-[20px] px-5 py-7 text-center text-[13.5px]" style={{ ...card, ...muted }}>
-            {isAdmin ? 'No milestones yet. Tap + to add the first deadline.' : 'No deadlines posted yet.'}
+          <div className="rounded-[18px] px-5 py-7 text-center text-[13.5px]" style={{ ...card, ...muted }}>
+            {isAdmin ? 'No milestones yet.' : 'No deadlines posted yet.'}
+            {isAdmin && (
+              <button onClick={onAddMilestone} className="mx-auto mt-3 flex h-9 items-center gap-1.5 rounded-[11px] border-0 px-3.5 text-[13.5px] font-bold" style={{ background: 'var(--cta-bg)', color: 'var(--cta-ink)' }}>
+                <Plus size={15} strokeWidth={2.6} /> Add milestone
+              </button>
+            )}
           </div>
         ) : (
           <>
-            <div className="rounded-[18px] p-3" style={card}>
-              <div className="flex items-start justify-between gap-2.5">
+            <div className="rounded-[18px] px-3.5 pb-3.5 pt-3" style={card}>
+              <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="text-[16px] font-extrabold leading-tight" style={strong}>{m.title}</div>
-                  <div className="mt-0.5 text-[12px]" style={muted}>{[dueText(m.due_at), m.team_size ? `Team of ${m.team_size}` : null].filter(Boolean).join(' · ')}</div>
+                  <div className="text-[16px] font-bold leading-snug tracking-[-0.01em]" style={strong}>{m.title}</div>
+                  <div className="mt-0.5 text-[12.5px]" style={muted}>{[dueText(m.due_at), m.team_size ? `Team of ${m.team_size}` : null].filter(Boolean).join(' · ')}</div>
                 </div>
                 {m.cancelled ? <Pill style={{ background: 'var(--surface-2)', color: 'var(--text-muted)' }}>cancelled</Pill>
                   : past ? <Pill style={{ background: 'var(--surface-2)', color: 'var(--text-muted)' }}>closed</Pill>
                   : <Pill style={pillStyle(m.due_at, now)}>{timeLeft(m.due_at, now)}</Pill>}
               </div>
 
-              {m.details && <p className="mb-0 mt-2 whitespace-pre-line break-words text-[13px] leading-snug" style={strong}>{m.details}</p>}
+              {m.details && (
+                <div className="mt-3 border-t pt-3 text-[14px] leading-[1.5]" style={{ borderColor: 'var(--line)', color: 'var(--text-primary)' }}>
+                  <RichText text={m.details} />
+                </div>
+              )}
 
               {files.length > 0 && (
-                <>
-                  <div className={`${label} mt-3 !mb-1`} style={muted}>Requirements</div>
-                  <div className="overflow-hidden rounded-[13px]" style={{ background: 'var(--sheet-field)' }}>
-                    {files.map((f, i) => (
-                      <button key={f.id} onClick={() => openFile(f)} className="flex w-full items-center gap-2.5 border-0 bg-transparent px-2.5 py-1.5 text-left"
-                        style={i ? { borderTop: '1px solid var(--line)' } : undefined}>
+                <div className="mt-3.5">
+                  <div className={label} style={muted}>Files</div>
+                  <div className="flex flex-col gap-1.5">
+                    {files.map(f => (
+                      <button key={f.id} onClick={() => openFile(f)} className="flex w-full items-center gap-2.5 rounded-[12px] border-0 px-2.5 py-2 text-left"
+                        style={{ background: 'var(--sheet-field)' }}>
                         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] text-[8.5px] font-bold"
                           style={{ ...mono, background: 'color-mix(in srgb, var(--danger) 15%, transparent)', color: 'var(--danger)' }}>{fileKind(f)}</span>
-                        <span className="min-w-0 flex-1 truncate text-[13.5px] font-bold" style={strong}>{f.name}</span>
-                        {opening === f.id ? <Loader2 size={15} className="animate-spin" style={muted} /> : <span className="text-[12px]" style={muted}>{sizeText(f.size)}</span>}
+                        <span className="min-w-0 flex-1 truncate text-[13.5px] font-semibold" style={strong}>{f.name}</span>
+                        {opening === f.id ? <Loader2 size={15} className="animate-spin" style={muted} /> : <span className="text-[11.5px]" style={muted}>{sizeText(f.size)}</span>}
                       </button>
                     ))}
                   </div>
-                </>
+                </div>
               )}
 
-              <div className="mb-1 mt-3 flex items-center justify-between">
-                <span className={label.replace('mb-1.5 ', '')} style={muted}>My checklist</span>
-                {tasks.length > 0 && <span className="text-[11.5px] font-bold" style={{ ...mono, color: 'var(--accent-text)' }}>{tasksDone(tasks)}</span>}
-              </div>
-              {tasks.map((t, i) => (
-                <div key={i} className="flex min-h-[34px] items-center gap-2.5 px-1">
-                  <input type="checkbox" checked={t.done} aria-label={t.t}
-                    onChange={() => onProgress(m.id, { tasks: tasks.map((x, j) => j === i ? { ...x, done: !x.done } : x) })}
-                    style={{ width: 18, height: 18, margin: 0, accentColor: 'var(--accent)' }} />
-                  <span className="min-w-0 flex-1 text-[13.5px]" style={t.done ? { ...muted, textDecoration: 'line-through' } : strong}>{t.t}</span>
-                  <button aria-label={`Remove ${t.t}`} onClick={() => onProgress(m.id, { tasks: tasks.filter((_, j) => j !== i) })}
-                    className="flex h-7 w-7 items-center justify-center border-0 bg-transparent" style={muted}><X size={14} /></button>
+              <div className="mt-3.5">
+                <div className="flex items-center justify-between">
+                  <span className={label} style={muted}>Checklist</span>
+                  {tasks.length > 0 && <span className="mb-1.5 text-[11.5px] font-bold" style={{ ...mono, color: 'var(--accent-text)' }}>{tasksDone(tasks)}</span>}
                 </div>
-              ))}
-              <div className="mt-0.5 flex items-center gap-2 rounded-[11px] px-3" style={field}>
-                <Plus size={15} style={muted} />
-                <input value={newTask} onChange={e => setNewTask(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addTask(); }}
-                  placeholder="Add a task" maxLength={80} className={`${inputBase} h-9 text-[16px] font-medium`} style={strong} />
-                {newTask.trim() && <button onClick={addTask} className="border-0 bg-transparent text-[14px] font-extrabold" style={{ color: 'var(--accent-text)' }}>Add</button>}
+                {tasks.map((t, i) => (
+                  <div key={i} className="flex min-h-[34px] items-center gap-2.5 px-1">
+                    <input type="checkbox" checked={t.done} aria-label={t.t}
+                      onChange={() => onProgress(m.id, { tasks: tasks.map((x, j) => j === i ? { ...x, done: !x.done } : x) })}
+                      style={{ width: 17, height: 17, margin: 0, accentColor: 'var(--accent)' }} />
+                    <span className="min-w-0 flex-1 text-[14px]" style={t.done ? { ...muted, textDecoration: 'line-through' } : strong}>{t.t}</span>
+                    <button aria-label={`Remove ${t.t}`} onClick={() => onProgress(m.id, { tasks: tasks.filter((_, j) => j !== i) })}
+                      className="flex h-7 w-7 items-center justify-center border-0 bg-transparent" style={muted}><X size={14} /></button>
+                  </div>
+                ))}
+                <div className="flex items-center gap-2 rounded-[12px] px-3" style={{ background: 'var(--sheet-field)' }}>
+                  <Plus size={15} style={muted} />
+                  <input value={newTask} onChange={e => setNewTask(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addTask(); }}
+                    placeholder="Add a task" maxLength={80} className={`${inputBase} h-9 text-[16px] font-normal`} style={strong} />
+                  {newTask.trim() && <button onClick={addTask} className="border-0 bg-transparent text-[14px] font-bold" style={{ color: 'var(--accent-text)' }}>Add</button>}
+                </div>
               </div>
             </div>
 
-            <div className="mt-2.5 flex gap-2">
+            <div className="mt-3 flex gap-2">
               <button onClick={() => onProgress(m.id, { submitted: !prog?.submitted })}
-                className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-[14px] text-[14px] font-bold"
+                className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-[14px] text-[14px] font-semibold"
                 style={prog?.submitted ? { background: 'rgba(52,211,153,0.15)', border: '1px solid rgba(52,211,153,0.35)', color: '#34d399' } : { ...card, boxShadow: 'none', ...strong }}>
-                <CheckCircle2 size={17} /> {prog?.submitted ? 'Submitted' : 'Mark done'}
+                <CheckCircle2 size={16} /> {prog?.submitted ? 'Done' : 'Mark done'}
               </button>
-              <button onClick={() => m.submit_link ? openLink(m.submit_link) : toast('No submission link yet.')}
-                className="flex h-11 flex-[1.3] items-center justify-center gap-1.5 rounded-[14px] border-0 text-[14px] font-extrabold"
-                style={{ background: 'var(--cta-bg)', color: 'var(--cta-ink)', opacity: m.submit_link ? 1 : 0.55 }}>
-                Submit <ArrowUpRight size={16} strokeWidth={2.6} />
-              </button>
+              {m.submit_link && (
+                <button onClick={() => openLink(m.submit_link!)}
+                  className="flex h-11 flex-[1.3] items-center justify-center gap-1.5 rounded-[14px] border-0 text-[14px] font-bold"
+                  style={{ background: 'var(--cta-bg)', color: 'var(--cta-ink)' }}>
+                  Submit <ArrowUpRight size={16} strokeWidth={2.6} />
+                </button>
+              )}
             </div>
-            {!m.submit_link && <div className="mt-1.5 text-center text-[11.5px]" style={muted}>The submission link is not posted yet</div>}
 
             {isAdmin && (
-              <div className="mt-2.5 rounded-[18px] p-3" style={card}>
-                <div className="grid grid-cols-3 gap-2 text-center">
-                  {[['Viewed', stats?.viewed], ['Marked done', stats?.submitted], ['Students', stats?.total]].map(([t, v]) => (
-                    <div key={t as string}>
-                      <div className="text-[17px] font-bold leading-tight" style={{ ...mono, ...strong }}>{v ?? '–'}</div>
-                      <div className="text-[11px]" style={muted}>{t}</div>
-                    </div>
-                  ))}
-                </div>
-                <button onClick={() => onEditMilestone(m)} className="mt-2.5 h-10 w-full rounded-[12px] text-[14px] font-bold" style={{ ...card, boxShadow: 'none', ...strong }}>Edit milestone</button>
+              <div className="mt-3 flex items-center gap-2 rounded-[14px] py-1.5 pl-3.5 pr-1.5" style={{ ...card, boxShadow: 'none' }}>
+                <span className="min-w-0 flex-1 truncate text-[12.5px]" style={muted}>
+                  {stats ? <><b style={strong}>{stats.viewed}</b> viewed · <b style={strong}>{stats.submitted}</b> done · <b style={strong}>{stats.total}</b> students</> : 'Loading stats…'}
+                </span>
+                <button onClick={() => onEditMilestone(m)} aria-label="Edit milestone" className="flex h-8 w-8 items-center justify-center rounded-[10px] border-0 hit" style={{ background: 'var(--surface-2)', ...strong }}><Pencil size={15} /></button>
+                <button onClick={onAddMilestone} aria-label="Add milestone" className="flex h-8 w-8 items-center justify-center rounded-[10px] border-0 hit" style={{ background: 'var(--surface-2)', color: 'var(--accent-text)' }}><Plus size={16} strokeWidth={2.6} /></button>
               </div>
             )}
           </>
@@ -421,6 +428,40 @@ const ProjectView: React.FC<{
     </div>
   );
 };
+
+/** Text with clickable links; lines that start with "o", "-", "*" or "•" become bullet points. */
+const URL_RE = /((?:https?:\/\/|www\.)[^\s<>"']+)/gi;
+const linkLabel = (url: string) => url.replace(/^https?:\/\//i, '').replace(/^www\./i, '').replace(/\/$/, '');
+const Linked: React.FC<{ text: string }> = ({ text }) => (
+  <>
+    {text.split(URL_RE).map((part, i) => {
+      if (i % 2 === 0) return part;
+      const trail = /[).,;:!?]+$/.exec(part)?.[0] ?? '';
+      const url = trail ? part.slice(0, -trail.length) : part;
+      const href = /^https?:/i.test(url) ? url : `https://${url}`;
+      return (
+        <React.Fragment key={i}>
+          <a href={href} onClick={e => { e.preventDefault(); openLink(href); }}
+            className="break-all font-semibold underline decoration-1 underline-offset-[3px]"
+            style={{ color: 'var(--accent-text)', textDecorationColor: 'color-mix(in srgb, var(--accent-text) 45%, transparent)' }}>
+            {linkLabel(url)}
+          </a>{trail}
+        </React.Fragment>
+      );
+    })}
+  </>
+);
+const RichText: React.FC<{ text: string }> = ({ text }) => (
+  <div className="flex flex-col gap-1">
+    {text.split('\n').map(l => l.trimEnd()).filter((l, i, all) => l || (i > 0 && all[i - 1])).map((line, i) => {
+      const bullet = /^\s*(?:o|-|\*|•|·)\s+(.*)$/.exec(line);
+      if (!line) return <div key={i} className="h-1" />;
+      return bullet
+        ? <div key={i} className="flex gap-2 pl-0.5"><span style={{ color: 'var(--text-muted)' }}>•</span><span className="min-w-0 flex-1 break-words"><Linked text={bullet[1]} /></span></div>
+        : <div key={i} className="break-words"><Linked text={line} /></div>;
+    })}
+  </div>
+);
 
 // ───────────────────────── admin sheets ─────────────────────────
 
