@@ -94,7 +94,7 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, part, onFinish, o
   // the choices on the onboarding alerts step
   const [wantPortal, setWantPortal] = useState(true);
   const [wantClass, setWantClass] = useState(true);
-  const [wantCms, setWantCms] = useState(true);
+  const wantCms = false; // CMS alerts are switched off; new files only show as "new" in the app
   const [topic, setTopic] = useState<string | null>(cached?.topic ?? null);
   const [guide, setGuideState] = useState<GuideFlags>(readGuide);
   const [editing, setEditing] = useState(false);
@@ -389,8 +389,6 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, part, onFinish, o
             on={wantPortal} onToggle={() => setWantPortal(v => !v)} />
           <AlertChoice tint="bg-violet-500/20 text-violet-300" icon={<AlarmClock size={18} />} title="Class reminders" sub="15 min before each class"
             on={wantClass} onToggle={() => setWantClass(v => !v)} />
-          <AlertChoice tint="bg-emerald-500/20 text-emerald-300" icon={<GraduationCap size={18} />} title="New CMS files" sub="When a teacher adds a file"
-            on={wantCms} onToggle={() => setWantCms(v => !v)} />
           {!(wantPortal || wantClass || wantCms) && <p className="px-1 pt-1 text-xs text-white/40">All off, so there is nothing to set up. You can turn alerts on later in Settings.</p>}
         </div>
       ),
@@ -495,7 +493,7 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, part, onFinish, o
             </div>}
 
             {showAlerts && (() => {
-              const cur = { portal: !!topic && portalOn, cls: classRem, cms: !!topic && cmsOn, proj: !!topic && projOn };
+              const cur = { portal: !!topic && portalOn, cls: classRem, cms: false, proj: !!topic && projOn }; // CMS alerts are off
               const row = (key: keyof typeof cur, bg: string, icon: React.ReactNode, title: string, sub: string) => (
                 <AlertRow key={key} tile={tile(bg, icon)} title={title} sub={sub} on={cur[key]} busy={busy === 'alerts' && rowBusy === key} disabled={busy !== null}
                   onToggle={() => { setRowBusy(key); applyAlerts({ ...cur, [key]: !cur[key] }); }} />
@@ -503,7 +501,6 @@ const PortalSettings: React.FC<Props> = ({ fullscreen = false, part, onFinish, o
               return <>
                 {row('portal', 'bg-amber-500/20 text-amber-300', <ClipboardCheck size={22} />, 'Grades, absences, exams', 'New grade, absence or exam seat')}
                 {row('cls', 'bg-violet-500/20 text-violet-300', <AlarmClock size={22} />, 'Class reminders', '15 min before each class')}
-                {row('cms', 'bg-emerald-500/20 text-emerald-300', <GraduationCap size={22} />, 'New CMS files', 'When a teacher adds something')}
                 {row('proj', 'bg-sky-500/20 text-sky-300', <ListChecks size={22} />, 'Projects & deadlines', 'New projects, delays and reminders')}
               </>;
             })()}

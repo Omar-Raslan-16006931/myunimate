@@ -88,14 +88,27 @@ interface Alert { title: string; body: string; tag: string }
 // Never throws: a failed alert must not fail the sync.
 let examDbg = ""; // numbers about the last exam-seat comparison, shown in the timer report
 let lastNtfy = ""; // what Bark answered last (status or error), shown in the timer's report
+// Alerts found in the same check with the same title become one alert ("Attendance posted (2)"),
+// so the phone never shows two identical notifications at once.
+const groupAlerts = (alerts: Alert[]): Alert[] => {
+  const groups = new Map<string, Alert[]>();
+  for (const a of alerts) groups.set(a.title, [...(groups.get(a.title) ?? []), a]);
+  return [...groups.values()].map((g) => g.length === 1 ? g[0] : {
+    title: `${g[0].title} (${g.length})`,
+    body: g.map((a) => a.body).join("\n"),
+    tag: g.find((a) => a.tag === "warning")?.tag ?? g[0].tag,
+  });
+};
+
 const sendAlerts = async (topic: string, alerts: Alert[]): Promise<number> => {
-  const list = alerts.length > 5
+  const grouped = groupAlerts(alerts);
+  const list = grouped.length > 5
     ? [{
       title: `${alerts.length} portal updates`,
       body: alerts.slice(0, 5).map((a) => a.body).join("\n") + `\n+${alerts.length - 5} more`,
       tag: "bell",
     }]
-    : alerts;
+    : grouped;
   if (!topic.startsWith("bark:")) { lastNtfy = "no Bark key yet"; return 0; }
   let sent = 0;
   for (const a of list) {
@@ -628,8 +641,7 @@ Deno.serve(async (req: Request) => {
         const session = await openCmsSession({ username: account.username, password }, connector);
         try { return await runCmsSync(supabase, userId, session); } finally { closeCms(session); }
       })(), 110_000);
-      const topicNow = activeTopic(account.notify_topic);
-      if (account.cms_notify && topicNow && result.alerts.length) await sendAlerts(topicNow, result.alerts);
+      // CMS alerts are switched off: new files only show up as "new" inside the app
       return json({ ok: true, files: result.files, newFiles: result.newFiles });
     } catch (e) {
       const { code, message } = describe(e);

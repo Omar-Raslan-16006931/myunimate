@@ -127,14 +127,25 @@ export const findPortalChanges = (
   };
 };
 
+/** Alerts found at the same time with the same title become one ("Attendance posted (2)"). */
+export const groupAlerts = (alerts: PortalAlert[]): PortalAlert[] => {
+  const groups = new Map<string, PortalAlert[]>();
+  for (const a of alerts) groups.set(a.title, [...(groups.get(a.title) ?? []), a]);
+  return [...groups.values()].map(g => (g.length === 1
+    ? g[0]
+    : { title: `${g[0].title} (${g.length})`, body: g.map(a => a.body).join('\n') }));
+};
+
 /** Many changes at once become one notification, so the phone is not flooded. */
-const compact = (alerts: PortalAlert[]): PortalAlert[] =>
-  alerts.length <= MAX_SEPARATE
-    ? alerts
+const compact = (alerts: PortalAlert[]): PortalAlert[] => {
+  const grouped = groupAlerts(alerts);
+  return grouped.length <= MAX_SEPARATE
+    ? grouped
     : [{
       title: `${alerts.length} portal updates`,
       body: alerts.slice(0, MAX_SEPARATE).map(a => a.body).join('\n') + `\n+${alerts.length - MAX_SEPARATE} more`,
     }];
+};
 
 /** Returns false when the phone would not show them (no permission, unsupported). */
 const deliver = async (alerts: PortalAlert[]): Promise<boolean> => {

@@ -78,8 +78,14 @@ function useCms() {
     return () => { alive.current = false; };
   }, []);
 
+  // also updates the copy saved on this phone, so a "new" badge does not flash back on the next visit
   const patchFiles = (ids: number[]) =>
-    setData(d => (d ? { ...d, files: d.files.map(f => (ids.includes(f.id) ? { ...f, is_new: false } : f)) } : d));
+    setData(d => {
+      if (!d) return d;
+      const next = { ...d, files: d.files.map(f => (ids.includes(f.id) ? { ...f, is_new: false } : f)) };
+      writePortalCache('cms', next);
+      return next;
+    });
 
   return { data, syncing, problem, sync: () => check(true), patchFiles };
 }
@@ -333,6 +339,26 @@ const MaterialsHub: React.FC<{
   const [section, setSection] = useState<Section>('hub');
   const [course, setCourse] = useState<CmsCourse | null>(null);
   const cms = useCms();
+
+  // Opening the CMS page counts as seeing its new files: they are marked seen straight away
+  // (no need to open each file). The "new" dots stay while browsing the CMS and clear on the way out.
+  const seenRef = useRef<Set<number>>(new Set());
+  useEffect(() => {
+    if (section !== 'cms') return;
+    const ids = (cms.data?.files ?? []).filter(f => f.is_new && !seenRef.current.has(f.id)).map(f => f.id);
+    if (!ids.length) return;
+    ids.forEach(id => seenRef.current.add(id));
+    markCmsFilesSeen(ids).catch(() => { /* offline: tried again next visit */ });
+  }, [section, cms.data]);
+  const patchSeen = cms.patchFiles;
+  useEffect(() => {
+    if (section !== 'cms') return;
+    return () => {
+      const ids = [...seenRef.current];
+      seenRef.current = new Set();
+      if (ids.length) patchSeen(ids);
+    };
+  }, [section]);
 
   if (section === 'files') return <>{filesView(() => setSection('hub'))}</>;
 
