@@ -95,7 +95,7 @@ export const findPortalChanges = (
       ? {
         // a new mid-term mark: title, then the course, then the grade
         title: 'GUESS WHAT LIL BRO!',
-        body: `${g.course_name.replace(/\s*\([^)]*\)\s*$/, '').trim() || g.course_name}\n${
+        body: `${g.course_name.replace(/\s*\([^)]*\)\s*$/, '').trim() || g.course_name}\nMid-term: ${
           g.score !== null && g.total ? `${+((g.score / g.total) * 100).toFixed(2)}%` : g.grade_text}`,
       }
       : {
@@ -140,7 +140,7 @@ export const groupAlerts = (alerts: PortalAlert[]): PortalAlert[] => {
   for (const a of alerts) groups.set(a.title, [...(groups.get(a.title) ?? []), a]);
   return [...groups.values()].map(g => (g.length === 1
     ? g[0]
-    : { title: `${g[0].title} (${g.length})`, body: g.map(a => a.body.replace('\n', ': ')).join('\n') }));
+    : { title: `${g[0].title} (${g.length})`, body: g.map(a => a.body.replace('\n', ' · ')).join('\n') }));
 };
 
 /** Many changes at once become one notification, so the phone is not flooded. */

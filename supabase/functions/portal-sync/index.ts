@@ -86,7 +86,7 @@ interface Alert { title: string; subtitle?: string; body: string; tag: string }
 // a new mid-term mark gets its own playful alert: title, then the course, then the grade
 const MIDTERM_TITLE = "GUESS WHAT LIL BRO!";
 const midtermGrade = (score: number | null, total: number | null, text: string): string =>
-  score !== null && total ? `${+((score / total) * 100).toFixed(2)}%` : text;
+  `Mid-term: ${score !== null && total ? `${+((score / total) * 100).toFixed(2)}%` : text}`;
 
 // Sends alerts to the student's phone through Bark (a free iPhone push app; the key is stored as "bark:<key>"
 // in notify_topic). Apple delivers them, so they arrive even when UniMate is closed.
@@ -100,7 +100,7 @@ const groupAlerts = (alerts: Alert[]): Alert[] => {
   for (const a of alerts) groups.set(a.title, [...(groups.get(a.title) ?? []), a]);
   return [...groups.values()].map((g) => g.length === 1 ? g[0] : {
     title: `${g[0].title} (${g.length})`,
-    body: g.map((a) => (a.subtitle ? `${a.subtitle}: ${a.body}` : a.body)).join("\n"),
+    body: g.map((a) => (a.subtitle ? `${a.subtitle} · ${a.body}` : a.body)).join("\n"),
     tag: g.find((a) => a.tag === "warning")?.tag ?? g[0].tag,
   });
 };
@@ -110,7 +110,7 @@ const sendAlerts = async (topic: string, alerts: Alert[]): Promise<number> => {
   const list: Alert[] = grouped.length > 5
     ? [{
       title: `${alerts.length} portal updates`,
-      body: alerts.slice(0, 5).map((a) => (a.subtitle ? `${a.subtitle}: ${a.body}` : a.body)).join("\n") + `\n+${alerts.length - 5} more`,
+      body: alerts.slice(0, 5).map((a) => (a.subtitle ? `${a.subtitle} · ${a.body}` : a.body)).join("\n") + `\n+${alerts.length - 5} more`,
       tag: "bell",
     }]
     : grouped;
