@@ -91,10 +91,17 @@ export const findPortalChanges = (
     data.grades, snap.grades,
     g => `${g.kind}|${g.course_key}|${g.element}`,
     g => g.grade_text || '',
-    (g, old) => ({
-      title: old === undefined ? (g.kind === 'midterm' ? 'New midterm grade' : 'New grade') : 'Grade updated',
-      body: `${g.course_name}: ${g.element} ${g.grade_text}`.trim(),
-    }),
+    (g, old) => (old === undefined && g.kind === 'midterm'
+      ? {
+        // a new mid-term mark: title, then the course, then the grade
+        title: 'GUESS WHAT LIL BRO!',
+        body: `${g.course_name.replace(/\s*\([^)]*\)\s*$/, '').trim() || g.course_name}\n${
+          g.score !== null && g.total ? `${+((g.score / g.total) * 100).toFixed(2)}%` : g.grade_text}`,
+      }
+      : {
+        title: old === undefined ? 'New grade' : 'Grade updated',
+        body: `${g.course_name}: ${g.element} ${g.grade_text}`.trim(),
+      }),
   );
   const attendance = diff(
     data.attendance, snap.attendance,
@@ -133,7 +140,7 @@ export const groupAlerts = (alerts: PortalAlert[]): PortalAlert[] => {
   for (const a of alerts) groups.set(a.title, [...(groups.get(a.title) ?? []), a]);
   return [...groups.values()].map(g => (g.length === 1
     ? g[0]
-    : { title: `${g[0].title} (${g.length})`, body: g.map(a => a.body).join('\n') }));
+    : { title: `${g[0].title} (${g.length})`, body: g.map(a => a.body.replace('\n', ': ')).join('\n') }));
 };
 
 /** Many changes at once become one notification, so the phone is not flooded. */

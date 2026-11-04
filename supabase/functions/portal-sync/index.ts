@@ -81,7 +81,12 @@ interface SyncResult {
 }
 
 // one phone alert
-interface Alert { title: string; body: string; tag: string }
+interface Alert { title: string; subtitle?: string; body: string; tag: string }
+
+// a new mid-term mark gets its own playful alert: title, then the course, then the grade
+const MIDTERM_TITLE = "GUESS WHAT LIL BRO!";
+const midtermGrade = (score: number | null, total: number | null, text: string): string =>
+  score !== null && total ? `${+((score / total) * 100).toFixed(2)}%` : text;
 
 // Sends alerts to the student's phone through Bark (a free iPhone push app; the key is stored as "bark:<key>"
 // in notify_topic). Apple delivers them, so they arrive even when UniMate is closed.
@@ -95,17 +100,17 @@ const groupAlerts = (alerts: Alert[]): Alert[] => {
   for (const a of alerts) groups.set(a.title, [...(groups.get(a.title) ?? []), a]);
   return [...groups.values()].map((g) => g.length === 1 ? g[0] : {
     title: `${g[0].title} (${g.length})`,
-    body: g.map((a) => a.body).join("\n"),
+    body: g.map((a) => (a.subtitle ? `${a.subtitle}: ${a.body}` : a.body)).join("\n"),
     tag: g.find((a) => a.tag === "warning")?.tag ?? g[0].tag,
   });
 };
 
 const sendAlerts = async (topic: string, alerts: Alert[]): Promise<number> => {
   const grouped = groupAlerts(alerts);
-  const list = grouped.length > 5
+  const list: Alert[] = grouped.length > 5
     ? [{
       title: `${alerts.length} portal updates`,
-      body: alerts.slice(0, 5).map((a) => a.body).join("\n") + `\n+${alerts.length - 5} more`,
+      body: alerts.slice(0, 5).map((a) => (a.subtitle ? `${a.subtitle}: ${a.body}` : a.body)).join("\n") + `\n+${alerts.length - 5} more`,
       tag: "bell",
     }]
     : grouped;
@@ -116,7 +121,7 @@ const sendAlerts = async (topic: string, alerts: Alert[]): Promise<number> => {
       const res = await fetch("https://api.day.app/push", {
         method: "POST",
         headers: { "Content-Type": "application/json; charset=utf-8" },
-        body: JSON.stringify({ device_key: topic.slice(5), title: a.title, body: a.body, group: "UniMate", level: "timeSensitive" }),
+        body: JSON.stringify({ device_key: topic.slice(5), title: a.title, ...(a.subtitle ? { subtitle: a.subtitle } : {}), body: a.body, group: "UniMate", level: "timeSensitive" }),
         signal: AbortSignal.timeout(8000),
       });
       lastNtfy = "bark " + res.status;
@@ -237,7 +242,14 @@ const save = async (userId: string, data: PortalData, firstSync: boolean): Promi
       }
       if (!firstSync && hasMark) {
         newCount++;
-        alerts.push({ title: g.kind === "midterm" ? "New midterm grade" : "New grade", body: what, tag: "memo" });
+        alerts.push(g.kind === "midterm"
+          ? {
+            title: MIDTERM_TITLE,
+            subtitle: g.courseName.replace(/\s*\([^)]*\)\s*$/, "").trim() || g.courseName,
+            body: midtermGrade(g.score, g.total, g.gradeText),
+            tag: "memo",
+          }
+          : { title: "New grade", body: what, tag: "memo" });
       }
     } else if (old.grade_text !== g.gradeText) {
       const { error } = await supabase.from("portal_grades").update({ ...row, is_new: hasMark }).eq("id", old.id);
