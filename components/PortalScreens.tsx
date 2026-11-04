@@ -222,30 +222,37 @@ export const PortalGrades: React.FC<ScreenProps> = ({ onBack, onOpenSettings }) 
     >
       <div className="flex flex-col gap-3">
         {/* Mid-term results: one table for all courses, always shown (like the portal's own table) */}
-        <section className="overflow-hidden rounded-[18px]" style={card}>
-          <div className="flex items-center justify-between px-3.5 py-2.5 text-[0.7rem] font-extrabold uppercase tracking-[0.07em]" style={{ ...muted, borderBottom: '1px solid var(--line)' }}>
-            <span>Mid-term · Course</span>
-            <span>%</span>
+        <section className="overflow-hidden rounded-[16px]" style={card}>
+          <div className="flex items-baseline justify-between px-3.5 pb-1 pt-2.5">
+            <span className="text-[0.68rem] font-bold uppercase tracking-[0.08em]" style={muted}>Mid-terms</span>
+            {midterms.length > 0 && <span className="text-[0.68rem] font-semibold" style={muted}>{midterms.length} course{midterms.length === 1 ? '' : 's'}</span>}
           </div>
           {midterms.length === 0 ? (
-            <div className="px-3.5 py-3 text-[0.82rem]" style={muted}>No midterm results are announced yet.</div>
-          ) : midterms.map((g, i) => {
-            const p = pct(g.score, g.total);
-            const name = g.course_name.replace(/\s*\([^)]*\)\s*$/, '').trim() || g.course_name;
-            const tone = p === null ? 'var(--text-primary)' : p >= 85 ? '#34d399' : p >= 65 ? 'var(--accent-text)' : p >= 50 ? '#fbbf24' : 'var(--danger)';
-            return (
-              <div key={g.id} className="flex items-center gap-3 px-3.5 py-2" style={i % 2 ? { background: 'var(--sheet-field)' } : undefined}>
-                <div className="min-w-0 flex-1 truncate text-[0.86rem] font-semibold" style={strong}>
-                  {name}{' '}
-                  <span className="text-[0.7rem] font-semibold" style={{ ...muted, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}>{g.course_key}</span>
-                  {g.is_new && <span className="ml-1.5 rounded-full px-1.5 py-[1px] align-middle text-[0.6rem] font-extrabold uppercase" style={{ background: 'var(--accent)', color: 'var(--on-accent)' }}>New</span>}
-                </div>
-                <div className="shrink-0 text-[0.9rem] font-extrabold" style={{ color: tone, fontVariantNumeric: 'tabular-nums', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}>
-                  {p !== null ? +p.toFixed(2) : g.grade_text}
-                </div>
-              </div>
-            );
-          })}
+            <div className="px-3.5 pb-3 pt-1 text-[0.82rem]" style={muted}>No midterm results are announced yet.</div>
+          ) : (
+            <div className="pb-1">
+              {midterms.map((g, i) => {
+                const p = pct(g.score, g.total);
+                const name = g.course_name.replace(/\s*\([^)]*\)\s*$/, '').trim() || g.course_name;
+                const tone = p === null ? 'var(--text-primary)' : p >= 85 ? '#34d399' : p >= 65 ? 'var(--accent-text)' : p >= 50 ? '#fbbf24' : 'var(--danger)';
+                return (
+                  <div key={g.id} className="mx-3.5 flex items-center gap-3 py-2" style={i ? { borderTop: '1px solid var(--line)' } : undefined}>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="truncate text-[0.88rem] font-semibold leading-tight" style={strong}>{name}</span>
+                        {g.is_new && <span className="shrink-0 h-1.5 w-1.5 rounded-full" aria-label="New" style={{ background: 'var(--accent)' }} />}
+                      </div>
+                      <div className="mt-0.5 text-[0.7rem] font-medium leading-none tracking-wide" style={muted}>{g.course_key}</div>
+                    </div>
+                    <div className="shrink-0 text-right leading-none" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                      <span className="text-[1rem] font-bold" style={{ color: tone }}>{p !== null ? +p.toFixed(2) : g.grade_text}</span>
+                      {p !== null && <span className="ml-0.5 text-[0.7rem] font-semibold" style={muted}>%</span>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </section>
 
         {/* Course selector matching portal */}
