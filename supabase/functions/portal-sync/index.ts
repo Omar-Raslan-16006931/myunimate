@@ -267,6 +267,26 @@ const save = async (userId: string, data: PortalData, firstSync: boolean): Promi
     }
   }
 
+  // The portal is the whole truth: a grade slot it no longer shows is removed here too (e.g. an empty
+  // "Question2 / 20" that the teacher deleted). Safety: mid-terms are pruned only when the portal gave some
+  // back, and a course's items only when its page was read without errors and returned at least one row,
+  // so a failed or empty read can never wipe saved grades.
+  const gradesIncomplete = data.warnings.some((w) => w.startsWith("grades:"));
+  const midtermsBack = data.grades.some((g) => g.kind === "midterm");
+  const coursesBack = new Set(data.grades.filter((g) => g.kind === "item").map((g) => g.courseKey));
+  const staleGrades = (existing ?? []).filter((r) =>
+    !seen.has(`${r.kind}|${r.course_key}|${r.element}`) &&
+    (r.kind === "midterm" ? midtermsBack : !gradesIncomplete && coursesBack.has(r.course_key))
+  ).map((r) => r.id);
+  for (let i = 0; i < staleGrades.length; i += 100) {
+    const { error } = await supabase.from("portal_grades").delete().eq("user_id", userId).in("id", staleGrades.slice(i, i + 100));
+    if (error) {
+      console.error("portal_grades prune error:", error);
+      throw new Error(`DB_WRITE_FAILED (portal_grades prune: ${error.message || JSON.stringify(error)})`);
+    }
+  }
+  if (staleGrades.length) console.log(`grades removed (gone from the portal): ${staleGrades.length}`);
+
   // attendance: one row per session, updated in place if the teacher changes it
   if (data.attendance.length) {
     if (!firstSync) {
@@ -296,6 +316,19 @@ const save = async (userId: string, data: PortalData, firstSync: boolean): Promi
     if (error) {
       console.error("portal_attendance upsert error:", error);
       throw new Error(`DB_WRITE_FAILED (portal_attendance: ${error.message || JSON.stringify(error)})`);
+    }
+    // sessions the portal no longer lists, in every course that was read without errors
+    if (!data.warnings.some((w) => w.startsWith("attendance:"))) {
+      const byCourse = new Map<string, number[]>();
+      for (const a of data.attendance) byCourse.set(a.courseKey, [...(byCourse.get(a.courseKey) ?? []), a.rowNumber]);
+      for (const [course, nums] of byCourse) {
+        const { error: pruneErr } = await supabase.from("portal_attendance").delete()
+          .eq("user_id", userId).eq("course_key", course).not("row_number", "in", `(${nums.join(",")})`);
+        if (pruneErr) {
+          console.error("portal_attendance prune error:", pruneErr);
+          throw new Error(`DB_WRITE_FAILED (portal_attendance prune: ${pruneErr.message || JSON.stringify(pruneErr)})`);
+        }
+      }
     }
   }
 
