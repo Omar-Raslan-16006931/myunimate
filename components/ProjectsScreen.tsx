@@ -75,7 +75,26 @@ const ProjectsScreen: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
     .sort((a, b) => a.due_at.localeCompare(b.due_at)), [data, now]);
   const done = useMemo(() => (data?.milestones ?? [])
     .filter(m => live(m) && (data?.progress[m.id]?.submitted || new Date(m.due_at).getTime() <= now))
-    .sort((a, b) => b.due_at.localeCompare(a.due_at)).slice(0, 8), [data, now]);
+    .sort((a, b) => a.due_at.localeCompare(b.due_at)), [data, now]);
+
+  // courses with something due first (nearest deadline on top), finished courses after
+  const groups = useMemo(() => {
+    const by = new Map<string, { project: Project; open: Milestone[]; closed: Milestone[] }>();
+    const get = (m: Milestone) => {
+      const project = projectOf.get(m.project_id);
+      if (!project) return null;
+      if (!by.has(project.id)) by.set(project.id, { project, open: [], closed: [] });
+      return by.get(project.id)!;
+    };
+    upcoming.forEach(m => get(m)?.open.push(m));
+    done.forEach(m => get(m)?.closed.push(m));
+    return [...by.values()].sort((a, b) => {
+      if (a.open.length && b.open.length) return a.open[0].due_at.localeCompare(b.open[0].due_at);
+      if (a.open.length !== b.open.length) return a.open.length ? -1 : b.open.length ? 1 : 0;
+      const al = a.closed[a.closed.length - 1]?.due_at ?? '', bl = b.closed[b.closed.length - 1]?.due_at ?? '';
+      return bl.localeCompare(al);
+    });
+  }, [upcoming, done, projectOf]);
 
   const setProgressLocal = (mid: string, patch: Partial<{ submitted: boolean; tasks: Task[]; viewed_at: string | null }>) => {
     setData(d => {
@@ -151,25 +170,47 @@ const ProjectsScreen: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
     );
   }
 
-  const row = (m: Milestone, i: number, faded = false) => {
-    const p = projectOf.get(m.project_id);
-    const prog = data?.progress[m.id];
-    const submitted = !!prog?.submitted;
+  // one card per course: name + count, open milestones with their countdown, finished ones as small chips
+  const courseCard = (g: { project: Project; open: Milestone[]; closed: Milestone[] }) => {
+    const p = g.project;
     return (
-      <button key={m.id} onClick={() => open(m.project_id, m.id)}
-        className="flex w-full items-center gap-3 border-0 bg-transparent px-3.5 py-2.5 text-left"
-        style={i ? { borderTop: '1px solid var(--line)' } : undefined}>
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-[15px] font-bold" style={faded ? muted : strong}>{m.title}</span>
-          <span className="mt-0.5 block truncate text-[11.5px] font-semibold" style={{ ...mono, ...muted }}>
-            {[p?.course_code, p?.title, prog?.tasks.length ? tasksDone(prog.tasks) : null, submitted ? 'submitted' : null].filter(Boolean).join(' · ')}
-          </span>
-        </span>
-        {submitted
-          ? <Pill style={{ background: 'rgba(52,211,153,0.15)', color: '#34d399' }}>done</Pill>
-          : new Date(m.due_at).getTime() <= now ? <Pill style={{ background: 'var(--surface-2)', color: 'var(--text-muted)' }}>closed</Pill>
-          : <Pill style={pillStyle(m.due_at, now)}>{timeLeft(m.due_at, now)}</Pill>}
-      </button>
+      <section key={p.id} className="mb-2.5 overflow-hidden rounded-[18px] px-3.5 py-3" style={card}>
+        <button onClick={() => open(p.id)} className="flex w-full items-baseline justify-between gap-3 border-0 bg-transparent p-0 text-left">
+          <span className="truncate text-[15.5px] font-extrabold tracking-tight" style={strong}>{p.course_name || p.title}</span>
+          <span className="shrink-0 text-[12px] font-bold tnum" style={muted}>{g.closed.length}/{g.open.length + g.closed.length}</span>
+        </button>
+
+        {g.open.map(m => {
+          const tasks = data?.progress[m.id]?.tasks ?? [];
+          return (
+            <button key={m.id} onClick={() => open(m.project_id, m.id)}
+              className="mt-2 flex w-full items-center gap-3 rounded-[12px] border-0 px-3 py-2 text-left"
+              style={{ background: 'var(--sheet-field)' }}>
+              <span className="min-w-0 flex-1 truncate text-[14px] font-bold" style={strong}>
+                {m.title}
+                {tasks.length > 0 && <span className="ml-2 text-[12px] font-semibold tnum" style={muted}>{tasksDone(tasks)}</span>}
+              </span>
+              <Pill style={pillStyle(m.due_at, now)}>{timeLeft(m.due_at, now)}</Pill>
+            </button>
+          );
+        })}
+
+        {g.closed.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
+            {g.closed.map(m => {
+              const sub = !!data?.progress[m.id]?.submitted;
+              return (
+                <button key={m.id} onClick={() => open(m.project_id, m.id)} title={sub ? 'Submitted' : 'Closed'}
+                  className="flex max-w-full items-center gap-1 border-0 bg-transparent p-0 text-[12px] font-semibold"
+                  style={{ color: sub ? '#34d399' : 'var(--text-muted)' }}>
+                  {sub ? <Check size={12} strokeWidth={3} /> : <X size={12} strokeWidth={3} />}
+                  <span className="truncate">{m.title}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </section>
     );
   };
 
@@ -203,12 +244,7 @@ const ProjectsScreen: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
           </div>
         )}
 
-        {upcoming.length > 0 && (
-          <>
-            <div className={label} style={muted}>Active</div>
-            <div className="mb-4 overflow-hidden rounded-[18px]" style={card}>{upcoming.map((m, i) => row(m, i))}</div>
-          </>
-        )}
+        {groups.length > 0 && <div className="mb-4">{groups.map(courseCard)}</div>}
 
         {data && data.projects.length > 0 && upcoming.length === 0 && (
           <div className="mb-4 rounded-[18px] px-4 py-5 text-center text-[13.5px]" style={{ ...card, ...muted }}>Nothing due right now.</div>
@@ -235,12 +271,6 @@ const ProjectsScreen: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
           );
         })()}
 
-        {done.length > 0 && (
-          <>
-            <div className={label} style={muted}>Done & closed</div>
-            <div className="mb-4 overflow-hidden rounded-[18px]" style={card}>{done.map((m, i) => row(m, i, true))}</div>
-          </>
-        )}
       </div>
       {sheets}
     </div>
