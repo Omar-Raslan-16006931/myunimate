@@ -9,7 +9,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       devOptions: { enabled: true },
       workbox: {
-          maximumFileSizeToCacheInBytes: 4000000 
+          maximumFileSizeToCacheInBytes: 4000000,
+          // /api/* are server routes (e.g. the calendar file): never answer them with the app's index.html
+          navigateFallbackDenylist: [/^\/api\//],
       },
       manifest: {
         name: 'UniMate',

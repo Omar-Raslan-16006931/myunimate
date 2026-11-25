@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, ArrowUpRight, Check, CheckCircle2, EyeOff, Link2, ListChecks, Loader2, MoreHorizontal, Pencil, Plus, Trash2, Upload, X } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, CalendarClock, CalendarPlus, Check, CheckCircle2, EyeOff, Link2, ListChecks, Loader2, MoreHorizontal, Pencil, Plus, Trash2, Upload, Users, X } from 'lucide-react';
 import { SkeletonList } from './ui/Skeleton';
 import { toast } from 'react-hot-toast';
 import { styles } from '../theme';
@@ -8,7 +8,7 @@ import {
   Milestone, Project, ProjectFile, ProjectsData, Task,
   loadProjects, readProjectsCache, saveProgress, openLink, fileUrl,
   saveProject, deleteProject, saveMilestone, deleteMilestone, uploadProjectFile, removeProjectFile, getMilestoneStats,
-  timeLeft, urgency, dueText, sizeText, fileKind,
+  timeLeft, urgency, dueText, sizeText, fileKind, addDeadlineToCalendar,
 } from '../services/projects';
 
 // ── look (the app's own theme colors) ──
@@ -173,38 +173,51 @@ const ProjectsScreen: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
   // one card per course: name + count, open milestones with their countdown, finished ones as small chips
   const courseCard = (g: { project: Project; open: Milestone[]; closed: Milestone[] }) => {
     const p = g.project;
+    const total = g.open.length + g.closed.length;
+    const course = p.course_name || p.title;
     return (
-      <section key={p.id} className="mb-2.5 overflow-hidden rounded-[18px] px-3.5 py-3" style={card}>
-        <button onClick={() => open(p.id)} className="flex w-full items-baseline justify-between gap-3 border-0 bg-transparent p-0 text-left">
-          <span className="truncate text-[15.5px] font-extrabold tracking-tight" style={strong}>{p.course_name || p.title}</span>
-          <span className="shrink-0 text-[12px] font-bold tnum" style={muted}>{g.closed.length}/{g.open.length + g.closed.length}</span>
+      <section key={p.id} className="mb-3 overflow-hidden rounded-[22px] px-4 pb-3.5 pt-3.5" style={card}>
+        <button onClick={() => open(p.id)} className="block w-full border-0 bg-transparent p-0 text-left">
+          <span className="flex items-baseline justify-between gap-3">
+            <span className="truncate text-[16px] font-extrabold tracking-[-0.01em]" style={strong}>{course}</span>
+            <span className="shrink-0 text-[12px] font-bold tnum" style={muted}>{g.closed.length} of {total}</span>
+          </span>
+          {/* how much of this course's work is behind you */}
+          <span className="mt-2 block h-[4px] overflow-hidden rounded-full" style={{ background: 'var(--surface-2)' }} aria-hidden="true">
+            <span className="block h-full rounded-full" style={{ width: `${total ? (g.closed.length / total) * 100 : 0}%`, background: 'var(--accent)' }} />
+          </span>
         </button>
 
         {g.open.map(m => {
           const tasks = data?.progress[m.id]?.tasks ?? [];
           return (
-            <button key={m.id} onClick={() => open(m.project_id, m.id)}
-              className="mt-2 flex w-full items-center gap-3 rounded-[12px] border-0 px-3 py-2 text-left"
-              style={{ background: 'var(--sheet-field)' }}>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-[14px] font-bold" style={strong}>
-                  {m.title}
-                  {tasks.length > 0 && <span className="ml-2 text-[12px] font-semibold tnum" style={muted}>{tasksDone(tasks)}</span>}
+            <div key={m.id} className="mt-2.5 flex items-center gap-1.5 rounded-[14px] py-1 pl-3 pr-1" style={{ background: 'var(--sheet-field)' }}>
+              <button onClick={() => open(m.project_id, m.id)} className="flex min-w-0 flex-1 items-center gap-3 border-0 bg-transparent py-1.5 text-left">
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[14.5px] font-bold" style={strong}>
+                    {m.title}
+                    {tasks.length > 0 && <span className="ml-2 text-[12px] font-semibold tnum" style={muted}>{tasksDone(tasks)}</span>}
+                  </span>
+                  <span className="mt-0.5 block truncate text-[12px] font-semibold tnum" style={muted}>{dueText(m.due_at)}</span>
                 </span>
-                <span className="mt-0.5 block truncate text-[12px] font-semibold tnum" style={muted}>Due {dueText(m.due_at)}</span>
-              </span>
-              <Pill style={pillStyle(m.due_at, now)}>{timeLeft(m.due_at, now)}</Pill>
-            </button>
+                <Pill style={pillStyle(m.due_at, now)}>{timeLeft(m.due_at, now)}</Pill>
+              </button>
+              <button onClick={() => addDeadlineToCalendar(m, course).catch(() => toast.error("Couldn't open the calendar."))}
+                aria-label={`Add ${m.title} to Calendar`} title="Add to Calendar"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] border-0 bg-transparent hit" style={muted}>
+                <CalendarPlus size={17} />
+              </button>
+            </div>
           );
         })}
 
         {g.closed.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
+          <div className="mt-2.5 flex flex-wrap gap-x-3.5 gap-y-1">
             {g.closed.map(m => {
               const sub = !!data?.progress[m.id]?.submitted;
               return (
                 <button key={m.id} onClick={() => open(m.project_id, m.id)} title={sub ? 'Submitted' : 'Closed'}
-                  className="flex max-w-full items-center gap-1 border-0 bg-transparent p-0 text-[12px] font-semibold"
+                  className="flex max-w-full items-center gap-1 border-0 bg-transparent p-0 text-[12.5px] font-semibold"
                   style={{ color: sub ? '#34d399' : 'var(--text-muted)' }}>
                   {sub ? <Check size={12} strokeWidth={3} /> : <X size={12} strokeWidth={3} />}
                   <span className="truncate">{m.title}</span>
@@ -318,44 +331,53 @@ const ProjectView: React.FC<{
     setNewTask('');
   };
   const past = m ? new Date(m.due_at).getTime() <= now : false;
+  const doneCount = tasks.filter(t => t.done).length;
+  const tone = m && !past && !m.cancelled ? urgency(m.due_at, now) : 'plain';
+  const toneColor = tone === 'red' ? 'var(--danger)' : tone === 'amber' ? '#f59e0b' : 'var(--text-primary)';
+  const [adding, setAdding] = useState(false);
+  const addToCal = async () => {
+    if (!m || adding) return;
+    setAdding(true);
+    try { await addDeadlineToCalendar(m, project.course_name || project.title); }
+    catch { toast.error("Couldn't open the calendar."); }
+    finally { setAdding(false); }
+  };
 
   return (
     <div style={styles.scrollableContent} className="custom-scrollbar">
       <div className="mx-auto w-full max-w-3xl page-in">
-        {/* header: back, small title, menu */}
-        <div className="mb-3 flex items-center gap-2">
-          <button onClick={onBack} aria-label="Back" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] hit" style={{ ...card, boxShadow: 'none', ...strong }}><ArrowLeft size={17} /></button>
-          <div className="min-w-0 flex-1 px-0.5">
-            <div className="truncate text-[15px] font-bold leading-tight tracking-[-0.01em]" style={strong}>{project.title}</div>
-            {(project.course_code || isAdmin) && (
-              <div className="mt-0.5 flex items-center gap-1.5 truncate text-[11.5px] font-semibold" style={muted}>
-                {isAdmin && <span className="rounded-[4px] px-1 text-[9.5px] font-extrabold tracking-wide" style={{ background: 'rgba(167,139,250,0.18)', color: '#a78bfa' }}>ADMIN</span>}
-                {project.course_code && <span className="truncate">{project.course_code}{project.course_name ? ` · ${project.course_name}` : ''}</span>}
-              </div>
-            )}
+        {/* header: back, course + project, admin menu */}
+        <div className="mb-4 flex items-center gap-3">
+          <button onClick={onBack} aria-label="Back" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px] hit" style={{ ...card, boxShadow: 'none', ...strong }}><ArrowLeft size={18} /></button>
+          <div className="min-w-0 flex-1">
+            <h1 className="m-0 truncate text-[20px] font-extrabold leading-tight tracking-[-0.02em]" style={strong}>{project.course_name || project.title}</h1>
+            <div className="mt-0.5 flex items-center gap-1.5 truncate text-[12.5px] font-semibold" style={muted}>
+              {isAdmin && <span className="rounded-[5px] px-1.5 text-[9.5px] font-extrabold tracking-wide" style={{ background: 'rgba(167,139,250,0.18)', color: '#a78bfa' }}>ADMIN</span>}
+              <span className="truncate">{[project.course_name ? project.title : null, project.course_code].filter(Boolean).join(' · ') || 'Project'}</span>
+            </div>
           </div>
-          {isAdmin && <button onClick={onEditProject} aria-label="Edit project" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] hit" style={{ ...card, boxShadow: 'none', ...strong }}><MoreHorizontal size={17} /></button>}
+          {isAdmin && <button onClick={onEditProject} aria-label="Edit project" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px] hit" style={{ ...card, boxShadow: 'none', ...strong }}><MoreHorizontal size={18} /></button>}
         </div>
 
         {project.note && (
-          <div className="mb-3 rounded-[14px] px-3 py-2.5 text-[13.5px] leading-[1.45]" style={{ background: 'rgba(96,165,250,0.10)', border: '1px solid rgba(96,165,250,0.22)', ...strong }}>
-            <span className="font-bold">Note: </span><RichText text={project.note} />
+          <div className="mb-3 rounded-[16px] px-3.5 py-3 text-[13.5px] leading-[1.5]" style={{ background: 'rgba(96,165,250,0.09)', border: '1px solid rgba(96,165,250,0.2)', ...strong }}>
+            <RichText text={project.note} />
           </div>
         )}
 
         {/* milestone switcher: only when there is more than one */}
         {ms.length > 1 && (
-          <div role="tablist" className="mb-3 flex gap-1 overflow-x-auto rounded-[12px] p-[3px]" style={{ ...card, boxShadow: 'none', scrollbarWidth: 'none' }}>
+          <div role="tablist" className="mb-3 flex gap-1 overflow-x-auto rounded-[14px] p-1" style={{ ...card, boxShadow: 'none', scrollbarWidth: 'none' }}>
             {ms.map(x => {
               const on = x.id === m?.id;
               const sub = data.progress[x.id]?.submitted;
               return (
                 <button key={x.id} role="tab" aria-selected={on} onClick={() => onPickMs(x.id)}
-                  className="flex h-[30px] min-w-[72px] flex-1 shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-[9px] border-0 px-2.5 text-[12.5px] font-bold"
-                  style={on ? { background: 'var(--nav-active-bg, rgba(25,184,166,0.2))', color: 'var(--accent-text)' } : { background: 'transparent', ...muted, textDecoration: x.cancelled ? 'line-through' : undefined }}>
-                  {sub && <Check size={12} strokeWidth={3.2} color="#34d399" />}
+                  className="flex h-9 min-w-[76px] flex-1 shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-[10px] border-0 px-3 text-[13px] font-bold transition-colors"
+                  style={on ? { background: 'var(--surface-2)', color: 'var(--text-primary)' } : { background: 'transparent', ...muted, textDecoration: x.cancelled ? 'line-through' : undefined }}>
+                  {sub && <Check size={13} strokeWidth={3.2} color="#34d399" />}
                   {x.hidden && <EyeOff size={12} />}
-                  <span className="max-w-[110px] truncate">{x.title.split(/\s*[·:-]\s*/)[0]}</span>
+                  <span className="max-w-[120px] truncate">{x.title.split(/\s*[·:-]\s*/)[0]}</span>
                 </button>
               );
             })}
@@ -363,96 +385,137 @@ const ProjectView: React.FC<{
         )}
 
         {!m ? (
-          <div className="rounded-[18px] px-5 py-7 text-center text-[13.5px]" style={{ ...card, ...muted }}>
+          <div className="rounded-[20px] px-5 py-8 text-center text-[14px]" style={{ ...card, ...muted }}>
             {isAdmin ? 'No milestones yet.' : 'No deadlines posted yet.'}
             {isAdmin && (
-              <button onClick={onAddMilestone} className="mx-auto mt-3 flex h-9 items-center gap-1.5 rounded-[11px] border-0 px-3.5 text-[13.5px] font-bold" style={{ background: 'var(--cta-bg)', color: 'var(--cta-ink)' }}>
-                <Plus size={15} strokeWidth={2.6} /> Add milestone
+              <button onClick={onAddMilestone} className="mx-auto mt-3 flex h-10 items-center gap-1.5 rounded-[12px] border-0 px-4 text-[14px] font-bold" style={{ background: 'var(--cta-bg)', color: 'var(--cta-ink)' }}>
+                <Plus size={16} strokeWidth={2.6} /> Add milestone
               </button>
             )}
           </div>
         ) : (
           <>
-            <div className="rounded-[18px] px-3.5 pb-3.5 pt-3" style={card}>
+            {/* hero: the deadline */}
+            <section className="rounded-[22px] px-4 pb-4 pt-4" style={{ ...card, background: 'var(--hero-bg, var(--surface))' }}>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="text-[16px] font-bold leading-snug tracking-[-0.01em]" style={strong}>{m.title}</div>
-                  <div className="mt-0.5 text-[12.5px]" style={muted}>{[dueText(m.due_at), m.team_size ? `Team of ${m.team_size}` : null].filter(Boolean).join(' · ')}</div>
+                  <div className="text-[13px] font-bold" style={muted}>{m.title}</div>
+                  {m.cancelled ? (
+                    <div className="mt-1 text-[30px] font-extrabold leading-none tracking-[-0.03em]" style={muted}>Cancelled</div>
+                  ) : past ? (
+                    <div className="mt-1 text-[30px] font-extrabold leading-none tracking-[-0.03em]" style={muted}>Closed</div>
+                  ) : (
+                    <div className="mt-1 flex items-baseline gap-2">
+                      <span className="text-[36px] font-extrabold leading-none tracking-[-0.03em] tnum" style={{ color: toneColor }}>{timeLeft(m.due_at, now)}</span>
+                      <span className="text-[14px] font-bold" style={muted}>left</span>
+                    </div>
+                  )}
                 </div>
-                {m.cancelled ? <Pill style={{ background: 'var(--surface-2)', color: 'var(--text-muted)' }}>cancelled</Pill>
-                  : past ? <Pill style={{ background: 'var(--surface-2)', color: 'var(--text-muted)' }}>closed</Pill>
-                  : <Pill style={pillStyle(m.due_at, now)}>{timeLeft(m.due_at, now)}</Pill>}
+                {prog?.submitted && (
+                  <span className="mt-0.5 flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-bold" style={{ background: 'rgba(52,211,153,0.15)', color: '#34d399' }}>
+                    <Check size={13} strokeWidth={3} /> Done
+                  </span>
+                )}
               </div>
 
-              {m.details && (
-                <div className="mt-3 border-t pt-3 text-[14px] leading-[1.5]" style={{ borderColor: 'var(--line)', color: 'var(--text-primary)' }}>
-                  <RichText text={m.details} />
+              <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] font-semibold" style={muted}>
+                <span className="flex items-center gap-1.5 tnum"><CalendarClock size={14} /> {dueText(m.due_at)}</span>
+                {m.team_size ? <span className="flex items-center gap-1.5"><Users size={14} /> Team of {m.team_size}</span> : null}
+              </div>
+
+              {tasks.length > 0 && (
+                <div className="mt-3.5 h-[5px] overflow-hidden rounded-full" style={{ background: 'var(--surface-2)' }} aria-hidden="true">
+                  <div className="h-full rounded-full transition-[width] duration-300" style={{ width: `${(doneCount / tasks.length) * 100}%`, background: 'var(--accent)' }} />
                 </div>
               )}
 
-              {files.length > 0 && (
-                <div className="mt-3.5">
-                  <div className={label} style={muted}>Files</div>
-                  <div className="flex flex-col gap-1.5">
-                    {files.map(f => (
-                      <button key={f.id} onClick={() => openFile(f)} className="flex w-full items-center gap-2.5 rounded-[12px] border-0 px-2.5 py-2 text-left"
-                        style={{ background: 'var(--sheet-field)' }}>
-                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] text-[8.5px] font-bold"
-                          style={{ ...mono, background: 'color-mix(in srgb, var(--danger) 15%, transparent)', color: 'var(--danger)' }}>{fileKind(f)}</span>
-                        <span className="min-w-0 flex-1 truncate text-[13.5px] font-semibold" style={strong}>{f.name}</span>
-                        {opening === f.id ? <Loader2 size={15} className="animate-spin" style={muted} /> : <span className="text-[11.5px]" style={muted}>{sizeText(f.size)}</span>}
-                      </button>
-                    ))}
-                  </div>
+              {!m.cancelled && (
+                <div className="mt-4 flex gap-2">
+                  {!past && (
+                    <button onClick={addToCal} disabled={adding}
+                      className="flex h-11 flex-1 items-center justify-center gap-2 rounded-[14px] text-[14px] font-bold"
+                      style={{ background: 'var(--surface-2)', border: '1px solid var(--line)', ...strong }}>
+                      {adding ? <Loader2 size={16} className="animate-spin" /> : <CalendarPlus size={16} />} Add to Calendar
+                    </button>
+                  )}
+                  {m.submit_link && (
+                    <button onClick={() => openLink(m.submit_link!)}
+                      className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-[14px] border-0 text-[14px] font-extrabold"
+                      style={{ background: 'var(--cta-bg)', color: 'var(--cta-ink)' }}>
+                      Submit <ArrowUpRight size={16} strokeWidth={2.6} />
+                    </button>
+                  )}
                 </div>
               )}
+            </section>
 
-              <div className="mt-3.5">
-                <div className="flex items-center justify-between">
-                  <span className={label} style={muted}>Checklist</span>
-                  {tasks.length > 0 && <span className="mb-1.5 text-[11.5px] font-bold" style={{ ...mono, color: 'var(--accent-text)' }}>{tasksDone(tasks)}</span>}
-                </div>
-                {tasks.map((t, i) => (
-                  <div key={i} className="flex min-h-[34px] items-center gap-2.5 px-1">
-                    <input type="checkbox" checked={t.done} aria-label={t.t}
-                      onChange={() => onProgress(m.id, { tasks: tasks.map((x, j) => j === i ? { ...x, done: !x.done } : x) })}
-                      style={{ width: 17, height: 17, margin: 0, accentColor: 'var(--accent)' }} />
-                    <span className="min-w-0 flex-1 text-[14px]" style={t.done ? { ...muted, textDecoration: 'line-through' } : strong}>{t.t}</span>
-                    <button aria-label={`Remove ${t.t}`} onClick={() => onProgress(m.id, { tasks: tasks.filter((_, j) => j !== i) })}
-                      className="flex h-7 w-7 items-center justify-center border-0 bg-transparent" style={muted}><X size={14} /></button>
-                  </div>
+            {m.details && (
+              <section className="mt-3 rounded-[20px] px-4 py-3.5 text-[14px] leading-[1.55]" style={{ ...card, color: 'var(--text-primary)' }}>
+                <RichText text={m.details} />
+              </section>
+            )}
+
+            {files.length > 0 && (
+              <section className="mt-3 overflow-hidden rounded-[20px]" style={card}>
+                {files.map((f, i) => (
+                  <button key={f.id} onClick={() => openFile(f)} className="flex w-full items-center gap-3 border-0 bg-transparent px-4 py-3 text-left"
+                    style={i ? { borderTop: '1px solid var(--line)' } : undefined}>
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] text-[9px] font-extrabold"
+                      style={{ background: 'color-mix(in srgb, var(--danger) 14%, transparent)', color: 'var(--danger)' }}>{fileKind(f)}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[14px] font-bold" style={strong}>{f.name}</span>
+                      {!!f.size && <span className="block text-[12px] font-semibold" style={muted}>{sizeText(f.size)}</span>}
+                    </span>
+                    {opening === f.id ? <Loader2 size={16} className="animate-spin" style={muted} /> : <ArrowUpRight size={16} style={muted} />}
+                  </button>
                 ))}
-                <div className="flex items-center gap-2 rounded-[12px] px-3" style={{ background: 'var(--sheet-field)' }}>
-                  <Plus size={15} style={muted} />
-                  <input value={newTask} onChange={e => setNewTask(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addTask(); }}
-                    placeholder="Add a task" maxLength={80} className={`${inputBase} h-9 text-[16px] font-normal`} style={strong} />
-                  {newTask.trim() && <button onClick={addTask} className="border-0 bg-transparent text-[14px] font-bold" style={{ color: 'var(--accent-text)' }}>Add</button>}
-                </div>
-              </div>
-            </div>
+              </section>
+            )}
 
-            <div className="mt-3 flex gap-2">
+            {/* checklist: your own tasks for this milestone */}
+            <section className="mt-3 overflow-hidden rounded-[20px]" style={card}>
+              <div className="flex items-center justify-between px-4 pb-1 pt-3">
+                <span className="text-[14px] font-extrabold" style={strong}>Checklist</span>
+                {tasks.length > 0 && <span className="text-[12.5px] font-bold tnum" style={muted}>{doneCount}/{tasks.length}</span>}
+              </div>
+              {tasks.map((t, i) => (
+                <div key={i} className="flex min-h-[46px] items-center gap-3 px-4" style={{ borderTop: i ? '1px solid var(--line)' : undefined }}>
+                  <button role="checkbox" aria-checked={t.done} aria-label={t.t}
+                    onClick={() => onProgress(m.id, { tasks: tasks.map((x, j) => j === i ? { ...x, done: !x.done } : x) })}
+                    className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full p-0 transition-colors hit"
+                    style={t.done ? { background: 'var(--accent)', border: '1.5px solid var(--accent)', color: 'var(--on-accent)' } : { background: 'transparent', border: '1.5px solid var(--line)' }}>
+                    {t.done && <Check size={13} strokeWidth={3.2} />}
+                  </button>
+                  <span className="min-w-0 flex-1 break-words py-2 text-[14.5px]" style={t.done ? { ...muted, textDecoration: 'line-through' } : strong}>{t.t}</span>
+                  <button aria-label={`Remove ${t.t}`} onClick={() => onProgress(m.id, { tasks: tasks.filter((_, j) => j !== i) })}
+                    className="flex h-8 w-8 items-center justify-center rounded-full border-0 bg-transparent hit" style={muted}><X size={15} /></button>
+                </div>
+              ))}
+              <div className="flex items-center gap-3 px-4" style={{ borderTop: tasks.length ? '1px solid var(--line)' : undefined }}>
+                <Plus size={18} style={muted} className="shrink-0" />
+                <input value={newTask} onChange={e => setNewTask(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addTask(); }}
+                  placeholder="Add a task" maxLength={80} enterKeyHint="done" className={`${inputBase} h-12 font-normal`} style={strong} />
+                {newTask.trim() && <button onClick={addTask} className="shrink-0 border-0 bg-transparent text-[14px] font-bold" style={{ color: 'var(--accent-text)' }}>Add</button>}
+              </div>
+            </section>
+
+            {!m.cancelled && (
               <button onClick={() => onProgress(m.id, { submitted: !prog?.submitted })}
-                className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-[14px] text-[14px] font-semibold"
-                style={prog?.submitted ? { background: 'rgba(52,211,153,0.15)', border: '1px solid rgba(52,211,153,0.35)', color: '#34d399' } : { ...card, boxShadow: 'none', ...strong }}>
-                <CheckCircle2 size={16} /> {prog?.submitted ? 'Done' : 'Mark done'}
+                className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-[16px] text-[15px] font-bold transition-colors"
+                style={prog?.submitted
+                  ? { background: 'rgba(52,211,153,0.14)', border: '1px solid rgba(52,211,153,0.32)', color: '#34d399' }
+                  : { ...card, boxShadow: 'none', ...strong }}>
+                <CheckCircle2 size={18} /> {prog?.submitted ? 'Marked as done' : 'Mark as done'}
               </button>
-              {m.submit_link && (
-                <button onClick={() => openLink(m.submit_link!)}
-                  className="flex h-11 flex-[1.3] items-center justify-center gap-1.5 rounded-[14px] border-0 text-[14px] font-bold"
-                  style={{ background: 'var(--cta-bg)', color: 'var(--cta-ink)' }}>
-                  Submit <ArrowUpRight size={16} strokeWidth={2.6} />
-                </button>
-              )}
-            </div>
+            )}
 
             {isAdmin && (
-              <div className="mt-3 flex items-center gap-2 rounded-[14px] py-1.5 pl-3.5 pr-1.5" style={{ ...card, boxShadow: 'none' }}>
-                <span className="min-w-0 flex-1 truncate text-[12.5px]" style={muted}>
+              <div className="mt-3 flex items-center gap-2 rounded-[16px] py-1.5 pl-4 pr-1.5" style={{ ...card, boxShadow: 'none' }}>
+                <span className="min-w-0 flex-1 truncate text-[12.5px] tnum" style={muted}>
                   {stats ? <><b style={strong}>{stats.viewed}</b> viewed · <b style={strong}>{stats.submitted}</b> done · <b style={strong}>{stats.total}</b> students</> : 'Loading stats…'}
                 </span>
-                <button onClick={() => onEditMilestone(m)} aria-label="Edit milestone" className="flex h-8 w-8 items-center justify-center rounded-[10px] border-0 hit" style={{ background: 'var(--surface-2)', ...strong }}><Pencil size={15} /></button>
-                <button onClick={onAddMilestone} aria-label="Add milestone" className="flex h-8 w-8 items-center justify-center rounded-[10px] border-0 hit" style={{ background: 'var(--surface-2)', color: 'var(--accent-text)' }}><Plus size={16} strokeWidth={2.6} /></button>
+                <button onClick={() => onEditMilestone(m)} aria-label="Edit milestone" className="flex h-9 w-9 items-center justify-center rounded-[11px] border-0 hit" style={{ background: 'var(--surface-2)', ...strong }}><Pencil size={15} /></button>
+                <button onClick={onAddMilestone} aria-label="Add milestone" className="flex h-9 w-9 items-center justify-center rounded-[11px] border-0 hit" style={{ background: 'var(--surface-2)', color: 'var(--accent-text)' }}><Plus size={16} strokeWidth={2.6} /></button>
               </div>
             )}
           </>

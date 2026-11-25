@@ -113,6 +113,21 @@ export const openLink = async (url: string) => {
   else if (!window.open(url, '_blank')) window.location.href = url;
 };
 
+/**
+ * Adds a deadline to the phone's own calendar. The link answers with a calendar file:
+ * iPhone shows its "Add to Calendar" sheet (with reminders 1 day and 2 hours before),
+ * a computer downloads the .ics.
+ */
+export const addDeadlineToCalendar = async (m: Pick<Milestone, 'id' | 'title' | 'due_at' | 'submit_link'>, course?: string | null) => {
+  const q = new URLSearchParams({ t: m.title, d: new Date(m.due_at).toISOString(), id: m.id });
+  if (course) q.set('c', course);
+  if (m.submit_link && /^https:\/\//i.test(m.submit_link)) q.set('l', m.submit_link);
+  const url = `${window.location.origin}/api/ics?${q}`;
+  const native = (() => { try { return Capacitor.isNativePlatform(); } catch { return false; } })();
+  if (native) await Browser.open({ url, presentationStyle: 'popover' }); // Safari view shows the calendar sheet
+  else if (!window.open(url, '_blank')) window.location.href = url;
+};
+
 export const fileUrl = async (f: ProjectFile): Promise<string | null> => {
   const { data } = await supabase.storage.from('project-files').createSignedUrl(f.path, 60 * 60);
   return data?.signedUrl ?? null;
