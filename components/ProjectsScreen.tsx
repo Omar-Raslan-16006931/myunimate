@@ -186,9 +186,12 @@ const ProjectsScreen: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
             <button key={m.id} onClick={() => open(m.project_id, m.id)}
               className="mt-2 flex w-full items-center gap-3 rounded-[12px] border-0 px-3 py-2 text-left"
               style={{ background: 'var(--sheet-field)' }}>
-              <span className="min-w-0 flex-1 truncate text-[14px] font-bold" style={strong}>
-                {m.title}
-                {tasks.length > 0 && <span className="ml-2 text-[12px] font-semibold tnum" style={muted}>{tasksDone(tasks)}</span>}
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[14px] font-bold" style={strong}>
+                  {m.title}
+                  {tasks.length > 0 && <span className="ml-2 text-[12px] font-semibold tnum" style={muted}>{tasksDone(tasks)}</span>}
+                </span>
+                <span className="mt-0.5 block truncate text-[12px] font-semibold tnum" style={muted}>Due {dueText(m.due_at)}</span>
               </span>
               <Pill style={pillStyle(m.due_at, now)}>{timeLeft(m.due_at, now)}</Pill>
             </button>
