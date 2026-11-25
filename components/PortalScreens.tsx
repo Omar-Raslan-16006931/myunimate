@@ -8,6 +8,7 @@ import {
   getPortalAccount, getPortalGrades, getPortalAttendance, getPortalAbsenceLevels, getPortalExamSeats, markPortalGradesSeen,
   syncPortal, timeAgo, isAbsent, readPortalCache, writePortalCache, PortalSyncResult,
   PortalAccount, PortalGrade, PortalAttendanceRow, PortalExamSeat,
+  portalErrorText,
 } from '../services/portal';
 
 const card: React.CSSProperties = {
@@ -85,7 +86,7 @@ const Shell: React.FC<{
         <div key="content" className="stagger-in">
           {account.last_status === 'error' && account.last_error && (
             <div className="mb-3 rounded-[16px] px-3.5 py-2.5 text-[0.8rem] font-semibold" style={{ ...card, color: '#fbbf24' }}>
-              {account.last_error} Showing the last saved data.
+              {portalErrorText(account.last_error)} Showing the last saved data.
             </div>
           )}
           {empty ? (

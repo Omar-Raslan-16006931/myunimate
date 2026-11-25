@@ -88,6 +88,22 @@ export interface PortalSyncResult {
   classes?: PortalClass[];
 }
 
+/**
+ * Turns the portal's raw technical error into one short sentence.
+ * (The server's text can be long, repeated, and full of TLS details.)
+ */
+export const portalErrorText = (raw: string | null | undefined): string => {
+  const t = (raw || '').trim();
+  if (!t) return "Couldn't check the portal.";
+  if (/certificate (has )?expired|certificate is not valid after/i.test(t))
+    return "GIU's portal has an expired security certificate, so the app can't connect safely. That's on GIU's side; it works again once they renew it.";
+  if (/invalid peer certificate|certificate|tls|ssl|handshake/i.test(t))
+    return "The portal's security certificate isn't valid right now, so the app can't connect safely.";
+  if (/timed? ?out|took too long/i.test(t)) return 'The portal took too long to answer.';
+  if (/Could not reach the portal/i.test(t)) return "Couldn't reach the portal. It may be down.";
+  return t.length > 160 ? `${t.slice(0, 157)}…` : t;
+};
+
 const call = async (body: Record<string, unknown>): Promise<PortalSyncResult> => {
   try {
     const { data, error } = await supabase.functions.invoke('portal-sync', { body });
@@ -97,12 +113,13 @@ const call = async (body: Record<string, unknown>): Promise<PortalSyncResult> =>
       if (res && typeof res.json === 'function') {
         try {
           const parsed = await res.json();
-          if (parsed && typeof parsed === 'object') return { ok: false, ...parsed };
+          if (parsed && typeof parsed === 'object') return { ok: false, ...parsed, message: portalErrorText(parsed.message) };
         } catch { /* not JSON */ }
       }
       return { ok: false, message: 'Could not reach the sync server.' };
     }
-    return data as PortalSyncResult;
+    const res = data as PortalSyncResult;
+    return res && !res.ok && res.message ? { ...res, message: portalErrorText(res.message) } : res;
   } catch {
     return { ok: false, message: 'Could not reach the sync server.' };
   }
